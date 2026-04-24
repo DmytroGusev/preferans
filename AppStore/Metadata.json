@@ -1,0 +1,28 @@
+{
+  "app_name": "Preferans",
+  "subtitle": "Classic trick-taking card game",
+  "primary_category": "Games",
+  "secondary_category": "Card",
+  "age_rating_notes": [
+    "Card game with online multiplayer interactions.",
+    "No simulated gambling with real money should be claimed in storefront text."
+  ],
+  "promotional_text": "Play a streamlined version of Preferans on iPhone and iPad. Start a table, share an invite link, and challenge friends in a clean, focused card-room experience.",
+  "description": "Preferans brings the classic trick-taking card game to iOS in a streamlined format built for quick matches with friends.\n\nSet up a 3-player table or use the 4-player rotating-dealer format, bid for trump, take the talon, and play through each hand with simple touch controls.\n\nCurrent features:\n- Local table setup for 3 or 4 players\n- Simplified bidding and talon exchange flow\n- Trick-taking gameplay with suit-following and trump rules\n- Shareable invite-link concept for online rooms\n- Score tracking across hands\n\nPlanned improvements:\n- Full Preferans contract variants and scoring\n- Real online rooms and invite handling\n- Better table presentation and animations\n- Solo play against bots\n\nPreferans is intended for players who already know the game or want a lightweight digital version to learn the flow.",
+  "keywords": [
+    "preferans",
+    "preferans card game",
+    "preference",
+    "trick taking",
+    "card game",
+    "multiplayer cards",
+    "russian cards"
+  ],
+  "support_url": "https://example.com/preferans/support",
+  "marketing_url": "https://example.com/preferans",
+  "privacy_policy_url": "https://example.com/preferans/privacy",
+  "review_notes": "The current build contains a simplified Preferans ruleset. If online multiplayer is enabled in the submitted build, provide reviewer test steps and demo accounts here.",
+  "localizations": [
+    "en-US"
+  ]
+}

@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+
+# Archives and exports
+*.xcarchive
+*.ipa
+
+# Secrets
+*.p8
+*.mobileprovision
+*.cer
+*.p12
+

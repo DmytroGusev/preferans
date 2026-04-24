@@ -1,0 +1,231 @@
+import SwiftUI
+
+extension Suit {
+    var color: Color {
+        switch self {
+        case .diamonds, .hearts:
+            return Color(red: 0.69, green: 0.13, blue: 0.11)
+        case .clubs, .spades:
+            return Color(red: 0.08, green: 0.08, blue: 0.1)
+        }
+    }
+
+    var title: String {
+        rawValue.capitalized
+    }
+}
+
+extension Phase {
+    var title: String {
+        switch self {
+        case .setup: return "Setup"
+        case .bidding: return "Bidding"
+        case .takingTalon: return "Talon"
+        case .discarding: return "Discard"
+        case .declaringContract: return "Contract"
+        case .whisting: return "Whist"
+        case .playing: return "Play"
+        case .handFinished: return "Finished"
+        }
+    }
+}
+
+struct PlayingCardView: View {
+    let card: Card
+    var faceUp: Bool = true
+    var isPlayable: Bool = true
+    var isCompact: Bool = false
+    var scale: CGFloat = 1
+
+    var body: some View {
+        ZStack {
+            if faceUp {
+                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.white, Color(red: 0.985, green: 0.975, blue: 0.95)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
+                    .stroke(Color.black.opacity(0.14), lineWidth: 1)
+
+                if !isCompact {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .inset(by: 5)
+                        .stroke(Color.black.opacity(0.04), lineWidth: 0.8)
+                }
+
+                VStack {
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: isCompact ? 0 : 1) {
+                            Text(card.rank.label)
+                                .font(isCompact ? .caption2.weight(.heavy) : .system(size: 15, weight: .black, design: .serif))
+                            Text(card.suit.symbol)
+                                .font(isCompact ? .caption2.weight(.heavy) : .system(size: 13, weight: .bold, design: .serif))
+                        }
+                        .foregroundStyle(card.suit.color)
+
+                        Spacer()
+                    }
+
+                    Spacer()
+                }
+                .padding(isCompact ? 7 : 8)
+            } else {
+                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(red: 0.05, green: 0.17, blue: 0.15),
+                                Color(red: 0.1, green: 0.32, blue: 0.28)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+
+                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
+                    .stroke(Color(red: 0.82, green: 0.69, blue: 0.39).opacity(0.5), lineWidth: 1.5)
+
+                RoundedRectangle(cornerRadius: isCompact ? 8 : 12, style: .continuous)
+                    .inset(by: isCompact ? 8 : 10)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+
+                Image(systemName: "suit.spade.fill")
+                    .font(isCompact ? .title3 : .title)
+                    .foregroundStyle(Color(red: 0.92, green: 0.85, blue: 0.69))
+            }
+        }
+        .scaleEffect(scale)
+        .frame(
+            width: (isCompact ? 58 : 98) * scale,
+            height: (isCompact ? 82 : 146) * scale
+        )
+        .shadow(color: .black.opacity(faceUp ? 0.16 : 0.22), radius: 8, y: 3)
+        .opacity(isPlayable ? 1 : 0.55)
+    }
+}
+
+struct SeatBadgeView: View {
+    let player: Player
+    let isActive: Bool
+    let isDeclarer: Bool
+    var isPassed: Bool = false
+    var compact: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(player.name)
+                    .font((compact ? Font.caption : .subheadline).weight(.semibold))
+                    .foregroundStyle(.white)
+                if isDeclarer {
+                    Text("Declarer")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color(red: 0.8, green: 0.64, blue: 0.28))
+                        .foregroundStyle(.black)
+                        .clipShape(Capsule())
+                }
+                if isPassed {
+                    Text("Pass")
+                        .font(.caption2.weight(.bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.white.opacity(0.12))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .clipShape(Capsule())
+                }
+            }
+            HStack(spacing: 10) {
+                Text("Pool \(player.pool)")
+                Text("Mt \(player.mountain)")
+                Text("Net \(player.score)")
+            }
+            .font(compact ? .caption2 : .caption)
+            .foregroundStyle(.white.opacity(0.78))
+        }
+        .padding(compact ? 8 : 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(
+                    isActive
+                    ? Color(red: 0.57, green: 0.42, blue: 0.15).opacity(0.85)
+                    : (isPassed ? Color.black.opacity(0.14) : Color.black.opacity(0.25))
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(isActive ? 0.16 : (isPassed ? 0.12 : 0.08)), lineWidth: 1)
+        )
+        .opacity(isPassed ? 0.74 : 1)
+    }
+}
+
+struct FanHandView: View {
+    let cards: [Card]
+    let playableCards: Set<Card>
+    let onTap: (Card) -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            let count = max(cards.count, 1)
+            let centerX = geometry.size.width / 2
+            let baseY = geometry.size.height * 0.56
+
+            ZStack {
+                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                    let progress = count == 1 ? 0.0 : Double(index) / Double(count - 1)
+                    let angle = -10.0 + progress * 20.0
+                    let xOffset = CGFloat(progress - 0.5) * min(geometry.size.width * 0.72, CGFloat(count) * 24)
+                    let isPlayable = playableCards.contains(card)
+
+                    Button {
+                        onTap(card)
+                    } label: {
+                        PlayingCardView(card: card, isPlayable: isPlayable)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!isPlayable)
+                    .rotationEffect(.degrees(angle))
+                    .position(
+                        x: centerX + xOffset,
+                        y: baseY - abs(xOffset) * 0.02 - (isPlayable ? 10 : 0)
+                    )
+                    .zIndex(Double(index))
+                }
+            }
+        }
+    }
+}
+
+struct PreviewHandView: View {
+    let cards: [Card]
+
+    var body: some View {
+        GeometryReader { geometry in
+            let count = max(cards.count, 1)
+            let baseWidth: CGFloat = 98
+            let visibleFactor: CGFloat = 0.66
+            let availableWidth = max(geometry.size.width - 12, 1)
+            let fittedScale = availableWidth / (baseWidth * (1 + visibleFactor * CGFloat(count - 1)))
+            let scale = min(0.74, max(0.5, fittedScale))
+            let cardWidth = baseWidth * scale
+            let spacing = -cardWidth * (1 - visibleFactor)
+
+            HStack(spacing: spacing) {
+                ForEach(cards) { card in
+                    PlayingCardView(card: card, isPlayable: true, scale: scale)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
+        }
+    }
+}

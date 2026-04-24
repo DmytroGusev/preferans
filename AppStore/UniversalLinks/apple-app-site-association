@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "3WSQ6X9CDT.com.mixandmatch.preferans"
+        ],
+        "components": [
+          {
+            "/": "/join/*",
+            "comment": "Preferans room invite links"
+          }
+        ]
+      }
+    ]
+  }
+}
