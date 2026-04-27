@@ -18,6 +18,8 @@ platform :ios do
       skip_binary_upload: true,
       skip_metadata: true,
       overwrite_screenshots: true,
+      force: true,
+      run_precheck_before_submit: false,
       submit_for_review: false
     )
   end

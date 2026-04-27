@@ -15,11 +15,11 @@ Automatic upload requires Fastlane plus Apple authentication:
 ASC_ISSUER_ID="YOUR-ISSUER-ID" fastlane ios upload_screenshots
 ```
 
-The lane is already configured for:
+The lane is configured for:
 
 - Bundle ID: `com.mixandmatch.preferans`
 - Key ID: `BQR53J468H`
 - Key path: `/Users/dmytrogusev/Downloads/AuthKey_BQR53J468H.p8`
 
-If Apple ID login is blocked by 2FA/session issues, use the App Store Connect API key with the correct Issuer ID from App Store Connect.
+The lane uses `force: true` and disables precheck so screenshot uploads work in non-interactive API-key mode.
 
