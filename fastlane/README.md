@@ -12,9 +12,14 @@ Manual upload is still the simplest path:
 Automatic upload requires Fastlane plus Apple authentication:
 
 ```sh
-brew install fastlane
-fastlane ios upload_screenshots
+ASC_ISSUER_ID="YOUR-ISSUER-ID" fastlane ios upload_screenshots
 ```
 
-If Apple ID login is blocked by 2FA/session issues, create an App Store Connect API key and configure Fastlane with that key before running the lane.
+The lane is already configured for:
+
+- Bundle ID: `com.mixandmatch.preferans`
+- Key ID: `BQR53J468H`
+- Key path: `/Users/dmytrogusev/Downloads/AuthKey_BQR53J468H.p8`
+
+If Apple ID login is blocked by 2FA/session issues, use the App Store Connect API key with the correct Issuer ID from App Store Connect.
 
