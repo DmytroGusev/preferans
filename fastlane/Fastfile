@@ -1,15 +1,19 @@
 default_platform(:ios)
 
 platform :ios do
-  desc "Upload App Store screenshots only"
-  lane :upload_screenshots do
-    api_key = app_store_connect_api_key(
+  def preferans_api_key
+    app_store_connect_api_key(
       key_id: ENV.fetch("ASC_KEY_ID", "BQR53J468H"),
       issuer_id: ENV["ASC_ISSUER_ID"],
       key_filepath: ENV.fetch("ASC_KEY_PATH", "/Users/dmytrogusev/Downloads/AuthKey_BQR53J468H.p8"),
       duration: 1200,
       in_house: false
     )
+  end
+
+  desc "Upload App Store screenshots only"
+  lane :upload_screenshots do
+    api_key = preferans_api_key
 
     deliver(
       api_key: api_key,
@@ -17,6 +21,61 @@ platform :ios do
       screenshots_path: "./fastlane/screenshots",
       skip_binary_upload: true,
       skip_metadata: true,
+      overwrite_screenshots: true,
+      force: true,
+      run_precheck_before_submit: false,
+      submit_for_review: false
+    )
+  end
+
+  desc "Upload App Store metadata, categories, content rights, and screenshots"
+  lane :upload_store_assets do
+    api_key = preferans_api_key
+
+    app = Spaceship::ConnectAPI::App.find("com.mixandmatch.preferans")
+    app.update(
+      attributes: {
+        contentRightsDeclaration: Spaceship::ConnectAPI::App::ContentRightsDeclaration::DOES_NOT_USE_THIRD_PARTY_CONTENT
+      }
+    )
+
+    review_info = {
+      first_name: ENV.fetch("APP_REVIEW_FIRST_NAME", "Dmytro"),
+      last_name: ENV.fetch("APP_REVIEW_LAST_NAME", "Gusev"),
+      email_address: ENV.fetch("APP_REVIEW_EMAIL", "dmytro.gusev@gmail.com"),
+      notes: "Please test local play and online rooms. Online play uses Sign in with Apple and room codes. No demo account is required."
+    }
+    review_phone = ENV["APP_REVIEW_PHONE"].to_s.strip
+    review_info[:phone_number] = review_phone unless review_phone.empty?
+
+    deliver(
+      api_key: api_key,
+      app_identifier: "com.mixandmatch.preferans",
+      screenshots_path: "./fastlane/screenshots",
+      copyright: "© 2026 Dmytro Gusev",
+      primary_category: "GAMES",
+      primary_first_sub_category: "GAMES_CARD",
+      app_review_information: review_info,
+      description: {
+        "en-US" => "Preferans brings the classic trick-taking card game to iPhone and iPad with a clean card-table interface built for quick hands with friends.\n\nSet up a 3-player table or use the 4-player rotating-dealer format, bid for trump, take the talon, discard manually, decide whist or pass, and play each trick with clear touch controls.\n\nFeatures:\n- Local Preferans table setup for 3 or 4 players\n- Online rooms with room-code invites\n- Sign in with Apple for player identity\n- Contract bidding with suits, no trump, and misere\n- Talon, manual discard, whist/pass flow, and trick play\n- Scoring support for common Preferans conventions\n- Large readable cards designed for mobile play\n\nPreferans is for card players who want a focused digital table without real-money betting or casino mechanics."
+      },
+      keywords: {
+        "en-US" => "preferans,preference,card game,trick taking,multiplayer,cards,whist,misere"
+      },
+      support_url: {
+        "en-US" => "https://dmytrogusev.github.io/preferans/"
+      },
+      marketing_url: {
+        "en-US" => "https://dmytrogusev.github.io/preferans/"
+      },
+      privacy_url: {
+        "en-US" => "https://dmytrogusev.github.io/preferans/privacy-policy.html"
+      },
+      promotional_text: {
+        "en-US" => "Play Preferans with clear cards, room-code invites, and focused trick-taking controls."
+      },
+      skip_binary_upload: true,
+      skip_metadata: false,
       overwrite_screenshots: true,
       force: true,
       run_precheck_before_submit: false,

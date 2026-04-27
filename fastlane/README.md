@@ -1,25 +1,40 @@
-# Fastlane Screenshots
+fastlane documentation
+----
 
-This folder is prepared for uploading screenshots to App Store Connect with Fastlane.
+# Installation
 
-Manual upload is still the simplest path:
-
-1. Open App Store Connect.
-2. Open the Preferans app version.
-3. Go to the iPhone 6.5-inch screenshot slot.
-4. Upload the PNG files from `AppStore/Screenshots/iPhone-6.5`.
-
-Automatic upload requires Fastlane plus Apple authentication:
+Make sure you have the latest version of the Xcode command line tools installed:
 
 ```sh
-ASC_ISSUER_ID="YOUR-ISSUER-ID" fastlane ios upload_screenshots
+xcode-select --install
 ```
 
-The lane is configured for:
+For _fastlane_ installation instructions, see [Installing _fastlane_](https://docs.fastlane.tools/#installing-fastlane)
 
-- Bundle ID: `com.mixandmatch.preferans`
-- Key ID: `BQR53J468H`
-- Key path: `/Users/dmytrogusev/Downloads/AuthKey_BQR53J468H.p8`
+# Available Actions
 
-The lane uses `force: true` and disables precheck so screenshot uploads work in non-interactive API-key mode.
+## iOS
 
+### ios upload_screenshots
+
+```sh
+[bundle exec] fastlane ios upload_screenshots
+```
+
+Upload App Store screenshots only
+
+### ios upload_store_assets
+
+```sh
+[bundle exec] fastlane ios upload_store_assets
+```
+
+Upload App Store metadata, categories, content rights, and screenshots
+
+----
+
+This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
+
+More information about _fastlane_ can be found on [fastlane.tools](https://fastlane.tools).
+
+The documentation of _fastlane_ can be found on [docs.fastlane.tools](https://docs.fastlane.tools).
