@@ -16,10 +16,10 @@ Package.resolved
 # Archives and exports
 *.xcarchive
 *.ipa
+AppStore/Screenshots/raw/
 
 # Secrets
 *.p8
 *.mobileprovision
 *.cer
 *.p12
-
