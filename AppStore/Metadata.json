@@ -18,9 +18,9 @@
     "multiplayer cards",
     "russian cards"
   ],
-  "support_url": "https://example.com/preferans/support",
-  "marketing_url": "https://example.com/preferans",
-  "privacy_policy_url": "https://example.com/preferans/privacy",
+  "support_url": "https://dmytrogusev.github.io/preferans/",
+  "marketing_url": "https://dmytrogusev.github.io/preferans/",
+  "privacy_policy_url": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
   "review_notes": "The current build contains a simplified Preferans ruleset. If online multiplayer is enabled in the submitted build, provide reviewer test steps and demo accounts here.",
   "localizations": [
     "en-US"

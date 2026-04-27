@@ -4,7 +4,7 @@ title: Terms of Use
 
 # Terms of Use
 
-Last updated: April 24, 2026
+Last updated: April 27, 2026
 
 These Terms of Use govern your use of the Preferans iOS app.
 
@@ -59,4 +59,3 @@ We may update these Terms as the app changes. Continued use of the app after upd
 ## Contact
 
 For questions about these Terms, contact: dmytro.gusev@gmail.com
-

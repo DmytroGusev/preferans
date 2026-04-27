@@ -25,6 +25,7 @@
 
 ## Submission
 
-- Verify no placeholder `example.com` URLs remain
+- Verify GitHub Pages is enabled for `/docs` on the `main` branch
+- Verify no placeholder URLs remain
 - Verify no mock features are described as live features
 - Verify the binary matches the listed privacy answers

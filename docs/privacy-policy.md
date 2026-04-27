@@ -4,7 +4,7 @@ title: Privacy Policy
 
 # Privacy Policy
 
-Last updated: April 24, 2026
+Last updated: April 27, 2026
 
 This Privacy Policy explains how Preferans handles information when you use the iOS app.
 
@@ -74,4 +74,3 @@ We may update this Privacy Policy as the app changes. The updated version will b
 ## Contact
 
 For privacy questions, contact: dmytro.gusev@gmail.com
-

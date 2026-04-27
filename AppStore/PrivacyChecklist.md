@@ -2,9 +2,9 @@
 
 Use this file when filling in App Store Connect privacy answers.
 
-## Current prototype assumption
+## Current shipping assumption
 
-If the shipped build remains local-only or uses only basic share sheets without account creation, the privacy footprint is minimal.
+The app supports local play and online rooms through Sign in with Apple and iCloud CloudKit. Update these answers if analytics, ads, crash reporting SDKs, push notifications, or another backend is added.
 
 ## Likely answers for the current codebase
 
@@ -14,10 +14,10 @@ If the shipped build remains local-only or uses only basic share sheets without 
 - Location: Not collected
 - Sensitive Info: Not collected
 - Contacts: Not collected
-- User Content: Not collected by the current prototype
+- User Content: Gameplay room data is processed for online multiplayer, but no public user-generated content feature is provided
 - Browsing History: Not collected
 - Search History: Not collected
-- Identifiers: Not intentionally collected by the current prototype
+- Identifiers: Sign in with Apple user identifier may be used for account identity and online room participation
 - Purchases: Not collected
 - Usage Data: Not collected unless analytics SDKs are added
 - Diagnostics: Not collected unless crash/analytics SDKs are added
@@ -27,7 +27,7 @@ If the shipped build remains local-only or uses only basic share sheets without 
 - Analytics SDK
 - Crash reporting SDK
 - Authentication
-- Real online multiplayer backend
+- A backend beyond Apple iCloud CloudKit
 - Push notifications
 - Deep-link attribution
 

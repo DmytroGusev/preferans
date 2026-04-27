@@ -28,10 +28,15 @@ Preferans is a SwiftUI iOS card game for local play and online rooms with friend
 
 ## Legal Pages
 
+- Support: `docs/support.md`
 - Privacy Policy: `docs/privacy-policy.md`
 - Terms of Use: `docs/terms-of-use.md`
 
-These pages are intended to be published through GitHub Pages for App Store Connect URLs.
+These pages are intended to be published through GitHub Pages for App Store Connect URLs:
+
+- Support URL: `https://dmytrogusev.github.io/preferans/`
+- Privacy Policy URL: `https://dmytrogusev.github.io/preferans/privacy-policy.html`
+- Terms of Use URL: `https://dmytrogusev.github.io/preferans/terms-of-use.html`
 
 ## App Store Notes
 
