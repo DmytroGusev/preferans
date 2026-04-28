@@ -38,65 +38,50 @@ struct PlayingCardView: View {
     var scale: CGFloat = 1
     var isSelected: Bool = false
 
+    private var cornerRadius: CGFloat {
+        isCompact ? 10 : 14
+    }
+
     var body: some View {
         ZStack {
             if faceUp {
-                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [Color.white, Color(red: 0.985, green: 0.975, blue: 0.95)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color(red: 0.995, green: 0.99, blue: 0.975))
 
-                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
-                    .stroke(Color.black.opacity(0.14), lineWidth: 1)
-
-                if !isCompact {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .inset(by: 5)
-                        .stroke(Color.black.opacity(0.04), lineWidth: 0.8)
-                }
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.black.opacity(0.22), lineWidth: 1)
 
                 VStack {
                     HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: isCompact ? 0 : 1) {
+                        VStack(alignment: .leading, spacing: 0) {
                             Text(card.rank.label)
-                                .font(isCompact ? .caption2.weight(.heavy) : .system(size: 15, weight: .black, design: .serif))
+                                .font(.system(size: isCompact ? 11 : 14, weight: .black, design: .serif))
+                                .minimumScaleFactor(0.9)
                             Text(card.suit.symbol)
-                                .font(isCompact ? .caption2.weight(.heavy) : .system(size: 13, weight: .bold, design: .serif))
+                                .font(.system(size: isCompact ? 10 : 13, weight: .black, design: .serif))
+                                .minimumScaleFactor(0.9)
                         }
                         .foregroundStyle(card.suit.color)
 
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
 
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
-                .padding(isCompact ? 7 : 8)
+                .padding(isCompact ? 6 : 7)
             } else {
-                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.05, green: 0.17, blue: 0.15),
-                                Color(red: 0.1, green: 0.32, blue: 0.28)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color(red: 0.06, green: 0.22, blue: 0.19))
 
-                RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
-                    .stroke(Color(red: 0.82, green: 0.69, blue: 0.39).opacity(0.5), lineWidth: 1.5)
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color(red: 0.82, green: 0.69, blue: 0.39), lineWidth: 1)
 
-                RoundedRectangle(cornerRadius: isCompact ? 8 : 12, style: .continuous)
-                    .inset(by: isCompact ? 8 : 10)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                RoundedRectangle(cornerRadius: max(6, cornerRadius - 4), style: .continuous)
+                    .inset(by: isCompact ? 7 : 9)
+                    .stroke(Color(red: 0.82, green: 0.69, blue: 0.39).opacity(0.7), lineWidth: 1)
 
                 Image(systemName: "suit.spade.fill")
-                    .font(isCompact ? .title3 : .title)
+                    .font(.system(size: isCompact ? 17 : 28, weight: .bold))
                     .foregroundStyle(Color(red: 0.92, green: 0.85, blue: 0.69))
             }
         }
@@ -105,14 +90,12 @@ struct PlayingCardView: View {
             height: (isCompact ? 86 : 158) * scale
         )
         .overlay(
-            RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                 .stroke(
                     isSelected ? Color(red: 0.88, green: 0.74, blue: 0.38) : Color.clear,
                     lineWidth: isSelected ? 2 : 0
                 )
         )
-        .shadow(color: .black.opacity(faceUp ? 0.16 : 0.22), radius: 8, y: 3)
-        .opacity(isPlayable ? 1 : 0.55)
     }
 }
 
@@ -229,7 +212,7 @@ struct PreviewHandView: View {
             let spacing = -cardWidth * (1 - visibleFactor)
 
             HStack(spacing: spacing) {
-                ForEach(cards) { card in
+                ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                     let isInteractive = onTap != nil
                     let isPlayable = !isInteractive || playableCards.contains(card)
 
@@ -246,6 +229,7 @@ struct PreviewHandView: View {
                     .buttonStyle(.plain)
                     .disabled(!isPlayable)
                     .offset(y: selectedCardIDs.contains(card.id) ? -10 : 0)
+                    .zIndex(Double(index))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
