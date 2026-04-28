@@ -36,6 +36,7 @@ struct PlayingCardView: View {
     var isPlayable: Bool = true
     var isCompact: Bool = false
     var scale: CGFloat = 1
+    var isSelected: Bool = false
 
     var body: some View {
         ZStack {
@@ -99,10 +100,16 @@ struct PlayingCardView: View {
                     .foregroundStyle(Color(red: 0.92, green: 0.85, blue: 0.69))
             }
         }
-        .scaleEffect(scale)
         .frame(
             width: (isCompact ? 58 : 98) * scale,
-            height: (isCompact ? 82 : 146) * scale
+            height: (isCompact ? 86 : 158) * scale
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: isCompact ? 12 : 16, style: .continuous)
+                .stroke(
+                    isSelected ? Color(red: 0.88, green: 0.74, blue: 0.38) : Color.clear,
+                    lineWidth: isSelected ? 2 : 0
+                )
         )
         .shadow(color: .black.opacity(faceUp ? 0.16 : 0.22), radius: 8, y: 3)
         .opacity(isPlayable ? 1 : 0.55)
@@ -206,26 +213,85 @@ struct FanHandView: View {
 
 struct PreviewHandView: View {
     let cards: [Card]
+    var playableCards: Set<Card> = []
+    var selectedCardIDs: Set<String> = []
+    var onTap: ((Card) -> Void)?
 
     var body: some View {
         GeometryReader { geometry in
             let count = max(cards.count, 1)
             let baseWidth: CGFloat = 98
-            let visibleFactor: CGFloat = 0.66
+            let visibleFactor: CGFloat = count > 8 ? 0.46 : 0.56
             let availableWidth = max(geometry.size.width - 12, 1)
             let fittedScale = availableWidth / (baseWidth * (1 + visibleFactor * CGFloat(count - 1)))
-            let scale = min(0.74, max(0.5, fittedScale))
+            let scale = min(0.84, max(0.58, fittedScale))
             let cardWidth = baseWidth * scale
             let spacing = -cardWidth * (1 - visibleFactor)
 
             HStack(spacing: spacing) {
                 ForEach(cards) { card in
-                    PlayingCardView(card: card, isPlayable: true, scale: scale)
+                    let isInteractive = onTap != nil
+                    let isPlayable = !isInteractive || playableCards.contains(card)
+
+                    Button {
+                        onTap?(card)
+                    } label: {
+                        PlayingCardView(
+                            card: card,
+                            isPlayable: isPlayable,
+                            scale: scale,
+                            isSelected: selectedCardIDs.contains(card.id)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!isPlayable)
+                    .offset(y: selectedCardIDs.contains(card.id) ? -10 : 0)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             .padding(.horizontal, 6)
             .padding(.vertical, 8)
         }
+    }
+}
+
+struct CardBackStackView: View {
+    let count: Int
+    var maxVisible: Int = 5
+    var scale: CGFloat = 0.46
+
+    var body: some View {
+        HStack(spacing: -22 * scale) {
+            ForEach(0..<min(max(count, 0), maxVisible), id: \.self) { _ in
+                PlayingCardView(
+                    card: Card(suit: .spades, rank: .ace),
+                    faceUp: false,
+                    isPlayable: true,
+                    isCompact: true,
+                    scale: scale
+                )
+            }
+
+            if count > maxVisible {
+                Text("+\(count - maxVisible)")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white.opacity(0.86))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.28))
+                    .clipShape(Capsule())
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Text("\(count)")
+                .font(.caption2.weight(.heavy))
+                .foregroundStyle(Color(red: 0.92, green: 0.85, blue: 0.69))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Color.black.opacity(0.38))
+                .clipShape(Capsule())
+                .offset(x: 10, y: 7)
+        }
+        .opacity(count == 0 ? 0.3 : 1)
     }
 }

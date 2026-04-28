@@ -82,6 +82,10 @@ final class GameViewModel: ObservableObject {
         players.first(where: { $0.seat == currentTurnSeat })
     }
 
+    var isTrickAwaitingCollection: Bool {
+        phase == .playing && activeTrick.count == activePlayers.count && !activeTrick.isEmpty
+    }
+
     var declarer: Player? {
         players.first(where: { $0.id == declarerID })
     }
@@ -478,6 +482,7 @@ final class GameViewModel: ObservableObject {
 
     func playCard(_ card: Card, from player: Player) {
         guard phase == .playing else { return }
+        guard !isTrickAwaitingCollection else { return }
         guard canDeviceControl(player) else { return }
         guard player.seat == currentTurnSeat, isLegalPlay(card, for: player) else { return }
         guard let playerIndex = players.firstIndex(where: { $0.id == player.id }),
@@ -487,11 +492,20 @@ final class GameViewModel: ObservableObject {
         activeTrick.append(TrickPlay(playerID: player.id, card: card))
 
         if activeTrick.count == activePlayers.count {
-            resolveTrick()
+            let winnerName = playerName(for: winner(for: activeTrick).playerID)
+            handSummary = "Trick complete. \(winnerName) takes it. Review the cards, then collect."
         } else {
             currentTurnSeat = nextActiveSeat(after: player.seat)
         }
         publishMultiplayerAction(.playCard(playerID: player.id, card: card))
+        scheduleBotIfNeeded()
+    }
+
+    func collectCompletedTrick() {
+        guard isTrickAwaitingCollection else { return }
+        let winningPlayerID = winner(for: activeTrick).playerID
+        resolveTrick()
+        publishMultiplayerAction(.stateAdvanced(reason: "Collected trick for \(playerName(for: winningPlayerID))"))
         scheduleBotIfNeeded()
     }
 
@@ -988,6 +1002,10 @@ final class GameViewModel: ObservableObject {
     }
 
     private var shouldBotAct: Bool {
+        if isTrickAwaitingCollection {
+            return false
+        }
+
         if let proposal = trickClaimProposal {
             return activePlayers.contains { player in
                 player.id != proposal.proposerID &&

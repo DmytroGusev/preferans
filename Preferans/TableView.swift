@@ -208,6 +208,25 @@ struct TableView: View {
                 }
             }
 
+            if game.isTrickAwaitingCollection {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Review the trick")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Cards stay on the table until you collect them, so you can see who played what.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.68))
+                    Button("Collect Trick") {
+                        game.collectCompletedTrick()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Color(red: 0.78, green: 0.62, blue: 0.28))
+                }
+                .padding(12)
+                .background(Color.black.opacity(0.16))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
             if game.phase == .takingTalon {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Take the talon")
@@ -352,23 +371,20 @@ struct TableView: View {
             }
 
             Group {
-                if game.phase == .bidding {
-                    PreviewHandView(cards: handPlayer?.hand ?? [])
-                } else {
-                    FanHandView(
-                        cards: handPlayer?.hand ?? [],
-                        playableCards: Set((handPlayer?.hand ?? []).filter { card in
-                            handPlayer.map { isHandActionEnabled(card, for: $0) } ?? false
-                        }),
-                        onTap: { card in
-                            if let handPlayer {
-                                handleTap(on: card, for: handPlayer)
-                            }
+                PreviewHandView(
+                    cards: handPlayer?.hand ?? [],
+                    playableCards: Set((handPlayer?.hand ?? []).filter { card in
+                        handPlayer.map { isHandActionEnabled(card, for: $0) } ?? false
+                    }),
+                    selectedCardIDs: game.selectedDiscardIDs,
+                    onTap: { card in
+                        if let handPlayer {
+                            handleTap(on: card, for: handPlayer)
                         }
-                    )
-                }
+                    }
+                )
             }
-            .frame(height: game.phase == .bidding ? 184 : 236)
+            .frame(height: 172)
             .padding(.top, 2)
             .background(
                 LinearGradient(
@@ -499,6 +515,7 @@ struct TableView: View {
 
     private func isPlayable(_ card: Card, for player: Player) -> Bool {
         guard game.phase == .playing else { return false }
+        guard !game.isTrickAwaitingCollection else { return false }
         guard player.seat == game.currentTurnSeat else { return false }
 
         guard let leadSuit = game.activeTrick.first?.card.suit else { return true }
@@ -534,13 +551,17 @@ struct TableView: View {
     }
 
     private func tableSeat(player: Player, width: CGFloat, position: CGPoint) -> some View {
-        SeatBadgeView(
-            player: player,
-            isActive: player.seat == game.currentTurnSeat,
-            isDeclarer: player.id == game.declarerID,
-            isPassed: game.passedBidderIDs.contains(player.id) && game.phase == .bidding,
-            compact: true
-        )
+        VStack(spacing: 6) {
+            CardBackStackView(count: player.hand.count, scale: 0.42)
+
+            SeatBadgeView(
+                player: player,
+                isActive: player.seat == game.currentTurnSeat && !game.isTrickAwaitingCollection,
+                isDeclarer: player.id == game.declarerID,
+                isPassed: game.passedBidderIDs.contains(player.id) && game.phase == .bidding,
+                compact: true
+            )
+        }
         .frame(width: width)
         .position(position)
     }
