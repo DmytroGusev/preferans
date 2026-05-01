@@ -2,15 +2,19 @@ import SwiftUI
 
 @main
 struct PreferansApp: App {
-    @StateObject private var game = GameViewModel()
+    #if canImport(GameKit) && canImport(UIKit)
+    @StateObject private var gameCenter = GameCenterService()
+    @StateObject private var online = HostedOnlineGameCoordinator()
+    #endif
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(game)
-                .onOpenURL { url in
-                    game.handleIncomingURL(url)
-                }
+            LobbyView()
+                #if canImport(GameKit) && canImport(UIKit)
+                .environmentObject(gameCenter)
+                .environmentObject(online)
+                .task { gameCenter.authenticate() }
+                #endif
         }
     }
 }

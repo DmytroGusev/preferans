@@ -7,40 +7,115 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A00000000000000000000001 /* PreferansApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000011 /* PreferansApp.swift */; };
-		A00000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000012 /* ContentView.swift */; };
-		A00000000000000000000003 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000013 /* GameModels.swift */; };
-		A00000000000000000000004 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000014 /* GameViewModel.swift */; };
-		A00000000000000000000005 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000015 /* LobbyView.swift */; };
-		A00000000000000000000006 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000016 /* TableView.swift */; };
-		A00000000000000000000007 /* InviteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000017 /* InviteService.swift */; };
 		A00000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* Assets.xcassets */; };
-		A00000000000000000000025 /* CardViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000026 /* CardViews.swift */; };
-		A00000000000000000000027 /* OnlinePlayModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000028 /* OnlinePlayModels.swift */; };
-		A00000000000000000000029 /* MultiplayerSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002A /* MultiplayerSyncModels.swift */; };
-		A0000000000000000000002B /* CloudKitMultiplayerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000002C /* CloudKitMultiplayerService.swift */; };
+		B00000000000000000000001 /* PreferansApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000031 /* PreferansApp.swift */; };
+		B00000000000000000000002 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000032 /* GameViewModel.swift */; };
+		B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000033 /* CloudKitGameArchiveStore.swift */; };
+		B00000000000000000000004 /* CloudKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000034 /* CloudKitModels.swift */; };
+		B00000000000000000000005 /* CloudKitRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000035 /* CloudKitRecords.swift */; };
+		B00000000000000000000006 /* GameCenterMatchmakerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000036 /* GameCenterMatchmakerView.swift */; };
+		B00000000000000000000007 /* GameCenterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* GameCenterService.swift */; };
+		B00000000000000000000008 /* GameKitRealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000038 /* GameKitRealtimeTransport.swift */; };
+		B00000000000000000000009 /* GameWireMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000039 /* GameWireMessage.swift */; };
+		B0000000000000000000000A /* WirePreferansAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003A /* WirePreferansAction.swift */; };
+		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
+		B0000000000000000000000C /* HostGameActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003C /* HostGameActor.swift */; };
+		B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */; };
+		B0000000000000000000000E /* PlayerProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003E /* PlayerProjection.swift */; };
+		B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003F /* AppEngineSnapshot.swift */; };
+		B00000000000000000000010 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000040 /* AppIdentifiers.swift */; };
+		B00000000000000000000011 /* PlayerIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000041 /* PlayerIdentity.swift */; };
+		B00000000000000000000012 /* PreferansEngine+UI.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000042 /* PreferansEngine+UI.swift */; };
+		B00000000000000000000013 /* PreferansGameStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000043 /* PreferansGameStatus.swift */; };
+		B00000000000000000000014 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* CardView.swift */; };
+		B00000000000000000000015 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* LobbyView.swift */; };
+		B00000000000000000000016 /* LocalGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000046 /* LocalGameScreen.swift */; };
+		B00000000000000000000017 /* PlayerHandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000047 /* PlayerHandView.swift */; };
+		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
+		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
+		C00000000000000000000020 /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* Domain.swift */; };
+		C00000000000000000000021 /* PreferansEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000012 /* PreferansEngine.swift */; };
+		C00000000000000000000022 /* PreferansError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000013 /* PreferansError.swift */; };
+		C00000000000000000000023 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000014 /* Rules.swift */; };
+		C00000000000000000000024 /* Score.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000015 /* Score.swift */; };
+		C00000000000000000000025 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000016 /* State.swift */; };
+		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
+		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C00000000000000000000060 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A00000000000000000000033 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C00000000000000000000050;
+			remoteInfo = PreferansEngine;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D00000000000000000000002 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A00000000000000000000010 /* Preferans.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Preferans.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A00000000000000000000011 /* PreferansApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansApp.swift; sourceTree = "<group>"; };
-		A00000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		A00000000000000000000013 /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
-		A00000000000000000000014 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
-		A00000000000000000000015 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
-		A00000000000000000000016 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableView.swift; sourceTree = "<group>"; };
-		A00000000000000000000017 /* InviteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteService.swift; sourceTree = "<group>"; };
 		A00000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A00000000000000000000019 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A00000000000000000000024 /* AppStore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppStore; sourceTree = "<group>"; };
-		A00000000000000000000026 /* CardViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardViews.swift; sourceTree = "<group>"; };
-		A00000000000000000000028 /* OnlinePlayModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlinePlayModels.swift; sourceTree = "<group>"; };
-		A0000000000000000000002A /* MultiplayerSyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerSyncModels.swift; sourceTree = "<group>"; };
-		A0000000000000000000002C /* CloudKitMultiplayerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitMultiplayerService.swift; sourceTree = "<group>"; };
+		B00000000000000000000031 /* PreferansApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansApp.swift; sourceTree = "<group>"; };
+		B00000000000000000000032 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
+		B00000000000000000000033 /* CloudKitGameArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKit/CloudKitGameArchiveStore.swift"; sourceTree = "<group>"; };
+		B00000000000000000000034 /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKit/CloudKitModels.swift"; sourceTree = "<group>"; };
+		B00000000000000000000035 /* CloudKitRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKit/CloudKitRecords.swift"; sourceTree = "<group>"; };
+		B00000000000000000000036 /* GameCenterMatchmakerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameCenterMatchmakerView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000037 /* GameCenterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameCenterService.swift"; sourceTree = "<group>"; };
+		B00000000000000000000038 /* GameKitRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameKitRealtimeTransport.swift"; sourceTree = "<group>"; };
+		B00000000000000000000039 /* GameWireMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameWireMessage.swift"; sourceTree = "<group>"; };
+		B0000000000000000000003A /* WirePreferansAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/WirePreferansAction.swift"; sourceTree = "<group>"; };
+		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/GameLogReplayer.swift"; sourceTree = "<group>"; };
+		B0000000000000000000003C /* HostGameActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostGameActor.swift"; sourceTree = "<group>"; };
+		B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostedOnlineGameCoordinator.swift"; sourceTree = "<group>"; };
+		B0000000000000000000003E /* PlayerProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Projection/PlayerProjection.swift"; sourceTree = "<group>"; };
+		B0000000000000000000003F /* AppEngineSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/AppEngineSnapshot.swift"; sourceTree = "<group>"; };
+		B00000000000000000000040 /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/AppIdentifiers.swift"; sourceTree = "<group>"; };
+		B00000000000000000000041 /* PlayerIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PlayerIdentity.swift"; sourceTree = "<group>"; };
+		B00000000000000000000042 /* PreferansEngine+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PreferansEngine+UI.swift"; sourceTree = "<group>"; };
+		B00000000000000000000043 /* PreferansGameStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PreferansGameStatus.swift"; sourceTree = "<group>"; };
+		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LobbyView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000046 /* LocalGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LocalGameScreen.swift"; sourceTree = "<group>"; };
+		B00000000000000000000047 /* PlayerHandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/PlayerHandView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
+		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreBoardView.swift"; sourceTree = "<group>"; };
+		C00000000000000000000010 /* PreferansEngine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PreferansEngine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		C00000000000000000000011 /* Domain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Domain.swift; sourceTree = "<group>"; };
+		C00000000000000000000012 /* PreferansEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansEngine.swift; sourceTree = "<group>"; };
+		C00000000000000000000013 /* PreferansError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansError.swift; sourceTree = "<group>"; };
+		C00000000000000000000014 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
+		C00000000000000000000015 /* Score.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Score.swift; sourceTree = "<group>"; };
+		C00000000000000000000016 /* State.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A00000000000000000000020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0000000000000000000002F /* PreferansEngine.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C00000000000000000000041 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -54,6 +129,7 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000022 /* Preferans */,
+				C00000000000000000000030 /* PreferansEngine */,
 				A00000000000000000000024 /* AppStore */,
 				A00000000000000000000023 /* Products */,
 			);
@@ -62,17 +138,31 @@
 		A00000000000000000000022 /* Preferans */ = {
 			isa = PBXGroup;
 			children = (
-				A00000000000000000000011 /* PreferansApp.swift */,
-				A00000000000000000000012 /* ContentView.swift */,
-				A00000000000000000000013 /* GameModels.swift */,
-				A00000000000000000000014 /* GameViewModel.swift */,
-				A00000000000000000000015 /* LobbyView.swift */,
-				A00000000000000000000016 /* TableView.swift */,
-				A00000000000000000000017 /* InviteService.swift */,
-				A00000000000000000000026 /* CardViews.swift */,
-				A00000000000000000000028 /* OnlinePlayModels.swift */,
-				A0000000000000000000002A /* MultiplayerSyncModels.swift */,
-				A0000000000000000000002C /* CloudKitMultiplayerService.swift */,
+				B00000000000000000000031 /* PreferansApp.swift */,
+				B00000000000000000000032 /* GameViewModel.swift */,
+				B00000000000000000000033 /* CloudKitGameArchiveStore.swift */,
+				B00000000000000000000034 /* CloudKitModels.swift */,
+				B00000000000000000000035 /* CloudKitRecords.swift */,
+				B00000000000000000000036 /* GameCenterMatchmakerView.swift */,
+				B00000000000000000000037 /* GameCenterService.swift */,
+				B00000000000000000000038 /* GameKitRealtimeTransport.swift */,
+				B00000000000000000000039 /* GameWireMessage.swift */,
+				B0000000000000000000003A /* WirePreferansAction.swift */,
+				B0000000000000000000003B /* GameLogReplayer.swift */,
+				B0000000000000000000003C /* HostGameActor.swift */,
+				B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */,
+				B0000000000000000000003E /* PlayerProjection.swift */,
+				B0000000000000000000003F /* AppEngineSnapshot.swift */,
+				B00000000000000000000040 /* AppIdentifiers.swift */,
+				B00000000000000000000041 /* PlayerIdentity.swift */,
+				B00000000000000000000042 /* PreferansEngine+UI.swift */,
+				B00000000000000000000043 /* PreferansGameStatus.swift */,
+				B00000000000000000000044 /* CardView.swift */,
+				B00000000000000000000045 /* LobbyView.swift */,
+				B00000000000000000000046 /* LocalGameScreen.swift */,
+				B00000000000000000000047 /* PlayerHandView.swift */,
+				B00000000000000000000048 /* ProjectionGameScreen.swift */,
+				B00000000000000000000049 /* ScoreBoardView.swift */,
 				A00000000000000000000018 /* Assets.xcassets */,
 				A00000000000000000000019 /* README.md */,
 			);
@@ -83,8 +173,22 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000010 /* Preferans.app */,
+				C00000000000000000000010 /* PreferansEngine.framework */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000030 /* PreferansEngine */ = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000011 /* Domain.swift */,
+				C00000000000000000000012 /* PreferansEngine.swift */,
+				C00000000000000000000013 /* PreferansError.swift */,
+				C00000000000000000000014 /* Rules.swift */,
+				C00000000000000000000015 /* Score.swift */,
+				C00000000000000000000016 /* State.swift */,
+			);
+			path = Sources/PreferansEngine;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -96,16 +200,34 @@
 			buildPhases = (
 				A00000000000000000000031 /* Sources */,
 				A00000000000000000000020 /* Frameworks */,
+				D00000000000000000000002 /* Embed Frameworks */,
 				A00000000000000000000032 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C00000000000000000000061 /* PBXTargetDependency */,
 			);
 			name = Preferans;
 			productName = Preferans;
 			productReference = A00000000000000000000010 /* Preferans.app */;
 			productType = "com.apple.product-type.application";
+		};
+		C00000000000000000000050 /* PreferansEngine */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C00000000000000000000072 /* Build configuration list for PBXNativeTarget "PreferansEngine" */;
+			buildPhases = (
+				C00000000000000000000040 /* Sources */,
+				C00000000000000000000041 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PreferansEngine;
+			productName = PreferansEngine;
+			productReference = C00000000000000000000010 /* PreferansEngine.framework */;
+			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
 
@@ -136,6 +258,7 @@
 			projectRoot = "";
 			targets = (
 				A00000000000000000000030 /* Preferans */,
+				C00000000000000000000050 /* PreferansEngine */,
 			);
 		};
 /* End PBXProject section */
@@ -156,21 +279,56 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A00000000000000000000002 /* ContentView.swift in Sources */,
-				A00000000000000000000003 /* GameModels.swift in Sources */,
-				A00000000000000000000004 /* GameViewModel.swift in Sources */,
-				A00000000000000000000005 /* LobbyView.swift in Sources */,
-				A00000000000000000000006 /* TableView.swift in Sources */,
-				A00000000000000000000007 /* InviteService.swift in Sources */,
-				A00000000000000000000025 /* CardViews.swift in Sources */,
-				A00000000000000000000027 /* OnlinePlayModels.swift in Sources */,
-				A00000000000000000000029 /* MultiplayerSyncModels.swift in Sources */,
-				A0000000000000000000002B /* CloudKitMultiplayerService.swift in Sources */,
-				A00000000000000000000001 /* PreferansApp.swift in Sources */,
+				B00000000000000000000001 /* PreferansApp.swift in Sources */,
+				B00000000000000000000002 /* GameViewModel.swift in Sources */,
+				B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */,
+				B00000000000000000000004 /* CloudKitModels.swift in Sources */,
+				B00000000000000000000005 /* CloudKitRecords.swift in Sources */,
+				B00000000000000000000006 /* GameCenterMatchmakerView.swift in Sources */,
+				B00000000000000000000007 /* GameCenterService.swift in Sources */,
+				B00000000000000000000008 /* GameKitRealtimeTransport.swift in Sources */,
+				B00000000000000000000009 /* GameWireMessage.swift in Sources */,
+				B0000000000000000000000A /* WirePreferansAction.swift in Sources */,
+				B0000000000000000000000B /* GameLogReplayer.swift in Sources */,
+				B0000000000000000000000C /* HostGameActor.swift in Sources */,
+				B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */,
+				B0000000000000000000000E /* PlayerProjection.swift in Sources */,
+				B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */,
+				B00000000000000000000010 /* AppIdentifiers.swift in Sources */,
+				B00000000000000000000011 /* PlayerIdentity.swift in Sources */,
+				B00000000000000000000012 /* PreferansEngine+UI.swift in Sources */,
+				B00000000000000000000013 /* PreferansGameStatus.swift in Sources */,
+				B00000000000000000000014 /* CardView.swift in Sources */,
+				B00000000000000000000015 /* LobbyView.swift in Sources */,
+				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
+				B00000000000000000000017 /* PlayerHandView.swift in Sources */,
+				B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */,
+				B00000000000000000000019 /* ScoreBoardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C00000000000000000000040 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C00000000000000000000020 /* Domain.swift in Sources */,
+				C00000000000000000000021 /* PreferansEngine.swift in Sources */,
+				C00000000000000000000022 /* PreferansError.swift in Sources */,
+				C00000000000000000000023 /* Rules.swift in Sources */,
+				C00000000000000000000024 /* Score.swift in Sources */,
+				C00000000000000000000025 /* State.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C00000000000000000000061 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C00000000000000000000050 /* PreferansEngine */;
+			targetProxy = C00000000000000000000060 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A00000000000000000000050 /* Debug */ = {
@@ -331,6 +489,52 @@
 			};
 			name = Release;
 		};
+		C00000000000000000000070 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 3WSQ6X9CDT;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mixandmatch.preferans.engine;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C00000000000000000000071 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEFINES_MODULE = YES;
+				DEVELOPMENT_TEAM = 3WSQ6X9CDT;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mixandmatch.preferans.engine;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -348,6 +552,15 @@
 			buildConfigurations = (
 				A00000000000000000000050 /* Debug */,
 				A00000000000000000000051 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C00000000000000000000072 /* Build configuration list for PBXNativeTarget "PreferansEngine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C00000000000000000000070 /* Debug */,
+				C00000000000000000000071 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
