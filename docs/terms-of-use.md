@@ -4,7 +4,7 @@ title: Terms of Use
 
 # Terms of Use
 
-Last updated: April 27, 2026
+Last updated: May 1, 2026
 
 These Terms of Use govern your use of the Preferans iOS app.
 
@@ -18,7 +18,7 @@ Preferans is a digital card game for entertainment. The app is not a gambling se
 
 ## Accounts and Online Rooms
 
-Online play may require Sign in with Apple. You are responsible for activity that occurs through your account or device.
+Online play may require Sign in with Apple or an in-app email/Gmail test profile. You are responsible for activity that occurs through your account or device.
 
 Room codes and invite information are intended only for people you choose to play with. Do not share room codes publicly if you do not want others to join.
 

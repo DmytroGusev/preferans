@@ -54,9 +54,10 @@ actor CloudKitMultiplayerService: MultiplayerServicing {
     }
 
     func createRoom(host: OnlineProfile, playerCount: Int, ruleSet: PreferansRuleSet) async throws -> OnlineRoom {
+        let code = nextCode()
         let room = OnlineRoom(
-            id: UUID().uuidString,
-            code: nextCode(),
+            id: code,
+            code: code,
             hostPlayerID: host.id,
             playerCount: playerCount,
             ruleSet: ruleSet,
@@ -76,7 +77,7 @@ actor CloudKitMultiplayerService: MultiplayerServicing {
 
     func joinRoom(code: String, player: OnlineProfile) async throws -> OnlineRoom {
         let sanitized = code.uppercased()
-        var room = try await fetchRoom(byCode: sanitized)
+        var room = try await fetchRoom(roomID: sanitized)
 
         if let existing = room.participants.firstIndex(where: { $0.playerID == player.id }) {
             room.participants[existing].displayName = player.displayName
@@ -210,10 +211,7 @@ actor CloudKitMultiplayerService: MultiplayerServicing {
     }
 
     private func fetchRoom(byCode code: String) async throws -> OnlineRoom {
-        let query = CKQuery(recordType: RecordType.room, predicate: NSPredicate(format: "%K == %@", Field.code, code))
-        let records = try await perform(query: query)
-        guard let record = records.first else { throw RoomServiceError.roomNotFound }
-        return try decodeRoom(from: record)
+        try await fetchRoom(roomID: code)
     }
 
     private func saveRoomRecord(_ room: OnlineRoom) async throws {

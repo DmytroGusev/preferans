@@ -222,6 +222,53 @@ final class GameViewModel: ObservableObject {
         }
     }
 
+    func signInWithGoogleEmail(email: String, displayName: String) {
+        let normalizedEmail = email
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        guard normalizedEmail.contains("@") else {
+            onlineStatusMessage = "Enter a valid Gmail or Google email."
+            return
+        }
+
+        let cleanedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallbackName = normalizedEmail
+            .split(separator: "@")
+            .first
+            .map(String.init) ?? "Player"
+
+        onlineProfile = OnlineProfile(
+            id: "google:\(normalizedEmail)",
+            displayName: cleanedName.isEmpty ? fallbackName : cleanedName,
+            provider: .google,
+            email: normalizedEmail
+        )
+        persistOnlineProfile()
+        syncDisplayNames()
+        onlineStatusMessage = "Signed in with Gmail as \(onlineProfile?.displayName ?? "Player")."
+
+        if let pendingInviteCode {
+            joinRoom(using: pendingInviteCode)
+        }
+    }
+
+    func signInAsGuest(displayName: String) {
+        let cleanedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let existingID = onlineProfile?.provider == .guest ? onlineProfile?.id : nil
+        onlineProfile = OnlineProfile(
+            id: existingID ?? "guest:\(UUID().uuidString)",
+            displayName: cleanedName.isEmpty ? players[localSeat].name : cleanedName,
+            provider: .guest
+        )
+        persistOnlineProfile()
+        syncDisplayNames()
+        onlineStatusMessage = "Signed in as test guest \(onlineProfile?.displayName ?? "Player")."
+
+        if let pendingInviteCode {
+            joinRoom(using: pendingInviteCode)
+        }
+    }
+
     func signOutOnlineProfile() {
         stopRoomSync()
         onlineProfile = nil
@@ -238,7 +285,7 @@ final class GameViewModel: ObservableObject {
 
     func createInvite() {
         guard let onlineProfile else {
-            onlineStatusMessage = "Sign in with Apple before creating an online room."
+            onlineStatusMessage = "Sign in before creating an online room."
             return
         }
 
@@ -280,7 +327,7 @@ final class GameViewModel: ObservableObject {
         joinLinkInput = url.absoluteString
 
         guard onlineProfile != nil else {
-            onlineStatusMessage = "Invite loaded. Sign in with Apple to join room \(code)."
+            onlineStatusMessage = "Invite loaded. Sign in to join room \(code)."
             return
         }
 
@@ -1281,7 +1328,7 @@ final class GameViewModel: ObservableObject {
     private func joinRoom(using code: String) {
         guard let onlineProfile else {
             pendingInviteCode = code
-            onlineStatusMessage = "Sign in with Apple before joining a room."
+            onlineStatusMessage = "Sign in before joining a room."
             return
         }
 
@@ -1376,20 +1423,27 @@ final class GameViewModel: ObservableObject {
 
         do {
             let latestRoom = try await roomService.fetchRoom(roomID: activeRoom.id)
-            let events = try await roomService.fetchEvents(roomID: activeRoom.id, after: lastAppliedSnapshotRevision)
+            let latestSnapshot = try await roomService.fetchSnapshot(roomID: activeRoom.id)
 
             await MainActor.run {
                 let invite = roomService.roomInvite(for: latestRoom)
                 if latestRoom != self.activeRoom {
-                    applyRoom(latestRoom, invite: invite)
+                    self.activeRoom = latestRoom
+                    self.invite = invite
+                    self.playerCount = latestRoom.playerCount
+                    self.ruleSet = latestRoom.ruleSet
+                    self.syncDisplayNames()
                 }
 
-                for event in events.sorted(by: { $0.revision < $1.revision }) {
-                    if event.actorPlayerID == onlineProfile?.id {
-                        lastAppliedSnapshotRevision = max(lastAppliedSnapshotRevision, event.revision)
-                    } else {
-                        applyMultiplayerEvent(event)
-                    }
+                guard let latestSnapshot else { return }
+                guard latestSnapshot.revision > lastAppliedSnapshotRevision else { return }
+
+                if latestSnapshot.updatedByPlayerID == onlineProfile?.id {
+                    lastAppliedSnapshotRevision = latestSnapshot.revision
+                } else {
+                    applyMultiplayerState(latestSnapshot.state)
+                    lastAppliedSnapshotRevision = latestSnapshot.revision
+                    multiplayerSyncStatus = "Received room snapshot rev \(latestSnapshot.revision)"
                 }
             }
         } catch {
@@ -1401,10 +1455,17 @@ final class GameViewModel: ObservableObject {
 
     private func publishMultiplayerAction(_ action: MultiplayerGameAction) {
         snapshotPushTask?.cancel()
-        guard activeRoom != nil, onlineProfile != nil else { return }
+        guard let room = activeRoom, let onlineProfile else { return }
         guard !isApplyingRemoteSnapshot else { return }
 
-        let event = makeMultiplayerEvent(action)
+        let snapshot = MultiplayerGameSnapshot(
+            roomID: room.id,
+            revision: lastAppliedSnapshotRevision + 1,
+            updatedByPlayerID: onlineProfile.id,
+            updatedAt: .now,
+            state: makeMultiplayerState()
+        )
+
         snapshotPushTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000)
             guard let self else { return }
@@ -1412,10 +1473,10 @@ final class GameViewModel: ObservableObject {
 
             do {
                 guard let room = self.activeRoom else { return }
-                let saved = try await roomService.appendEvent(event, expectedRevision: event.revision - 1, for: room)
+                let saved = try await roomService.saveSnapshot(snapshot, for: room)
                 await MainActor.run {
                     self.lastAppliedSnapshotRevision = saved.revision
-                    self.multiplayerSyncStatus = "Synced event rev \(saved.revision)"
+                    self.multiplayerSyncStatus = "Synced room snapshot rev \(saved.revision)"
                 }
             } catch {
                 await self.refreshRemoteRoomState()

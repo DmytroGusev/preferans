@@ -4,6 +4,8 @@ import UIKit
 
 struct LobbyView: View {
     @EnvironmentObject private var game: GameViewModel
+    @State private var gmailEmail: String = ""
+    @State private var gmailDisplayName: String = ""
 
     var body: some View {
         ScrollView {
@@ -40,7 +42,7 @@ struct LobbyView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(profile.displayName)
                                 .font(.headline)
-                            Text(profile.provider == .apple ? "Signed in with Apple" : "Guest account")
+                            Text(accountProviderTitle(profile.provider))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -69,7 +71,43 @@ struct LobbyView: View {
                     .frame(height: 48)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-                    Text("Google login is not wired. Apple sign-in is the pragmatic first step for iOS release.")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Use Gmail for testing")
+                            .font(.subheadline.weight(.semibold))
+
+                        TextField("Gmail address", text: $gmailEmail)
+                            .textFieldStyle(.roundedBorder)
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
+
+                        TextField("Display name", text: $gmailDisplayName)
+                            .textFieldStyle(.roundedBorder)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
+
+                        Button {
+                            game.signInWithGoogleEmail(email: gmailEmail, displayName: gmailDisplayName)
+                        } label: {
+                            Label("Continue with Gmail", systemImage: "envelope.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(gmailEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    .padding()
+                    .background(Color.white.opacity(0.04))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                    Button {
+                        game.signInAsGuest(displayName: gmailDisplayName)
+                    } label: {
+                        Label("Continue as Test Guest", systemImage: "person.crop.circle.badge.plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Text("For this test build, Gmail sign-in creates a stable in-app profile from your email. It is enough to create/join online rooms and test friends gameplay.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -276,5 +314,16 @@ struct LobbyView: View {
 
     private func seatTitle(_ seat: Int) -> String {
         "Seat \(seat + 1)"
+    }
+
+    private func accountProviderTitle(_ provider: AuthProvider) -> String {
+        switch provider {
+        case .apple:
+            return "Signed in with Apple"
+        case .google:
+            return "Signed in with Gmail"
+        case .guest:
+            return "Test guest account"
+        }
     }
 }

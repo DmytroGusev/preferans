@@ -56,6 +56,7 @@ actor PrototypeRoomService: MultiplayerServicing {
     func createRoom(host: OnlineProfile, playerCount: Int, ruleSet: PreferansRuleSet) async throws -> OnlineRoom {
         let code = nextCode()
         let room = OnlineRoom(
+            id: code,
             code: code,
             hostPlayerID: host.id,
             playerCount: playerCount,

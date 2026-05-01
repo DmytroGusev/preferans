@@ -43,6 +43,7 @@ These pages are intended to be published through GitHub Pages for App Store Conn
 The current uploaded build uses Apple services for identity and online sync:
 
 - Sign in with Apple
+- In-app email/Gmail test profile
 - iCloud CloudKit
 
-Before public release, deploy the CloudKit schema to Production and test online rooms on at least two real devices under separate Apple IDs.
+Before public release, deploy the CloudKit schema to Production and test online rooms on at least two real devices under separate accounts.
