@@ -14,15 +14,31 @@ public enum Localized {
     /// Title for a projection phase. Static; varies only by `phase` case.
     public static func phaseTitle(_ phase: ProjectedPhase) -> LocalizedStringKey {
         switch phase {
-        case .waitingForDeal:       return "Waiting for deal"
+        case .waitingForDeal:       return "Ready"
         case .bidding:              return "Bidding"
-        case .awaitingDiscard:      return "Talon exchange"
-        case .awaitingContract:     return "Declare contract"
+        case .awaitingDiscard:      return "Prikup exchange"
+        case .awaitingContract:     return "Contract"
         case .awaitingWhist:        return "Whist"
-        case .awaitingDefenderMode: return "Defender mode"
-        case .playing:              return "Playing"
-        case .dealFinished:         return "Deal finished"
+        case .awaitingDefenderMode: return "Defense"
+        case .playing:              return "Play"
+        case .dealFinished:         return "Deal complete"
         case .gameOver:             return "Game over"
+        }
+    }
+
+    /// Empty-felt placeholder for a phase. Companion to `phaseTitle`:
+    /// the title is the noun ("Bidding"), the felt placeholder is the
+    /// scene ("The auction"). Co-located so translators see the pair.
+    public static func feltPlaceholder(_ phase: ProjectedPhase) -> LocalizedStringKey {
+        switch phase {
+        case .bidding:                   return "The auction"
+        case .awaitingContract:          return "Naming the contract"
+        case .awaitingWhist:             return "Calling whist"
+        case .awaitingDefenderMode:      return "Open or closed?"
+        case .playing:                   return "Next trick"
+        case .waitingForDeal:            return "Tap Deal to begin"
+        case .dealFinished, .gameOver:   return "Deal complete"
+        case .awaitingDiscard:           return "The prikup"
         }
     }
 
@@ -90,6 +106,13 @@ public enum Localized {
     /// sentence in isolation).
     public static func dealResultHeadline(
         _ result: DealResult,
+        in projection: PlayerGameProjection
+    ) -> Text {
+        dealResultHeadline(result, displayName: projection.displayName(for:))
+    }
+
+    public static func dealResultHeadline(
+        _ result: DealResult,
         displayName: (PlayerID) -> String
     ) -> Text {
         switch result.kind {
@@ -100,25 +123,66 @@ public enum Localized {
             let contractLabel = renderedGameContract(contract)
             if whisters.isEmpty {
                 return made
-                    ? Text("\(declarerName) made \(contractLabel) (\(tricks) tricks)")
-                    : Text("\(declarerName) failed \(contractLabel) (\(tricks) tricks)")
+                    ? Text("\(declarerName) made \(contractLabel) — \(tricks) tricks")
+                    : Text("\(declarerName) went down on \(contractLabel) — \(tricks) tricks")
             }
             let names = whisters.map(displayName).joined(separator: " + ")
             return made
-                ? Text("\(declarerName) made \(contractLabel) (\(tricks) tricks) · whisters: \(names)")
-                : Text("\(declarerName) failed \(contractLabel) (\(tricks) tricks) · whisters: \(names)")
+                ? Text("\(declarerName) made \(contractLabel) — \(tricks) tricks. Whisting: \(names)")
+                : Text("\(declarerName) went down on \(contractLabel) — \(tricks) tricks. Whisting: \(names)")
         case let .misere(declarer):
             let tricks = result.trickCounts[declarer] ?? 0
             let declarerName = displayName(declarer)
             return tricks == 0
-                ? Text("\(declarerName) made misère (\(tricks) tricks taken)")
-                : Text("\(declarerName) failed misère (\(tricks) tricks taken)")
+                ? Text("\(declarerName) made misère")
+                : Text("\(declarerName) broke misère — \(tricks) tricks taken")
         case let .halfWhist(declarer, contract, halfWhister):
-            return Text("\(displayName(declarer)) granted \(renderedGameContract(contract)) – \(displayName(halfWhister)) half-whisted")
+            return Text("\(displayName(declarer)) takes \(renderedGameContract(contract)) — \(displayName(halfWhister)) half-whists")
         case .passedOut:
-            return Text("All defenders passed – declarer awarded the contract")
+            return Text("Defenders passed — contract uncontested")
         case .allPass:
-            return Text("Hand passed out (raspasy)")
+            return Text("Raspasy — no contract")
+        }
+    }
+
+    /// Localized status text for the felt-band tag and the action-bar
+    /// no-actor fallback. The projection emits a typed `ProjectedStatus`
+    /// so this helper is the single place that turns an actor + phase
+    /// kind into a localized phrase — call sites no longer build the
+    /// English sentence themselves.
+    public static func statusText(_ projection: PlayerGameProjection) -> Text {
+        statusText(projection.status, displayName: projection.displayName(for:))
+    }
+
+    public static func statusText(
+        _ status: ProjectedStatus,
+        displayName: (PlayerID) -> String
+    ) -> Text {
+        switch status {
+        case .readyToDeal:
+            return Text("Tap Deal to start")
+        case let .bidding(currentPlayer):
+            return Text("\(displayName(currentPlayer))'s bid")
+        case let .takingPrikup(declarer):
+            return Text("\(displayName(declarer)) takes the prikup")
+        case let .namingContract(declarer, pickingTotusStrain):
+            return pickingTotusStrain
+                ? Text("\(displayName(declarer)) picks the totus strain")
+                : Text("\(displayName(declarer)) names the contract")
+        case let .callingWhist(currentPlayer):
+            return Text("\(displayName(currentPlayer))'s whist call")
+        case let .choosingDefenderMode(whister):
+            return Text("\(displayName(whister)) — open or closed?")
+        case let .playingTrick(currentPlayer, trickNumber):
+            return Text("Trick \(trickNumber): \(displayName(currentPlayer))")
+        case .dealScored:
+            return Text("Deal scored")
+        case let .matchOver(winner):
+            if let winner {
+                return Text("\(displayName(winner)) takes the pulka")
+            } else {
+                return Text("Match over")
+            }
         }
     }
 

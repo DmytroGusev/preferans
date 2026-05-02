@@ -72,12 +72,12 @@ public struct OpponentSeatView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
-            // "Out" wins over "D" when a 4-player dealer is sitting out —
+            // "Sitting out" wins over "D" when a 4-player dealer is sitting out —
             // showing both pills crowds the seat and the dealer-and-out
             // combination is implied by the rules. Keep "D" only when the
             // dealer is also the active actor (3-player table).
             if isSittingOut {
-                Text("Out")
+                Text("Sitting out")
                     .font(.system(size: 9, weight: .bold))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
@@ -99,7 +99,7 @@ public struct OpponentSeatView: View {
             Text("\(seat.trickCount)")
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 .foregroundStyle(TableTheme.inkCreamSoft)
-                .accessibilityLabel("Tricks: \(seat.trickCount)")
+                .accessibilityLabel("\(seat.trickCount) tricks")
                 .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
         }
     }

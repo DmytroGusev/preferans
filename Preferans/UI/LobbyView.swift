@@ -16,6 +16,7 @@ public struct LobbyView: View {
     @State private var errorText: String?
     @State private var showingMatchmaker = false
     @State private var hasAttemptedSignIn = false
+    @State private var showingSettings = false
 
     public init() {}
 
@@ -30,7 +31,7 @@ public struct LobbyView: View {
                         ProjectionGameScreen(projection: projection, eventLog: online.eventLog, onSend: online.send)
                             .toolbar {
                                 ToolbarItem(placement: .cancellationAction) {
-                                    Button("Leave") { online.detach() }
+                                    Button("Leave table") { online.detach() }
                                 }
                             }
                     } else {
@@ -40,6 +41,20 @@ public struct LobbyView: View {
                     lobbyContent
                     #endif
                 }
+            }
+            .toolbar {
+                if localModel == nil {
+                    ToolbarItem(placement: .automatic) {
+                        Button { showingSettings = true } label: {
+                            Image(systemName: "gearshape")
+                                .accessibilityLabel("Settings")
+                        }
+                        .accessibilityIdentifier(UIIdentifiers.lobbySettingsButton)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsScreen()
             }
         }
         #if canImport(GameKit) && canImport(UIKit)
@@ -103,7 +118,7 @@ public struct LobbyView: View {
             Text("Preferans")
                 .font(.largeTitle.bold())
                 .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
-            Text("Classic Sochi & Rostov rules")
+            Text("Sochi and Rostov rules")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -111,14 +126,14 @@ public struct LobbyView: View {
     }
 
     private var localTableCard: some View {
-        card(title: "Local table", icon: "person.3.fill") {
+        card(title: "At this table", icon: "person.3.fill") {
             VStack(spacing: 14) {
                 Button {
                     quickPlayVsBots()
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "bolt.fill")
-                        Text("Quick play vs bots")
+                        Text("Deal me in")
                             .fontWeight(.semibold)
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -165,7 +180,7 @@ public struct LobbyView: View {
                 } label: {
                     HStack {
                         Image(systemName: "play.fill")
-                        Text("Start table")
+                        Text("Sit down")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
@@ -183,7 +198,7 @@ public struct LobbyView: View {
         return HStack(spacing: 10) {
             Image(systemName: isBot ? "cpu" : "person.crop.circle")
                 .foregroundStyle(isBot ? Color.accentColor : .secondary)
-            TextField("Player \(index + 1)", text: nameBinding(for: index))
+            TextField("Seat \(index + 1)", text: nameBinding(for: index))
                 .textFieldStyle(.plain)
                 .submitLabel(.done)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -237,7 +252,7 @@ public struct LobbyView: View {
                 } label: {
                     HStack {
                         Image(systemName: gameCenter.isAuthenticated ? "magnifyingglass" : "person.crop.circle.badge.questionmark")
-                        Text(gameCenter.isAuthenticated ? "Find match" : "Sign in to Game Center")
+                        Text(gameCenter.isAuthenticated ? "Find a table" : "Sign in to Game Center")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
@@ -262,7 +277,7 @@ public struct LobbyView: View {
         if gameCenter.isAuthenticated || hasAttemptedSignIn {
             return gameCenter.statusText
         }
-        return String(localized: "Sign in to play online")
+        return String(localized: "Sign in to find a table")
     }
     #endif
 
@@ -341,9 +356,10 @@ public struct LobbyView: View {
         guard seats.validationError == nil else { return }
         do {
             let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
-            // First dealer = last seat so the first seat ("You") is forehand
-            // (first to bid) on deal 1. In 4-player this also keeps the human
-            // player active during the very first hand instead of sitting out.
+            // First dealer = last seat so the first seat (the human) is
+            // forehand (first to bid) on deal 1. In 4-player this also keeps
+            // the human player active during the very first hand instead of
+            // sitting out.
             let defaultDealer = lobbyPlayers.last
             let args = ProcessInfo.processInfo.arguments
             let configuration = TestHarness.resolveConfiguration(
@@ -456,8 +472,11 @@ public struct LobbySeat: Identifiable, Equatable {
 }
 
 extension LobbySeat {
-    /// Stock seat names used for fresh rosters.
-    static let defaultNames = ["You", "East", "South", "West"]
+    /// Stock seat names used for fresh rosters. Compass directions match
+    /// traditional Preferans seating; the "you" pill on the viewer's seat
+    /// already marks which one is the human, so seat 0 doesn't need to be
+    /// named "You" (which would render as "North you" — er, "You you").
+    static let defaultNames = ["North", "East", "South", "West"]
 
     /// Default fresh roster for the given seat count. Seat 0 is the local
     /// human, every other seat starts as a bot — that matches the
@@ -525,7 +544,7 @@ extension Array where Element == LobbySeat {
             return String(localized: "Names must be unique.")
         }
         if filter({ $0.kind == .human }).isEmpty {
-            return String(localized: "At least one seat must be human.")
+            return String(localized: "One seat must be a human player.")
         }
         return nil
     }

@@ -8,9 +8,9 @@ public struct CardFanView: View {
     public var cards: [ProjectedCard]
     public var playableCards: Set<Card>
     public var selectedCards: Set<Card>
-    /// Cards in the fan that originated from the talon (the declarer just
+    /// Cards in the fan that originated from the prikup (the declarer just
     /// took them and is choosing what to discard). Rendered with a tinted
-    /// border / "T" badge so the user can tell hand from talon at a glance.
+    /// border / "P" badge so the user can tell hand from prikup at a glance.
     public var talonCards: Set<Card>
     public var seat: PlayerID
     public var size: CardView.Size

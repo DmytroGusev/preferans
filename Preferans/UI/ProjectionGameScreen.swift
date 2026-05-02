@@ -30,7 +30,9 @@ public struct ProjectionGameScreen: View {
                 regularBody
             }
         }
-        .navigationTitle(Localized.phaseTitle(projection.phase))
+        // Phase title is rendered by `phaseStatusBar`; nav-bar title stays
+        // empty to avoid duplication.
+        .navigationTitle("")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -116,18 +118,12 @@ public struct ProjectionGameScreen: View {
 
     private var phaseStatusBar: some View {
         HStack(spacing: 8) {
-            // iOS 26 stops surfacing inline nav-bar titles to UI tests /
-            // VoiceOver, so the phase title also lives here as a visible
-            // tag carrying its accessibility id.
             Text(Localized.phaseTitle(projection.phase))
                 .font(.caption.bold())
                 .foregroundStyle(TableTheme.inkCream)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
-            // FIXME(l10n): `projection.message` is a runtime English string
-            // built in PlayerProjectionBuilder. Refactor the projection to a
-            // typed `ProjectedStatusMessage` enum and localize at this site.
-            Text(projection.message)
+            Localized.statusText(projection)
                 .font(.caption)
                 .foregroundStyle(TableTheme.inkCreamSoft)
                 .lineLimit(2)
@@ -225,15 +221,15 @@ public struct ProjectionGameScreen: View {
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
             // The "you" pill replaces the old "you: <name>" line in the
             // status bar — same signal, anchored next to the viewer's hand
-            // where it actually matters. The accessibilityLabel keeps the
-            // legacy "you: <name>" string for MatchUIRobot.currentViewer().
+            // where it actually matters. The accessibilityLabel renders
+            // "Viewing as <name>" for MatchUIRobot.currentViewer().
             Text("you")
                 .font(.caption2.bold())
                 .padding(.horizontal, 6)
                 .padding(.vertical, 1)
                 .foregroundStyle(TableTheme.inkCream)
                 .background(Color.black.opacity(0.30), in: Capsule())
-                .accessibilityLabel("you: \(displayName(for: projection.viewer))")
+                .accessibilityLabel("Viewing as \(projection.displayName(for: projection.viewer))")
                 .accessibilityIdentifier(UIIdentifiers.viewerLabel)
             if seat.isDealer {
                 Text("Dealer")
@@ -254,7 +250,7 @@ public struct ProjectionGameScreen: View {
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             Spacer()
-            Text("Tricks: \(seat.trickCount)")
+            Text("\(seat.trickCount) tricks")
                 .font(.caption2)
                 .foregroundStyle(TableTheme.inkCreamSoft)
                 .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
@@ -344,7 +340,7 @@ public struct ProjectionGameScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             // Human-readable headline; the encoded id stays in a hidden
             // accessibility carrier so UI tests can still pin on the kind.
-            Localized.dealResultHeadline(result, displayName: { displayName(for: $0) })
+            Localized.dealResultHeadline(result, in: projection)
                 .font(.title2.bold())
                 .accessibilityIdentifier(UIIdentifiers.dealResultKind)
             Text(UIIdentifiers.encode(result.kind))
@@ -353,14 +349,14 @@ public struct ProjectionGameScreen: View {
                 .accessibilityHidden(true)
             switch result.kind {
             case let .game(declarer, contract, _):
-                resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
+                resultLine("Declarer", projection.displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Contract", Localized.renderedGameContract(contract), idForValue: UIIdentifiers.dealResultContract)
                 resultLine("Tricks won", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
             case let .misere(declarer):
-                resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
+                resultLine("Declarer", projection.displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Tricks taken", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
             case let .halfWhist(declarer, contract, _):
-                resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
+                resultLine("Declarer", projection.displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Contract", Localized.renderedGameContract(contract), idForValue: UIIdentifiers.dealResultContract)
             case .passedOut, .allPass:
                 Text("Hand passed out")
@@ -373,7 +369,7 @@ public struct ProjectionGameScreen: View {
                 } label: {
                     HStack {
                         Image(systemName: "play.fill")
-                        Text("Start next deal")
+                        Text("Next deal")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
@@ -396,17 +392,17 @@ public struct ProjectionGameScreen: View {
                 .font(.title.bold())
                 .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
             if let winner = summary.standings.first {
-                Text("Winner: \(winner.player.rawValue)")
+                Text("\(winner.player.rawValue) takes the pulka")
                     .font(.title3.bold())
                     .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
             }
-            Text("Deals played: \(summary.dealsPlayed)")
+            Text("\(summary.dealsPlayed) deals played")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
             Divider()
             VStack(alignment: .leading, spacing: 8) {
-                Text("Standings")
+                Text("Final standings")
                     .font(.headline)
                 ForEach(Array(summary.standings.enumerated()), id: \.offset) { index, standing in
                     HStack(spacing: 12) {
@@ -477,7 +473,4 @@ public struct ProjectionGameScreen: View {
         selectedDiscard.formIntersection(available)
     }
 
-    private func displayName(for player: PlayerID) -> String {
-        projection.identities.first { $0.playerID == player }?.displayName ?? player.rawValue
-    }
 }

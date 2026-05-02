@@ -53,7 +53,7 @@ public struct ActionBarView: View {
         .feltBand()
     }
 
-    /// Show "Start deal" in the action bar only when the engine is at the
+    /// Show "Deal" in the action bar only when the engine is at the
     /// match's pre-first-deal state. Between deals the deal-finished sheet
     /// owns the "advance the match" affordance — surfacing both at once
     /// would render two buttons with the same accessibility identifier
@@ -72,7 +72,7 @@ public struct ActionBarView: View {
         } label: {
             HStack {
                 Image(systemName: "play.fill")
-                Text("Start deal")
+                Text("Deal")
                     .fontWeight(.semibold)
             }
             .frame(maxWidth: .infinity)
@@ -199,10 +199,10 @@ public struct ActionBarView: View {
     private var discardRow: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Pick 2 to discard")
+                Text("Discard two cards")
                     .font(.subheadline.bold())
                     .foregroundStyle(TableTheme.inkCream)
-                Text("\(selectedDiscard.count)/2 selected")
+                Text("\(selectedDiscard.count) of 2")
                     .font(.caption2)
                     .foregroundStyle(selectedDiscard.count == 2 ? TableTheme.goldBright : TableTheme.inkCreamSoft)
             }
@@ -210,7 +210,7 @@ public struct ActionBarView: View {
             Button {
                 onSend(.discard(player: projection.viewer, cards: Array(selectedDiscard)))
             } label: {
-                Text("Confirm")
+                Text("Confirm discards")
                     .fontWeight(.semibold)
             }
             .buttonStyle(FeltButtonStyle(emphasis: selectedDiscard.count == 2 ? .primary : .dim))
@@ -225,11 +225,11 @@ public struct ActionBarView: View {
                 Image(systemName: "hourglass")
                     .font(.caption)
                     .foregroundStyle(TableTheme.inkCreamSoft)
-                Text("Waiting for \(actor)")
+                Text("\(actor)'s turn")
                     .font(.subheadline)
                     .foregroundStyle(TableTheme.inkCreamSoft)
             } else {
-                Text(projection.message)
+                Localized.statusText(projection)
                     .font(.subheadline)
                     .foregroundStyle(TableTheme.inkCreamSoft)
                     .lineLimit(2)

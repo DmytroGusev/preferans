@@ -33,7 +33,7 @@ final class PreferansUITests: XCTestCase {
         let robot = MatchUIRobot(app: app)
 
         robot.startLocalTable()
-        robot.waitForPhase("Waiting for deal")
+        robot.waitForPhase("Ready")
         robot.startNextDeal()
 
         robot.waitForPhase("Bidding")
@@ -76,7 +76,7 @@ final class PreferansUITests: XCTestCase {
             robot.bid(.pass)
         }
 
-        robot.waitForPhase("Playing")
+        robot.waitForPhase("Play")
     }
 
     func testDeterministicScenarioPinsFirstBidder() {
@@ -90,7 +90,7 @@ final class PreferansUITests: XCTestCase {
 
         robot.waitForPhase("Bidding")
         XCTAssertEqual(robot.currentViewer(), "north")
-        XCTAssertEqual(robot.phaseMessage(), "Auction: north to call.")
+        XCTAssertEqual(robot.phaseMessage(), "north's bid")
     }
 
     func testNorthSpadesSixScenarioDrivesEngineToDiscardWindow() {
@@ -109,7 +109,7 @@ final class PreferansUITests: XCTestCase {
         XCTAssertEqual(robot.currentViewer(), "south")
         robot.bid(.pass)
 
-        robot.waitForPhase("Talon exchange")
+        robot.waitForPhase("Prikup exchange")
         robot.waitForElement(UIIdentifiers.Panel.discard.rawValue)
         XCTAssertEqual(robot.currentViewer(), "north")
     }

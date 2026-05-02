@@ -76,20 +76,38 @@ public enum ProjectedPhase: Codable, Sendable, Equatable {
     case playing(currentPlayer: PlayerID, leader: PlayerID, kind: ProjectedPlayKind)
     case dealFinished(result: DealResult)
     case gameOver(summary: MatchSummary)
+}
 
-    public var title: String {
-        switch self {
-        case .waitingForDeal: return "Waiting for deal"
-        case .bidding: return "Bidding"
-        case .awaitingDiscard: return "Talon exchange"
-        case .awaitingContract: return "Declare contract"
-        case .awaitingWhist: return "Whist"
-        case .awaitingDefenderMode: return "Defender mode"
-        case .playing: return "Playing"
-        case .dealFinished: return "Deal finished"
-        case .gameOver: return "Game over"
-        }
-    }
+/// Typed status describing what the table is doing right now. Each case
+/// names the actor (and any minimal context the UI needs) so the catalog
+/// can render a localized phrase at display time.
+///
+/// Replaces the older runtime-English `message: String` field. Localizing
+/// the *output* only would have required parsing English strings; carrying
+/// the actor as `PlayerID` keeps every renderer free to pull the display
+/// name from `identities` and translate the surrounding sentence.
+public enum ProjectedStatus: Codable, Sendable, Equatable {
+    /// Pre-deal — engine is between deals (or before the first one).
+    case readyToDeal
+    /// Bidding phase — `currentPlayer` is the next to bid.
+    case bidding(currentPlayer: PlayerID)
+    /// Declarer is picking up the prikup and discarding two cards.
+    case takingPrikup(declarer: PlayerID)
+    /// Declarer is naming the contract. `pickingTotusStrain` is true when
+    /// the contract narrowing is the totus-strain pick (10-trick contracts
+    /// only) versus a general post-bid declaration.
+    case namingContract(declarer: PlayerID, pickingTotusStrain: Bool)
+    /// A defender is calling whist.
+    case callingWhist(currentPlayer: PlayerID)
+    /// The whister is choosing open or closed defender play.
+    case choosingDefenderMode(whister: PlayerID)
+    /// Trick-play — `currentPlayer` is the next to play. `trickNumber` is
+    /// 1-indexed; rendered as "Trick 4: Anna" (etc.).
+    case playingTrick(currentPlayer: PlayerID, trickNumber: Int)
+    /// Deal scored; the result sheet is presenting outcomes.
+    case dealScored
+    /// Match over. `winner` is the standings leader (nil if no standings).
+    case matchOver(winner: PlayerID?)
 }
 
 public struct LegalActionProjection: Codable, Sendable, Equatable {
@@ -139,7 +157,18 @@ public struct PlayerGameProjection: Codable, Sendable, Equatable, Identifiable {
     public var talon: [ProjectedCard]
     public var discard: [ProjectedCard]
     public var legal: LegalActionProjection
-    public var message: String
+    public var status: ProjectedStatus
+}
+
+public extension PlayerGameProjection {
+    /// Resolve a player's display name from the carried `identities`,
+    /// falling back to the raw `PlayerID` string when the table has no
+    /// identity record for that seat. Replaces the inline
+    /// `identities.first { ... }?.displayName ?? player.rawValue`
+    /// pattern that used to live in every consumer.
+    func displayName(for player: PlayerID) -> String {
+        identities.first { $0.playerID == player }?.displayName ?? player.rawValue
+    }
 }
 
 public struct ProjectionPolicy: Sendable, Equatable {
@@ -186,14 +215,14 @@ public enum PlayerProjectionBuilder {
         var roleMap: [PlayerID: SeatRole] = [:]
         var phase: ProjectedPhase
         var legal = LegalActionProjection()
-        var message = ""
+        var status: ProjectedStatus
         var revealOpenHandOwners = Set<PlayerID>()
 
         switch engine.state {
         case .waitingForDeal:
             phase = .waitingForDeal(nextDealer: engine.nextDealer)
             legal.canStartDeal = true
-            message = "Start the next deal."
+            status = .readyToDeal
 
         case let .bidding(state):
             dealer = state.dealer
@@ -204,7 +233,7 @@ public enum PlayerProjectionBuilder {
             currentActor = state.currentPlayer
             phase = .bidding(currentPlayer: state.currentPlayer, highestBid: state.highestBid)
             legal.bidCalls = engine.legalBidCalls(for: viewer)
-            message = "Auction: \(state.currentPlayer.rawValue) to call."
+            status = .bidding(currentPlayer: state.currentPlayer)
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .awaitingDiscard(state):
@@ -217,7 +246,7 @@ public enum PlayerProjectionBuilder {
             roleMap[state.declarer] = .declarer
             phase = .awaitingDiscard(declarer: state.declarer, finalBid: state.finalBid)
             legal.canDiscard = viewer == state.declarer
-            message = "\(state.declarer.rawValue) takes the talon and discards two cards."
+            status = .takingPrikup(declarer: state.declarer)
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .awaitingContract(state):
@@ -233,9 +262,7 @@ public enum PlayerProjectionBuilder {
             // Use the engine's totus-aware list so dedicated-totus declarations
             // are constrained to 10-trick contracts (one per strain).
             legal.contractOptions = viewer == state.declarer ? engine.legalContractDeclarations(for: viewer) : []
-            message = state.finalBid == .totus
-                ? "\(state.declarer.rawValue) picks the totus strain."
-                : "\(state.declarer.rawValue) declares a final contract."
+            status = .namingContract(declarer: state.declarer, pickingTotusStrain: state.finalBid == .totus)
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .awaitingWhist(state):
@@ -250,7 +277,7 @@ public enum PlayerProjectionBuilder {
             for defender in state.defenders { roleMap[defender] = .defender }
             phase = .awaitingWhist(currentPlayer: state.currentPlayer, declarer: state.declarer, contract: state.contract)
             legal.whistCalls = engine.legalWhistCalls(for: viewer)
-            message = "Whist decision: \(state.currentPlayer.rawValue)."
+            status = .callingWhist(currentPlayer: state.currentPlayer)
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .awaitingDefenderMode(state):
@@ -265,7 +292,7 @@ public enum PlayerProjectionBuilder {
             for defender in state.defenders { roleMap[defender] = defender == state.whister ? .whister : .defender }
             phase = .awaitingDefenderMode(whister: state.whister, contract: state.contract)
             legal.defenderModes = viewer == state.whister ? [.closed, .open] : []
-            message = "\(state.whister.rawValue) chooses open or closed defender play."
+            status = .choosingDefenderMode(whister: state.whister)
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .playing(state):
@@ -302,7 +329,10 @@ public enum PlayerProjectionBuilder {
                 projectedKind = .allPass
             }
             phase = .playing(currentPlayer: state.currentPlayer, leader: state.leader, kind: projectedKind)
-            message = "Trick \(state.completedTricks.count + 1): \(state.currentPlayer.rawValue) to play."
+            status = .playingTrick(
+                currentPlayer: state.currentPlayer,
+                trickNumber: state.completedTricks.count + 1
+            )
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .dealFinished(result):
@@ -311,7 +341,7 @@ public enum PlayerProjectionBuilder {
             trickCounts = result.trickCounts
             phase = .dealFinished(result: result)
             legal.canStartDeal = true
-            message = "Deal scored. Start the next deal when ready."
+            status = .dealScored
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .gameOver(summary):
@@ -320,8 +350,7 @@ public enum PlayerProjectionBuilder {
             trickCounts = summary.lastDeal.trickCounts
             phase = .gameOver(summary: summary)
             legal.canStartDeal = false
-            let winner = summary.standings.first?.player.rawValue ?? "—"
-            message = "Game over. Winner: \(winner)."
+            status = .matchOver(winner: summary.standings.first?.player)
             markActiveRoles(activePlayers, into: &roleMap)
         }
 
@@ -381,7 +410,7 @@ public enum PlayerProjectionBuilder {
             talon: projectedTalon,
             discard: projectedDiscard,
             legal: legal,
-            message: message
+            status: status
         )
     }
 

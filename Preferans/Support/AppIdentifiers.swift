@@ -11,6 +11,16 @@ public enum AppIdentifiers {
     public static let gameWireSchemaVersion = 1
 }
 
+/// UserDefaults keys for settings persisted across launches. Centralised
+/// so a typo can't silently bind a toggle to a key nothing reads.
+public enum SettingsKeys {
+    /// Admin/debug toggle — when on, every seat's hand is rendered face-up
+    /// in the projection (handy for hot-seat review or screenshot recipes,
+    /// not appropriate for online play).
+    public static let revealAllHands = "settings.revealAllHands"
+}
+
+
 /// Shared JSON encoder/decoder for every persistence and wire path
 /// (CloudKit blobs, GameKit messages). Both use ISO-8601 dates so a record
 /// written by one can be read by the other. Each call site treats the

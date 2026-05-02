@@ -117,6 +117,7 @@ public enum UIIdentifiers {
     public static let lobbyError               = "lobby.error"
     public static let lobbyValidationError     = "lobby.validationError"
     public static let lobbyQuickPlayVsBots     = "button.quickPlayVsBots"
+    public static let lobbySettingsButton      = "lobby.settings"
 
     // MARK: - Game screen — header / structure
 
@@ -251,4 +252,13 @@ public enum UITestFlags {
     public static let raspasyPolicy      = "-uiTestRaspasyPolicy"
     public static let totusPolicy        = "-uiTestTotusPolicy"
     public static let disableAnimations  = "-uiTestDisableAnimations"
+}
+
+/// Strings rendered by the app and parsed back by UI tests. Keeping
+/// them here means a label change updates one place — neither the
+/// renderer nor the test parser has to track the other separately.
+public enum AccessibilityStrings {
+    /// Prefix used by the viewer-pill accessibility label; parsed by
+    /// `MatchUIRobot.currentViewer()` to recover the active viewer.
+    public static let viewerLabelPrefix = "Viewing as "
 }

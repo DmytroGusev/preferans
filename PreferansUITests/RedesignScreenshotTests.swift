@@ -23,7 +23,7 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "01-lobby")
 
         robot.startLocalTable()
-        robot.waitForPhase("Waiting for deal")
+        robot.waitForPhase("Ready")
         recorder.capture(name: "02-waiting-for-deal")
 
         robot.startNextDeal()
@@ -39,7 +39,7 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "05-bidding-west")
 
         robot.bid(.pass)
-        robot.waitForPhase("Talon exchange")
+        robot.waitForPhase("Prikup exchange")
         recorder.capture(name: "06-talon-exchange")
     }
 
@@ -88,7 +88,7 @@ final class RedesignScreenshotTests: XCTestCase {
 
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "You", acceptanceTimeout: 0.4) { continue }
+            if robot.playFirstAcceptedHandCard(for: "North", acceptanceTimeout: 0.4) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
             if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) { continue }
 
@@ -154,7 +154,7 @@ final class RedesignScreenshotTests: XCTestCase {
             }
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "You") { continue }
+            if robot.playFirstAcceptedHandCard(for: "North") { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
 
             // Bot turn — with bot delay = 0 (animations off) the next

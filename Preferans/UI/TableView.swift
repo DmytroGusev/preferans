@@ -29,16 +29,23 @@ public struct TableView: View {
         }
     }
 
+    /// Phase-aware text shown on the empty felt. Routed through `Localized`
+    /// so the catalog is the single source of phase copy — title and felt
+    /// placeholder live next to each other for translators.
+    private var emptyFeltPlaceholder: LocalizedStringKey {
+        Localized.feltPlaceholder(projection.phase)
+    }
+
     /// The center of the felt where the current trick sits. The felt is the
     /// screen background; this view only places the trick / phase-message
-    /// content into the open middle. The talon is intentionally rendered
+    /// content into the open middle. The prikup is intentionally rendered
     /// only inside the viewer's hand fan during discard (each card carrying a
-    /// "T" badge), so the center felt stays a single source of truth instead
+    /// "P" badge), so the center felt stays a single source of truth instead
     /// of a duplicated picker.
     private func playArea(opponentSeats: [PlayerID]) -> some View {
         ZStack {
             if projection.legal.canStartDeal {
-                placeholder("Tap Start Deal")
+                placeholder("Tap Deal to begin")
             } else if projection.currentTrick.isEmpty {
                 placeholder(emptyFeltPlaceholder)
             } else {
@@ -94,22 +101,6 @@ public struct TableView: View {
             return CGSize(width: w * 1.3, height: 0)
         default:
             return .zero
-        }
-    }
-
-    /// Phase-aware text shown on the empty felt. "Waiting for first card" only
-    /// makes sense once we're in the trick-play phase; bidding/whist/contract
-    /// phases get their own copy.
-    private var emptyFeltPlaceholder: LocalizedStringKey {
-        switch projection.phase {
-        case .bidding:                   return "Auction in progress"
-        case .awaitingContract:          return "Declarer is naming the contract"
-        case .awaitingWhist:             return "Defenders are calling whist"
-        case .awaitingDefenderMode:      return "Whister is choosing open or closed"
-        case .playing:                   return "Waiting for first card"
-        case .waitingForDeal:            return "Tap Start Deal"
-        case .dealFinished, .gameOver:   return "Deal complete"
-        case .awaitingDiscard:           return "Choose 2 cards to discard"
         }
     }
 

@@ -3,14 +3,14 @@ import PreferansEngine
 
 public struct LocalGameScreen: View {
     @ObservedObject public var model: GameViewModel
-    @State private var revealAll = false
+    @AppStorage(SettingsKeys.revealAllHands) private var revealAllHands = false
 
     public init(model: GameViewModel) {
         self.model = model
     }
 
     public var body: some View {
-        let projection = model.projection(revealAll: revealAll)
+        let projection = model.projection(revealAll: revealAllHands)
         ProjectionGameScreen(projection: projection, eventLog: model.eventLog, onSend: model.send)
             .toolbar {
                 ToolbarItem(placement: .automatic) {
@@ -28,14 +28,6 @@ public struct LocalGameScreen: View {
                                 }
                             }
                         }
-                        // Reveal-all is a debug aid; in a hot-seat game it
-                        // leaks every opponent's hand the moment the user
-                        // taps it. Keep it out of release builds.
-                        #if DEBUG
-                        Section("Debug") {
-                            Toggle("Reveal all hands", isOn: $revealAll)
-                        }
-                        #endif
                     } label: {
                         Image(systemName: "person.crop.circle.badge")
                             .accessibilityLabel("View as")

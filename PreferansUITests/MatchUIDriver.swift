@@ -28,7 +28,7 @@ struct MatchUIDriver {
                     // The first deal opens from .waitingForDeal; subsequent
                     // deals open from .dealFinished after the previous deal's
                     // last play.
-                    let entryPhase = dealIndex == 0 ? "Waiting for deal" : "Deal finished"
+                    let entryPhase = dealIndex == 0 ? "Ready" : "Deal complete"
                     robot.waitForPhase(entryPhase)
                     robot.startNextDeal()
                 },

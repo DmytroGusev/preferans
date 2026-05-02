@@ -51,9 +51,9 @@ public struct CardView: View {
     public var card: ProjectedCard
     public var isPlayable: Bool
     public var isSelected: Bool
-    /// True when this card came from the talon and is being displayed inside
-    /// the declarer's hand fan during discard. Drives a "T" corner badge so
-    /// the user can tell their original 10 cards from the 2 talon additions.
+    /// True when this card came from the prikup and is being displayed inside
+    /// the declarer's hand fan during discard. Drives a "P" corner badge so
+    /// the user can tell their original 10 cards from the 2 prikup additions.
     public var isTalon: Bool
     public var size: Size
     /// Region the card is rendered in. Drives the accessibility identifier
@@ -98,14 +98,14 @@ public struct CardView: View {
         }
         .overlay(alignment: .topTrailing) {
             if isTalon {
-                Text("T")
+                Text("P")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
                     .background(Color.orange, in: Capsule())
                     .padding(2)
-                    .accessibilityLabel("From talon")
+                    .accessibilityLabel("From the prikup")
             }
         }
         .shadow(color: .black.opacity(isPlayable ? 0.22 : 0.10), radius: isPlayable ? 5 : 2, y: 1)

@@ -93,7 +93,7 @@ final class MatchUIRobot {
     }
 
     func startNextDeal() {
-        tapButton(id: UIIdentifiers.buttonStartDeal, descriptor: "Start Deal")
+        tapButton(id: UIIdentifiers.buttonStartDeal, descriptor: "Deal")
     }
 
     @discardableResult
@@ -140,7 +140,7 @@ final class MatchUIRobot {
 
     // MARK: - Reading state
 
-    /// Current phase title (e.g. "Bidding", "Talon exchange", "Game over").
+    /// Current phase title (e.g. "Bidding", "Prikup exchange", "Game over").
     func phaseTitle() -> String {
         let element = app.staticTexts[UIIdentifiers.phaseTitle]
         assertExists(element, "Phase title never appeared.")
@@ -154,11 +154,11 @@ final class MatchUIRobot {
         return element.label
     }
 
-    /// Player the screen is currently following (parsed from "you: X").
+    /// Player the screen is currently following (parsed from "Viewing as X").
     func currentViewer() -> PlayerID? {
         let element = app.staticTexts[UIIdentifiers.viewerLabel]
         guard exists(element, timeout: optionalReadTimeout) else { return nil }
-        let prefix = "you: "
+        let prefix = AccessibilityStrings.viewerLabelPrefix
         let label = element.label
         guard label.hasPrefix(prefix) else { return nil }
         return PlayerID(String(label.dropFirst(prefix.count)))
@@ -192,9 +192,7 @@ final class MatchUIRobot {
     func trickCount(of player: PlayerID) -> Int {
         let element = app.staticTexts[UIIdentifiers.seatTrickCount(player)]
         guard exists(element, timeout: optionalReadTimeout) else { return 0 }
-        // Label form: "Tricks: 3"
-        let raw = element.label.replacingOccurrences(of: "Tricks: ", with: "")
-        return Int(raw) ?? 0
+        return firstInteger(in: element.label) ?? 0
     }
 
     /// Encoded result of the most recent finished deal (e.g. `game.east.6S.south+west`).
@@ -209,22 +207,21 @@ final class MatchUIRobot {
     func gameOverWinner() -> PlayerID? {
         let element = app.staticTexts[UIIdentifiers.gameOverWinner]
         guard element.exists else { return nil }
-        // Label form: "Winner: X"
-        let prefix = "Winner: "
         let label = element.label
-        guard label.hasPrefix(prefix) else { return nil }
-        return PlayerID(String(label.dropFirst(prefix.count)))
+        if label.hasPrefix("Winner: ") {
+            return PlayerID(String(label.dropFirst("Winner: ".count)))
+        }
+        if let name = label.components(separatedBy: " takes the pulka").first, name != label {
+            return PlayerID(name)
+        }
+        return nil
     }
 
     /// Number of deals played before the match closed (game-over panel only).
     func gameOverDealsPlayed() -> Int? {
         let element = app.staticTexts[UIIdentifiers.gameOverDealsPlayed]
         guard element.exists else { return nil }
-        // Label form: "Deals played: N"
-        let prefix = "Deals played: "
-        let label = element.label
-        guard label.hasPrefix(prefix) else { return nil }
-        return Int(String(label.dropFirst(prefix.count)))
+        return firstInteger(in: element.label)
     }
 
     /// True when the engine has reached the gameOver terminal state.
@@ -315,6 +312,18 @@ final class MatchUIRobot {
         let element = app.staticTexts[id]
         assertExists(element, "Score cell \(descriptor) (id: \(id)) never appeared.")
         return Int(element.label) ?? 0
+    }
+
+    private func firstInteger(in text: String) -> Int? {
+        var digits = ""
+        for character in text {
+            if character.isNumber {
+                digits.append(character)
+            } else if !digits.isEmpty {
+                break
+            }
+        }
+        return Int(digits)
     }
 
     private func withScoreSheet<T>(_ body: () -> T) -> T {
