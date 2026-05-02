@@ -28,6 +28,31 @@ final class ProjectionTests: XCTestCase {
         XCTAssertTrue(projection.talon.allSatisfy { $0.knownCard == nil })
     }
 
+    func testFourPlayerDealerProjectsAsSittingOut() throws {
+        let players: [PlayerID] = ["north", "east", "south", "west"]
+        var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "north")
+        _ = try engine.apply(.startDeal(dealer: "north", deck: Deck.standard32))
+
+        let projection = PlayerProjectionBuilder.projection(
+            for: "east",
+            tableID: UUID(),
+            sequence: 0,
+            engine: engine,
+            policy: .online
+        )
+
+        let dealer = try XCTUnwrap(projection.seats.first { $0.player == "north" })
+        XCTAssertTrue(dealer.isDealer)
+        XCTAssertFalse(dealer.isActive)
+        XCTAssertEqual(dealer.role, .sittingOut)
+
+        for player in players where player != "north" {
+            let seat = try XCTUnwrap(projection.seats.first { $0.player == player })
+            XCTAssertTrue(seat.isActive, "\(player) should take part in a deal where north deals.")
+            XCTAssertNotEqual(seat.role, .sittingOut, "\(player) should not be marked sitting out.")
+        }
+    }
+
     func testActionRoundTripsThroughJSON() throws {
         let action = PreferansAction.bid(
             player: "north",

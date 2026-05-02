@@ -121,7 +121,6 @@ public struct TableView: View {
         projection.seats.filter { seat in
             guard seat.player != projection.viewer else { return false }
             if seat.role == .sittingOut { return false }
-            if seat.isDealer && !seat.isActive { return false }
             return true
         }
     }

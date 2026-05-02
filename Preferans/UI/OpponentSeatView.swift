@@ -57,7 +57,7 @@ public struct OpponentSeatView: View {
     }
 
     private var statusRow: some View {
-        let isSittingOut = seat.role == .sittingOut || (seat.isDealer && !seat.isActive)
+        let isSittingOut = seat.role == .sittingOut
         return HStack(spacing: 5) {
             if seat.isCurrentActor {
                 Circle()

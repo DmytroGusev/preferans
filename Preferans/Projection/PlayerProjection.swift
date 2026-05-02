@@ -336,7 +336,7 @@ public enum PlayerProjectionBuilder {
 
             let isActive = activePlayers.isEmpty ? true : activePlayers.contains(player)
             let isDealer = dealer == player
-            let role: SeatRole = isDealer && !isActive ? .dealer : (roleMap[player] ?? (isActive ? .active : .sittingOut))
+            let role: SeatRole = roleMap[player] ?? (isActive ? .active : .sittingOut)
             return SeatProjection(
                 player: player,
                 displayName: identityMap[player] ?? player.rawValue,
@@ -420,4 +420,3 @@ public enum PlayerProjectionBuilder {
         return Array(repeating: .hidden, count: cards.count)
     }
 }
-
