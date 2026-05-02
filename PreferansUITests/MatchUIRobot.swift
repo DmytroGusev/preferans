@@ -235,13 +235,19 @@ final class MatchUIRobot {
         button.tap()
     }
 
-    /// CardView is rendered as a Text + .onTapGesture, so it appears as a
-    /// staticText (not a button) in the accessibility tree.
+    /// CardView adds `.accessibilityAddTraits(.isButton)` so the tap target
+    /// surfaces as a `button`. Earlier renders may treat it as static text,
+    /// so query both.
     private func tapStaticText(id: String, descriptor: String) {
-        let element = app.staticTexts[id]
-        XCTAssertTrue(element.waitForExistence(timeout: defaultTimeout),
-                      "Tappable text for \(descriptor) (id: \(id)) never appeared.")
-        element.tap()
+        let asButton = app.buttons[id]
+        if asButton.waitForExistence(timeout: 1.0) {
+            asButton.tap()
+            return
+        }
+        let asStaticText = app.staticTexts[id]
+        XCTAssertTrue(asStaticText.waitForExistence(timeout: defaultTimeout),
+                      "Tappable element for \(descriptor) (id: \(id)) never appeared.")
+        asStaticText.tap()
     }
 
     private func readInt(id: String, descriptor: String) -> Int {

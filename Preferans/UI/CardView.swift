@@ -40,6 +40,7 @@ public struct CardView: View {
             .opacity(card.knownCard == nil ? 0.72 : 1)
             .accessibilityLabel(card.description)
             .accessibilityIdentifier(identifier)
+            .accessibilityAddTraits(.isButton)
     }
 
     private var identifier: String {

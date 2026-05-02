@@ -53,6 +53,8 @@
 		E0000000000000000000A030 /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		E0000000000000000000A041 /* MatchUIRobot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A040 /* MatchUIRobot.swift */; };
 		E0000000000000000000A043 /* MatchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A042 /* MatchUITests.swift */; };
+		E0000000000000000000A045 /* MatchUIDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A044 /* MatchUIDriver.swift */; };
+		E0000000000000000000A047 /* FullGameUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A046 /* FullGameUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -142,6 +144,8 @@
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
 		E0000000000000000000A042 /* MatchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUITests.swift; sourceTree = "<group>"; };
+		E0000000000000000000A044 /* MatchUIDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIDriver.swift; sourceTree = "<group>"; };
+		E0000000000000000000A046 /* FullGameUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullGameUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -252,7 +256,9 @@
 			children = (
 				E00000000000000000000002 /* PreferansUITests.swift */,
 				E0000000000000000000A040 /* MatchUIRobot.swift */,
+				E0000000000000000000A044 /* MatchUIDriver.swift */,
 				E0000000000000000000A042 /* MatchUITests.swift */,
+				E0000000000000000000A046 /* FullGameUITests.swift */,
 			);
 			path = PreferansUITests;
 			sourceTree = "<group>";
@@ -423,7 +429,9 @@
 			files = (
 				E00000000000000000000003 /* PreferansUITests.swift in Sources */,
 				E0000000000000000000A041 /* MatchUIRobot.swift in Sources */,
+				E0000000000000000000A045 /* MatchUIDriver.swift in Sources */,
 				E0000000000000000000A043 /* MatchUITests.swift in Sources */,
+				E0000000000000000000A047 /* FullGameUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

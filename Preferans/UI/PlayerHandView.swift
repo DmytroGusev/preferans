@@ -56,6 +56,7 @@ public struct PlayerHandView: View {
         }
         .padding(.vertical, 4)
         .opacity(seat.isActive ? 1 : 0.45)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
     }
 }
