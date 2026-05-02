@@ -13,29 +13,42 @@ public struct ScoreBoardView: View {
             Text("Score")
                 .font(.headline)
             VStack(alignment: .leading, spacing: 6) {
-                scoreRow("Player", "Pool", "Mountain", "Balance")
-                    .font(.caption.weight(.semibold))
+                headerRow
                 ForEach(score.players, id: \.self) { player in
-                    scoreRow(
-                        player.rawValue,
-                        "\(score.pool(for: player))",
-                        "\(score.mountain(for: player))",
-                        score.balance(for: player).formatted(.number.precision(.fractionLength(1)))
-                    )
+                    scoreRow(player: player)
                 }
             }
             .font(.caption)
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier(UIIdentifiers.Panel.score.rawValue)
     }
 
-    private func scoreRow(_ player: String, _ pool: String, _ mountain: String, _ balance: String) -> some View {
+    private var headerRow: some View {
         HStack(spacing: 14) {
-            Text(player).frame(minWidth: 72, alignment: .leading)
-            Text(pool).frame(minWidth: 38, alignment: .trailing)
-            Text(mountain).frame(minWidth: 64, alignment: .trailing)
-            Text(balance).frame(minWidth: 64, alignment: .trailing)
+            Text("Player").frame(minWidth: 72, alignment: .leading)
+            Text("Pool").frame(minWidth: 38, alignment: .trailing)
+            Text("Mountain").frame(minWidth: 64, alignment: .trailing)
+            Text("Balance").frame(minWidth: 64, alignment: .trailing)
+        }
+        .font(.caption.weight(.semibold))
+    }
+
+    private func scoreRow(player: PlayerID) -> some View {
+        HStack(spacing: 14) {
+            Text(player.rawValue)
+                .frame(minWidth: 72, alignment: .leading)
+                .accessibilityIdentifier(UIIdentifiers.scorePlayer(player))
+            Text("\(score.pool(for: player))")
+                .frame(minWidth: 38, alignment: .trailing)
+                .accessibilityIdentifier(UIIdentifiers.scorePool(player))
+            Text("\(score.mountain(for: player))")
+                .frame(minWidth: 64, alignment: .trailing)
+                .accessibilityIdentifier(UIIdentifiers.scoreMountain(player))
+            Text(score.balance(for: player).formatted(.number.precision(.fractionLength(1))))
+                .frame(minWidth: 64, alignment: .trailing)
+                .accessibilityIdentifier(UIIdentifiers.scoreBalance(player))
         }
     }
 }

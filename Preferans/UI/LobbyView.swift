@@ -63,6 +63,7 @@ public struct LobbyView: View {
         VStack(spacing: 18) {
             Text("Preferans")
                 .font(.largeTitle.bold())
+                .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("Local table players")
@@ -70,6 +71,7 @@ public struct LobbyView: View {
                 ForEach(playerNames.indices, id: \.self) { index in
                     TextField("Player \(index + 1)", text: $playerNames[index])
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
                 }
             }
 
@@ -78,9 +80,11 @@ public struct LobbyView: View {
                     playerNames = Array(playerNames.prefix(3))
                     while playerNames.count < 3 { playerNames.append("player\(playerNames.count + 1)") }
                 }
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountThree)
                 Button("4 players") {
                     while playerNames.count < 4 { playerNames.append("player\(playerNames.count + 1)") }
                 }
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountFour)
             }
             .buttonStyle(.bordered)
 
@@ -88,6 +92,7 @@ public struct LobbyView: View {
                 startLocalTable()
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
 
             #if canImport(GameKit) && canImport(UIKit)
             Divider()
@@ -115,6 +120,7 @@ public struct LobbyView: View {
                 Text(errorText)
                     .font(.footnote)
                     .foregroundStyle(.red)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyError)
             }
         }
         .padding()
@@ -123,20 +129,22 @@ public struct LobbyView: View {
 
     private func startLocalTable() {
         do {
-            let players = playerNames
+            let lobbyPlayers = playerNames
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .map { PlayerID($0) }
             let args = ProcessInfo.processInfo.arguments
-            let followActor = TestHarness.viewerFollowsActor(in: args)
-            let firstDealer = TestHarness.firstDealer(from: args)
-            let dealSource = TestHarness.dealSource(from: args)
+            let configuration = TestHarness.resolveConfiguration(
+                from: args,
+                defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: nil)
+            )
             localModel = try GameViewModel(
-                players: players,
-                rules: .sochi,
-                firstDealer: firstDealer,
-                viewerFollowsActor: followActor,
-                dealSource: dealSource
+                players: configuration.players,
+                rules: configuration.rules,
+                match: configuration.match,
+                firstDealer: configuration.firstDealer,
+                viewerFollowsActor: configuration.viewerFollowsActor,
+                dealSource: configuration.dealSource
             )
             errorText = nil
         } catch {

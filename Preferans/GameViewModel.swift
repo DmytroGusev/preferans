@@ -14,11 +14,12 @@ public final class GameViewModel: ObservableObject {
     public init(
         players: [PlayerID],
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         firstDealer: PlayerID? = nil,
         viewerFollowsActor: Bool = false,
         dealSource: DealSource = RandomDealSource()
     ) throws {
-        self.engine = try PreferansEngine(players: players, rules: rules, firstDealer: firstDealer)
+        self.engine = try PreferansEngine(players: players, rules: rules, match: match, firstDealer: firstDealer)
         self.selectedViewer = players.first ?? PlayerID("player")
         self.viewerFollowsActor = viewerFollowsActor
         self.dealSource = dealSource

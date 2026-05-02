@@ -230,8 +230,12 @@ public enum PlayerProjectionBuilder {
             currentActor = state.declarer
             roleMap[state.declarer] = .declarer
             phase = .awaitingContract(declarer: state.declarer, finalBid: state.finalBid)
-            legal.contractOptions = viewer == state.declarer ? GameContract.declarationOptions(atLeast: state.finalBid) : []
-            message = "\(state.declarer.rawValue) declares a final contract."
+            // Use the engine's totus-aware list so dedicated-totus declarations
+            // are constrained to 10-trick contracts (one per strain).
+            legal.contractOptions = viewer == state.declarer ? engine.legalContractDeclarations(for: viewer) : []
+            message = state.finalBid == .totus
+                ? "\(state.declarer.rawValue) picks the totus strain."
+                : "\(state.declarer.rawValue) declares a final contract."
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .awaitingWhist(state):

@@ -1,8 +1,7 @@
 import Foundation
-@testable import PreferansEngine
 
-/// Canonical match scripts used by both `EngineMatchDriverTests` and the
-/// future UI tests. Each script designs its deal sequence so that:
+/// Canonical match scripts used by both engine and UI test layers. Each
+/// script designs its deal sequence so that:
 ///   - The pool-target gate fires on the *last* deal, not earlier.
 ///   - Every contract type the design lock-in calls for appears at least once
 ///     (made low, made high, failed, misère, totus, raspasy clean exit).
@@ -13,8 +12,27 @@ import Foundation
 /// Pool-sum trajectories for each script are documented inline. Edits that
 /// change a recipe's outcome must update the trajectory comment and re-run
 /// `EngineMatchDriverTests`.
-enum MatchScriptFixtures {
-    static let players: [PlayerID] = ["north", "east", "south", "west"]
+public enum MatchScriptFixtures {
+    public static let players: [PlayerID] = ["north", "east", "south", "west"]
+
+    /// All canonical scripts in suite order. Useful for parameterized tests
+    /// that assert an invariant across every script.
+    public static let allCanonical: [(name: String, script: MatchScript)] = [
+        ("Game1ClassicSochi", game1ClassicSochi),
+        ("Game2LongSochi", game2LongSochi),
+        ("Game3RostovDedicatedTotus", game3RostovDedicatedTotus)
+    ]
+
+    /// Looks up a canonical script by short name. Used by `TestHarness` to
+    /// resolve `-uiTestMatchScript <name>` launch arguments.
+    public static func script(named name: String) -> MatchScript? {
+        switch name {
+        case "Game1ClassicSochi", "game1": return game1ClassicSochi
+        case "Game2LongSochi", "game2": return game2LongSochi
+        case "Game3RostovDedicatedTotus", "game3": return game3RostovDedicatedTotus
+        default: return nil
+        }
+    }
 
     // MARK: - Game 1: Classic Sochi
 
@@ -22,7 +40,7 @@ enum MatchScriptFixtures {
     /// Pool target 20 fires on deal 6.
     /// Mix: 6♠ made, 7♣ failed, misère clean, 8♥ failed, raspasy clean,
     /// 10♠ totus (asTenTrickGame, defenders pass-out → declarer +10).
-    static let game1ClassicSochi: MatchScript = {
+    public static let game1ClassicSochi: MatchScript = {
         let players = MatchScriptFixtures.players
         let firstDealer: PlayerID = "north"
         let rules = PreferansRules.sochi
@@ -74,7 +92,7 @@ enum MatchScriptFixtures {
     /// Mix: 6♣ failed, 7♥ made, 10♠ totus (asTenTrickGame, requireWhist:true,
     /// defenders forced to whist, played out), raspasy with leadSuitOnly
     /// talon constraint, misère clean.
-    static let game2LongSochi: MatchScript = {
+    public static let game2LongSochi: MatchScript = {
         let players = MatchScriptFixtures.players
         let firstDealer: PlayerID = "south"
         let rules = PreferansRules.sochiWithTalonLedAllPass
@@ -122,7 +140,7 @@ enum MatchScriptFixtures {
     /// Pool target 30 fires on deal 6.
     /// Mix: dedicated totus made twice (with bonus), 9♣ failed, 6♦ made,
     /// raspasy clean, 7♥ failed.
-    static let game3RostovDedicatedTotus: MatchScript = {
+    public static let game3RostovDedicatedTotus: MatchScript = {
         let players = MatchScriptFixtures.players
         let firstDealer: PlayerID = "west"
         let rules = PreferansRules.sochi

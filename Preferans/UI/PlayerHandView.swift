@@ -19,12 +19,14 @@ public struct PlayerHandView: View {
             HStack(spacing: 8) {
                 Text(seat.displayName)
                     .font(.headline)
+                    .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
                 if seat.isDealer {
                     Text("Dealer")
                         .font(.caption)
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(.thinMaterial, in: Capsule())
+                        .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
                 }
                 if seat.isCurrentActor {
                     Text("Turn")
@@ -32,18 +34,28 @@ public struct PlayerHandView: View {
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(.thinMaterial, in: Capsule())
+                        .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
                 }
                 Text(seat.role.rawValue)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
                 Spacer()
                 Text("Tricks: \(seat.trickCount)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
             }
-            CardRowView(cards: seat.hand, playableCards: playableCards, selectedCards: selectedCards, onTap: onCardTap)
+            CardRowView(
+                cards: seat.hand,
+                playableCards: playableCards,
+                selectedCards: selectedCards,
+                region: .hand(seat: seat.player),
+                onTap: onCardTap
+            )
         }
         .padding(.vertical, 4)
         .opacity(seat.isActive ? 1 : 0.45)
+        .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
     }
 }

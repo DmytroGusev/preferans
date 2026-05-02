@@ -2,18 +2,44 @@ import Foundation
 import PreferansEngine
 
 /// Test-time configuration sourced from process launch arguments.
-/// The harness is consulted by ``LobbyView`` so UI tests can pin the
-/// deal — fixed dealer + reproducible deck — without changing default
-/// (production) behaviour.
 ///
-/// When both ``Flag/dealScenario`` and ``Flag/dealSeed`` are passed, the
-/// scenario takes precedence and the seed is ignored.
+/// Two layers:
+/// - **Per-deal pinning** (`firstDealer`, `dealScenario`, `dealSeed`,
+///   `viewerFollowsActor`): keeps the existing single-deal scenarios working
+///   for the early UI smoke tests.
+/// - **Whole-match scripting** (`matchScript`, `poolTarget`, `raspasy`,
+///   `totus`, `players`, `firstDealer`): lets a UI test launch the app in
+///   the same `MatchScript` the engine driver uses, so the UI test never
+///   has to re-derive auctions, recipes, or play sequences.
+///
+/// When `matchScript` is set the harness resolves a canonical
+/// ``MatchScriptFixtures`` value and replaces the lobby's defaults with the
+/// script's `players`, `firstDealer`, `rules`, `match`, and a
+/// ``ScriptedDealSource`` of recipe-built decks. Other launch arguments
+/// override individual fields after the script is resolved.
 public enum TestHarness {
     public enum Flag {
         public static let viewerFollowsActor = "-uiTestViewerFollowsActor"
-        public static let firstDealer = "-uiTestFirstDealer"
-        public static let dealSeed = "-uiTestDealSeed"
-        public static let dealScenario = "-uiTestDealScenario"
+        public static let firstDealer        = "-uiTestFirstDealer"
+        public static let dealSeed           = "-uiTestDealSeed"
+        public static let dealScenario       = "-uiTestDealScenario"
+        public static let matchScript        = "-uiTestMatchScript"
+        public static let players            = "-uiTestPlayers"
+        public static let poolTarget         = "-uiTestPoolTarget"
+        public static let raspasyPolicy      = "-uiTestRaspasyPolicy"
+        public static let totusPolicy        = "-uiTestTotusPolicy"
+    }
+
+    /// A fully resolved table configuration the lobby can use to build a
+    /// `GameViewModel`. All fields are populated from launch arguments,
+    /// canonical fixtures, or sensible production defaults.
+    public struct Configuration {
+        public let players: [PlayerID]
+        public let firstDealer: PlayerID?
+        public let rules: PreferansRules
+        public let match: MatchSettings
+        public let dealSource: DealSource
+        public let viewerFollowsActor: Bool
     }
 
     public static func viewerFollowsActor(in arguments: [String]) -> Bool {
@@ -34,6 +60,126 @@ public enum TestHarness {
             return SeededDealSource(seed: seed)
         }
         return RandomDealSource()
+    }
+
+    /// Resolves the full table configuration. When `defaults` is provided
+    /// (the lobby's own roster), it's used as the baseline and overridden
+    /// only by launch-argument values that are present.
+    public static func resolveConfiguration(
+        from arguments: [String],
+        defaults: Defaults
+    ) -> Configuration {
+        // 1. Start from a named match script when supplied — pulls in
+        // players, firstDealer, rules, match, and the scripted deal source.
+        var players = defaults.players
+        var firstDealer = defaults.firstDealer
+        var rules = PreferansRules.sochi
+        var match = MatchSettings.unbounded
+        var dealSource: DealSource = dealSource(from: arguments)
+
+        if let scriptName = value(after: Flag.matchScript, in: arguments),
+           let script = MatchScriptFixtures.script(named: scriptName) {
+            players = script.players
+            firstDealer = script.firstDealer
+            rules = script.rules
+            match = script.match
+            dealSource = scriptedDealSource(for: script)
+        }
+
+        // 2. Per-field launch overrides (still in priority over any defaults).
+        if let raw = value(after: Flag.players, in: arguments) {
+            let parsed = raw.split(separator: ",").map { PlayerID(String($0)) }
+            if !parsed.isEmpty { players = parsed }
+        }
+        if let raw = value(after: Flag.firstDealer, in: arguments) {
+            firstDealer = PlayerID(raw)
+        }
+        if let raw = value(after: Flag.poolTarget, in: arguments), let target = Int(raw) {
+            match = MatchSettings(poolTarget: target, raspasy: match.raspasy, totus: match.totus)
+        }
+        if let raw = value(after: Flag.raspasyPolicy, in: arguments),
+           let parsed = parseRaspasyPolicy(raw) {
+            match = MatchSettings(poolTarget: match.poolTarget, raspasy: parsed, totus: match.totus)
+        }
+        if let raw = value(after: Flag.totusPolicy, in: arguments),
+           let parsed = parseTotusPolicy(raw) {
+            match = MatchSettings(poolTarget: match.poolTarget, raspasy: match.raspasy, totus: parsed)
+        }
+
+        return Configuration(
+            players: players,
+            firstDealer: firstDealer,
+            rules: rules,
+            match: match,
+            dealSource: dealSource,
+            viewerFollowsActor: viewerFollowsActor(in: arguments)
+        )
+    }
+
+    public struct Defaults {
+        public let players: [PlayerID]
+        public let firstDealer: PlayerID?
+        public init(players: [PlayerID], firstDealer: PlayerID? = nil) {
+            self.players = players
+            self.firstDealer = firstDealer
+        }
+    }
+
+    /// Pre-builds the deck for every deal in the script using each deal's
+    /// recipe and the engine's predicted active rotation, then wraps them
+    /// in a ``ScriptedDealSource``. The engine consumes one deck per
+    /// `startDeal` call so this stays in lock-step with the script.
+    private static func scriptedDealSource(for script: MatchScript) -> DealSource {
+        // Replay dealer rotation so the recipes get the same active set
+        // the engine will derive on each startDeal.
+        var dealer = script.firstDealer
+        var decks: [[Card]] = []
+        // Use a throwaway engine to compute rotations without applying
+        // any actions — only `activePlayers(forDealer:)` is needed.
+        guard let helper = try? PreferansEngine(
+            players: script.players,
+            rules: script.rules,
+            match: script.match,
+            firstDealer: script.firstDealer
+        ) else {
+            return ScriptedDealSource(decks: [Deck.standard32])
+        }
+        for deal in script.deals {
+            let active = helper.activePlayers(forDealer: dealer)
+            decks.append(deal.recipe.deck(for: active))
+            dealer = nextDealer(after: dealer, in: script.players)
+        }
+        return ScriptedDealSource(decks: decks)
+    }
+
+    private static func nextDealer(after dealer: PlayerID, in players: [PlayerID]) -> PlayerID {
+        guard let index = players.firstIndex(of: dealer) else { return players[0] }
+        return players[(index + 1) % players.count]
+    }
+
+    private static func parseRaspasyPolicy(_ raw: String) -> RaspasyPolicy? {
+        switch raw.lowercased() {
+        case "singleshot", "single", "single_shot": return .singleShot
+        default: return nil
+        }
+    }
+
+    /// Encodings: `asTenTrickGame:<requireWhist>` or
+    /// `dedicated:<requireWhist>:<bonusPool>` (booleans are `true`/`false`).
+    private static func parseTotusPolicy(_ raw: String) -> TotusPolicy? {
+        let parts = raw.split(separator: ":").map(String.init)
+        guard !parts.isEmpty else { return nil }
+        switch parts[0].lowercased() {
+        case "astentrickgame":
+            let req = parts.count > 1 && Bool(parts[1]) == true
+            return .asTenTrickGame(requireWhist: req)
+        case "dedicated", "dedicatedcontract":
+            let req = parts.count > 1 && Bool(parts[1]) == true
+            let bonus = parts.count > 2 ? Int(parts[2]) ?? 0 : 0
+            return .dedicatedContract(requireWhist: req, bonusPool: bonus)
+        default:
+            return nil
+        }
     }
 
     private static func value(after flag: String, in arguments: [String]) -> String? {

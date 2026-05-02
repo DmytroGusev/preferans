@@ -40,6 +40,12 @@
 		C00000000000000000000024 /* Score.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000015 /* Score.swift */; };
 		C00000000000000000000025 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000016 /* State.swift */; };
 		C00000000000000000000026 /* DealSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000017 /* DealSource.swift */; };
+		C0000000000000000000A050 /* MatchSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A040 /* MatchSettings.swift */; };
+		C0000000000000000000A051 /* HandRecipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A041 /* HandRecipe.swift */; };
+		C0000000000000000000A052 /* MatchScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A042 /* MatchScript.swift */; };
+		C0000000000000000000A053 /* EngineMatchDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A043 /* EngineMatchDriver.swift */; };
+		C0000000000000000000A054 /* MatchScriptFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A044 /* MatchScriptFixtures.swift */; };
+		C0000000000000000000A055 /* UIIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A045 /* UIIdentifiers.swift */; };
 		B0000000000000000000001A /* TestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000004A /* TestHarness.swift */; };
 		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -115,6 +121,12 @@
 		C00000000000000000000015 /* Score.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Score.swift; sourceTree = "<group>"; };
 		C00000000000000000000016 /* State.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State.swift; sourceTree = "<group>"; };
 		C00000000000000000000017 /* DealSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealSource.swift; sourceTree = "<group>"; };
+		C0000000000000000000A040 /* MatchSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchSettings.swift; sourceTree = "<group>"; };
+		C0000000000000000000A041 /* HandRecipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRecipe.swift; sourceTree = "<group>"; };
+		C0000000000000000000A042 /* MatchScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchScript.swift; sourceTree = "<group>"; };
+		C0000000000000000000A043 /* EngineMatchDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineMatchDriver.swift; sourceTree = "<group>"; };
+		C0000000000000000000A044 /* MatchScriptFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchScriptFixtures.swift; sourceTree = "<group>"; };
+		C0000000000000000000A045 /* UIIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIIdentifiers.swift; sourceTree = "<group>"; };
 		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/TestHarness.swift"; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
@@ -212,6 +224,12 @@
 				C00000000000000000000015 /* Score.swift */,
 				C00000000000000000000016 /* State.swift */,
 				C00000000000000000000017 /* DealSource.swift */,
+				C0000000000000000000A040 /* MatchSettings.swift */,
+				C0000000000000000000A041 /* HandRecipe.swift */,
+				C0000000000000000000A042 /* MatchScript.swift */,
+				C0000000000000000000A043 /* EngineMatchDriver.swift */,
+				C0000000000000000000A044 /* MatchScriptFixtures.swift */,
+				C0000000000000000000A045 /* UIIdentifiers.swift */,
 			);
 			path = Sources/PreferansEngine;
 			sourceTree = "<group>";
@@ -374,6 +392,12 @@
 				C00000000000000000000024 /* Score.swift in Sources */,
 				C00000000000000000000025 /* State.swift in Sources */,
 				C00000000000000000000026 /* DealSource.swift in Sources */,
+				C0000000000000000000A050 /* MatchSettings.swift in Sources */,
+				C0000000000000000000A051 /* HandRecipe.swift in Sources */,
+				C0000000000000000000A052 /* MatchScript.swift in Sources */,
+				C0000000000000000000A053 /* EngineMatchDriver.swift in Sources */,
+				C0000000000000000000A054 /* MatchScriptFixtures.swift in Sources */,
+				C0000000000000000000A055 /* UIIdentifiers.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

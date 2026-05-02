@@ -31,6 +31,7 @@ public struct LocalGameScreen: View {
                         .padding()
                         .background(.regularMaterial, in: Capsule())
                         .padding()
+                        .accessibilityIdentifier(UIIdentifiers.errorBanner)
                 }
             }
     }

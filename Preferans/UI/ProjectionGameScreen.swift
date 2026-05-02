@@ -18,10 +18,17 @@ public struct ProjectionGameScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
-                actionPanel
-                currentTrick
-                talonAndDiscard
-                hands
+                if case let .gameOver(summary) = projection.phase {
+                    gameOverPanel(summary: summary)
+                } else {
+                    actionPanel
+                    if case let .dealFinished(result) = projection.phase {
+                        dealFinishedBadge(result: result)
+                    }
+                    currentTrick
+                    talonAndDiscard
+                    hands
+                }
                 ScoreBoardView(score: projection.score)
                 eventPanel
             }
@@ -34,11 +41,14 @@ public struct ProjectionGameScreen: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(projection.phase.title)
                 .font(.title.bold())
+                .accessibilityIdentifier(UIIdentifiers.phaseTitle)
             Text(projection.message)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier(UIIdentifiers.phaseMessage)
             Text("You are: \(displayName(for: projection.viewer))")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .accessibilityIdentifier(UIIdentifiers.viewerLabel)
         }
     }
 
@@ -50,23 +60,50 @@ public struct ProjectionGameScreen: View {
                     onSend(.startDeal(dealer: nil, deck: nil))
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
             }
 
-            if !projection.legal.bidCalls.isEmpty {
+            biddingPanel
+            discardPanel
+            contractPanel
+            whistPanel
+            defenderModePanel
+        }
+        .padding()
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    @ViewBuilder
+    private var biddingPanel: some View {
+        if !projection.legal.bidCalls.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Bid")
                     .font(.headline)
-                WrappingButtons(items: projection.legal.bidCalls.map { $0.description }) { index in
-                    let call = projection.legal.bidCalls[index]
-                    onSend(.bid(player: projection.viewer, call: call))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(projection.legal.bidCalls.indices, id: \.self) { index in
+                        let call = projection.legal.bidCalls[index]
+                        Button(call.description) {
+                            onSend(.bid(player: projection.viewer, call: call))
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier(UIIdentifiers.bidButton(call))
+                    }
                 }
             }
+            .accessibilityIdentifier(UIIdentifiers.Panel.bidding.rawValue)
+        }
+    }
 
-            if projection.legal.canDiscard {
+    @ViewBuilder
+    private var discardPanel: some View {
+        if projection.legal.canDiscard {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Select exactly two cards to discard")
                     .font(.headline)
                 CardRowView(
                     cards: discardCandidates,
                     selectedCards: selectedDiscard,
+                    region: .discardSelect,
                     onTap: toggleDiscardSelection
                 )
                 Button("Discard selected") {
@@ -75,36 +112,161 @@ public struct ProjectionGameScreen: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(selectedDiscard.count != 2)
+                .accessibilityIdentifier(UIIdentifiers.buttonDiscardSelected)
             }
+            .accessibilityIdentifier(UIIdentifiers.Panel.discard.rawValue)
+        }
+    }
 
-            if !projection.legal.contractOptions.isEmpty {
-                Text("Declare contract")
+    @ViewBuilder
+    private var contractPanel: some View {
+        if !projection.legal.contractOptions.isEmpty {
+            let isTotus = isTotusDeclaration
+            VStack(alignment: .leading, spacing: 6) {
+                Text(isTotus ? "Pick totus strain" : "Declare contract")
                     .font(.headline)
-                WrappingButtons(items: projection.legal.contractOptions.map { $0.description }) { index in
-                    onSend(.declareContract(player: projection.viewer, contract: projection.legal.contractOptions[index]))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(projection.legal.contractOptions.indices, id: \.self) { index in
+                        let contract = projection.legal.contractOptions[index]
+                        Button(isTotus ? contract.strain.description : contract.description) {
+                            onSend(.declareContract(player: projection.viewer, contract: contract))
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
+                    }
                 }
             }
+            .accessibilityIdentifier(UIIdentifiers.Panel.contract.rawValue)
+        }
+    }
 
-            if !projection.legal.whistCalls.isEmpty {
+    @ViewBuilder
+    private var whistPanel: some View {
+        if !projection.legal.whistCalls.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Whist")
                     .font(.headline)
-                WrappingButtons(items: projection.legal.whistCalls.map { $0.description }) { index in
-                    onSend(.whist(player: projection.viewer, call: projection.legal.whistCalls[index]))
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], alignment: .leading, spacing: 8) {
+                    ForEach(projection.legal.whistCalls.indices, id: \.self) { index in
+                        let call = projection.legal.whistCalls[index]
+                        Button(call.description) {
+                            onSend(.whist(player: projection.viewer, call: call))
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier(UIIdentifiers.whistButton(call))
+                    }
                 }
             }
+            .accessibilityIdentifier(UIIdentifiers.Panel.whist.rawValue)
+        }
+    }
 
-            if !projection.legal.defenderModes.isEmpty {
+    @ViewBuilder
+    private var defenderModePanel: some View {
+        if !projection.legal.defenderModes.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Defender mode")
                     .font(.headline)
                 HStack {
                     Button("Closed") { onSend(.chooseDefenderMode(player: projection.viewer, mode: .closed)) }
+                        .accessibilityIdentifier(UIIdentifiers.defenderModeButton(.closed))
                     Button("Open") { onSend(.chooseDefenderMode(player: projection.viewer, mode: .open)) }
+                        .accessibilityIdentifier(UIIdentifiers.defenderModeButton(.open))
                 }
                 .buttonStyle(.borderedProminent)
+            }
+            .accessibilityIdentifier(UIIdentifiers.Panel.defenderMode.rawValue)
+        }
+    }
+
+    private func dealFinishedBadge(result: DealResult) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Last result")
+                .font(.headline)
+            Text(UIIdentifiers.encode(result.kind))
+                .font(.body.monospaced())
+                .accessibilityIdentifier(UIIdentifiers.dealResultKind)
+            switch result.kind {
+            case let .game(declarer, contract, _):
+                Text("Declarer: \(declarer.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultDeclarer)
+                Text("Contract: \(contract.description)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultContract)
+                Text("Tricks: \(result.trickCounts[declarer] ?? 0)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultTricks)
+            case let .misere(declarer):
+                Text("Declarer: \(declarer.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultDeclarer)
+                Text("Tricks: \(result.trickCounts[declarer] ?? 0)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultTricks)
+            case let .halfWhist(declarer, contract, _):
+                Text("Declarer: \(declarer.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultDeclarer)
+                Text("Contract: \(contract.description)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultContract)
+            case .passedOut, .allPass:
+                EmptyView()
             }
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
+    }
+
+    private func gameOverPanel(summary: MatchSummary) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Game over")
+                .font(.title.bold())
+                .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
+            if let winner = summary.standings.first {
+                Text("Winner: \(winner.player.rawValue)")
+                    .font(.headline)
+                    .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
+            }
+            Text("Deals played: \(summary.dealsPlayed)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
+            Divider()
+            Text("Standings")
+                .font(.headline)
+            ForEach(Array(summary.standings.enumerated()), id: \.offset) { index, standing in
+                HStack(spacing: 14) {
+                    Text("\(index + 1).")
+                        .frame(width: 28, alignment: .leading)
+                    Text(standing.player.rawValue)
+                        .frame(minWidth: 72, alignment: .leading)
+                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingPlayer(rank: index + 1))
+                    Text("\(standing.pool)")
+                        .frame(minWidth: 36, alignment: .trailing)
+                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingPool(rank: index + 1))
+                    Text("\(standing.mountain)")
+                        .frame(minWidth: 56, alignment: .trailing)
+                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingMountain(rank: index + 1))
+                    Text(standing.balance.formatted(.number.precision(.fractionLength(1))))
+                        .frame(minWidth: 56, alignment: .trailing)
+                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingBalance(rank: index + 1))
+                }
+                .font(.caption)
+            }
+        }
+        .padding()
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
     }
 
     private var currentTrick: some View {
@@ -118,7 +280,10 @@ public struct ProjectionGameScreen: View {
                 HStack {
                     ForEach(Array(projection.currentTrick.enumerated()), id: \.offset) { _, play in
                         VStack {
-                            CardView(card: .known(play.card))
+                            CardView(
+                                card: .known(play.card),
+                                region: .trick(seat: play.player)
+                            )
                             Text(displayName(for: play.player))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -132,6 +297,7 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
     }
 
     private var talonAndDiscard: some View {
@@ -139,13 +305,15 @@ public struct ProjectionGameScreen: View {
             VStack(alignment: .leading) {
                 Text("Talon")
                     .font(.headline)
-                CardRowView(cards: projection.talon)
+                CardRowView(cards: projection.talon, region: .talon)
             }
+            .accessibilityIdentifier(UIIdentifiers.Panel.talon.rawValue)
             VStack(alignment: .leading) {
                 Text("Discard")
                     .font(.headline)
-                CardRowView(cards: projection.discard)
+                CardRowView(cards: projection.discard, region: .discard)
             }
+            .accessibilityIdentifier(UIIdentifiers.Panel.discardArea.rawValue)
         }
     }
 
@@ -166,20 +334,23 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier(UIIdentifiers.Panel.table.rawValue)
     }
 
     private var eventPanel: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Log")
                 .font(.headline)
-            ForEach(Array(eventLog.suffix(12).enumerated()), id: \.offset) { _, event in
+            ForEach(Array(eventLog.suffix(12).enumerated()), id: \.offset) { index, event in
                 Text(event)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier(UIIdentifiers.eventLogEntry(index: index))
             }
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityIdentifier(UIIdentifiers.Panel.eventLog.rawValue)
     }
 
     private var discardCandidates: [ProjectedCard] {
@@ -198,18 +369,11 @@ public struct ProjectionGameScreen: View {
     private func displayName(for player: PlayerID) -> String {
         projection.identities.first { $0.playerID == player }?.displayName ?? player.rawValue
     }
-}
 
-private struct WrappingButtons: View {
-    var items: [String]
-    var onTap: (Int) -> Void
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], alignment: .leading, spacing: 8) {
-            ForEach(items.indices, id: \.self) { index in
-                Button(items[index]) { onTap(index) }
-                    .buttonStyle(.bordered)
-            }
+    private var isTotusDeclaration: Bool {
+        if case let .awaitingContract(_, finalBid) = projection.phase {
+            return finalBid == .totus
         }
+        return false
     }
 }
