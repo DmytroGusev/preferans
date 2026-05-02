@@ -87,10 +87,14 @@ public enum HandEvaluator {
         if hasJ && length >= 4 && hasQ { t += 0.25 }
 
         if isTrump {
-            // Trump length: each trump beyond 3 ≈ half a trick; ruffing
-            // power compounds at length 5+.
-            if length >= 4 { t += Double(length - 3) * 0.5 }
-            if length >= 5 { t += 0.25 }
+            // Trump length in a 32-card deck: opponents share only 8-length
+            // trumps, so anything beyond 3 in your hand starts cashing as
+            // length tricks once trumps are drawn. Honor at the top of a long
+            // trump suit lets you draw with control instead of bleeding to
+            // opponent honors.
+            if length >= 4 { t += Double(length - 3) * 0.75 }
+            if length >= 5 { t += 0.5 }
+            if length >= 4 && (hasA || hasK) { t += 0.25 }
         } else if trumpSuit == nil {
             // No-trump: long side suits cash once high cards flush, but
             // only when topped by an ace.

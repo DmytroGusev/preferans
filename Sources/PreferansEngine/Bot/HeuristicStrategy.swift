@@ -55,26 +55,51 @@ public struct HeuristicStrategy: PlayerStrategy {
         let legal = engine.legalBidCalls(for: viewer)
         guard !legal.isEmpty else { return .pass }
         let grouped = HandEvaluator.groupBySuit(hand)
-        var best: ContractBid? = nil
+        // Open at the lowest affordable trick level (real auctions start low
+        // and let competitors drive the contract up only when they can), but
+        // within that level pick the strain with the strongest trick estimate
+        // — committing to the wrong trump on a marginal hand is what costs
+        // contracts. Misère/totus only get bid if no game ladder is affordable.
+        var affordableGames: [GameContract] = []
+        var hasAffordableMisere = false
+        var hasAffordableTotus = false
         for call in legal {
             guard case let .bid(bid) = call, bidIsAffordable(bid: bid, grouped: grouped) else { continue }
-            if best == nil || bid > best! { best = bid }
+            switch bid {
+            case let .game(contract): affordableGames.append(contract)
+            case .misere: hasAffordableMisere = true
+            case .totus: hasAffordableTotus = true
+            }
         }
-        if let best { return .bid(best) }
+        if let lowestTricks = affordableGames.map(\.tricks).min() {
+            let candidates = affordableGames.filter { $0.tricks == lowestTricks }
+            let best = candidates.max { lhs, rhs in
+                HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: lhs.strain.suit)
+                    < HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: rhs.strain.suit)
+            } ?? candidates[0]
+            return .bid(.game(best))
+        }
+        if hasAffordableMisere { return .bid(.misere) }
+        if hasAffordableTotus { return .bid(.totus) }
         return .pass
     }
 
     private func bidIsAffordable(bid: ContractBid, grouped: HandEvaluator.SuitGrouping) -> Bool {
         switch bid {
         case let .game(contract):
-            // The bot bids before discard, so it will gain ~1 useful card
-            // from the talon on average; bonus reflects that.
-            let estimate = HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: contract.strain.suit) + 0.75
+            // The bot bids before discard, then picks 2 talon cards and drops
+            // the 2 worst of 12. Empirically the gain is ~2 tricks: a 25% per
+            // card chance of an ace, plus the discard frees the weakest
+            // holdings, plus declarer's positional advantage in play.
+            let estimate = HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: contract.strain.suit) + 2.0
+            // Margin grows with target tricks because higher contracts have
+            // a wider shortfall band the heuristic cannot resolve from honors
+            // alone — and so the bot can afford to push past its raw estimate.
             let margin: Double
             switch contract.tricks {
-            case 6: margin = 0.0
-            case 7: margin = 0.25
-            case 8: margin = 0.5
+            case 6: margin = 0.5
+            case 7: margin = 0.5
+            case 8: margin = 0.75
             case 9: margin = 1.0
             default: margin = 1.5
             }
@@ -86,7 +111,7 @@ public struct HeuristicStrategy: PlayerStrategy {
             let bestStrain = Strain.allStandard
                 .map { HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: $0.suit) }
                 .max() ?? 0
-            return bestStrain + 0.75 >= 9.5
+            return bestStrain + 2.0 >= 9.5
         }
     }
 
