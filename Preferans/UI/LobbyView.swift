@@ -12,6 +12,7 @@ public struct LobbyView: View {
 
     @State private var localModel: GameViewModel?
     @State private var playerNames = ["You", "East", "South"]
+    @State private var botSeats: Set<Int> = [1, 2]
     @State private var errorText: String?
     @State private var showingMatchmaker = false
 
@@ -86,7 +87,9 @@ public struct LobbyView: View {
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
+        #if canImport(UIKit)
         .background(Color(.systemGroupedBackground))
+        #endif
     }
 
     private var hero: some View {
@@ -108,9 +111,41 @@ public struct LobbyView: View {
         .padding(.top, 8)
     }
 
+    private var rosterSummary: String {
+        let bots = botSeats.filter { $0 < seatCount }.count
+        let humans = seatCount - bots
+        let humanLabel = humans == 1 ? "1 human" : "\(humans) humans"
+        let botLabel = bots == 1 ? "1 bot" : "\(bots) bots"
+        return "\(humanLabel) · \(botLabel)"
+    }
+
     private var localTableCard: some View {
         card(title: "Local table", icon: "person.3.fill") {
             VStack(spacing: 14) {
+                Button {
+                    quickPlayVsBots()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bolt.fill")
+                        Text("Quick play vs bots")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("button.quickPlayVsBots")
+
+                Text(rosterSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
                 HStack(spacing: 8) {
                     seatCountButton(count: 3, label: "3 players", id: UIIdentifiers.lobbyPlayerCountThree)
                     seatCountButton(count: 4, label: "4 players", id: UIIdentifiers.lobbyPlayerCountFour)
@@ -119,12 +154,17 @@ public struct LobbyView: View {
                 VStack(spacing: 8) {
                     ForEach(0..<seatCount, id: \.self) { index in
                         HStack(spacing: 10) {
-                            Image(systemName: "person.crop.circle")
-                                .foregroundStyle(.secondary)
+                            Image(systemName: botSeats.contains(index) ? "cpu" : "person.crop.circle")
+                                .foregroundStyle(botSeats.contains(index) ? Color.accentColor : .secondary)
                             TextField("Player \(index + 1)", text: binding(for: index))
                                 .textFieldStyle(.plain)
                                 .submitLabel(.done)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
+                            Toggle("Bot", isOn: botBinding(for: index))
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .accessibilityIdentifier(UIIdentifiers.lobbyBotToggle(index: index))
                         }
                         .padding(10)
                         .background(.background, in: RoundedRectangle(cornerRadius: 10))
@@ -241,15 +281,42 @@ public struct LobbyView: View {
         )
     }
 
+    private func botBinding(for index: Int) -> Binding<Bool> {
+        Binding(
+            get: { botSeats.contains(index) },
+            set: { newValue in
+                if newValue {
+                    botSeats.insert(index)
+                } else {
+                    botSeats.remove(index)
+                }
+            }
+        )
+    }
+
     private func setSeatCount(_ count: Int) {
         let defaults = ["You", "East", "South", "West"]
         if count > playerNames.count {
             while playerNames.count < count {
-                playerNames.append(defaults[playerNames.count])
+                let nextIndex = playerNames.count
+                playerNames.append(defaults[nextIndex])
+                // New seats default to bots so the human roster doesn't
+                // silently grow when the table expands.
+                botSeats.insert(nextIndex)
             }
         } else if count < playerNames.count {
             playerNames = Array(playerNames.prefix(count))
+            // Drop bot toggles for seats that no longer exist; otherwise
+            // they'd silently re-activate next time the user grew the
+            // table back to 4 seats.
+            botSeats = botSeats.filter { $0 < count }
         }
+    }
+
+    private func quickPlayVsBots() {
+        playerNames = ["You", "East", "South"]
+        botSeats = [1, 2]
+        startLocalTable()
     }
 
     private func startLocalTable() {
@@ -271,7 +338,7 @@ public struct LobbyView: View {
             // Local hot-seat default: viewer follows the active actor so the
             // person holding the device sees their own hand on each turn
             // without diving into the debug picker.
-            localModel = try GameViewModel(
+            let model = try GameViewModel(
                 players: configuration.players,
                 rules: configuration.rules,
                 match: configuration.match,
@@ -279,6 +346,16 @@ public struct LobbyView: View {
                 viewerFollowsActor: true,
                 dealSource: configuration.dealSource
             )
+            let strategy = HeuristicStrategy()
+            for (index, seat) in configuration.players.enumerated() where botSeats.contains(index) {
+                model.botStrategies[seat] = strategy
+            }
+            // Pin the viewer to the first human seat so the user sees
+            // their own hand instead of jumping seats while bots play.
+            if let humanIndex = (0..<configuration.players.count).first(where: { !botSeats.contains($0) }) {
+                model.selectedViewer = configuration.players[humanIndex]
+            }
+            localModel = model
             errorText = nil
         } catch {
             errorText = error.localizedDescription

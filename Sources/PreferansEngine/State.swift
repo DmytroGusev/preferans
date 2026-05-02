@@ -27,6 +27,22 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
         case .gameOver: return "gameOver"
         }
     }
+
+    /// Seat the engine is waiting on, or `nil` between deals / after the
+    /// match has closed. Single source of truth for "whose turn is it" —
+    /// view models, projections, and bot dispatchers all read from here.
+    public var currentActor: PlayerID? {
+        switch self {
+        case let .bidding(s):              return s.currentPlayer
+        case let .awaitingDiscard(s):      return s.declarer
+        case let .awaitingContract(s):     return s.declarer
+        case let .awaitingWhist(s):        return s.currentPlayer
+        case let .awaitingDefenderMode(s): return s.whister
+        case let .playing(s):              return s.currentPlayer
+        case .waitingForDeal, .dealFinished, .gameOver:
+            return nil
+        }
+    }
 }
 
 public struct BiddingState: Equatable, Codable, Sendable {
@@ -278,7 +294,7 @@ public struct PlayingState: Equatable, Codable, Sendable {
     public let activePlayers: [PlayerID]
     public var hands: [PlayerID: [Card]]
     public let talon: [Card]
-    public let discard: [Card]
+    public var discard: [Card]
     public var leader: PlayerID
     public var currentPlayer: PlayerID
     public var currentTrick: [CardPlay]

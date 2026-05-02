@@ -843,12 +843,22 @@ public struct PreferansEngine: Sendable {
     }
 
     private func trickWinner(for trick: [CardPlay], leadSuit: Suit, trump: Suit?) -> PlayerID {
-        trick.max { lhs, rhs in
-            compare(lhs.card, rhs.card, leadSuit: leadSuit, trump: trump) == .orderedAscending
-        }!.player
+        Self.trickWinner(for: trick, leadSuit: leadSuit, trump: trump).player
     }
 
-    private func compare(_ left: Card, _ right: Card, leadSuit: Suit, trump: Suit?) -> ComparisonResult {
+    /// Picks the winning play of a (possibly partial) trick using standard
+    /// preferans precedence (trump > lead-suit > off-suit). Crashes if the
+    /// trick is empty — callers must check before invoking.
+    static func trickWinner(for trick: [CardPlay], leadSuit: Suit, trump: Suit?) -> CardPlay {
+        trick.max { lhs, rhs in
+            compare(lhs.card, rhs.card, leadSuit: leadSuit, trump: trump) == .orderedAscending
+        }!
+    }
+
+    /// Trick-context ordering: same-suit cards compare by rank; trump beats
+    /// non-trump; lead suit beats off-suit-non-trump; everything else is
+    /// `.orderedSame` (cards that can't beat each other in this trick).
+    static func compare(_ left: Card, _ right: Card, leadSuit: Suit, trump: Suit?) -> ComparisonResult {
         if left.suit == right.suit {
             if left.rank == right.rank { return .orderedSame }
             return left.rank < right.rank ? .orderedAscending : .orderedDescending

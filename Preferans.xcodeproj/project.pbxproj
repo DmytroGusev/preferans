@@ -50,6 +50,11 @@
 		C0000000000000000000A053 /* EngineMatchDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A043 /* EngineMatchDriver.swift */; };
 		C0000000000000000000A054 /* MatchScriptFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A044 /* MatchScriptFixtures.swift */; };
 		C0000000000000000000A055 /* UIIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A045 /* UIIdentifiers.swift */; };
+		C0000000000000000000A056 /* PlayerStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A046 /* PlayerStrategy.swift */; };
+		C0000000000000000000A057 /* HandEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A047 /* HandEvaluator.swift */; };
+		C0000000000000000000A058 /* DealSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A048 /* DealSampler.swift */; };
+		C0000000000000000000A059 /* CardPlayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A049 /* CardPlayPlanner.swift */; };
+		C0000000000000000000A05A /* HeuristicStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04A /* HeuristicStrategy.swift */; };
 		B0000000000000000000001A /* TestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000004A /* TestHarness.swift */; };
 		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -148,6 +153,11 @@
 		C0000000000000000000A043 /* EngineMatchDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineMatchDriver.swift; sourceTree = "<group>"; };
 		C0000000000000000000A044 /* MatchScriptFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchScriptFixtures.swift; sourceTree = "<group>"; };
 		C0000000000000000000A045 /* UIIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIIdentifiers.swift; sourceTree = "<group>"; };
+		C0000000000000000000A046 /* PlayerStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/PlayerStrategy.swift; sourceTree = "<group>"; };
+		C0000000000000000000A047 /* HandEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/HandEvaluator.swift; sourceTree = "<group>"; };
+		C0000000000000000000A048 /* DealSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/DealSampler.swift; sourceTree = "<group>"; };
+		C0000000000000000000A049 /* CardPlayPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/CardPlayPlanner.swift; sourceTree = "<group>"; };
+		C0000000000000000000A04A /* HeuristicStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/HeuristicStrategy.swift; sourceTree = "<group>"; };
 		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/TestHarness.swift"; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
@@ -261,6 +271,11 @@
 				C0000000000000000000A043 /* EngineMatchDriver.swift */,
 				C0000000000000000000A044 /* MatchScriptFixtures.swift */,
 				C0000000000000000000A045 /* UIIdentifiers.swift */,
+				C0000000000000000000A046 /* PlayerStrategy.swift */,
+				C0000000000000000000A047 /* HandEvaluator.swift */,
+				C0000000000000000000A048 /* DealSampler.swift */,
+				C0000000000000000000A049 /* CardPlayPlanner.swift */,
+				C0000000000000000000A04A /* HeuristicStrategy.swift */,
 			);
 			path = Sources/PreferansEngine;
 			sourceTree = "<group>";
@@ -439,6 +454,11 @@
 				C0000000000000000000A053 /* EngineMatchDriver.swift in Sources */,
 				C0000000000000000000A054 /* MatchScriptFixtures.swift in Sources */,
 				C0000000000000000000A055 /* UIIdentifiers.swift in Sources */,
+				C0000000000000000000A056 /* PlayerStrategy.swift in Sources */,
+				C0000000000000000000A057 /* HandEvaluator.swift in Sources */,
+				C0000000000000000000A058 /* DealSampler.swift in Sources */,
+				C0000000000000000000A059 /* CardPlayPlanner.swift in Sources */,
+				C0000000000000000000A05A /* HeuristicStrategy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -11,6 +11,15 @@ public final class GameViewModel: ObservableObject {
     public var dealSource: DealSource
     public let tableID: UUID = UUID()
 
+    /// Seats that play autonomously. Human seats are absent from the map.
+    public var botStrategies: [PlayerID: PlayerStrategy] = [:]
+
+    /// Pacing between bot moves so consecutive plays don't all fire in the
+    /// same frame — gives the UI room to animate.
+    public var botMoveDelay: Duration = .milliseconds(500)
+
+    private var pendingBotTask: Task<Void, Never>?
+
     public init(
         players: [PlayerID],
         rules: PreferansRules = .sochi,
@@ -34,21 +43,14 @@ public final class GameViewModel: ObservableObject {
             if viewerFollowsActor, let actor = currentActor(), actor != selectedViewer {
                 selectedViewer = actor
             }
+            scheduleBotIfNeeded()
         } catch {
             lastError = error.localizedDescription
         }
     }
 
     private func currentActor() -> PlayerID? {
-        switch engine.state {
-        case let .bidding(state): return state.currentPlayer
-        case let .awaitingDiscard(state): return state.declarer
-        case let .awaitingContract(state): return state.declarer
-        case let .awaitingWhist(state): return state.currentPlayer
-        case let .awaitingDefenderMode(state): return state.whister
-        case let .playing(state): return state.currentPlayer
-        case .waitingForDeal, .dealFinished, .gameOver: return nil
-        }
+        engine.state.currentActor
     }
 
     public func startDeal() {
@@ -72,6 +74,35 @@ public final class GameViewModel: ObservableObject {
             return .startDeal(dealer: engine.nextDealer, deck: dealSource.nextDeck())
         default:
             return action
+        }
+    }
+
+    /// Kicks off the active bot seat's decision off the main actor and
+    /// applies the resulting action when ready. A new state change
+    /// supersedes any in-flight decision.
+    private func scheduleBotIfNeeded() {
+        pendingBotTask?.cancel()
+        guard let actor = currentActor(), let strategy = botStrategies[actor] else {
+            pendingBotTask = nil
+            return
+        }
+        let snap = engine.snapshot
+        let delay = botMoveDelay
+        pendingBotTask = Task { [weak self] in
+            if delay > .zero {
+                try? await Task.sleep(for: delay)
+            }
+            if Task.isCancelled { return }
+            guard let action = await strategy.decide(snapshot: snap, viewer: actor),
+                  !Task.isCancelled else { return }
+            await MainActor.run {
+                // The snapshot equality re-check catches the case where a
+                // user input or another bot turn slipped in while we were
+                // computing. Without it, a stale action could be applied
+                // against a state where it's no longer legal.
+                guard let self, self.engine.snapshot.state == snap.state else { return }
+                self.send(action)
+            }
         }
     }
 }
