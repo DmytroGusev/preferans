@@ -9,6 +9,10 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
     case awaitingDefenderMode(DefenderModeState)
     case playing(PlayingState)
     case dealFinished(DealResult)
+    /// Terminal state. Reached when applying a deal's score pushes the pool
+    /// total to or past ``MatchSettings/poolTarget``. ``startDeal`` from this
+    /// state throws — the match is closed.
+    case gameOver(MatchSummary)
 
     public var description: String {
         switch self {
@@ -20,6 +24,7 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
         case .awaitingDefenderMode: return "awaitingDefenderMode"
         case .playing: return "playing"
         case .dealFinished: return "dealFinished"
+        case .gameOver: return "gameOver"
         }
     }
 }
@@ -137,6 +142,10 @@ public struct WhistState: Equatable, Codable, Sendable {
     public var currentPlayer: PlayerID
     public var calls: [WhistCallRecord]
     public var flow: HalfWhistFlow
+    /// Bonus pool credited to the declarer if (and only if) the contract
+    /// makes. Non-zero only when the auction-winning bid was ``ContractBid/totus``
+    /// in a ``TotusPolicy/dedicatedContract`` match.
+    public let bonusPoolOnSuccess: Int
 
     public init(
         dealer: PlayerID,
@@ -149,7 +158,8 @@ public struct WhistState: Equatable, Codable, Sendable {
         defenders: [PlayerID],
         currentPlayer: PlayerID,
         calls: [WhistCallRecord] = [],
-        flow: HalfWhistFlow = .normal
+        flow: HalfWhistFlow = .normal,
+        bonusPoolOnSuccess: Int = 0
     ) {
         self.dealer = dealer
         self.activePlayers = activePlayers
@@ -162,6 +172,7 @@ public struct WhistState: Equatable, Codable, Sendable {
         self.currentPlayer = currentPlayer
         self.calls = calls
         self.flow = flow
+        self.bonusPoolOnSuccess = bonusPoolOnSuccess
     }
 }
 
@@ -176,6 +187,7 @@ public struct DefenderModeState: Equatable, Codable, Sendable {
     public let defenders: [PlayerID]
     public let whister: PlayerID
     public let whistCalls: [WhistCallRecord]
+    public let bonusPoolOnSuccess: Int
 
     public init(
         dealer: PlayerID,
@@ -187,7 +199,8 @@ public struct DefenderModeState: Equatable, Codable, Sendable {
         contract: GameContract,
         defenders: [PlayerID],
         whister: PlayerID,
-        whistCalls: [WhistCallRecord]
+        whistCalls: [WhistCallRecord],
+        bonusPoolOnSuccess: Int = 0
     ) {
         self.dealer = dealer
         self.activePlayers = activePlayers
@@ -199,6 +212,7 @@ public struct DefenderModeState: Equatable, Codable, Sendable {
         self.defenders = defenders
         self.whister = whister
         self.whistCalls = whistCalls
+        self.bonusPoolOnSuccess = bonusPoolOnSuccess
     }
 }
 
@@ -209,6 +223,7 @@ public struct GamePlayContext: Equatable, Codable, Sendable {
     public let whisters: [PlayerID]
     public let defenderPlayMode: DefenderPlayMode
     public let whistCalls: [WhistCallRecord]
+    public let bonusPoolOnSuccess: Int
 
     public init(
         declarer: PlayerID,
@@ -216,7 +231,8 @@ public struct GamePlayContext: Equatable, Codable, Sendable {
         defenders: [PlayerID],
         whisters: [PlayerID],
         defenderPlayMode: DefenderPlayMode,
-        whistCalls: [WhistCallRecord]
+        whistCalls: [WhistCallRecord],
+        bonusPoolOnSuccess: Int = 0
     ) {
         self.declarer = declarer
         self.contract = contract
@@ -224,6 +240,7 @@ public struct GamePlayContext: Equatable, Codable, Sendable {
         self.whisters = whisters
         self.defenderPlayMode = defenderPlayMode
         self.whistCalls = whistCalls
+        self.bonusPoolOnSuccess = bonusPoolOnSuccess
     }
 }
 
@@ -343,6 +360,7 @@ public enum PreferansEvent: Equatable, Codable, Sendable {
     case cardPlayed(CardPlay)
     case trickCompleted(Trick)
     case dealScored(DealResult)
+    case matchEnded(MatchSummary)
 }
 
 public enum PreferansAction: Equatable, Codable, Sendable {
@@ -358,21 +376,27 @@ public enum PreferansAction: Equatable, Codable, Sendable {
 public struct PreferansSnapshot: Equatable, Codable, Sendable {
     public var players: [PlayerID]
     public var rules: PreferansRules
+    public var match: MatchSettings
     public var state: DealState
     public var score: ScoreSheet
     public var nextDealer: PlayerID
+    public var dealsPlayed: Int
 
     public init(
         players: [PlayerID],
         rules: PreferansRules,
+        match: MatchSettings = .unbounded,
         state: DealState,
         score: ScoreSheet,
-        nextDealer: PlayerID
+        nextDealer: PlayerID,
+        dealsPlayed: Int = 0
     ) {
         self.players = players
         self.rules = rules
+        self.match = match
         self.state = state
         self.score = score
         self.nextDealer = nextDealer
+        self.dealsPlayed = dealsPlayed
     }
 }

@@ -75,6 +75,7 @@ public enum ProjectedPhase: Codable, Sendable, Equatable {
     case awaitingDefenderMode(whister: PlayerID, contract: GameContract)
     case playing(currentPlayer: PlayerID, leader: PlayerID, kind: ProjectedPlayKind)
     case dealFinished(result: DealResult)
+    case gameOver(summary: MatchSummary)
 
     public var title: String {
         switch self {
@@ -86,6 +87,7 @@ public enum ProjectedPhase: Codable, Sendable, Equatable {
         case .awaitingDefenderMode: return "Defender mode"
         case .playing: return "Playing"
         case .dealFinished: return "Deal finished"
+        case .gameOver: return "Game over"
         }
     }
 }
@@ -306,6 +308,16 @@ public enum PlayerProjectionBuilder {
             phase = .dealFinished(result: result)
             legal.canStartDeal = true
             message = "Deal scored. Start the next deal when ready."
+            markActiveRoles(activePlayers, into: &roleMap)
+
+        case let .gameOver(summary):
+            activePlayers = summary.lastDeal.activePlayers
+            completedTrickCount = summary.lastDeal.completedTricks.count
+            trickCounts = summary.lastDeal.trickCounts
+            phase = .gameOver(summary: summary)
+            legal.canStartDeal = false
+            let winner = summary.standings.first?.player.rawValue ?? "—"
+            message = "Game over. Winner: \(winner)."
             markActiveRoles(activePlayers, into: &roleMap)
         }
 

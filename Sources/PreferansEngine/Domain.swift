@@ -162,7 +162,7 @@ public struct GameContract: Hashable, Codable, Sendable, Comparable, CustomStrin
     }.sorted()
 }
 
-private extension Strain {
+public extension Strain {
     static let allStandard: [Strain] = [
         .suit(.spades),
         .suit(.clubs),
@@ -175,11 +175,16 @@ private extension Strain {
 public enum ContractBid: Hashable, Codable, Sendable, Comparable, CustomStringConvertible {
     case game(GameContract)
     case misere
+    /// Dedicated 10-trick bid sitting above misère. Only legal when the
+    /// match's ``TotusPolicy`` is ``.dedicatedContract``; the actual
+    /// trump strain is chosen by the declarer after the discard.
+    case totus
 
     public var order: Int {
         switch self {
         case let .game(contract): return contract.bidOrder
         case .misere: return 15
+        case .totus: return 16
         }
     }
 
@@ -187,6 +192,7 @@ public enum ContractBid: Hashable, Codable, Sendable, Comparable, CustomStringCo
         switch self {
         case let .game(contract): return contract.value
         case .misere: return 10
+        case .totus: return 10
         }
     }
 
@@ -198,11 +204,12 @@ public enum ContractBid: Hashable, Codable, Sendable, Comparable, CustomStringCo
         switch self {
         case let .game(contract): return contract.description
         case .misere: return "Misere"
+        case .totus: return "Totus"
         }
     }
 
     public static let allStandard: [ContractBid] = (
-        GameContract.allStandard.map(ContractBid.game) + [.misere]
+        GameContract.allStandard.map(ContractBid.game) + [.misere, .totus]
     ).sorted()
 }
 

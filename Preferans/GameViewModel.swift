@@ -46,7 +46,7 @@ public final class GameViewModel: ObservableObject {
         case let .awaitingWhist(state): return state.currentPlayer
         case let .awaitingDefenderMode(state): return state.whister
         case let .playing(state): return state.currentPlayer
-        case .waitingForDeal, .dealFinished: return nil
+        case .waitingForDeal, .dealFinished, .gameOver: return nil
         }
     }
 

@@ -3,13 +3,16 @@ import Foundation
 public struct PreferansEngine: Sendable {
     public let players: [PlayerID]
     public let rules: PreferansRules
+    public let match: MatchSettings
     public private(set) var state: DealState
     public private(set) var score: ScoreSheet
     public private(set) var nextDealer: PlayerID
+    public private(set) var dealsPlayed: Int
 
     public init(
         players: [PlayerID],
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         firstDealer: PlayerID? = nil
     ) throws {
         try Self.validate(players: players)
@@ -19,9 +22,11 @@ public struct PreferansEngine: Sendable {
         }
         self.players = players
         self.rules = rules
+        self.match = match
         self.state = .waitingForDeal
         self.score = ScoreSheet(players: players)
         self.nextDealer = dealer
+        self.dealsPlayed = 0
     }
 
     public init(snapshot: PreferansSnapshot) throws {
@@ -31,18 +36,22 @@ public struct PreferansEngine: Sendable {
         }
         self.players = snapshot.players
         self.rules = snapshot.rules
+        self.match = snapshot.match
         self.state = snapshot.state
         self.score = snapshot.score
         self.nextDealer = snapshot.nextDealer
+        self.dealsPlayed = snapshot.dealsPlayed
     }
 
     public var snapshot: PreferansSnapshot {
         PreferansSnapshot(
             players: players,
             rules: rules,
+            match: match,
             state: state,
             score: score,
-            nextDealer: nextDealer
+            nextDealer: nextDealer,
+            dealsPlayed: dealsPlayed
         )
     }
 
@@ -96,6 +105,33 @@ public struct PreferansEngine: Sendable {
         return (playing.hands[player] ?? []).filter { isLegal(card: $0, by: player, in: playing) }
     }
 
+    /// Contracts the declarer may legally declare in ``DealState/awaitingContract``.
+    /// For a totus auction the list is constrained to 10-trick contracts only;
+    /// for a normal game auction the list is the standard ladder above the
+    /// auction-winning bid.
+    public func legalContractDeclarations(for player: PlayerID) -> [GameContract] {
+        guard case let .awaitingContract(declaration) = state,
+              declaration.declarer == player else {
+            return []
+        }
+        switch declaration.finalBid {
+        case .totus:
+            return Strain.allStandard.map { GameContract(10, $0) }
+        case let .game(finalGameBid):
+            return GameContract.allStandard.filter { $0 >= finalGameBid }
+        case .misere:
+            return []
+        }
+    }
+
+    /// Whist requirement on a contract, with totus-specific overrides applied.
+    private func effectiveWhistRequirement(for contract: GameContract) -> Int {
+        if contract.tricks == 10 && match.totus.requireWhistOnTenTricks {
+            return 1
+        }
+        return rules.whistRequirement(for: contract)
+    }
+
     private static func validate(players: [PlayerID]) throws {
         guard players.count == 3 || players.count == 4 else {
             throw PreferansError.invalidPlayers("PreferansEngine requires exactly 3 or 4 players.")
@@ -109,6 +145,8 @@ public struct PreferansEngine: Sendable {
         switch state {
         case .waitingForDeal, .dealFinished:
             break
+        case .gameOver:
+            throw PreferansError.invalidState(expected: "waitingForDeal or dealFinished", actual: "gameOver (match closed)")
         default:
             throw PreferansError.invalidState(expected: "waitingForDeal or dealFinished", actual: state.description)
         }
@@ -246,7 +284,10 @@ public struct PreferansEngine: Sendable {
             )
             state = .playing(playing)
             return [exchangeEvent, .playStarted(playing.kind)]
-        case .game:
+        case .game, .totus:
+            // Totus uses the same contract-declaration step but the legal
+            // contract list is constrained to 10-trick options; see
+            // ``legalContractDeclarations(for:)``.
             state = .awaitingContract(
                 ContractDeclarationState(
                     dealer: exchange.dealer,
@@ -268,11 +309,20 @@ public struct PreferansEngine: Sendable {
             throw PreferansError.invalidState(expected: "awaitingContract", actual: state.description)
         }
         try validateCurrent(player, expected: declaration.declarer)
-        guard case let .game(finalGameBid) = declaration.finalBid else {
+        let bonusPool: Int
+        switch declaration.finalBid {
+        case let .game(finalGameBid):
+            guard contract >= finalGameBid else {
+                throw PreferansError.invalidContract("Declared contract cannot be below the auction bid.")
+            }
+            bonusPool = 0
+        case .totus:
+            guard contract.tricks == 10 else {
+                throw PreferansError.invalidContract("Totus declaration must be a 10-trick contract.")
+            }
+            bonusPool = match.totus.bonusPool
+        case .misere:
             throw PreferansError.invalidContract("Misere does not enter contract declaration.")
-        }
-        guard contract >= finalGameBid else {
-            throw PreferansError.invalidContract("Declared contract cannot be below the auction bid.")
         }
 
         let defenders = defenders(after: player, activePlayers: declaration.activePlayers)
@@ -285,7 +335,8 @@ public struct PreferansEngine: Sendable {
             declarer: player,
             contract: contract,
             defenders: defenders,
-            currentPlayer: defenders[0]
+            currentPlayer: defenders[0],
+            bonusPoolOnSuccess: bonusPool
         )
         state = .awaitingWhist(whist)
         return [.contractDeclared(declarer: player, contract: contract)]
@@ -319,7 +370,7 @@ public struct PreferansEngine: Sendable {
             if firstCall == .pass {
                 switch call {
                 case .pass:
-                    events.append(scorePassedOut(whist))
+                    events.append(contentsOf: scorePassedOut(whist))
                     return events
                 case .whist:
                     state = .awaitingDefenderMode(makeDefenderModeState(whist: whist, whister: second))
@@ -347,7 +398,7 @@ public struct PreferansEngine: Sendable {
         case let .firstDefenderSecondChance(halfWhister):
             switch call {
             case .pass:
-                events.append(scoreHalfWhist(whist, halfWhister: halfWhister))
+                events.append(contentsOf: scoreHalfWhist(whist, halfWhister: halfWhister))
                 return events
             case .whist:
                 let playing = startGamePlay(from: whist, whisters: [first, halfWhister], mode: .closed)
@@ -378,7 +429,8 @@ public struct PreferansEngine: Sendable {
                     defenders: defenderMode.defenders,
                     whisters: [defenderMode.whister],
                     defenderPlayMode: mode,
-                    whistCalls: defenderMode.whistCalls
+                    whistCalls: defenderMode.whistCalls,
+                    bonusPoolOnSuccess: defenderMode.bonusPoolOnSuccess
                 )
             )
         )
@@ -426,9 +478,7 @@ public struct PreferansEngine: Sendable {
 
         if playing.isComplete {
             let result = scoreCompletedPlay(playing)
-            score.apply(result.scoreDelta)
-            state = .dealFinished(result)
-            events.append(.dealScored(result))
+            events.append(contentsOf: finalize(result))
             return events
         }
 
@@ -445,6 +495,21 @@ public struct PreferansEngine: Sendable {
     private func isLegalBid(_ bid: ContractBid, by player: PlayerID, in bidding: BiddingState) -> Bool {
         guard bidding.currentPlayer == player, !bidding.passed.contains(player) else {
             return false
+        }
+
+        // Totus is only a real bid when the match opts into the dedicated
+        // contract; otherwise the 10-trick contracts in the standard ladder
+        // cover the same trick count without the bonus.
+        switch bid {
+        case .totus where !match.totus.isDedicated:
+            return false
+        case let .game(contract) where contract.tricks == 10 && match.totus.isDedicated:
+            // In dedicated-totus matches the 10-trick bid moves to .totus, so
+            // the standard 10-trick game contracts are removed from the ladder
+            // to avoid two parallel paths to the same outcome.
+            return false
+        default:
+            break
         }
 
         if bid == .misere {
@@ -627,7 +692,8 @@ public struct PreferansEngine: Sendable {
             contract: whist.contract,
             defenders: whist.defenders,
             whister: whister,
-            whistCalls: whist.calls
+            whistCalls: whist.calls,
+            bonusPoolOnSuccess: whist.bonusPoolOnSuccess
         )
     }
 
@@ -650,7 +716,8 @@ public struct PreferansEngine: Sendable {
                     defenders: whist.defenders,
                     whisters: whisters,
                     defenderPlayMode: mode,
-                    whistCalls: whist.calls
+                    whistCalls: whist.calls,
+                    bonusPoolOnSuccess: whist.bonusPoolOnSuccess
                 )
             )
         )
@@ -658,9 +725,9 @@ public struct PreferansEngine: Sendable {
         return playing
     }
 
-    private mutating func scorePassedOut(_ whist: WhistState) -> PreferansEvent {
+    private mutating func scorePassedOut(_ whist: WhistState) -> [PreferansEvent] {
         var delta = ScoreDelta(players: players)
-        delta.addPool(whist.contract.value, to: whist.declarer)
+        delta.addPool(whist.contract.value + whist.bonusPoolOnSuccess, to: whist.declarer)
         let result = DealResult(
             kind: .passedOut,
             activePlayers: whist.activePlayers,
@@ -668,16 +735,14 @@ public struct PreferansEngine: Sendable {
             completedTricks: [],
             scoreDelta: delta
         )
-        score.apply(delta)
-        state = .dealFinished(result)
-        return .dealScored(result)
+        return finalize(result)
     }
 
-    private mutating func scoreHalfWhist(_ whist: WhistState, halfWhister: PlayerID) -> PreferansEvent {
+    private mutating func scoreHalfWhist(_ whist: WhistState, halfWhister: PlayerID) -> [PreferansEvent] {
         var delta = ScoreDelta(players: players)
         delta.addPool(whist.contract.value, to: whist.declarer)
         delta.addWhists(
-            whist.contract.value * (rules.whistRequirement(for: whist.contract) / 2),
+            whist.contract.value * (effectiveWhistRequirement(for: whist.contract) / 2),
             writer: halfWhister,
             on: whist.declarer
         )
@@ -688,9 +753,55 @@ public struct PreferansEngine: Sendable {
             completedTricks: [],
             scoreDelta: delta
         )
-        score.apply(delta)
-        state = .dealFinished(result)
-        return .dealScored(result)
+        return finalize(result)
+    }
+
+    /// Applies the deal's score delta, increments the deal counter, and
+    /// transitions to ``DealState/gameOver`` when the pool sum has reached the
+    /// match's pool target. Otherwise transitions to ``DealState/dealFinished``.
+    /// Returns the events the caller should append (always `dealScored`,
+    /// optionally followed by `matchEnded`).
+    private mutating func finalize(_ result: DealResult) -> [PreferansEvent] {
+        score.apply(result.scoreDelta)
+        dealsPlayed += 1
+        var events: [PreferansEvent] = [.dealScored(result)]
+        let totalPool = score.pool.values.reduce(0, +)
+        if totalPool >= match.poolTarget {
+            let summary = makeMatchSummary(lastDeal: result)
+            state = .gameOver(summary)
+            events.append(.matchEnded(summary))
+        } else {
+            state = .dealFinished(result)
+        }
+        return events
+    }
+
+    private func makeMatchSummary(lastDeal: DealResult) -> MatchSummary {
+        let balances = score.normalizedBalances()
+        let standings = players
+            .map { player -> MatchSummary.Standing in
+                MatchSummary.Standing(
+                    player: player,
+                    balance: balances[player] ?? 0,
+                    pool: score.pool[player] ?? 0,
+                    mountain: score.mountain[player] ?? 0
+                )
+            }
+            .sorted { lhs, rhs in
+                if lhs.balance != rhs.balance { return lhs.balance > rhs.balance }
+                // Stable, deterministic tiebreak — seat order in `players`.
+                guard let lhsIndex = players.firstIndex(of: lhs.player),
+                      let rhsIndex = players.firstIndex(of: rhs.player) else {
+                    return false
+                }
+                return lhsIndex < rhsIndex
+            }
+        return MatchSummary(
+            finalScore: score,
+            dealsPlayed: dealsPlayed,
+            lastDeal: lastDeal,
+            standings: standings
+        )
     }
 
     private func requiredSuit(for playing: PlayingState) -> Suit? {
@@ -764,7 +875,7 @@ public struct PreferansEngine: Sendable {
         let value = context.contract.value
 
         if declarerTricks >= context.contract.tricks {
-            delta.addPool(value, to: context.declarer)
+            delta.addPool(value + context.bonusPoolOnSuccess, to: context.declarer)
         } else {
             let undertricks = context.contract.tricks - declarerTricks
             delta.addMountain(value * undertricks, to: context.declarer)
@@ -819,7 +930,7 @@ public struct PreferansEngine: Sendable {
         delta: inout ScoreDelta
     ) {
         guard !whisters.isEmpty else { return }
-        let requirement = rules.whistRequirement(for: contract)
+        let requirement = effectiveWhistRequirement(for: contract)
         guard requirement > 0 else { return }
 
         if whisters.count == 1, let whister = whisters.first {
