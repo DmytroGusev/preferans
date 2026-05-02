@@ -141,6 +141,7 @@ public enum UIIdentifiers {
     // MARK: - Action buttons
 
     public static let buttonStartDeal          = "button.startDeal"
+    public static let buttonStartNextDealInSheet = "button.startDeal.inSheet"
     public static let buttonDiscardSelected    = "button.discardSelected"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }
@@ -168,6 +169,9 @@ public enum UIIdentifiers {
     public static func scorePool(_ player: PlayerID) -> String     { "score.pool.\(player.rawValue)" }
     public static func scoreMountain(_ player: PlayerID) -> String { "score.mountain.\(player.rawValue)" }
     public static func scoreBalance(_ player: PlayerID) -> String  { "score.balance.\(player.rawValue)" }
+    public static func scoreWhists(writer: PlayerID, on target: PlayerID) -> String {
+        "score.whists.\(writer.rawValue).on.\(target.rawValue)"
+    }
 
     // MARK: - Per-seat indicators
 
