@@ -36,7 +36,8 @@ final class BotTests: XCTestCase {
         var engine = try PreferansEngine(players: players)
         for dealIndex in 0..<5 {
             _ = try engine.startDeal(deck: Deck.standard32.shuffled())
-            try await drive(engine: &engine, strategy: strategy)
+            let drive = try await BotTestDriver.drive(engine: &engine, strategy: strategy)
+            XCTAssertFalse(drive.stalled, "Bot strategy stalled on deal \(dealIndex) after \(drive.steps) steps.")
             switch engine.state {
             case .dealFinished, .gameOver:
                 break
@@ -59,30 +60,17 @@ final class BotTests: XCTestCase {
         // makeDeck assumes when laying out cards.
         var engine = try PreferansEngine(players: players, firstDealer: "S")
         _ = try engine.startDeal(deck: deck)
-        let stepCount = try await drive(engine: &engine, strategy: strategy)
+        let drive = try await BotTestDriver.drive(engine: &engine, strategy: strategy)
+        if drive.stalled {
+            XCTFail("Strategy stalled in \(engine.state.description) after \(drive.steps) steps.")
+        }
         var result: DealResult? = nil
         switch engine.state {
         case let .dealFinished(r): result = r
         case let .gameOver(s): result = s.lastDeal
         default: break
         }
-        return DealOutcome(result: result, stepCount: stepCount)
-    }
-
-    @discardableResult
-    private func drive(engine: inout PreferansEngine, strategy: PlayerStrategy) async throws -> Int {
-        var steps = 0
-        let limit = 500 // hard cap so a buggy strategy can't loop forever
-        while steps < limit {
-            guard let actor = engine.state.currentActor else { break }
-            guard let action = await strategy.decide(snapshot: engine.snapshot, viewer: actor) else {
-                XCTFail("Strategy returned no action for \(actor) in \(engine.state.description)")
-                break
-            }
-            _ = try engine.apply(action)
-            steps += 1
-        }
-        return steps
+        return DealOutcome(result: result, stepCount: drive.steps)
     }
 
     // MARK: - Deck stacking helpers
@@ -137,16 +125,10 @@ final class BotTests: XCTestCase {
     /// hands lets a test cover a specific scenario without scanning random
     /// shuffles.
     private func assemble(north: [Card], east: [Card], south: [Card], talon: [Card]) -> [Card] {
-        precondition(north.count == 10 && east.count == 10 && south.count == 10 && talon.count == 2)
-        var deck: [Card] = []
-        for packet in 0..<5 {
-            let lo = packet * 2
-            let hi = lo + 2
-            deck.append(contentsOf: north[lo..<hi])
-            deck.append(contentsOf: east[lo..<hi])
-            deck.append(contentsOf: south[lo..<hi])
-            if packet == 0 { deck.append(contentsOf: talon) }
-        }
-        return deck
+        DealDeckLayout.deck(
+            hands: ["N": north, "E": east, "S": south],
+            talon: talon,
+            activePlayers: players
+        )
     }
 }

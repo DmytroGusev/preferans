@@ -236,21 +236,6 @@ public enum HandRecipe: Hashable, Sendable {
     // MARK: - Deck assembly
 
     private func interleave(plan: DeckPlan, activePlayers: [PlayerID]) -> [Card] {
-        var deck: [Card] = []
-        for packet in 0..<5 {
-            for seat in activePlayers {
-                guard let hand = plan.hands[seat] else {
-                    preconditionFailure("Plan missing hand for seat \(seat).")
-                }
-                deck.append(hand[packet * 2])
-                deck.append(hand[packet * 2 + 1])
-            }
-            if packet == 0 {
-                deck.append(contentsOf: plan.talon)
-            }
-        }
-        precondition(Set(deck) == Set(Deck.standard32),
-                     "HandRecipe deck must be a permutation of the standard 32-card deck.")
-        return deck
+        DealDeckLayout.deck(hands: plan.hands, talon: plan.talon, activePlayers: activePlayers)
     }
 }

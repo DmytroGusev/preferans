@@ -227,7 +227,7 @@ final class ScenarioFlowTests: XCTestCase {
         model.startDeal()
         guard progressToPlayInSixSpades(model) != nil else { return }
 
-        XCTAssertTrue(playOutCurrentDeal(model, picker: highestLegal))
+        XCTAssertTrue(GameViewModelTestDriver.playOutCurrentDeal(model, policy: .highestLegal))
 
         guard let result = dealResult(model), case .game = result.kind else {
             return XCTFail("Expected dealFinished.game; got \(model.engine.state.description)")
@@ -235,33 +235,6 @@ final class ScenarioFlowTests: XCTestCase {
         XCTAssertEqual(result.trickCounts["north"], 10,
                        "north's hand is unbeatable: 6 top spades + ♣A,♣K,♥A,♦A wins every trick")
         XCTAssertGreaterThan(model.engine.score.pool["north"] ?? 0, 0)
-    }
-
-    /// Drives the engine through whatever `.playing` state it's currently in
-    /// by feeding cards from the supplied picker. Returns `true` on success,
-    /// `false` if the picker declined or the engine rejected a play. Caller
-    /// asserts on the resulting `dealFinished` result.
-    @discardableResult
-    private func playOutCurrentDeal(_ model: GameViewModel, picker: (PreferansEngine, PlayerID) -> Card?) -> Bool {
-        var safetyValve = 64
-        while case .playing = model.engine.state, safetyValve > 0 {
-            safetyValve -= 1
-            guard let playing = playingState(model),
-                  let card = picker(model.engine, playing.currentPlayer) else {
-                return false
-            }
-            model.send(.playCard(player: playing.currentPlayer, card: card))
-            if model.lastError != nil { return false }
-        }
-        return true
-    }
-
-    private func lowestLegal(_ engine: PreferansEngine, _ player: PlayerID) -> Card? {
-        engine.legalCards(for: player).min()
-    }
-
-    private func highestLegal(_ engine: PreferansEngine, _ player: PlayerID) -> Card? {
-        engine.legalCards(for: player).max()
     }
 
     // MARK: - Misère play-out
@@ -288,7 +261,7 @@ final class ScenarioFlowTests: XCTestCase {
         // Drive every turn with the lowest legal card. North as declarer plays
         // its lowest in an attempt at a clean misère; the defenders likewise
         // play their lowest, which is the simplest deterministic strategy.
-        XCTAssertTrue(playOutCurrentDeal(model, picker: lowestLegal))
+        XCTAssertTrue(GameViewModelTestDriver.playOutCurrentDeal(model, policy: .lowestLegal))
         XCTAssertNil(model.lastError)
 
         guard let result = dealResult(model), case .misere = result.kind else {
@@ -337,7 +310,7 @@ final class ScenarioFlowTests: XCTestCase {
                 model.send(.bid(player: active, call: .pass))
             }
             // Play out the all-pass deal so the engine returns to dealFinished.
-            XCTAssertTrue(playOutCurrentDeal(model, picker: lowestLegal),
+            XCTAssertTrue(GameViewModelTestDriver.playOutCurrentDeal(model, policy: .lowestLegal),
                           "all-pass play-out should advance to dealFinished")
             XCTAssertNotNil(dealResult(model),
                             "engine must reach dealFinished before next deal can start")

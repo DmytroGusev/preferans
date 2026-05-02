@@ -226,27 +226,7 @@ public enum DealScenario: String {
     /// takes 2 cards after the first packet. Crashes loudly if the inputs
     /// aren't a valid 32-card permutation.
     private static func deck(north: [Card], east: [Card], south: [Card], talon: [Card]) -> [Card] {
-        precondition(north.count == 10 && east.count == 10 && south.count == 10 && talon.count == 2,
-                     "scenario must allocate 10/10/10/2 cards")
-        let seats = [north, east, south]
-        var seatCursors = [0, 0, 0]
-        var talonCursor = 0
-        var deck: [Card] = []
-        for packet in 0..<5 {
-            for seat in seats.indices {
-                deck.append(seats[seat][seatCursors[seat]])
-                deck.append(seats[seat][seatCursors[seat] + 1])
-                seatCursors[seat] += 2
-            }
-            if packet == 0 {
-                deck.append(talon[talonCursor])
-                deck.append(talon[talonCursor + 1])
-                talonCursor += 2
-            }
-        }
-        precondition(Set(deck) == Set(Deck.standard32),
-                     "scenario deck must be a permutation of the standard 32-card deck")
-        return deck
+        DealDeckLayout.deck(north: north, east: east, south: south, talon: talon)
     }
 
     private static let northSpadesSixDeck: [Card] = deck(

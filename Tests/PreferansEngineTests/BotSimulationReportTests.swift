@@ -75,8 +75,9 @@ final class BotSimulationReportTests: XCTestCase {
             default:
                 break
             }
-            let stalled = try await drive(engine: &engine, strategy: strategy, report: &report)
-            if stalled {
+            let drive = try await BotTestDriver.drive(engine: &engine, strategy: strategy, stepLimit: 800)
+            report.illegalActionAttempts += drive.illegalActionAttempts
+            if drive.stalled {
                 report.stalledDeals += 1
                 return
             }
@@ -89,30 +90,6 @@ final class BotSimulationReportTests: XCTestCase {
         }
     }
 
-    /// Drives until the engine no longer has a current actor (deal finished,
-    /// game over, or genuinely stuck). Returns `true` on stuck.
-    private func drive(
-        engine: inout PreferansEngine,
-        strategy: PlayerStrategy,
-        report: inout SimReport
-    ) async throws -> Bool {
-        let stepLimit = 800
-        var steps = 0
-        while steps < stepLimit {
-            guard let actor = engine.state.currentActor else { return false }
-            guard let action = await strategy.decide(snapshot: engine.snapshot, viewer: actor) else {
-                return true
-            }
-            do {
-                _ = try engine.apply(action)
-            } catch {
-                report.illegalActionAttempts += 1
-                return true
-            }
-            steps += 1
-        }
-        return true
-    }
 }
 
 private struct SimReport {

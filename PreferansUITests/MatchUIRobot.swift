@@ -96,6 +96,48 @@ final class MatchUIRobot {
         tapButton(id: UIIdentifiers.buttonStartDeal, descriptor: "Start Deal")
     }
 
+    @discardableResult
+    func tapIfPresent(_ identifier: String) -> Bool {
+        let button = app.buttons[identifier]
+        guard button.exists, button.isHittable else { return false }
+        button.tap()
+        return true
+    }
+
+    @discardableResult
+    func discardFirstTwoVisibleCards() -> Bool {
+        let predicate = NSPredicate(format: "identifier BEGINSWITH 'card.discardSelect.'")
+        let cards = app.buttons.matching(predicate)
+        guard cards.count >= 2 else { return false }
+        cards.element(boundBy: 0).tap()
+        cards.element(boundBy: 1).tap()
+        return tapIfPresent(UIIdentifiers.buttonDiscardSelected)
+    }
+
+    /// Tries visible hand cards in order and returns after the first accepted
+    /// play. Success is detected by the tapped identifier leaving the hand row.
+    @discardableResult
+    func playFirstAcceptedHandCard(for seat: PlayerID, acceptanceTimeout: TimeInterval = 0.25) -> Bool {
+        let prefix = "card.hand.\(seat.rawValue)."
+        let predicate = NSPredicate(format: "identifier BEGINSWITH %@", prefix)
+        let cards = app.buttons.matching(predicate)
+        let count = cards.count
+        guard count > 0 else { return false }
+        for index in 0..<count {
+            let card = cards.element(boundBy: index)
+            guard card.exists, card.isHittable else { continue }
+            let id = card.identifier
+            card.tap()
+
+            let gone = NSPredicate(format: "exists == false")
+            let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
+            if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
+                return true
+            }
+        }
+        return false
+    }
+
     // MARK: - Reading state
 
     /// Current phase title (e.g. "Bidding", "Talon exchange", "Game over").
@@ -197,6 +239,19 @@ final class MatchUIRobot {
         let element = app.staticTexts[UIIdentifiers.errorBanner]
         guard element.exists else { return nil }
         return element.label
+    }
+
+    func labelIfExists(_ identifier: String) -> String {
+        let element = app.staticTexts[identifier]
+        return element.exists ? element.label : ""
+    }
+
+    func screenshotDeduplicationKey() -> String {
+        [
+            labelIfExists(UIIdentifiers.phaseTitle),
+            labelIfExists(UIIdentifiers.viewerLabel),
+            labelIfExists(UIIdentifiers.phaseMessage)
+        ].joined(separator: "|")
     }
 
     // MARK: - Synchronization
@@ -304,6 +359,52 @@ final class MatchUIRobot {
         if viewer.exists { context.append("viewer: \(viewer.label)") }
         if error.exists { context.append("error: \(error.label)") }
         return context.isEmpty ? "" : " [\(context.joined(separator: ", "))]"
+    }
+}
+
+@MainActor
+final class MatchScreenshotRecorder {
+    private let testCase: XCTestCase
+    private let app: XCUIApplication
+    private let outputDirectory: URL?
+    private let filePrefix: String
+    private var step = 0
+    private var lastKey = ""
+
+    init(
+        testCase: XCTestCase,
+        app: XCUIApplication,
+        outputDirectory: URL? = nil,
+        filePrefix: String = "screen"
+    ) {
+        self.testCase = testCase
+        self.app = app
+        self.outputDirectory = outputDirectory
+        self.filePrefix = filePrefix
+        if let outputDirectory {
+            try? FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        }
+    }
+
+    func capture(name: String, key: String? = nil, force: Bool = false, attach: Bool = true) {
+        if let key {
+            guard force || key != lastKey else { return }
+            lastKey = key
+        }
+
+        let screenshot = app.screenshot()
+        if let outputDirectory {
+            let url = outputDirectory.appendingPathComponent(String(format: "%@-%03d-%@.png", filePrefix, step, name))
+            try? screenshot.pngRepresentation.write(to: url)
+        }
+        step += 1
+
+        if attach {
+            let attachment = XCTAttachment(screenshot: screenshot)
+            attachment.name = name
+            attachment.lifetime = .keepAlways
+            testCase.add(attachment)
+        }
     }
 }
 

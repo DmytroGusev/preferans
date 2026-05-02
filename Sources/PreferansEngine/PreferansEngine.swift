@@ -637,25 +637,8 @@ public struct PreferansEngine: Sendable {
     }
 
     private func dealHands(deck: [Card], activePlayers: [PlayerID]) -> (hands: [PlayerID: [Card]], talon: [Card]) {
-        var deck = deck
-        var hands = activePlayers.dictionary(filledWith: [Card]())
-        var talon: [Card] = []
-
-        for packet in 0..<5 {
-            for player in activePlayers {
-                hands[player, default: []].append(deck.removeFirst())
-                hands[player, default: []].append(deck.removeFirst())
-            }
-            if packet == 0 {
-                talon.append(deck.removeFirst())
-                talon.append(deck.removeFirst())
-            }
-        }
-
-        for player in activePlayers {
-            hands[player]?.sort()
-        }
-        return (hands, talon)
+        let deal = DealDeckLayout.deal(deck: deck, activePlayers: activePlayers)
+        return (deal.hands, deal.talon)
     }
 
     private func makePlayingState(

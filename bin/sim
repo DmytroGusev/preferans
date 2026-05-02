@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Boot the app on the iOS simulator with a chosen TestHarness scenario.
+#
+# Why this exists: TestHarness exposes a rich set of launch flags
+# (-uiTestMatchScript, -uiTestDealScenario, -uiTestFirstDealer, ...) that drop
+# the lobby into a known mid-match state. Manually wiring them through Xcode's
+# scheme editor is slow and easy to forget; this script is the one-keystroke
+# path from "I want to eyeball game2 mid-bidding" to a running sim window.
+#
+# Usage:
+#   bin/sim                              # plain launch (lobby, real RNG)
+#   bin/sim game1                        # match script (game1/game2/game3)
+#   bin/sim --scenario northBidsSpadesSix --dealer south
+#   bin/sim --seed 42
+#   bin/sim game2 -- -uiTestPoolTarget 30   # everything after `--` -> launch flags
+#   bin/sim --no-rotate-viewer game1        # disable viewerFollowsActor
+#   bin/sim --skip-build game1              # reinstall without rebuilding
+#   bin/sim --animations game1              # keep UI animations on (default off)
+#
+# Override target sim with DEST_NAME=. Default = "iPhone 17".
+
+set -euo pipefail
+
+source "$(dirname "$0")/lib/xcode-sim.sh"
+preferans_cd_repo_root
+
+SCHEME="${SCHEME:-Preferans}"
+DEST_NAME="${DEST_NAME:-iPhone 17}"
+DERIVED="${DERIVED:-build/DerivedData}"
+BUNDLE_ID="${BUNDLE_ID:-com.mixandmatch.preferans}"
+
+MATCH_SCRIPT=""
+SCENARIO=""
+DEALER=""
+SEED=""
+EXTRA_ARGS=()
+ROTATE_VIEWER=1
+DISABLE_ANIMATIONS=1
+SKIP_BUILD=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --scenario)        SCENARIO="$2"; shift 2;;
+    --dealer)          DEALER="$2"; shift 2;;
+    --seed)            SEED="$2"; shift 2;;
+    --no-rotate-viewer)ROTATE_VIEWER=0; shift;;
+    --animations)      DISABLE_ANIMATIONS=0; shift;;
+    --skip-build)      SKIP_BUILD=1; shift;;
+    -h|--help)
+      preferans_help_from_header "$0"
+      exit 0;;
+    --) shift; EXTRA_ARGS=("$@"); break;;
+    -*)
+      echo "Unknown flag: $1" >&2
+      exit 64;;
+    *)
+      if [[ -z "$MATCH_SCRIPT" ]]; then
+        MATCH_SCRIPT="$1"; shift
+      else
+        echo "Unexpected positional arg: $1" >&2
+        exit 64
+      fi;;
+  esac
+done
+
+# Resolve the simulator UDID for DEST_NAME (first available match).
+SIM_UDID="$(preferans_sim_udid_for_name "$DEST_NAME")"
+if [[ -z "$SIM_UDID" ]]; then
+  echo "No available simulator named '$DEST_NAME'. Set DEST_NAME=." >&2
+  exit 1
+fi
+
+echo "[sim] target: $DEST_NAME ($SIM_UDID)"
+
+# Build for the simulator (incremental — Xcode reuses derived data on rerun).
+if [[ "$SKIP_BUILD" -eq 0 ]]; then
+  echo "[sim] building $SCHEME for simulator…"
+  preferans_build_app "$SCHEME" "$SIM_UDID" "$DERIVED"
+fi
+
+APP_PATH="$(preferans_built_app_path "$SCHEME" "$DERIVED")"
+if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
+  echo "Could not locate ${SCHEME}.app under $DERIVED (run without --skip-build)." >&2
+  exit 1
+fi
+
+# Boot the sim if it's not running and surface the Simulator window.
+# `simctl boot` is idempotent — if the sim is already booted it errors out
+# harmlessly, which is cheaper than a separate state probe.
+xcrun simctl boot "$SIM_UDID" 2>/dev/null || true
+open -a Simulator
+
+echo "[sim] installing $APP_PATH"
+xcrun simctl install "$SIM_UDID" "$APP_PATH"
+
+LAUNCH_ARGS=()
+[[ "$ROTATE_VIEWER" -eq 1 ]] && LAUNCH_ARGS+=("-uiTestViewerFollowsActor")
+[[ "$DISABLE_ANIMATIONS" -eq 1 ]] && LAUNCH_ARGS+=("-uiTestDisableAnimations")
+[[ -n "$MATCH_SCRIPT" ]] && LAUNCH_ARGS+=("-uiTestMatchScript" "$MATCH_SCRIPT")
+[[ -n "$SCENARIO" ]] && LAUNCH_ARGS+=("-uiTestDealScenario" "$SCENARIO")
+[[ -n "$DEALER" ]] && LAUNCH_ARGS+=("-uiTestFirstDealer" "$DEALER")
+[[ -n "$SEED" ]] && LAUNCH_ARGS+=("-uiTestDealSeed" "$SEED")
+if [[ ${#EXTRA_ARGS[@]} -gt 0 ]]; then
+  LAUNCH_ARGS+=("${EXTRA_ARGS[@]}")
+fi
+
+echo "[sim] launching $BUNDLE_ID ${LAUNCH_ARGS[*]:-}"
+xcrun simctl terminate "$SIM_UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID" "${LAUNCH_ARGS[@]}"

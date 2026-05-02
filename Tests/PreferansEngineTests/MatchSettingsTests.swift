@@ -32,17 +32,7 @@ final class MatchSettingsTests: XCTestCase {
             Card(.diamonds, .ten), Card(.diamonds, .eight)
         ]
         let talon: [Card] = [Card(.diamonds, .jack), Card(.diamonds, .nine)]
-        // Mirror PreferansEngine.dealHands packet order for activePlayers
-        // [north, east, south]: 5 packets of 2-per-seat, talon after packet 1.
-        var deck: [Card] = []
-        for packet in 0..<5 {
-            for hand in [north, east, south] {
-                deck.append(hand[packet * 2])
-                deck.append(hand[packet * 2 + 1])
-            }
-            if packet == 0 { deck.append(contentsOf: talon) }
-        }
-        return deck
+        return DealDeckLayout.deck(north: north, east: east, south: south, talon: talon)
     }()
 
     private func makeEngine(

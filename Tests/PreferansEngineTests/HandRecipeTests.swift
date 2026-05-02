@@ -9,26 +9,6 @@ import XCTest
 final class HandRecipeTests: XCTestCase {
     private let activePlayers: [PlayerID] = ["north", "east", "south"]
 
-    /// Mirrors ``PreferansEngine``'s `activePlayers(forDealer:)` so a recipe
-    /// caller can construct the deck against the *same* rotation the engine
-    /// will use when it deals. Without this, the recipe interleaves cards in
-    /// a different seat order than the engine assigns them and every hand
-    /// lands in the wrong seat.
-    private func activeRotation(players: [PlayerID], firstDealer: PlayerID) -> [PlayerID] {
-        let dealerIndex = players.firstIndex(of: firstDealer)!
-        let count = players.count
-        var rotation: [PlayerID] = []
-        var offset = 1
-        while rotation.count < 3 {
-            let candidate = players[(dealerIndex + offset) % count]
-            if count == 3 || candidate != firstDealer {
-                rotation.append(candidate)
-            }
-            offset += 1
-        }
-        return rotation
-    }
-
     // MARK: - Deck shape
 
     func testEveryRecipeBuildsAValid32CardDeck() throws {
@@ -56,11 +36,11 @@ final class HandRecipeTests: XCTestCase {
         var engine = try PreferansEngine(players: activePlayers, firstDealer: "south")
         try engine.startDeal(deck: recipe.deck(for: activePlayers))
 
-        try driveAuctionWinning(engine: &engine, declarer: "north", bid: .game(GameContract(6, .suit(.spades))))
-        try discardTalon(engine: &engine, declarer: "north")
-        try declareContract(engine: &engine, declarer: "north", contract: GameContract(6, .suit(.spades)))
-        try forceWhist(engine: &engine, defenders: ["east", "south"])
-        try playOut(engine: &engine, declarer: "north")
+        try EngineTestDriver.driveAuctionWinning(engine: &engine, declarer: "north", bid: .game(GameContract(6, .suit(.spades))))
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
+        try EngineTestDriver.declareContract(engine: &engine, declarer: "north", contract: GameContract(6, .suit(.spades)))
+        try EngineTestDriver.forceWhist(engine: &engine)
+        try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
 
         guard case let .dealFinished(result) = engine.state, case .game = result.kind else {
             return XCTFail("Expected dealFinished.game; got \(engine.state.description).")
@@ -75,18 +55,18 @@ final class HandRecipeTests: XCTestCase {
         let recipe = HandRecipe.declarerWins(declarer: "east", contract: GameContract(9, .suit(.clubs)))
         let players: [PlayerID] = ["north", "east", "south"]
         let firstDealer: PlayerID = "north"
-        let rotation = activeRotation(players: players, firstDealer: firstDealer)
+        let rotation = try EngineTestDriver.activeRotation(players: players, firstDealer: firstDealer)
         XCTAssertEqual(rotation, ["east", "south", "north"],
                        "Sanity: rotation helper must match engine's activePlayers(forDealer:).")
 
         var engine = try PreferansEngine(players: players, firstDealer: firstDealer)
         try engine.startDeal(deck: recipe.deck(for: rotation))
 
-        try driveAuctionWinning(engine: &engine, declarer: "east", bid: .game(GameContract(9, .suit(.clubs))))
-        try discardTalon(engine: &engine, declarer: "east")
-        try declareContract(engine: &engine, declarer: "east", contract: GameContract(9, .suit(.clubs)))
-        try forceWhist(engine: &engine, defenders: ["south", "north"])
-        try playOut(engine: &engine, declarer: "east")
+        try EngineTestDriver.driveAuctionWinning(engine: &engine, declarer: "east", bid: .game(GameContract(9, .suit(.clubs))))
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "east")
+        try EngineTestDriver.declareContract(engine: &engine, declarer: "east", contract: GameContract(9, .suit(.clubs)))
+        try EngineTestDriver.forceWhist(engine: &engine)
+        try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "east"))
 
         guard case let .dealFinished(result) = engine.state, case .game = result.kind else {
             return XCTFail("Expected dealFinished.game; got \(engine.state.description).")
@@ -105,11 +85,11 @@ final class HandRecipeTests: XCTestCase {
         var engine = try PreferansEngine(players: activePlayers, firstDealer: "south")
         try engine.startDeal(deck: recipe.deck(for: activePlayers))
 
-        try driveAuctionWinning(engine: &engine, declarer: "north", bid: .game(GameContract(8, .suit(.spades))))
-        try discardTalon(engine: &engine, declarer: "north")
-        try declareContract(engine: &engine, declarer: "north", contract: GameContract(8, .suit(.spades)))
-        try forceWhist(engine: &engine, defenders: ["east", "south"])
-        try playOut(engine: &engine, declarer: "north")
+        try EngineTestDriver.driveAuctionWinning(engine: &engine, declarer: "north", bid: .game(GameContract(8, .suit(.spades))))
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
+        try EngineTestDriver.declareContract(engine: &engine, declarer: "north", contract: GameContract(8, .suit(.spades)))
+        try EngineTestDriver.forceWhist(engine: &engine)
+        try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
 
         guard case let .dealFinished(result) = engine.state, case .game = result.kind else {
             return XCTFail("Expected dealFinished.game; got \(engine.state.description).")
@@ -133,8 +113,8 @@ final class HandRecipeTests: XCTestCase {
         _ = try engine.apply(.bid(player: "east", call: .pass))
         _ = try engine.apply(.bid(player: "south", call: .pass))
 
-        try discardTalon(engine: &engine, declarer: "north")
-        try playMisereLowest(engine: &engine, declarer: "north")
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
+        try EngineTestDriver.playOut(engine: &engine, policy: .lowestLegal)
 
         guard case let .dealFinished(result) = engine.state, case .misere = result.kind else {
             return XCTFail("Expected dealFinished.misere; got \(engine.state.description).")
@@ -160,10 +140,10 @@ final class HandRecipeTests: XCTestCase {
         _ = try engine.apply(.bid(player: "east", call: .pass))
         _ = try engine.apply(.bid(player: "south", call: .pass))
 
-        try discardTalon(engine: &engine, declarer: "north")
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
         _ = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
-        try forceWhist(engine: &engine, defenders: ["east", "south"])
-        try playOut(engine: &engine, declarer: "north")
+        try EngineTestDriver.forceWhist(engine: &engine)
+        try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
 
         guard case let .dealFinished(result) = engine.state, case .game = result.kind else {
             return XCTFail("Expected dealFinished.game; got \(engine.state.description).")
@@ -180,10 +160,8 @@ final class HandRecipeTests: XCTestCase {
         var engine = try PreferansEngine(players: activePlayers, firstDealer: "south")
         try engine.startDeal(deck: recipe.deck(for: activePlayers))
 
-        for seat in activePlayers {
-            _ = try engine.apply(.bid(player: seat, call: .pass))
-        }
-        try playRaspasyLowest(engine: &engine)
+        try EngineTestDriver.passOutAuction(engine: &engine)
+        try EngineTestDriver.playOut(engine: &engine, policy: .lowestLegal)
 
         guard case let .dealFinished(result) = engine.state, case .allPass = result.kind else {
             return XCTFail("Expected dealFinished.allPass; got \(engine.state.description).")
@@ -203,9 +181,7 @@ final class HandRecipeTests: XCTestCase {
         )
         try engine.startDeal(deck: recipe.deck(for: activePlayers))
 
-        for seat in activePlayers {
-            _ = try engine.apply(.bid(player: seat, call: .pass))
-        }
+        try EngineTestDriver.passOutAuction(engine: &engine)
         guard case let .playing(state) = engine.state, case let .allPass(context) = state.kind else {
             return XCTFail("Expected all-pass play after three passes.")
         }
@@ -215,96 +191,4 @@ final class HandRecipeTests: XCTestCase {
                       "talonLeadSuit constraint must place two clubs in the talon.")
     }
 
-    // MARK: - Engine drivers
-
-    /// Drives bidding so the named declarer wins the auction with the given
-    /// bid; defenders pass. Caller is responsible for matching the active
-    /// rotation to the engine's first-bidder ordering.
-    private func driveAuctionWinning(engine: inout PreferansEngine, declarer: PlayerID, bid: ContractBid) throws {
-        guard case let .bidding(state) = engine.state else {
-            throw TestError("Expected bidding state at start of auction.")
-        }
-        for seat in state.activePlayers {
-            if seat == declarer {
-                _ = try engine.apply(.bid(player: seat, call: .bid(bid)))
-            } else {
-                _ = try engine.apply(.bid(player: seat, call: .pass))
-            }
-        }
-    }
-
-    private func discardTalon(engine: inout PreferansEngine, declarer: PlayerID) throws {
-        guard case let .awaitingDiscard(exchange) = engine.state else {
-            throw TestError("Expected awaitingDiscard; got \(engine.state.description).")
-        }
-        _ = try engine.apply(.discard(player: declarer, cards: exchange.talon))
-    }
-
-    private func declareContract(engine: inout PreferansEngine, declarer: PlayerID, contract: GameContract) throws {
-        _ = try engine.apply(.declareContract(player: declarer, contract: contract))
-    }
-
-    private func forceWhist(engine: inout PreferansEngine, defenders: [PlayerID]) throws {
-        guard case let .awaitingWhist(state) = engine.state else {
-            throw TestError("Expected awaitingWhist; got \(engine.state.description).")
-        }
-        // Defenders in rotation order — engine picks the first defender after
-        // the declarer; both whist to send the deal into closed-mode play.
-        for defender in state.defenders {
-            _ = try engine.apply(.whist(player: defender, call: .whist))
-        }
-        _ = defenders
-    }
-
-    /// Plays out a game contract: declarer plays highest legal each turn,
-    /// defenders play lowest legal. Asserts no engine errors along the way.
-    private func playOut(engine: inout PreferansEngine, declarer: PlayerID) throws {
-        var safety = 64
-        while case let .playing(state) = engine.state, safety > 0 {
-            safety -= 1
-            let actor = state.currentPlayer
-            let card: Card?
-            if actor == declarer {
-                card = engine.legalCards(for: actor).max()
-            } else {
-                card = engine.legalCards(for: actor).min()
-            }
-            guard let card else {
-                throw TestError("No legal card for \(actor) at trick \(state.completedTricks.count).")
-            }
-            _ = try engine.apply(.playCard(player: actor, card: card))
-        }
-    }
-
-    /// Misère playout: declarer plays lowest legal (tries to dump everything),
-    /// defenders also play lowest legal.
-    private func playMisereLowest(engine: inout PreferansEngine, declarer: PlayerID) throws {
-        var safety = 64
-        while case let .playing(state) = engine.state, safety > 0 {
-            safety -= 1
-            let actor = state.currentPlayer
-            guard let card = engine.legalCards(for: actor).min() else {
-                throw TestError("No legal card for \(actor).")
-            }
-            _ = try engine.apply(.playCard(player: actor, card: card))
-        }
-    }
-
-    /// All-pass playout: every seat plays lowest legal.
-    private func playRaspasyLowest(engine: inout PreferansEngine) throws {
-        var safety = 64
-        while case let .playing(state) = engine.state, safety > 0 {
-            safety -= 1
-            let actor = state.currentPlayer
-            guard let card = engine.legalCards(for: actor).min() else {
-                throw TestError("No legal card for \(actor).")
-            }
-            _ = try engine.apply(.playCard(player: actor, card: card))
-        }
-    }
-}
-
-private struct TestError: Error, CustomStringConvertible {
-    let description: String
-    init(_ description: String) { self.description = description }
 }
