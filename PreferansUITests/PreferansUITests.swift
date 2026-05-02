@@ -1,186 +1,145 @@
 import XCTest
+import PreferansEngine
 
+/// Lightweight UI smoke coverage for lobby wiring and single-deal transitions.
+///
+/// Deeper script replay lives in `MatchUITests` / `FullGameUITests`; this file
+/// intentionally stays shallow and uses the same identifiers + robot helpers
+/// as the rest of the UI suite so screen copy can evolve without breaking
+/// tests that only care about behavior.
+@MainActor
 final class PreferansUITests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
     }
 
-    func testLobbyRenders() {
-        let app = XCUIApplication()
-        app.disableUITestAnimations()
-        app.launch()
+    func testLobbyRendersCoreControls() {
+        let app = launchedApp()
+        let robot = MatchUIRobot(app: app)
 
-        XCTAssertTrue(app.staticTexts["Preferans"].firstMatch.waitForExistence(timeout: 5),
-                      "Lobby should display the Preferans title")
-        XCTAssertTrue(app.staticTexts["Local table players"].waitForExistence(timeout: 2),
-                      "Lobby should show the local table players section")
-        XCTAssertTrue(app.buttons["Start Local Table"].exists,
-                      "Lobby should expose the Start Local Table action")
-        XCTAssertTrue(app.buttons["3 players"].exists)
-        XCTAssertTrue(app.buttons["4 players"].exists)
+        robot.waitForElement(UIIdentifiers.lobbyTitle)
+        robot.waitForElement(UIIdentifiers.lobbyQuickPlayVsBots)
+        robot.waitForElement(UIIdentifiers.lobbyPlayerCountThree)
+        robot.waitForElement(UIIdentifiers.lobbyPlayerCountFour)
+        robot.waitForElement(UIIdentifiers.lobbyPlayerNameField(index: 0))
+        robot.waitForElement(UIIdentifiers.lobbyBotToggle(index: 1))
+        robot.waitForElement(UIIdentifiers.lobbyStartLocalTable)
     }
 
     func testStartLocalTableThenDeal() {
-        let app = XCUIApplication()
-        app.disableUITestAnimations()
-        app.launch()
+        let app = launchedApp()
+        let robot = MatchUIRobot(app: app)
 
-        let startLocal = app.buttons["Start Local Table"]
-        XCTAssertTrue(startLocal.waitForExistence(timeout: 5))
-        startLocal.tap()
+        robot.startLocalTable()
+        robot.waitForPhase("Waiting for deal")
+        robot.startNextDeal()
 
-        let startDeal = app.buttons["Start Deal"]
-        XCTAssertTrue(startDeal.waitForExistence(timeout: 5),
-                      "Game screen should expose Start Deal once the local table opens")
-
-        startDeal.tap()
-
-        let biddingTitle = app.staticTexts["Bidding"]
-        XCTAssertTrue(biddingTitle.waitForExistence(timeout: 5),
-                      "Phase title should switch to Bidding once the deal starts")
-
-        let talonHeader = app.staticTexts["Talon"]
-        XCTAssertTrue(talonHeader.waitForExistence(timeout: 2),
-                      "Talon section should be visible after the deal")
+        robot.waitForPhase("Bidding")
+        robot.waitForElement(UIIdentifiers.Panel.currentTrick.rawValue)
+        robot.waitForElement(UIIdentifiers.Panel.bidding.rawValue)
     }
 
     func testFourPlayerRosterAddsSeat() {
-        let app = XCUIApplication()
-        app.disableUITestAnimations()
-        app.launch()
+        let app = launchedApp()
+        let robot = MatchUIRobot(app: app)
 
-        XCTAssertTrue(app.buttons["4 players"].waitForExistence(timeout: 5))
-        app.buttons["4 players"].tap()
+        robot.selectPlayerCount(4)
 
-        let textFields = app.textFields
-        XCTAssertGreaterThanOrEqual(textFields.count, 4,
-                                    "Switching to 4 players should add a fourth roster row")
+        robot.waitForElement(UIIdentifiers.lobbyPlayerNameField(index: 3))
+        robot.waitForElement(UIIdentifiers.lobbyBotToggle(index: 3))
     }
 
     func testBiddingExposesPassAndMisereOptions() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uiTestViewerFollowsActor"]
-        app.disableUITestAnimations()
-        app.launch()
+        let app = launchedApp(extraArguments: [UITestFlags.viewerFollowsActor])
+        let robot = MatchUIRobot(app: app)
 
-        app.buttons["Start Local Table"].tap()
-        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
-        app.buttons["Start Deal"].tap()
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
 
-        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Bid"].waitForExistence(timeout: 2),
-                      "Bidding panel should expose its Bid header")
-        XCTAssertTrue(app.buttons["Pass"].exists, "Bid call list must include Pass")
-        XCTAssertTrue(app.buttons["Misere"].exists, "Bid call list must include Misere")
+        robot.waitForElement(UIIdentifiers.Panel.bidding.rawValue)
+        robot.waitForElement(UIIdentifiers.bidButton(.pass))
+        robot.waitForElement(UIIdentifiers.bidButton(.bid(.misere)))
     }
 
     func testAllPassDrivesEngineIntoPlayingPhase() {
-        let app = XCUIApplication()
-        app.launchArguments += ["-uiTestViewerFollowsActor"]
-        app.disableUITestAnimations()
-        app.launch()
+        let app = launchedApp(extraArguments: manualThreePlayerHarness())
+        let robot = MatchUIRobot(app: app)
 
-        app.buttons["Start Local Table"].tap()
-        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
-        app.buttons["Start Deal"].tap()
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
 
-        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
-
-        for index in 0..<3 {
-            let pass = app.buttons["Pass"].firstMatch
-            XCTAssertTrue(pass.waitForExistence(timeout: 3),
-                          "Pass should remain offered for bidder #\(index + 1)")
-            pass.tap()
+        for _ in 0..<3 {
+            robot.bid(.pass)
         }
 
-        XCTAssertTrue(app.staticTexts["Playing"].waitForExistence(timeout: 5),
-                      "Phase title should switch to Playing once all three players pass out")
-        XCTAssertFalse(app.staticTexts["Bidding"].exists,
-                       "Bidding header should be gone once all-pass play begins")
+        robot.waitForPhase("Playing")
     }
 
-    func testDeterministicScenarioPinsFirstBidderAndDealtCards() {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "-uiTestViewerFollowsActor",
-            "-uiTestFirstDealer", "south",
-            "-uiTestDealScenario", "sortedDeck"
-        ]
-        app.disableUITestAnimations()
-        app.launch()
+    func testDeterministicScenarioPinsFirstBidder() {
+        let app = launchedApp(extraArguments: manualThreePlayerHarness() + [
+            UITestFlags.dealScenario, "sortedDeck"
+        ])
+        let robot = MatchUIRobot(app: app)
 
-        app.buttons["Start Local Table"].tap()
-        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
-        app.buttons["Start Deal"].tap()
+        robot.startLocalTable()
+        robot.startNextDeal()
 
-        // sortedDeck + dealer=south -> activePlayers=[north, east, south],
-        // first bidder = north, talon = ♠K, ♠A.
-        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Auction: north to call."].exists,
-                      "Pinned dealer should put north on the bid")
-        XCTAssertTrue(app.staticTexts["You are: north"].exists,
-                      "viewerFollowsActor should rotate the viewer to north")
-        XCTAssertTrue(app.staticTexts["K♠"].exists,
-                      "Sorted-deck talon must include the ♠K")
-        XCTAssertTrue(app.staticTexts["A♠"].exists,
-                      "Sorted-deck talon must include the ♠A")
+        robot.waitForPhase("Bidding")
+        XCTAssertEqual(robot.currentViewer(), "north")
+        XCTAssertEqual(robot.phaseMessage(), "Auction: north to call.")
     }
 
     func testNorthSpadesSixScenarioDrivesEngineToDiscardWindow() {
-        let app = XCUIApplication()
-        app.launchArguments += [
-            "-uiTestViewerFollowsActor",
-            "-uiTestFirstDealer", "south",
-            "-uiTestDealScenario", "northBidsSpadesSix"
-        ]
-        app.disableUITestAnimations()
-        app.launch()
+        let app = launchedApp(extraArguments: manualThreePlayerHarness() + [
+            UITestFlags.dealScenario, "northBidsSpadesSix"
+        ])
+        let robot = MatchUIRobot(app: app)
 
-        app.buttons["Start Local Table"].tap()
-        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
-        app.buttons["Start Deal"].tap()
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
 
-        // North's hand has the ♠A pinned in this scenario, so the bid panel
-        // must offer "6♠".
-        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
-        let sixSpades = app.buttons["6♠"]
-        XCTAssertTrue(sixSpades.waitForExistence(timeout: 2),
-                      "6♠ must be a legal opening bid for north")
-        sixSpades.tap()
+        robot.bid(.bid(.game(GameContract(6, .suit(.spades)))))
+        XCTAssertEqual(robot.currentViewer(), "east")
+        robot.bid(.pass)
+        XCTAssertEqual(robot.currentViewer(), "south")
+        robot.bid(.pass)
 
-        // East and south must each pass to advance auction.
-        for label in ["east", "south"] {
-            XCTAssertTrue(app.staticTexts["Auction: \(label) to call."].waitForExistence(timeout: 3))
-            app.buttons["Pass"].firstMatch.tap()
-        }
-
-        // Auction won — declarer takes the talon and the discard panel opens.
-        XCTAssertTrue(app.staticTexts["Talon exchange"].waitForExistence(timeout: 5),
-                      "Phase title should switch to Talon exchange once auction is won")
-        XCTAssertTrue(app.staticTexts["Select exactly two cards to discard"].exists,
-                      "Discard prompt should appear for the declarer")
+        robot.waitForPhase("Talon exchange")
+        robot.waitForElement(UIIdentifiers.Panel.discard.rawValue)
+        XCTAssertEqual(robot.currentViewer(), "north")
     }
 
     func testGameScreenShowsCoreSectionsAfterDeal() {
+        let app = launchedApp()
+        let robot = MatchUIRobot(app: app)
+
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
+
+        robot.waitForElement(UIIdentifiers.phaseMessage)
+        robot.waitForElement(UIIdentifiers.viewerLabel)
+        robot.waitForElement(UIIdentifiers.Panel.currentTrick.rawValue)
+        robot.waitForElement(UIIdentifiers.Panel.bidding.rawValue)
+    }
+
+    private func launchedApp(extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchArguments += extraArguments
         app.disableUITestAnimations()
         app.launch()
+        return app
+    }
 
-        app.buttons["Start Local Table"].tap()
-        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
-        app.buttons["Start Deal"].tap()
-
-        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Current trick"].exists,
-                      "Game screen should always render the Current trick panel")
-        XCTAssertTrue(app.staticTexts["Talon"].exists,
-                      "Game screen should always render the Talon panel")
-        XCTAssertTrue(app.staticTexts["Discard"].exists,
-                      "Game screen should always render the Discard panel")
-        XCTAssertTrue(app.staticTexts["Table"].exists,
-                      "Game screen should always render the Table panel")
-        XCTAssertTrue(app.staticTexts["Log"].exists,
-                      "Game screen should always render the event Log panel")
+    private func manualThreePlayerHarness() -> [String] {
+        [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.players, "north,east,south",
+            UITestFlags.firstDealer, "south"
+        ]
     }
 }
