@@ -12,6 +12,7 @@ public struct LobbyView: View {
 
     @State private var localModel: GameViewModel?
     @State private var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
+    @State private var botSpeed: BotMoveSpeed = .normal
     @State private var errorText: String?
     @State private var showingMatchmaker = false
     @State private var hasAttemptedSignIn = false
@@ -147,6 +148,10 @@ public struct LobbyView: View {
                     }
                 }
 
+                if seats.contains(where: { $0.kind == .bot }) {
+                    botSpeedPicker
+                }
+
                 if let validation = seats.validationError {
                     Text(validation)
                         .font(.caption)
@@ -190,6 +195,22 @@ public struct LobbyView: View {
         }
         .padding(10)
         .background(.background, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var botSpeedPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Bot speed")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Picker("Bot speed", selection: $botSpeed) {
+                ForEach(BotMoveSpeed.allCases) { speed in
+                    Text(speed.label).tag(speed)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier(UIIdentifiers.lobbyBotSpeedPicker)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     #if canImport(GameKit) && canImport(UIKit)
@@ -364,6 +385,8 @@ public struct LobbyView: View {
             // 500ms × every bot action just waiting.
             if TestHarness.disableAnimations(in: args) {
                 model.botMoveDelay = .zero
+            } else {
+                model.botMoveDelay = botSpeed.delay
             }
             localModel = model
             errorText = nil
@@ -382,6 +405,30 @@ public struct LobbyView: View {
             return .pinned(players[humanIndices[0]])
         }
         return .followsActor
+    }
+}
+
+public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
+    case instant
+    case normal
+    case slow
+
+    public var id: String { rawValue }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .instant: return "Instant"
+        case .normal:  return "Normal"
+        case .slow:    return "Slow"
+        }
+    }
+
+    public var delay: Duration {
+        switch self {
+        case .instant: return .zero
+        case .normal:  return .milliseconds(500)
+        case .slow:    return .seconds(1)
+        }
     }
 }
 
