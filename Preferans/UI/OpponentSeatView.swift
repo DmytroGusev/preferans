@@ -18,27 +18,50 @@ public struct OpponentSeatView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .background(seat.isCurrentActor ? Color.accentColor.opacity(0.18) : Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(seat.isCurrentActor ? Color.accentColor : .clear, lineWidth: 1.5)
-        }
-        .opacity(seat.isActive ? 1 : 0.5)
+        .background(seatBackground)
+        .opacity(seat.isActive ? 1 : 0.55)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
+    }
+
+    /// Active seats get a soft pool of light suggesting a "place at the
+    /// table"; inactive seats sit directly on the felt with no chrome.
+    @ViewBuilder
+    private var seatBackground: some View {
+        if seat.isCurrentActor {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            TableTheme.goldBright.opacity(0.18),
+                            TableTheme.goldBright.opacity(0.0)
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 90
+                    )
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .strokeBorder(TableTheme.goldBright.opacity(0.55), lineWidth: 1)
+                }
+        } else {
+            Color.clear
+        }
     }
 
     private var statusRow: some View {
         HStack(spacing: 5) {
             if seat.isCurrentActor {
-                Image(systemName: "circle.fill")
-                    .font(.system(size: 7))
-                    .foregroundStyle(Color.accentColor)
+                Circle()
+                    .fill(TableTheme.goldBright)
+                    .frame(width: 7, height: 7)
                     .accessibilityLabel("Turn")
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             Text(seat.displayName)
                 .font(.caption.bold())
+                .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
             if seat.isDealer {
@@ -46,15 +69,28 @@ public struct OpponentSeatView: View {
                     .font(.system(size: 9, weight: .bold))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
-                    .foregroundStyle(.secondary)
-                    .background(Color.secondary.opacity(0.18), in: Capsule())
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .background(Color.black.opacity(0.30), in: Capsule())
                     .accessibilityLabel("Dealer")
                     .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
+            }
+            // 4-player only: dealer sits out the deal entirely. Make that
+            // explicit with a dedicated pill so the seat doesn't read as
+            // "loading" on a compact iPhone layout.
+            if seat.role == .sittingOut || (seat.isDealer && !seat.isActive) {
+                Text("Out")
+                    .font(.system(size: 9, weight: .bold))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .foregroundStyle(TableTheme.feltDeep)
+                    .background(TableTheme.inkCreamSoft, in: Capsule())
+                    .accessibilityLabel("Sitting out this deal")
+                    .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
             }
             Spacer(minLength: 0)
             Text("\(seat.trickCount)")
                 .font(.system(size: 10, weight: .semibold).monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TableTheme.inkCreamSoft)
                 .accessibilityLabel("Tricks: \(seat.trickCount)")
                 .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
         }

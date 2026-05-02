@@ -34,6 +34,7 @@
 		B00000000000000000000062 /* OpponentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000072 /* OpponentSeatView.swift */; };
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
 		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
+		B00000000000000000000065 /* TableTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000075 /* TableTheme.swift */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
 		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
 		C00000000000000000000020 /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* Domain.swift */; };
@@ -129,6 +130,7 @@
 		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/OpponentSeatView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ActionBarView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableTheme.swift"; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
 		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreBoardView.swift"; sourceTree = "<group>"; };
 		C00000000000000000000010 /* PreferansEngine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PreferansEngine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -224,6 +226,7 @@
 				B00000000000000000000072 /* OpponentSeatView.swift */,
 				B00000000000000000000073 /* TableView.swift */,
 				B00000000000000000000074 /* ActionBarView.swift */,
+				B00000000000000000000075 /* TableTheme.swift */,
 				A00000000000000000000018 /* Assets.xcassets */,
 				A00000000000000000000019 /* README.md */,
 			);
@@ -412,6 +415,7 @@
 				B00000000000000000000062 /* OpponentSeatView.swift in Sources */,
 				B00000000000000000000063 /* TableView.swift in Sources */,
 				B00000000000000000000064 /* ActionBarView.swift in Sources */,
+				B00000000000000000000065 /* TableTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

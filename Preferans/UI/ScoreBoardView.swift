@@ -205,10 +205,10 @@ public struct ScoreBoardView: View {
 
     private var legend: some View {
         VStack(alignment: .leading, spacing: 4) {
-            legendRow(title: "Bullet (Пуля)", description: "Points for fulfilled contracts")
+            legendRow(title: "Bullet (Пуля)", description: "Points for fulfilled contracts (higher is better)")
             legendRow(title: "Mountain (Гора)", description: "Penalty points; lower is better")
             legendRow(title: "Whists (Висты)", description: "Whist points written on each opponent")
-            legendRow(title: "Balance", description: "Net settlement")
+            legendRow(title: "Balance", description: "Standings; zero-sum across the table — positive means ahead")
         }
         .font(.caption)
         .foregroundStyle(.secondary)

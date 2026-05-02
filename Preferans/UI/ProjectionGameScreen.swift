@@ -68,66 +68,69 @@ public struct ProjectionGameScreen: View {
     // MARK: - Compact (iPhone)
 
     private var compactBody: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
             phaseStatusBar
             TableView(projection: projection, animationNamespace: cardNamespace)
                 .padding(.horizontal, 12)
+                .padding(.top, 6)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
             viewerHandFan
                 .padding(.horizontal, 8)
+                .padding(.top, 4)
                 .padding(.bottom, 4)
                 .layoutPriority(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
+        .feltBackground()
     }
 
     // MARK: - Regular (iPad / wider)
 
     private var regularBody: some View {
         HStack(alignment: .top, spacing: 16) {
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
                 phaseStatusBar
                 TableView(projection: projection, animationNamespace: cardNamespace)
+                    .padding(.top, 8)
                     .frame(maxHeight: .infinity)
                 ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
                 viewerHandFan
                     .padding(.horizontal, 8)
+                    .padding(.top, 4)
             }
             .frame(maxWidth: .infinity)
             ScoreBoardView(score: projection.score)
                 .frame(width: 360)
         }
-        .padding(16)
-        .background(Color(.systemGroupedBackground))
+        .padding(.vertical, 16)
+        .padding(.trailing, 16)
+        .feltBackground()
     }
 
     // MARK: - Status bar
 
     private var phaseStatusBar: some View {
         HStack(spacing: 8) {
-            // Invisible carrier so MatchUIRobot can read the phase title by
-            // accessibility id; the visible label is in the navigation bar.
             Text(projection.phase.title)
+                .font(.caption.bold())
+                .foregroundStyle(TableTheme.inkCream)
+                .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
-                .frame(width: 0, height: 0)
-                .hidden()
-                .accessibilityHidden(false)
             Text(projection.message)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TableTheme.inkCreamSoft)
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier(UIIdentifiers.phaseMessage)
             Text("you: \(displayName(for: projection.viewer))")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(TableTheme.inkCreamDim)
                 .accessibilityIdentifier(UIIdentifiers.viewerLabel)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
-        .background(.regularMaterial)
+        .feltBand()
     }
 
     // MARK: - Viewer hand
@@ -138,12 +141,19 @@ public struct ProjectionGameScreen: View {
             let isDiscardPhase = projection.legal.canDiscard
             let playable: Set<Card> = isDiscardPhase ? [] : Set(projection.legal.playableCards)
             let selected: Set<Card> = isDiscardPhase ? selectedDiscard : []
-            let cards: [ProjectedCard] = isDiscardPhase ? seat.hand + projection.talon : seat.hand
+            let talonKnown: [Card] = isDiscardPhase ? projection.talon.compactMap(\.knownCard) : []
+            // Merge hand + talon and re-sort so the user sees a single
+            // suit/rank-ordered fan instead of "hand, then two talon cards
+            // appended at the right end."
+            let cards: [ProjectedCard] = isDiscardPhase
+                ? sortedHandFan(seat.hand + projection.talon)
+                : seat.hand
             VStack(spacing: 0) {
                 CardFanView(
                     cards: cards,
                     playableCards: playable,
                     selectedCards: selected,
+                    talonCards: Set(talonKnown),
                     seat: seat.player,
                     size: horizontalSizeClass == .compact ? .standard : .large,
                     animationNamespace: cardNamespace,
@@ -162,22 +172,34 @@ public struct ProjectionGameScreen: View {
         }
     }
 
+    private func sortedHandFan(_ cards: [ProjectedCard]) -> [ProjectedCard] {
+        cards.sorted { lhs, rhs in
+            switch (lhs.knownCard, rhs.knownCard) {
+            case let (l?, r?): return l < r
+            case (_, nil):     return true
+            case (nil, _):     return false
+            }
+        }
+    }
+
     private func ownerNamePlate(seat: SeatProjection) -> some View {
         HStack(spacing: 6) {
             if seat.isCurrentActor {
                 Image(systemName: "hand.point.up.left.fill")
                     .font(.caption2)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(TableTheme.goldBright)
             }
             Text(seat.displayName)
                 .font(.caption.bold())
+                .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
             if seat.isDealer {
                 Text("Dealer")
                     .font(.caption2)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
-                    .background(.thinMaterial, in: Capsule())
+                    .background(Color.black.opacity(0.30), in: Capsule())
                     .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
             }
             if seat.isCurrentActor {
@@ -185,18 +207,18 @@ public struct ProjectionGameScreen: View {
                     .font(.caption2.bold())
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
-                    .foregroundStyle(.white)
-                    .background(Color.accentColor, in: Capsule())
+                    .foregroundStyle(TableTheme.feltDeep)
+                    .background(TableTheme.goldBright, in: Capsule())
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             Spacer()
             Text("Tricks: \(seat.trickCount)")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TableTheme.inkCreamSoft)
                 .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
         }
         .padding(.horizontal, 12)
-        .padding(.top, 2)
+        .padding(.top, 4)
     }
 
     // MARK: - Sheets
@@ -277,29 +299,79 @@ public struct ProjectionGameScreen: View {
 
     private func dealFinishedContent(result: DealResult) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(UIIdentifiers.encode(result.kind))
-                .font(.title2.bold().monospaced())
+            // Human-readable headline; the encoded id stays in a hidden
+            // accessibility carrier so UI tests can still pin on the kind.
+            Text(humanResultHeadline(result))
+                .font(.title2.bold())
                 .accessibilityIdentifier(UIIdentifiers.dealResultKind)
+            Text(UIIdentifiers.encode(result.kind))
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
             switch result.kind {
             case let .game(declarer, contract, _):
-                resultLine("Declarer", declarer.rawValue, idForValue: UIIdentifiers.dealResultDeclarer)
+                resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Contract", contract.description, idForValue: UIIdentifiers.dealResultContract)
                 resultLine("Tricks won", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
             case let .misere(declarer):
-                resultLine("Declarer", declarer.rawValue, idForValue: UIIdentifiers.dealResultDeclarer)
+                resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Tricks taken", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
             case let .halfWhist(declarer, contract, _):
-                resultLine("Declarer", declarer.rawValue, idForValue: UIIdentifiers.dealResultDeclarer)
+                resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Contract", contract.description, idForValue: UIIdentifiers.dealResultContract)
             case .passedOut, .allPass:
                 Text("Hand passed out")
                     .foregroundStyle(.secondary)
+            }
+            if projection.legal.canStartDeal {
+                Button {
+                    onSend(.startDeal(dealer: nil, deck: nil))
+                    activeSheet = nil
+                } label: {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("Start next deal")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .padding(.top, 4)
+                .accessibilityIdentifier(UIIdentifiers.buttonStartNextDealInSheet)
             }
             Divider()
             ScoreBoardView(score: projection.score)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
+    }
+
+    private func humanResultHeadline(_ result: DealResult) -> String {
+        switch result.kind {
+        case let .game(declarer, contract, whisters):
+            let made = (result.trickCounts[declarer] ?? 0) >= contract.tricks
+            let verb = made ? "made" : "failed"
+            let tricks = result.trickCounts[declarer] ?? 0
+            let whoString: String
+            if whisters.isEmpty {
+                whoString = ""
+            } else {
+                let names = whisters.map { displayName(for: $0) }.joined(separator: " + ")
+                whoString = " · whisters: \(names)"
+            }
+            return "\(displayName(for: declarer)) \(verb) \(contract.description) (\(tricks) tricks)\(whoString)"
+        case let .misere(declarer):
+            let tricks = result.trickCounts[declarer] ?? 0
+            let verb = tricks == 0 ? "made misère" : "failed misère"
+            return "\(displayName(for: declarer)) \(verb) (\(tricks) tricks taken)"
+        case let .halfWhist(declarer, contract, halfWhister):
+            return "\(displayName(for: declarer)) granted \(contract.description) – \(displayName(for: halfWhister)) half-whisted"
+        case .passedOut:
+            return "All defenders passed – declarer awarded the contract"
+        case .allPass:
+            return "Hand passed out (raspasy)"
+        }
     }
 
     private func gameOverContent(summary: MatchSummary) -> some View {

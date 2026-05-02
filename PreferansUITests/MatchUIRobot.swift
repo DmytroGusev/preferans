@@ -115,11 +115,11 @@ final class MatchUIRobot {
         return element.label
     }
 
-    /// Player the screen is currently following (parsed from "You are: X").
+    /// Player the screen is currently following (parsed from "you: X").
     func currentViewer() -> PlayerID? {
         let element = app.staticTexts[UIIdentifiers.viewerLabel]
         guard element.waitForExistence(timeout: defaultTimeout) else { return nil }
-        let prefix = "You are: "
+        let prefix = "you: "
         let label = element.label
         guard label.hasPrefix(prefix) else { return nil }
         return PlayerID(String(label.dropFirst(prefix.count)))

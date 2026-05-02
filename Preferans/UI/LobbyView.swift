@@ -204,16 +204,31 @@ public struct LobbyView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
     private func seatCountButton(count: Int, label: String, id: String) -> some View {
-        Button { setSeatCount(count) } label: {
-            Text(label)
-                .fontWeight(.medium)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+        let isSelected = seatCount == count
+        if isSelected {
+            Button { setSeatCount(count) } label: {
+                Text(label)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.accentColor)
+            .accessibilityAddTraits(.isSelected)
+            .accessibilityIdentifier(id)
+        } else {
+            Button { setSeatCount(count) } label: {
+                Text(label)
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.bordered)
+            .tint(.secondary)
+            .accessibilityIdentifier(id)
         }
-        .buttonStyle(.bordered)
-        .tint(seatCount == count ? .accentColor : .secondary)
-        .accessibilityIdentifier(id)
     }
 
     private func binding(for index: Int) -> Binding<String> {
@@ -244,17 +259,24 @@ public struct LobbyView: View {
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .map { PlayerID($0) }
+            // First dealer = last seat so the first seat ("You") is forehand
+            // (first to bid) on deal 1. In 4-player this also keeps the human
+            // player active during the very first hand instead of sitting out.
+            let defaultDealer = lobbyPlayers.last
             let args = ProcessInfo.processInfo.arguments
             let configuration = TestHarness.resolveConfiguration(
                 from: args,
-                defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: nil)
+                defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
             )
+            // Local hot-seat default: viewer follows the active actor so the
+            // person holding the device sees their own hand on each turn
+            // without diving into the debug picker.
             localModel = try GameViewModel(
                 players: configuration.players,
                 rules: configuration.rules,
                 match: configuration.match,
                 firstDealer: configuration.firstDealer,
-                viewerFollowsActor: configuration.viewerFollowsActor,
+                viewerFollowsActor: true,
                 dealSource: configuration.dealSource
             )
             errorText = nil

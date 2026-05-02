@@ -8,10 +8,15 @@ public struct CardFanView: View {
     public var cards: [ProjectedCard]
     public var playableCards: Set<Card>
     public var selectedCards: Set<Card>
+    /// Cards in the fan that originated from the talon (the declarer just
+    /// took them and is choosing what to discard). Rendered with a tinted
+    /// border / "T" badge so the user can tell hand from talon at a glance.
+    public var talonCards: Set<Card>
     public var seat: PlayerID
     public var size: CardView.Size
     /// Geometry namespace shared with the table so hand → trick movement
-    /// can animate via matchedGeometryEffect.
+    /// can animate via matchedGeometryEffect. Disabled during the talon-
+    /// merge to avoid SwiftUI keeping multiple geometry copies alive.
     public var animationNamespace: Namespace.ID?
     public var onTap: ((Card) -> Void)?
 
@@ -19,6 +24,7 @@ public struct CardFanView: View {
         cards: [ProjectedCard],
         playableCards: Set<Card> = [],
         selectedCards: Set<Card> = [],
+        talonCards: Set<Card> = [],
         seat: PlayerID,
         size: CardView.Size = .standard,
         animationNamespace: Namespace.ID? = nil,
@@ -27,6 +33,7 @@ public struct CardFanView: View {
         self.cards = cards
         self.playableCards = playableCards
         self.selectedCards = selectedCards
+        self.talonCards = talonCards
         self.seat = seat
         self.size = size
         self.animationNamespace = animationNamespace
@@ -64,15 +71,22 @@ public struct CardFanView: View {
 
     @ViewBuilder
     private func cardView(_ projected: ProjectedCard, index: Int, known: Card?, isPlayable: Bool, isSelected: Bool) -> some View {
+        let isTalon = known.map { talonCards.contains($0) } ?? false
+        let region: UIIdentifiers.CardRegion = isTalon ? .discardSelect : .hand(seat: seat)
         let view = CardView(
             card: projected,
             isPlayable: isPlayable,
             isSelected: isSelected,
+            isTalon: isTalon,
             size: size,
-            region: .hand(seat: seat),
+            region: region,
             indexInRow: index
         )
-        if let ns = animationNamespace, let known {
+        // Skip matchedGeometryEffect when this fan contains talon cards;
+        // SwiftUI was preserving multiple geometry copies of the same Card
+        // across the talon-merge re-render and surfacing 5 duplicate AX
+        // nodes for one visual element.
+        if let ns = animationNamespace, let known, talonCards.isEmpty {
             view.matchedGeometryEffect(id: known, in: ns)
         } else {
             view

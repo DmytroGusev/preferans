@@ -28,12 +28,17 @@ public struct LocalGameScreen: View {
                                 }
                             }
                         }
-                        Section {
+                        // Reveal-all is a debug aid; in a hot-seat game it
+                        // leaks every opponent's hand the moment the user
+                        // taps it. Keep it out of release builds.
+                        #if DEBUG
+                        Section("Debug") {
                             Toggle("Reveal all hands", isOn: $revealAll)
                         }
+                        #endif
                     } label: {
                         Image(systemName: "person.crop.circle.badge")
-                            .accessibilityLabel("Local table debug")
+                            .accessibilityLabel("View as")
                     }
                 }
             }

@@ -23,32 +23,48 @@ public struct TableView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            felt(opponentSeats: opponents.map(\.player))
+            playArea(opponentSeats: opponents.map(\.player))
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 150)
+                .frame(minHeight: 160)
         }
     }
 
-    private func felt(opponentSeats: [PlayerID]) -> some View {
+    /// The center of the felt where the current trick or talon sits. The
+    /// felt itself is the screen background — this view only adds a subtle
+    /// embroidered oval to suggest where cards belong, then layers in the
+    /// trick / talon / phase-message content.
+    private func playArea(opponentSeats: [PlayerID]) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(LinearGradient(
-                    colors: [Color(red: 0.13, green: 0.40, blue: 0.27), Color(red: 0.10, green: 0.30, blue: 0.20)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18)
-                        .strokeBorder(Color.black.opacity(0.25), lineWidth: 1)
+            GeometryReader { geo in
+                let w = geo.size.width
+                let h = geo.size.height
+                ZStack {
+                    Ellipse()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    TableTheme.feltHigh.opacity(0.55),
+                                    TableTheme.feltDeep.opacity(0.0)
+                                ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: max(w, h) * 0.55
+                            )
+                        )
+                    Ellipse()
+                        .strokeBorder(TableTheme.gold.opacity(0.18), lineWidth: 1)
+                        .padding(.horizontal, w * 0.06)
+                        .padding(.vertical, h * 0.04)
                 }
-                .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                .allowsHitTesting(false)
+            }
 
             if projection.legal.canStartDeal {
                 placeholder("Tap Start Deal")
             } else if showsTalonOnFelt {
                 talonOnFelt
             } else if projection.currentTrick.isEmpty {
-                placeholder("Waiting for first card")
+                placeholder(emptyFeltPlaceholder)
             } else {
                 trickPlays(opponentSeats: opponentSeats)
             }
@@ -77,7 +93,9 @@ public struct TableView: View {
         VStack(spacing: 6) {
             Text("Talon")
                 .font(.caption.bold())
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .tracking(1.2)
+                .textCase(.uppercase)
             HStack(spacing: 6) {
                 ForEach(Array(projection.talon.enumerated()), id: \.offset) { index, projected in
                     CardView(
@@ -96,7 +114,8 @@ public struct TableView: View {
     private func placeholder(_ text: String) -> some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(TableTheme.inkCreamSoft)
+            .tracking(0.5)
     }
 
     /// Viewer card lands at the bottom; opponents are placed around the
@@ -120,6 +139,22 @@ public struct TableView: View {
     private var showsTalonOnFelt: Bool {
         if case .awaitingDiscard = projection.phase { return true }
         return false
+    }
+
+    /// Phase-aware text shown on the empty felt. "Waiting for first card" only
+    /// makes sense once we're in the trick-play phase; bidding/whist/contract
+    /// phases get their own copy.
+    private var emptyFeltPlaceholder: String {
+        switch projection.phase {
+        case .bidding:                   return "Auction in progress"
+        case .awaitingContract:          return "Declarer is naming the contract"
+        case .awaitingWhist:             return "Defenders are calling whist"
+        case .awaitingDefenderMode:      return "Whister is choosing open or closed"
+        case .playing:                   return "Waiting for first card"
+        case .waitingForDeal:            return "Tap Start Deal"
+        case .dealFinished, .gameOver:   return "Deal complete"
+        case .awaitingDiscard:           return ""
+        }
     }
 
     private func orderedOpponents() -> [SeatProjection] {
