@@ -559,7 +559,12 @@ public struct PreferansEngine: Sendable {
         }
     }
 
-    private func activePlayers(forDealer dealer: PlayerID) -> [PlayerID] {
+    /// Active rotation for a deal with the given dealer. In 3-player matches
+    /// every seat is active and the rotation starts immediately after the
+    /// dealer; in 4-player matches the dealer sits out and the next three
+    /// seats fill the rotation. Exposed publicly so test harnesses and UI
+    /// fixtures can pre-compute the rotation before calling ``startDeal``.
+    public func activePlayers(forDealer dealer: PlayerID) -> [PlayerID] {
         let start = player(after: dealer)
         var ordered: [PlayerID] = []
         var current = start

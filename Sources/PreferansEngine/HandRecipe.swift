@@ -92,15 +92,21 @@ public enum HandRecipe: Hashable, Sendable {
 
     private func planForDeclarer(failing contract: GameContract, willTake: Int, declarer: PlayerID, activePlayers: [PlayerID]) -> DeckPlan {
         precondition((0..<contract.tricks).contains(willTake), "declarerWillTake must be less than contract.tricks (\(contract.tricks)); got \(willTake).")
-        // Top `willTake` cards of the strain win exactly that many tricks
-        // when both sides play highest-legal. The remaining 10 - willTake
-        // slots get the lowest non-strain cards as filler — defenders'
-        // higher non-strain cards then punish each filler trick.
+        // Top `willTake` trumps win exactly that many tricks under rank-greedy
+        // play. Remaining slots get the *lowest by rank* non-trump cards so
+        // defenders' high non-trump cards punish every filler. Sorting the
+        // filler pool by Card's default Comparable (suit-then-rank) instead
+        // of by rank silently bunches the filler into one suit and breaks
+        // the recipe — declarer ends up holding e.g. 5 low spades + 5 high
+        // clubs and trivially makes the contract.
         let topCount = willTake
         let fillerCount = 10 - topCount
         let strainCards = sortedDescending(of: contract.strain).prefix(topCount)
-        let nonStrainAscending = nonStrainCards(strain: contract.strain).sorted()
-        let filler = nonStrainAscending.prefix(fillerCount)
+        let nonStrainByRank = nonStrainCards(strain: contract.strain).sorted { lhs, rhs in
+            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
+            return lhs.suit < rhs.suit
+        }
+        let filler = nonStrainByRank.prefix(fillerCount)
         let declarerHand = Array(strainCards) + Array(filler)
         return planSplittingLeftover(declarerHand: declarerHand, declarer: declarer, activePlayers: activePlayers)
     }
