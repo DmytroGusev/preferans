@@ -51,9 +51,29 @@ fi
 # `-only-testing:PreferansUITests` is the default scope so plain
 # `bin/test-ui` runs the UI bundle and not the engine target.
 SCOPE_ARGS=()
-if ! printf '%s\n' "${PASSTHRU[@]:-}" | grep -q -- '-only-testing:'; then
+HAS_ONLY_TESTING=0
+if [[ ${#PASSTHRU[@]} -gt 0 ]]; then
+  for arg in "${PASSTHRU[@]}"; do
+    if [[ "$arg" == -only-testing:* ]]; then
+      HAS_ONLY_TESTING=1
+      break
+    fi
+  done
+fi
+if [[ "$HAS_ONLY_TESTING" -eq 0 ]]; then
   SCOPE_ARGS+=("-only-testing:PreferansUITests")
+fi
+TEST_ARGS=()
+if [[ ${#SCOPE_ARGS[@]} -gt 0 ]]; then
+  TEST_ARGS+=("${SCOPE_ARGS[@]}")
+fi
+if [[ ${#PASSTHRU[@]} -gt 0 ]]; then
+  TEST_ARGS+=("${PASSTHRU[@]}")
 fi
 
 echo "[test-ui] test-without-building"
-preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED" "${SCOPE_ARGS[@]}" "${PASSTHRU[@]:-}"
+if [[ ${#TEST_ARGS[@]} -gt 0 ]]; then
+  preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED" "${TEST_ARGS[@]}"
+else
+  preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED"
+fi

@@ -208,8 +208,9 @@ final class MatchUIRobot {
         let element = app.staticTexts[UIIdentifiers.gameOverWinner]
         guard element.exists else { return nil }
         let label = element.label
-        if label.hasPrefix("Winner: ") {
-            return PlayerID(String(label.dropFirst("Winner: ".count)))
+        let prefix = AccessibilityStrings.gameOverWinnerPrefix
+        if label.hasPrefix(prefix) {
+            return PlayerID(String(label.dropFirst(prefix.count)))
         }
         if let name = label.components(separatedBy: " takes the pulka").first, name != label {
             return PlayerID(name)
@@ -221,6 +222,10 @@ final class MatchUIRobot {
     func gameOverDealsPlayed() -> Int? {
         let element = app.staticTexts[UIIdentifiers.gameOverDealsPlayed]
         guard element.exists else { return nil }
+        let prefix = AccessibilityStrings.completedDealsPrefix
+        if element.label.hasPrefix(prefix) {
+            return Int(String(element.label.dropFirst(prefix.count)))
+        }
         return firstInteger(in: element.label)
     }
 

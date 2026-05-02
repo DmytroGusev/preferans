@@ -147,6 +147,25 @@ public struct LobbyView: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
 
+                Button {
+                    watchBots()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "eye.fill")
+                        Text("Watch bots play")
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Text(BotMoveSpeed.instant.label)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(.background, in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(UIIdentifiers.lobbyWatchBots)
+
                 Text(seats.rosterSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -352,8 +371,14 @@ public struct LobbyView: View {
         startLocalTable()
     }
 
-    private func startLocalTable() {
-        guard seats.validationError == nil else { return }
+    private func watchBots() {
+        seats = LobbySeat.demoBots(count: 3)
+        botSpeed = .instant
+        startLocalTable(allowSpectator: true)
+    }
+
+    private func startLocalTable(allowSpectator: Bool = false) {
+        guard seats.validationError(allowSpectator: allowSpectator) == nil else { return }
         do {
             let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
             // First dealer = last seat so the first seat (the human) is
@@ -472,11 +497,11 @@ public struct LobbySeat: Identifiable, Equatable {
 }
 
 extension LobbySeat {
-    /// Stock seat names used for fresh rosters. Compass directions match
-    /// traditional Preferans seating; the "you" pill on the viewer's seat
-    /// already marks which one is the human, so seat 0 doesn't need to be
-    /// named "You" (which would render as "North you" — er, "You you").
-    static let defaultNames = ["North", "East", "South", "West"]
+    /// Stock seat names used for fresh rosters. Russian first names fit the
+    /// Sochi/Rostov rules theme and read warmer than compass directions; the
+    /// "you" pill on the viewer's seat already marks which one is the human,
+    /// so seat 0 carries a real name instead of literally "You".
+    static let defaultNames = ["Anya", "Misha", "Lena", "Pavel"]
 
     /// Default fresh roster for the given seat count. Seat 0 is the local
     /// human, every other seat starts as a bot — that matches the
@@ -494,6 +519,14 @@ extension LobbySeat {
     /// Roster used by the Quick-play CTA. Always 3 seats, 1 human + 2 bots.
     static func quickPlayVsBots() -> [LobbySeat] {
         defaults(count: 3)
+    }
+
+    /// All-bot roster for a spectator/demo table. The lobby bypasses the
+    /// normal "one human" validation only for this explicit preset.
+    static func demoBots(count: Int) -> [LobbySeat] {
+        defaults(count: count).map { seat in
+            LobbySeat(id: seat.id, name: seat.name, kind: .bot)
+        }
     }
 
     /// Resize an existing roster to `count` seats while keeping existing
@@ -536,6 +569,10 @@ extension Array where Element == LobbySeat {
     /// Why this roster can't start a table, or `nil` when it's ready.
     /// Drives the inline validation message and disables the Start button.
     var validationError: String? {
+        validationError(allowSpectator: false)
+    }
+
+    func validationError(allowSpectator: Bool) -> String? {
         let names = map(\.trimmedName)
         if names.contains(where: \.isEmpty) {
             return String(localized: "Every seat needs a name.")
@@ -543,7 +580,7 @@ extension Array where Element == LobbySeat {
         if Set(names).count != names.count {
             return String(localized: "Names must be unique.")
         }
-        if filter({ $0.kind == .human }).isEmpty {
+        if !allowSpectator, filter({ $0.kind == .human }).isEmpty {
             return String(localized: "One seat must be a human player.")
         }
         return nil

@@ -117,6 +117,7 @@ public enum UIIdentifiers {
     public static let lobbyError               = "lobby.error"
     public static let lobbyValidationError     = "lobby.validationError"
     public static let lobbyQuickPlayVsBots     = "button.quickPlayVsBots"
+    public static let lobbyWatchBots           = "button.watchBots"
     public static let lobbySettingsButton      = "lobby.settings"
 
     // MARK: - Game screen — header / structure
@@ -261,4 +262,6 @@ public enum AccessibilityStrings {
     /// Prefix used by the viewer-pill accessibility label; parsed by
     /// `MatchUIRobot.currentViewer()` to recover the active viewer.
     public static let viewerLabelPrefix = "Viewing as "
+    public static let gameOverWinnerPrefix = "Winner: "
+    public static let completedDealsPrefix = "Completed deals: "
 }

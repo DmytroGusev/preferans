@@ -47,7 +47,10 @@ public struct ProjectionGameScreen: View {
             }
         }
         .onChange(of: projection.sequence) { _, _ in
-            if hasResultToShow { activeSheet = .result }
+            // Auto-present only the terminal `gameOver` result. `.dealFinished`
+            // is now surfaced inline on the felt by `TableView.dealSummaryCard`
+            // so the user doesn't have to dismiss a modal between deals.
+            if case .gameOver = projection.phase { activeSheet = .result }
             reconcileDiscardSelection()
         }
     }
@@ -76,11 +79,17 @@ public struct ProjectionGameScreen: View {
     private var compactBody: some View {
         VStack(spacing: 0) {
             phaseStatusBar
-            TableView(projection: projection, animationNamespace: cardNamespace)
-                .padding(.horizontal, 12)
-                .padding(.top, 6)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+            TableView(
+                projection: projection,
+                animationNamespace: cardNamespace,
+                onAdvance: advanceToNextDeal
+            )
+            .padding(.horizontal, 12)
+            .padding(.top, 6)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if !isDealFinishedPhase {
+                ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+            }
             viewerHandFan
                 .padding(.horizontal, 8)
                 .padding(.top, 4)
@@ -97,10 +106,16 @@ public struct ProjectionGameScreen: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(spacing: 0) {
                 phaseStatusBar
-                TableView(projection: projection, animationNamespace: cardNamespace)
-                    .padding(.top, 8)
-                    .frame(maxHeight: .infinity)
-                ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                TableView(
+                    projection: projection,
+                    animationNamespace: cardNamespace,
+                    onAdvance: advanceToNextDeal
+                )
+                .padding(.top, 8)
+                .frame(maxHeight: .infinity)
+                if !isDealFinishedPhase {
+                    ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                }
                 viewerHandFan
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
@@ -112,6 +127,19 @@ public struct ProjectionGameScreen: View {
         .padding(.vertical, 16)
         .padding(.trailing, 16)
         .feltBackground()
+    }
+
+    /// Tells whether the felt is currently rendering the deal-summary card.
+    /// When true, the bottom action bar is suppressed — the inline card
+    /// already owns the "Next deal" CTA, so showing the action bar's
+    /// duplicated "Deal scored" status would just repeat the message.
+    private var isDealFinishedPhase: Bool {
+        if case .dealFinished = projection.phase { return true }
+        return false
+    }
+
+    private func advanceToNextDeal() {
+        onSend(.startDeal(dealer: nil, deck: nil))
     }
 
     // MARK: - Status bar
@@ -313,13 +341,11 @@ public struct ProjectionGameScreen: View {
                 VStack(alignment: .leading, spacing: 12) {
                     if case let .gameOver(summary) = projection.phase {
                         gameOverContent(summary: summary)
-                    } else if case let .dealFinished(result) = projection.phase {
-                        dealFinishedContent(result: result)
                     }
                 }
                 .padding()
             }
-            .navigationTitle(navigationTitleForResult)
+            .navigationTitle("Game over")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -331,61 +357,6 @@ public struct ProjectionGameScreen: View {
         }
     }
 
-    private var navigationTitleForResult: LocalizedStringKey {
-        if case .gameOver = projection.phase { return "Game over" }
-        return "Deal complete"
-    }
-
-    private func dealFinishedContent(result: DealResult) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Human-readable headline; the encoded id stays in a hidden
-            // accessibility carrier so UI tests can still pin on the kind.
-            Localized.dealResultHeadline(result, in: projection)
-                .font(.title2.bold())
-                .accessibilityIdentifier(UIIdentifiers.dealResultKind)
-            Text(UIIdentifiers.encode(result.kind))
-                .opacity(0)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
-            switch result.kind {
-            case let .game(declarer, contract, _):
-                resultLine("Declarer", projection.displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
-                resultLine("Contract", Localized.renderedGameContract(contract), idForValue: UIIdentifiers.dealResultContract)
-                resultLine("Tricks won", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
-            case let .misere(declarer):
-                resultLine("Declarer", projection.displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
-                resultLine("Tricks taken", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
-            case let .halfWhist(declarer, contract, _):
-                resultLine("Declarer", projection.displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
-                resultLine("Contract", Localized.renderedGameContract(contract), idForValue: UIIdentifiers.dealResultContract)
-            case .passedOut, .allPass:
-                Text("Hand passed out")
-                    .foregroundStyle(.secondary)
-            }
-            if projection.legal.canStartDeal {
-                Button {
-                    onSend(.startDeal(dealer: nil, deck: nil))
-                    activeSheet = nil
-                } label: {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text("Next deal")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.top, 4)
-                .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
-            }
-            Divider()
-            ScoreBoardView(score: projection.score)
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
-    }
-
     private func gameOverContent(summary: MatchSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Game over")
@@ -394,16 +365,32 @@ public struct ProjectionGameScreen: View {
             if let winner = summary.standings.first {
                 Text("\(winner.player.rawValue) takes the pulka")
                     .font(.title3.bold())
+                    .accessibilityLabel("\(AccessibilityStrings.gameOverWinnerPrefix)\(winner.player.rawValue)")
                     .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
             }
-            Text("\(summary.dealsPlayed) deals played")
+            Text("\(summary.dealsPlayed) completed \(summary.dealsPlayed == 1 ? "deal" : "deals")")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("\(AccessibilityStrings.completedDealsPrefix)\(summary.dealsPlayed)")
                 .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
             Divider()
             VStack(alignment: .leading, spacing: 8) {
                 Text("Final standings")
                     .font(.headline)
+                HStack(spacing: 12) {
+                    Text("")
+                        .frame(width: 24, alignment: .leading)
+                    Text("")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Pool")
+                        .frame(width: 44, alignment: .trailing)
+                    Text("Mountain")
+                        .frame(width: 70, alignment: .trailing)
+                    Text("Balance")
+                        .frame(width: 70, alignment: .trailing)
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
                 ForEach(Array(summary.standings.enumerated()), id: \.offset) { index, standing in
                     HStack(spacing: 12) {
                         Text("\(index + 1)")
@@ -432,24 +419,7 @@ public struct ProjectionGameScreen: View {
         .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
     }
 
-    private func resultLine(_ label: LocalizedStringKey, _ value: String, idForValue: String) -> some View {
-        HStack {
-            Text(label).foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .fontWeight(.medium)
-                .accessibilityIdentifier(idForValue)
-        }
-    }
-
     // MARK: - Helpers
-
-    private var hasResultToShow: Bool {
-        switch projection.phase {
-        case .dealFinished, .gameOver: return true
-        default:                       return false
-        }
-    }
 
     private var viewerSeat: SeatProjection? {
         projection.seats.first { $0.player == projection.viewer }

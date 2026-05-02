@@ -8,10 +8,16 @@ import PreferansEngine
 public struct TableView: View {
     public var projection: PlayerGameProjection
     public var animationNamespace: Namespace.ID
+    public var onAdvance: (() -> Void)?
 
-    public init(projection: PlayerGameProjection, animationNamespace: Namespace.ID) {
+    public init(
+        projection: PlayerGameProjection,
+        animationNamespace: Namespace.ID,
+        onAdvance: (() -> Void)? = nil
+    ) {
         self.projection = projection
         self.animationNamespace = animationNamespace
+        self.onAdvance = onAdvance
     }
 
     public var body: some View {
@@ -42,18 +48,138 @@ public struct TableView: View {
     /// only inside the viewer's hand fan during discard (each card carrying a
     /// "P" badge), so the center felt stays a single source of truth instead
     /// of a duplicated picker.
+    @ViewBuilder
     private func playArea(opponentSeats: [PlayerID]) -> some View {
-        ZStack {
-            if projection.legal.canStartDeal {
-                placeholder("Tap Deal to begin")
-            } else if projection.currentTrick.isEmpty {
-                placeholder(emptyFeltPlaceholder)
-            } else {
-                trickPlays(opponentSeats: opponentSeats)
+        if case let .dealFinished(result) = projection.phase {
+            dealSummaryCard(result: result)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
+        } else {
+            ZStack {
+                if projection.legal.canStartDeal {
+                    placeholder("Tap Deal to begin")
+                } else if projection.currentTrick.isEmpty {
+                    placeholder(emptyFeltPlaceholder)
+                } else {
+                    trickPlays(opponentSeats: opponentSeats)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
+        }
+    }
+
+    // MARK: - Deal-summary card
+
+    /// Rich centered card shown when a deal has just been scored. Replaces
+    /// the empty "Deal complete" placeholder with the outcome headline,
+    /// per-player trick tally, and a prominent "Next deal" CTA so the user
+    /// has something to look at and a clear action without dismissing a
+    /// modal sheet.
+    private func dealSummaryCard(result: DealResult) -> some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 6) {
+                Text("Deal complete")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(TableTheme.goldBright)
+                    .tracking(1.4)
+                    .textCase(.uppercase)
+                Localized.dealResultHeadline(result, in: projection)
+                    .font(.headline)
+                    .foregroundStyle(TableTheme.inkCream)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultKind)
+                Text(UIIdentifiers.encode(result.kind))
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
+                    .accessibilityHidden(true)
+            }
+            trickTallyGrid(result: result)
+            if let onAdvance, projection.legal.canStartDeal {
+                Button {
+                    onAdvance()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.fill")
+                        Text("Next deal")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: 220)
+                }
+                .buttonStyle(.feltPrimary)
+                .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background(dealSummaryBackground)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var dealSummaryBackground: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.42),
+                            Color.black.opacity(0.30)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            RoundedRectangle(cornerRadius: 18)
+                .strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
+    }
+
+    /// Compact tricks-per-active-player grid. Sitting-out seats are excluded
+    /// (they took zero tricks by definition); the declarer is highlighted in
+    /// gold so the user can see at a glance whether the contract was met.
+    private func trickTallyGrid(result: DealResult) -> some View {
+        let players = result.activePlayers
+        let declarer = declarer(for: result)
+        return HStack(spacing: 8) {
+            ForEach(players, id: \.self) { player in
+                let isDeclarer = player == declarer
+                VStack(spacing: 3) {
+                    Text(projection.displayName(for: player))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text("\(result.trickCounts[player] ?? 0)")
+                        .font(.title3.bold().monospacedDigit())
+                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        .accessibilityIdentifier(UIIdentifiers.seatTrickCount(player))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color.black.opacity(isDeclarer ? 0.35 : 0.20))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(
+                            isDeclarer ? TableTheme.gold.opacity(0.55) : Color.clear,
+                            lineWidth: 1
+                        )
+                )
+            }
+        }
+    }
+
+    private func declarer(for result: DealResult) -> PlayerID? {
+        switch result.kind {
+        case let .game(declarer, _, _):           return declarer
+        case let .misere(declarer):               return declarer
+        case let .halfWhist(declarer, _, _):      return declarer
+        case .passedOut, .allPass:                return nil
+        }
     }
 
     private func trickPlays(opponentSeats: [PlayerID]) -> some View {

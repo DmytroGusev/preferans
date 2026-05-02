@@ -88,7 +88,7 @@ final class RedesignScreenshotTests: XCTestCase {
 
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "North", acceptanceTimeout: 0.4) { continue }
+            if robot.playFirstAcceptedHandCard(for: "Anya", acceptanceTimeout: 0.4) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
             if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) { continue }
 
@@ -154,7 +154,7 @@ final class RedesignScreenshotTests: XCTestCase {
             }
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "North") { continue }
+            if robot.playFirstAcceptedHandCard(for: "Anya") { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
 
             // Bot turn — with bot delay = 0 (animations off) the next

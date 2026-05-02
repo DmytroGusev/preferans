@@ -71,6 +71,13 @@ public struct HeuristicStrategy: PlayerStrategy {
             case .totus: hasAffordableTotus = true
             }
         }
+        // Misere hands are rare enough that waiting until every game contract
+        // is unaffordable hides them entirely. Let clean misere candidates
+        // speak before a marginal six-level game.
+        if hasAffordableMisere, HandEvaluator.expectedMisereTricks(grouped: grouped) <= 1.5 {
+            return .bid(.misere)
+        }
+        if hasAffordableTotus { return .bid(.totus) }
         if let lowestTricks = affordableGames.map(\.tricks).min() {
             let candidates = affordableGames.filter { $0.tricks == lowestTricks }
             let best = candidates.max { lhs, rhs in
@@ -80,7 +87,6 @@ public struct HeuristicStrategy: PlayerStrategy {
             return .bid(.game(best))
         }
         if hasAffordableMisere { return .bid(.misere) }
-        if hasAffordableTotus { return .bid(.totus) }
         return .pass
     }
 
@@ -105,13 +111,13 @@ public struct HeuristicStrategy: PlayerStrategy {
             }
             return estimate >= Double(contract.tricks) - margin
         case .misere:
-            return HandEvaluator.expectedMisereTricks(grouped: grouped) <= 0.5
+            return HandEvaluator.expectedMisereTricks(grouped: grouped) <= 1.5
         case .totus:
             // Totus needs all 10 tricks — only the strongest hands.
             let bestStrain = Strain.allStandard
                 .map { HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: $0.suit) }
                 .max() ?? 0
-            return bestStrain + 2.0 >= 9.5
+            return bestStrain + 2.0 >= 9.0
         }
     }
 

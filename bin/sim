@@ -106,4 +106,8 @@ fi
 
 echo "[sim] launching $BUNDLE_ID ${LAUNCH_ARGS[*]:-}"
 xcrun simctl terminate "$SIM_UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
-xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID" "${LAUNCH_ARGS[@]}"
+if [[ ${#LAUNCH_ARGS[@]} -gt 0 ]]; then
+  xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID" "${LAUNCH_ARGS[@]}"
+else
+  xcrun simctl launch "$SIM_UDID" "$BUNDLE_ID"
+fi
