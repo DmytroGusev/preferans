@@ -43,6 +43,43 @@ Across 70 matches / ~600 deals / thousands of bot decisions:
 
 Engine + bot wiring is solid. No crashes, no soft locks.
 
+## Manual playthrough on the simulator
+
+After the engine sim I drove a real human-as-player session on the iPhone 17 Pro simulator using a new XCUITest method `RedesignScreenshotTests.testHumanVsBotsPlaythrough` (taps the Quick-play CTA, then for each phase: passes on bid/whist, plays any legal card on the table, screenshots every frame). Screenshots are saved to `build/screens/play-*.png` and as XCTAttachments on the result bundle. Run with:
+
+```sh
+xcodebuild test -project Preferans.xcodeproj -scheme Preferans \
+  -destination 'platform=iOS Simulator,id=<your-iPhone>' \
+  -only-testing:PreferansUITests/RedesignScreenshotTests/testHumanVsBotsPlaythrough
+```
+
+Findings from inspecting the 64 captured frames:
+
+- **Lobby renders cleanly.** Quick-play CTA, "1 human · 2 bots" line, and roster with toggles all visible; no clipping. Online card error ("Game Center error: …local player has not been authenticated") shows even when the user hasn't tried to sign in — looks like a noisy default state that should be hidden until the user actually attempts auth.
+- **Hand info leak confirmed (P1 below).** As soon as the active actor is a bot, the bottom hand row swaps to that bot's full hand (e.g. East's `9♠ Q♠ 7♠ 9♣ 10♣ A♣ 8♦ 10♦ J♥ K♥` is shown to the human while East is bidding). This is the live consequence of `viewerFollowsActor: true` plus the human seat being defined as just one of three viewers.
+- **Bid bar clips at the right edge.** The horizontal bid row shows `Pass · ♠6 · ♣6 · ♦6 · ♥6 · 6` with the 6th option (likely 6NT) cut off mid-glyph. The row does scroll, but there's no visual hint (no fade gradient, no chevron) that more bids exist beyond the screen edge.
+- **Pacing is sluggish.** The deal-finished screen never appeared within 60 loop iterations (≈60 s) with `botMoveDelay = 500ms`. A real all-pass deal takes 10 tricks × 3 plays × 500 ms ≈ 15 s of pure waiting before the human can do anything else — feels wrong on touch.
+- **Illegal-card play surfaces only as a generic error banner.** When the test tapped an off-suit card during a forced-follow trick, the screen showed a small banner at the top instead of any inline guidance. Card legality *is* already encoded as a blue outline on the legal cards (good), but the banner adds noise without adding info; consider squelching it for legality errors that are already visible in the hand row.
+- **Card art is recognizable** but small in the trick area — single cards in the middle look fine, the three-card trick fan is more cramped. Worth a designer pass.
+
+The screenshots are checked into `build/screens/` so a designer can look without booting the simulator.
+
+## Full match playthrough — 4 players, pool target 6
+
+Followed the single-deal walkthrough with `RedesignScreenshotTests.testHumanVsBotsFullMatchFourPlayersPoolSix`: 4 players, pool target 6, "You" passes every bid/whist and plays a legal card on each trick, three bots play to completion. Match finished in **24 seconds wall-clock** with `botMoveDelay = .zero` (now wired to the `-uiTestDisableAnimations` flag). Without that wiring the same match took several minutes — see "Issues" below.
+
+Two new issues surfaced that the single-deal pass never hit:
+
+- **Deal-finished sheet uses a different identifier** (`buttonStartNextDealInSheet`) from the lobby's `buttonStartDeal`. The first version of the test only knew about the lobby identifier and froze on every deal-end. The fix is in the test now, but the duplication is worth flagging — one identifier per "advance the match" affordance would prevent this trap for anyone else writing a UITest.
+- **`Deals played: 2` shown on the Game-over panel after only 1 completed deal.** The match ended when West reached pool=6 after deal 1; the engine's `dealsPlayed` counter ticks on `startDeal`, which the deal-finished sheet's "Start next deal" button fires before the engine reroutes to `gameOver`. Either bump only on completed deals, or display "Completed deals" / "Deals attempted" with a clearer label.
+
+Other observations from the standings panel:
+
+- **Standings columns are unlabeled** — three numeric columns (`6  0  70,0`) with no header. Reader has to know the order is Pool / Mountain / Score. Add column headers ("Pool", "Mountain", "Score").
+- **Decimal style** is European (`70,0`, `-60,0`). Consistent at least, but worth confirming this is intentional and locale-derived rather than hard-coded.
+- **Lots of empty real estate** below the 4-row standings — natural place to surface match-summary stats (deals by kind, biggest hand, longest losing streak) if there's appetite.
+- **"You" passing every bid in raspasy is brutal** — finished -60 in 2 deals because the all-pass / passed-out flow piles up mountain points fast for whoever can't avoid taking tricks. Not a bug, but a usability note: if a new human player passes everything by accident, they'll lose hard and feel like the game is broken. Consider a "your hand is strong — really pass?" nudge at the bidding step.
+
 ## Issues found (priority order)
 
 ### P1 — Bots over-pass, dramatically (gameplay quality)

@@ -350,6 +350,12 @@ public struct LobbyView: View {
             for (index, seat) in configuration.players.enumerated() where botSeats.contains(index) {
                 model.botStrategies[seat] = strategy
             }
+            // UI tests pass `-uiTestDisableAnimations` to skip transitions;
+            // honor that for bot pacing too so a full match doesn't burn
+            // 500ms × every bot action just waiting.
+            if TestHarness.disableAnimations(in: args) {
+                model.botMoveDelay = .zero
+            }
             // Pin the viewer to the first human seat so the user sees
             // their own hand instead of jumping seats while bots play.
             if let humanIndex = (0..<configuration.players.count).first(where: { !botSeats.contains($0) }) {
