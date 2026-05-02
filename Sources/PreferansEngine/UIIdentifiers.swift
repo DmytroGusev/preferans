@@ -114,6 +114,7 @@ public enum UIIdentifiers {
     public static func lobbyPlayerNameField(index: Int) -> String { "lobby.playerName.\(index)" }
     public static func lobbyBotToggle(index: Int) -> String       { "lobby.botToggle.\(index)" }
     public static let lobbyError               = "lobby.error"
+    public static let lobbyValidationError     = "lobby.validationError"
     public static let lobbyQuickPlayVsBots     = "button.quickPlayVsBots"
 
     // MARK: - Game screen — header / structure
@@ -143,7 +144,6 @@ public enum UIIdentifiers {
     // MARK: - Action buttons
 
     public static let buttonStartDeal          = "button.startDeal"
-    public static let buttonStartNextDealInSheet = "button.startDeal.inSheet"
     public static let buttonDiscardSelected    = "button.discardSelected"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }

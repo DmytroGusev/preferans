@@ -11,7 +11,7 @@ final class ScenarioFlowTests: XCTestCase {
             players: ["north", "east", "south"],
             rules: .sochi,
             firstDealer: "south",
-            viewerFollowsActor: false,
+            viewerPolicy: .pinned("north"),
             dealSource: ScriptedDealSource(decks: scenario.decks)
         )
     }
@@ -316,7 +316,7 @@ final class ScenarioFlowTests: XCTestCase {
             players: ["north", "east", "south", "west"],
             rules: .sochi,
             firstDealer: "north",
-            viewerFollowsActor: false,
+            viewerPolicy: .pinned("north"),
             dealSource: ScriptedDealSource(decks: [Deck.standard32])
         )
 

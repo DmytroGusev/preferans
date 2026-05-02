@@ -21,7 +21,7 @@ public struct ActionBarView: View {
 
     public var body: some View {
         Group {
-            if projection.legal.canStartDeal {
+            if shouldShowStartDealRow {
                 startDealRow
             } else if !projection.legal.bidCalls.isEmpty {
                 bidRow
@@ -53,6 +53,19 @@ public struct ActionBarView: View {
         .feltBand()
     }
 
+    /// Show "Start deal" in the action bar only when the engine is at the
+    /// match's pre-first-deal state. Between deals the deal-finished sheet
+    /// owns the "advance the match" affordance — surfacing both at once
+    /// would render two buttons with the same accessibility identifier
+    /// (the action bar's hidden behind the sheet, the sheet's on top),
+    /// and XCUITest queries that returned the occluded one would silently
+    /// fail to advance the match.
+    private var shouldShowStartDealRow: Bool {
+        guard projection.legal.canStartDeal else { return false }
+        if case .waitingForDeal = projection.phase { return true }
+        return false
+    }
+
     private var startDealRow: some View {
         Button {
             onSend(.startDeal(dealer: nil, deck: nil))
@@ -69,13 +82,12 @@ public struct ActionBarView: View {
     }
 
     private var bidRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        scrollableRow {
             HStack(spacing: 8) {
                 ForEach(projection.legal.bidCalls, id: \.self) { call in
                     bidChip(call: call)
                 }
             }
-            .padding(.horizontal, 2)
         }
     }
 
@@ -103,7 +115,7 @@ public struct ActionBarView: View {
 
     private var contractRow: some View {
         let isTotus = isTotusDeclaration
-        return ScrollView(.horizontal, showsIndicators: false) {
+        return scrollableRow {
             HStack(spacing: 8) {
                 ForEach(projection.legal.contractOptions, id: \.self) { contract in
                     Button {
@@ -123,8 +135,32 @@ public struct ActionBarView: View {
                     .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
                 }
             }
-            .padding(.horizontal, 2)
         }
+    }
+
+    /// Horizontal scroller with a leading + trailing fade so users get a
+    /// visual hint that more options exist beyond the screen edge. Without
+    /// this, the bid bar silently clips the rightmost chips.
+    @ViewBuilder
+    private func scrollableRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            content()
+                .padding(.horizontal, 2)
+        }
+        .mask(scrollFadeMask)
+    }
+
+    private var scrollFadeMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: .clear, location: 0.0),
+                .init(color: .black, location: 0.04),
+                .init(color: .black, location: 0.96),
+                .init(color: .clear, location: 1.0)
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 
     private var whistRow: some View {

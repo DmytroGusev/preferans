@@ -5,9 +5,15 @@ import PreferansEngine
 public final class GameViewModel: ObservableObject {
     @Published public private(set) var engine: PreferansEngine
     @Published public private(set) var lastError: String?
+    /// Category of the most recent error, or `nil` when there was none.
+    /// The UI uses this to decide whether to show the banner — categories
+    /// the user can already see from inline visual state (illegal-card
+    /// outline, only-legal buttons) don't get a redundant banner. Tests
+    /// still see the error in `lastError` regardless.
+    @Published public private(set) var lastErrorCategory: ErrorCategory?
     @Published public private(set) var eventLog: [String] = []
     @Published public var selectedViewer: PlayerID
-    public var viewerFollowsActor: Bool
+    public var viewerPolicy: ViewerPolicy
     public var dealSource: DealSource
     public let tableID: UUID = UUID()
 
@@ -25,12 +31,12 @@ public final class GameViewModel: ObservableObject {
         rules: PreferansRules = .sochi,
         match: MatchSettings = .unbounded,
         firstDealer: PlayerID? = nil,
-        viewerFollowsActor: Bool = false,
+        viewerPolicy: ViewerPolicy = .followsActor,
         dealSource: DealSource = RandomDealSource()
     ) throws {
         self.engine = try PreferansEngine(players: players, rules: rules, match: match, firstDealer: firstDealer)
-        self.selectedViewer = players.first ?? PlayerID("player")
-        self.viewerFollowsActor = viewerFollowsActor
+        self.viewerPolicy = viewerPolicy
+        self.selectedViewer = viewerPolicy.initialViewer(among: players)
         self.dealSource = dealSource
     }
 
@@ -40,13 +46,26 @@ public final class GameViewModel: ObservableObject {
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: events.map { String(describing: $0) })
             lastError = nil
-            if viewerFollowsActor, let actor = currentActor(), actor != selectedViewer {
-                selectedViewer = actor
-            }
+            lastErrorCategory = nil
+            applyViewerPolicy()
             scheduleBotIfNeeded()
+        } catch let error as PreferansError {
+            lastError = error.errorDescription
+            lastErrorCategory = ErrorCategory(error)
         } catch {
             lastError = error.localizedDescription
+            lastErrorCategory = .system
         }
+    }
+
+    /// The error message that should be surfaced to the user as a banner,
+    /// or `nil` when the most recent error is one the UI already
+    /// communicates inline (legal-card outline, only-legal buttons,
+    /// pre-Start lobby validation). Tests can still read `lastError`
+    /// directly to verify engine-level rejection behavior.
+    public var displayableError: String? {
+        guard let category = lastErrorCategory, category.shouldDisplayBanner else { return nil }
+        return lastError
     }
 
     private func currentActor() -> PlayerID? {
@@ -77,6 +96,21 @@ public final class GameViewModel: ObservableObject {
         }
     }
 
+    private func applyViewerPolicy() {
+        switch viewerPolicy {
+        case .pinned:
+            // Pinned viewer never moves. The user can still swap manually
+            // via the "View as" picker — that path writes selectedViewer
+            // directly and bypasses this hook.
+            break
+        case .followsActor:
+            if let actor = currentActor(), actor != selectedViewer {
+                selectedViewer = actor
+            }
+        }
+    }
+
+
     /// Kicks off the active bot seat's decision off the main actor and
     /// applies the resulting action when ready. A new state change
     /// supersedes any in-flight decision.
@@ -103,6 +137,59 @@ public final class GameViewModel: ObservableObject {
                 guard let self, self.engine.snapshot.state == snap.state else { return }
                 self.send(action)
             }
+        }
+    }
+}
+
+extension GameViewModel {
+    /// Classifies the most recent engine error so the view layer can decide
+    /// whether to surface a banner. Information the user can already see
+    /// inline (legal-card outlines, only-legal buttons, lobby validation
+    /// gating) gets `.uiValidatable` and is suppressed; everything else
+    /// surfaces so a real bug isn't silently swallowed.
+    public enum ErrorCategory: Sendable {
+        case uiValidatable
+        case system
+
+        init(_ error: PreferansError) {
+            switch error {
+            case .illegalCardPlay, .cardNotInHand, .duplicateCards,
+                 .illegalBid, .illegalWhist, .invalidContract, .notPlayersTurn:
+                self = .uiValidatable
+            case .invalidPlayer, .invalidPlayers, .invalidDeck, .invalidState:
+                self = .system
+            }
+        }
+
+        var shouldDisplayBanner: Bool {
+            switch self {
+            case .uiValidatable: return false
+            case .system: return true
+            }
+        }
+    }
+}
+
+/// How the on-screen viewer (whose hand is rendered face-up at the bottom)
+/// should change in response to gameplay.
+///
+/// - `pinned`: the viewer never moves. Use when there is exactly one human
+///   at the table — the device shows that human's seat and bots play their
+///   turns without ever revealing their hands.
+/// - `followsActor`: viewer rotates to match the seat the engine is
+///   currently waiting on. Use for hot-seat play (every seat is a human
+///   passing the device around), so each player sees their own hand on
+///   their turn without diving into the debug picker.
+public enum ViewerPolicy: Equatable, Sendable {
+    case pinned(PlayerID)
+    case followsActor
+
+    func initialViewer(among players: [PlayerID]) -> PlayerID {
+        switch self {
+        case let .pinned(seat):
+            return seat
+        case .followsActor:
+            return players.first ?? PlayerID("player")
         }
     }
 }

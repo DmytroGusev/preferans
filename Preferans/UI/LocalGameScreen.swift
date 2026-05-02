@@ -43,7 +43,7 @@ public struct LocalGameScreen: View {
                 }
             }
             .overlay(alignment: .top) {
-                if let error = model.lastError {
+                if let error = model.displayableError {
                     Text(error)
                         .font(.caption)
                         .padding(.horizontal, 12)

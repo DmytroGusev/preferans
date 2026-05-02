@@ -367,7 +367,7 @@ public struct ProjectionGameScreen: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .padding(.top, 4)
-                .accessibilityIdentifier(UIIdentifiers.buttonStartNextDealInSheet)
+                .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
             }
             Divider()
             ScoreBoardView(score: projection.score)

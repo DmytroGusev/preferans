@@ -13,7 +13,7 @@ final class GameViewModelDealSourceTests: XCTestCase {
             players: ["north", "east", "south"],
             rules: .sochi,
             firstDealer: "south",
-            viewerFollowsActor: true,
+            viewerPolicy: .followsActor,
             dealSource: dealSource
         )
     }
@@ -55,8 +55,8 @@ final class GameViewModelDealSourceTests: XCTestCase {
         let model = try makeModel(dealSource: ScriptedDealSource(decks: [Deck.standard32]))
         model.startDeal()
 
-        // viewerFollowsActor is on, so selectedViewer always equals the
-        // engine's current bidder. Three Pass calls drive an all-pass deal.
+        // viewerPolicy is .followsActor, so selectedViewer always equals
+        // the engine's current bidder. Three Pass calls drive an all-pass.
         for _ in 0..<3 {
             model.send(.bid(player: model.selectedViewer, call: .pass))
         }

@@ -247,14 +247,10 @@ final class RedesignScreenshotTests: XCTestCase {
                 break
             }
 
-            // Between deals the engine surfaces a "Start next deal" button
-            // inside the deal-finished sheet — different identifier from the
-            // initial Start-deal button. Tap whichever is presented.
-            if tapIfPresent(app, UIIdentifiers.buttonStartNextDealInSheet) {
-                dealStartCount += 1
-                snap(app, "deal-\(dealStartCount)-started", force: true)
-                continue
-            }
+            // The deal-finished sheet and the action bar both expose the
+            // same "advance the match" affordance under one shared
+            // identifier — one tap drives the engine forward regardless of
+            // which surface is currently presenting it.
             if tapIfPresent(app, UIIdentifiers.buttonStartDeal) {
                 dealStartCount += 1
                 snap(app, "deal-\(dealStartCount)-started", force: true)

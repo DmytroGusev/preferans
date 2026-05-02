@@ -33,7 +33,12 @@ public enum TestHarness {
         public let rules: PreferansRules
         public let match: MatchSettings
         public let dealSource: DealSource
-        public let viewerFollowsActor: Bool
+        /// When set, forces the lobby to use this viewer policy regardless
+        /// of how many humans are at the table. UI tests use this to drive
+        /// every seat through the screen ("follow the actor"). Production
+        /// runs leave this nil and the lobby derives the policy from the
+        /// human/bot mix.
+        public let viewerPolicyOverride: ViewerPolicy?
     }
 
     public static func viewerFollowsActor(in arguments: [String]) -> Bool {
@@ -106,7 +111,7 @@ public enum TestHarness {
             rules: rules,
             match: match,
             dealSource: dealSource,
-            viewerFollowsActor: viewerFollowsActor(in: arguments)
+            viewerPolicyOverride: viewerFollowsActor(in: arguments) ? .followsActor : nil
         )
     }
 

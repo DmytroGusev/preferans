@@ -35,7 +35,12 @@ struct PreferansApp: App {
                 #if canImport(GameKit) && canImport(UIKit)
                 .environmentObject(gameCenter)
                 .environmentObject(online)
-                .task { gameCenter.authenticate() }
+                // Game Center authentication is intentionally deferred to
+                // an explicit user tap on the lobby's "Sign in to Game
+                // Center" button. Auto-authenticating at launch would
+                // probe Game Center on every cold start and surface a
+                // "local player not authenticated" error before the user
+                // had any chance to opt in.
                 #endif
         }
     }

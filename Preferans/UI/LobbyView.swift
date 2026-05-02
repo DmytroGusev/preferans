@@ -11,12 +11,10 @@ public struct LobbyView: View {
     #endif
 
     @State private var localModel: GameViewModel?
-    @State private var playerNames = ["You", "East", "South"]
-    @State private var botSeats: Set<Int> = [1, 2]
+    @State private var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
     @State private var errorText: String?
     @State private var showingMatchmaker = false
-
-    private var seatCount: Int { playerNames.count }
+    @State private var hasAttemptedSignIn = false
 
     public init() {}
 
@@ -111,14 +109,6 @@ public struct LobbyView: View {
         .padding(.top, 8)
     }
 
-    private var rosterSummary: String {
-        let bots = botSeats.filter { $0 < seatCount }.count
-        let humans = seatCount - bots
-        let humanLabel = humans == 1 ? "1 human" : "\(humans) humans"
-        let botLabel = bots == 1 ? "1 bot" : "\(bots) bots"
-        return "\(humanLabel) · \(botLabel)"
-    }
-
     private var localTableCard: some View {
         card(title: "Local table", icon: "person.3.fill") {
             VStack(spacing: 14) {
@@ -139,9 +129,9 @@ public struct LobbyView: View {
                     .background(.background, in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
-                .accessibilityIdentifier("button.quickPlayVsBots")
+                .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
 
-                Text(rosterSummary)
+                Text(seats.rosterSummary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -152,23 +142,17 @@ public struct LobbyView: View {
                 }
 
                 VStack(spacing: 8) {
-                    ForEach(0..<seatCount, id: \.self) { index in
-                        HStack(spacing: 10) {
-                            Image(systemName: botSeats.contains(index) ? "cpu" : "person.crop.circle")
-                                .foregroundStyle(botSeats.contains(index) ? Color.accentColor : .secondary)
-                            TextField("Player \(index + 1)", text: binding(for: index))
-                                .textFieldStyle(.plain)
-                                .submitLabel(.done)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
-                            Toggle("Bot", isOn: botBinding(for: index))
-                                .toggleStyle(.switch)
-                                .labelsHidden()
-                                .accessibilityIdentifier(UIIdentifiers.lobbyBotToggle(index: index))
-                        }
-                        .padding(10)
-                        .background(.background, in: RoundedRectangle(cornerRadius: 10))
+                    ForEach(Array(seats.enumerated()), id: \.element.id) { index, _ in
+                        seatRow(index: index)
                     }
+                }
+
+                if let validation = seats.validationError {
+                    Text(validation)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
                 }
 
                 Button {
@@ -183,9 +167,29 @@ public struct LobbyView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .disabled(seats.validationError != nil)
                 .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
             }
         }
+    }
+
+    private func seatRow(index: Int) -> some View {
+        let isBot = seats[index].kind == .bot
+        return HStack(spacing: 10) {
+            Image(systemName: isBot ? "cpu" : "person.crop.circle")
+                .foregroundStyle(isBot ? Color.accentColor : .secondary)
+            TextField("Player \(index + 1)", text: nameBinding(for: index))
+                .textFieldStyle(.plain)
+                .submitLabel(.done)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
+            Toggle("Bot", isOn: botBinding(for: index))
+                .toggleStyle(.switch)
+                .labelsHidden()
+                .accessibilityIdentifier(UIIdentifiers.lobbyBotToggle(index: index))
+        }
+        .padding(10)
+        .background(.background, in: RoundedRectangle(cornerRadius: 10))
     }
 
     #if canImport(GameKit) && canImport(UIKit)
@@ -196,7 +200,7 @@ public struct LobbyView: View {
                     Circle()
                         .fill(gameCenter.isAuthenticated ? Color.green : Color.orange)
                         .frame(width: 8, height: 8)
-                    Text(gameCenter.statusText)
+                    Text(onlineStatusLine)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -206,6 +210,7 @@ public struct LobbyView: View {
                     if gameCenter.isAuthenticated {
                         showingMatchmaker = true
                     } else {
+                        hasAttemptedSignIn = true
                         gameCenter.authenticate()
                     }
                 } label: {
@@ -219,13 +224,24 @@ public struct LobbyView: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
 
-                if let onlineError = online.errorText {
+                // Only surface online errors after the user has actively
+                // tried to use the online table — pre-opt-in error states
+                // ("local player not authenticated" before any tap) are
+                // expected and not actionable yet.
+                if hasAttemptedSignIn, let onlineError = online.errorText {
                     Text(onlineError)
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
             }
         }
+    }
+
+    private var onlineStatusLine: String {
+        if gameCenter.isAuthenticated || hasAttemptedSignIn {
+            return gameCenter.statusText
+        }
+        return "Sign in to play online"
     }
     #endif
 
@@ -246,7 +262,7 @@ public struct LobbyView: View {
 
     @ViewBuilder
     private func seatCountButton(count: Int, label: String, id: String) -> some View {
-        let isSelected = seatCount == count
+        let isSelected = seats.count == count
         if isSelected {
             Button { setSeatCount(count) } label: {
                 Text(label)
@@ -271,61 +287,39 @@ public struct LobbyView: View {
         }
     }
 
-    private func binding(for index: Int) -> Binding<String> {
+    private func nameBinding(for index: Int) -> Binding<String> {
         Binding(
-            get: { playerNames.indices.contains(index) ? playerNames[index] : "" },
+            get: { seats.indices.contains(index) ? seats[index].name : "" },
             set: { newValue in
-                guard playerNames.indices.contains(index) else { return }
-                playerNames[index] = newValue
+                guard seats.indices.contains(index) else { return }
+                seats[index].name = newValue
             }
         )
     }
 
     private func botBinding(for index: Int) -> Binding<Bool> {
         Binding(
-            get: { botSeats.contains(index) },
+            get: { seats.indices.contains(index) ? seats[index].kind == .bot : false },
             set: { newValue in
-                if newValue {
-                    botSeats.insert(index)
-                } else {
-                    botSeats.remove(index)
-                }
+                guard seats.indices.contains(index) else { return }
+                seats[index].kind = newValue ? .bot : .human
             }
         )
     }
 
     private func setSeatCount(_ count: Int) {
-        let defaults = ["You", "East", "South", "West"]
-        if count > playerNames.count {
-            while playerNames.count < count {
-                let nextIndex = playerNames.count
-                playerNames.append(defaults[nextIndex])
-                // New seats default to bots so the human roster doesn't
-                // silently grow when the table expands.
-                botSeats.insert(nextIndex)
-            }
-        } else if count < playerNames.count {
-            playerNames = Array(playerNames.prefix(count))
-            // Drop bot toggles for seats that no longer exist; otherwise
-            // they'd silently re-activate next time the user grew the
-            // table back to 4 seats.
-            botSeats = botSeats.filter { $0 < count }
-        }
+        seats = LobbySeat.resize(seats, to: count)
     }
 
     private func quickPlayVsBots() {
-        playerNames = ["You", "East", "South"]
-        botSeats = [1, 2]
+        seats = LobbySeat.quickPlayVsBots()
         startLocalTable()
     }
 
     private func startLocalTable() {
+        guard seats.validationError == nil else { return }
         do {
-            let lobbyPlayers = playerNames
-                .prefix(seatCount)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { !$0.isEmpty }
-                .map { PlayerID($0) }
+            let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
             // First dealer = last seat so the first seat ("You") is forehand
             // (first to bid) on deal 1. In 4-player this also keeps the human
             // player active during the very first hand instead of sitting out.
@@ -335,20 +329,35 @@ public struct LobbyView: View {
                 from: args,
                 defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
             )
-            // Local hot-seat default: viewer follows the active actor so the
-            // person holding the device sees their own hand on each turn
-            // without diving into the debug picker.
+
+            // Viewer policy: pin to the single human if there is exactly one
+            // (vs-bots), otherwise follow the active actor (hot-seat). UI
+            // tests can force `.followsActor` via the launch flag so the
+            // robot can drive each seat's turn from one device.
+            let viewerPolicy = configuration.viewerPolicyOverride
+                ?? defaultViewerPolicy(for: configuration.players)
+
             let model = try GameViewModel(
                 players: configuration.players,
                 rules: configuration.rules,
                 match: configuration.match,
                 firstDealer: configuration.firstDealer,
-                viewerFollowsActor: true,
+                viewerPolicy: viewerPolicy,
                 dealSource: configuration.dealSource
             )
-            let strategy = HeuristicStrategy()
-            for (index, seat) in configuration.players.enumerated() where botSeats.contains(index) {
-                model.botStrategies[seat] = strategy
+            // Bot wiring is a property of the lobby's roster — when the
+            // user explicitly toggled a seat to "bot", the engine should
+            // play that seat autonomously. A script-driven UI test that
+            // overrides the roster wholesale (different player IDs and
+            // possibly a different seat count) is asking to drive every
+            // seat itself; we don't impose the lobby's bot toggles on
+            // a roster the user never actually saw.
+            if configuration.players.elementsEqual(lobbyPlayers) {
+                let strategy = HeuristicStrategy()
+                for (index, seat) in configuration.players.enumerated()
+                    where seats.indices.contains(index) && seats[index].kind == .bot {
+                    model.botStrategies[seat] = strategy
+                }
             }
             // UI tests pass `-uiTestDisableAnimations` to skip transitions;
             // honor that for bot pacing too so a full match doesn't burn
@@ -356,15 +365,115 @@ public struct LobbyView: View {
             if TestHarness.disableAnimations(in: args) {
                 model.botMoveDelay = .zero
             }
-            // Pin the viewer to the first human seat so the user sees
-            // their own hand instead of jumping seats while bots play.
-            if let humanIndex = (0..<configuration.players.count).first(where: { !botSeats.contains($0) }) {
-                model.selectedViewer = configuration.players[humanIndex]
-            }
             localModel = model
             errorText = nil
         } catch {
             errorText = error.localizedDescription
         }
+    }
+
+    /// Default viewer policy when a UI test hasn't forced an override:
+    /// pin to the lone human if there is exactly one, otherwise follow
+    /// the actor (hot-seat). All-bot tables also follow the actor so the
+    /// rendered seat stays current during demos.
+    private func defaultViewerPolicy(for players: [PlayerID]) -> ViewerPolicy {
+        let humanIndices = seats.indices.filter { seats[$0].kind == .human }
+        if humanIndices.count == 1, players.indices.contains(humanIndices[0]) {
+            return .pinned(players[humanIndices[0]])
+        }
+        return .followsActor
+    }
+}
+
+/// Single seat in the lobby's local-table roster. Folds the seat's
+/// human/bot kind into the same struct as its name so the two can never
+/// drift — a previous bug where a bot-seat index pointed at a non-existent
+/// row, or where growing the table silently created a *human* seat, is
+/// not representable in this model.
+public struct LobbySeat: Identifiable, Equatable {
+    public enum Kind: Equatable { case human, bot }
+
+    public let id: UUID
+    public var name: String
+    public var kind: Kind
+
+    public init(id: UUID = UUID(), name: String, kind: Kind) {
+        self.id = id
+        self.name = name
+        self.kind = kind
+    }
+
+    public var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+extension LobbySeat {
+    /// Stock seat names used for fresh rosters.
+    static let defaultNames = ["You", "East", "South", "West"]
+
+    /// Default fresh roster for the given seat count. Seat 0 is the local
+    /// human, every other seat starts as a bot — that matches the
+    /// "play vs bots" experience users land on by default.
+    static func defaults(count: Int) -> [LobbySeat] {
+        precondition(count >= 3 && count <= 4, "Preferans only supports 3- or 4-player tables.")
+        return (0..<count).map { index in
+            LobbySeat(
+                name: defaultNames[index],
+                kind: index == 0 ? .human : .bot
+            )
+        }
+    }
+
+    /// Roster used by the Quick-play CTA. Always 3 seats, 1 human + 2 bots.
+    static func quickPlayVsBots() -> [LobbySeat] {
+        defaults(count: 3)
+    }
+
+    /// Resize an existing roster to `count` seats while keeping existing
+    /// rows intact (preserving any user edits to names / bot toggles).
+    /// Newly-added seats default to bot, matching the bot-by-default
+    /// roster used by `defaults`.
+    static func resize(_ existing: [LobbySeat], to count: Int) -> [LobbySeat] {
+        precondition(count >= 3 && count <= 4, "Preferans only supports 3- or 4-player tables.")
+        if existing.count == count { return existing }
+        if count < existing.count {
+            return Array(existing.prefix(count))
+        }
+        var resized = existing
+        for index in existing.count..<count {
+            resized.append(LobbySeat(
+                name: defaultNames[index],
+                kind: .bot
+            ))
+        }
+        return resized
+    }
+}
+
+extension Array where Element == LobbySeat {
+    /// One-line caption for the lobby (e.g. "1 human · 2 bots").
+    var rosterSummary: String {
+        let bots = filter { $0.kind == .bot }.count
+        let humans = count - bots
+        let humanLabel = humans == 1 ? "1 human" : "\(humans) humans"
+        let botLabel = bots == 1 ? "1 bot" : "\(bots) bots"
+        return "\(humanLabel) · \(botLabel)"
+    }
+
+    /// Why this roster can't start a table, or `nil` when it's ready.
+    /// Drives the inline validation message and disables the Start button.
+    var validationError: String? {
+        let names = map(\.trimmedName)
+        if names.contains(where: \.isEmpty) {
+            return "Every seat needs a name."
+        }
+        if Set(names).count != names.count {
+            return "Names must be unique."
+        }
+        if filter({ $0.kind == .human }).isEmpty {
+            return "At least one seat must be human."
+        }
+        return nil
     }
 }
