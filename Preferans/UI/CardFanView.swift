@@ -52,16 +52,44 @@ public struct CardFanView: View {
             let startX = max(0, (available - totalWidth) / 2)
 
             ZStack(alignment: .topLeading) {
-                ForEach(Array(cards.enumerated()), id: \.offset) { index, projected in
+                ForEach(indexedCards) { item in
+                    let index = item.index
+                    let projected = item.projected
                     let known = projected.knownCard
                     let isPlayable = known.map { playableCards.contains($0) } ?? false
                     let isSelected = known.map { selectedCards.contains($0) } ?? false
-                    cardView(projected, index: index, known: known, isPlayable: isPlayable, isSelected: isSelected)
+                    let isTalon = known.map { talonCards.contains($0) } ?? false
+                    let region: UIIdentifiers.CardRegion = isTalon ? .discardSelect : .hand(seat: seat)
+                    let isInteractive = known != nil && onTap != nil
+                    ZStack(alignment: .topLeading) {
+                        cardView(
+                            projected,
+                            index: index,
+                            known: known,
+                            isPlayable: isPlayable,
+                            isSelected: isSelected,
+                            exposesAccessibility: !isInteractive
+                        )
+                        .allowsHitTesting(!isInteractive)
+
+                        if let known, let onTap {
+                            Button {
+                                onTap(known)
+                            } label: {
+                                Color.clear
+                                    .frame(
+                                        width: index == count - 1 ? cardWidth : max(12, step),
+                                        height: cardHeight
+                                    )
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(projected.description)
+                            .accessibilityIdentifier(UIIdentifiers.card(known, in: region))
+                        }
+                    }
                         .offset(x: startX + step * CGFloat(index), y: 0)
                         .zIndex(Double(index) + (isSelected || isPlayable ? 100 : 0))
-                        .onTapGesture {
-                            if let known { onTap?(known) }
-                        }
                 }
             }
             .frame(width: available, height: cardHeight + 12, alignment: .topLeading)
@@ -69,8 +97,21 @@ public struct CardFanView: View {
         .frame(height: cardHeight + 12)
     }
 
+    private var indexedCards: [IndexedCard] {
+        cards.enumerated().map { index, projected in
+            IndexedCard(index: index, projected: projected)
+        }
+    }
+
     @ViewBuilder
-    private func cardView(_ projected: ProjectedCard, index: Int, known: Card?, isPlayable: Bool, isSelected: Bool) -> some View {
+    private func cardView(
+        _ projected: ProjectedCard,
+        index: Int,
+        known: Card?,
+        isPlayable: Bool,
+        isSelected: Bool,
+        exposesAccessibility: Bool = true
+    ) -> some View {
         let isTalon = known.map { talonCards.contains($0) } ?? false
         let region: UIIdentifiers.CardRegion = isTalon ? .discardSelect : .hand(seat: seat)
         let view = CardView(
@@ -79,9 +120,10 @@ public struct CardFanView: View {
             isSelected: isSelected,
             isTalon: isTalon,
             size: size,
-            region: region,
+            region: exposesAccessibility ? region : nil,
             indexInRow: index
         )
+        .accessibilityHidden(!exposesAccessibility)
         // Skip matchedGeometryEffect when this fan contains talon cards;
         // SwiftUI was preserving multiple geometry copies of the same Card
         // across the talon-merge re-render and surfacing 5 duplicate AX
@@ -98,5 +140,22 @@ public struct CardFanView: View {
         let natural = cardWidth * 0.78
         let maxStepThatFits = (available - cardWidth) / CGFloat(count - 1)
         return min(natural, max(cardWidth * 0.32, maxStepThatFits))
+    }
+
+    private struct IndexedCard: Identifiable {
+        var index: Int
+        var projected: ProjectedCard
+
+        var id: ID {
+            if let known = projected.knownCard {
+                return .known(known)
+            }
+            return .hidden(index)
+        }
+
+        enum ID: Hashable {
+            case known(Card)
+            case hidden(Int)
+        }
     }
 }

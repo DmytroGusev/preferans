@@ -46,6 +46,7 @@ public struct ProjectionGameScreen: View {
         }
         .onChange(of: projection.sequence) { _, _ in
             if hasResultToShow { activeSheet = .result }
+            reconcileDiscardSelection()
         }
     }
 
@@ -454,6 +455,16 @@ public struct ProjectionGameScreen: View {
         } else if selectedDiscard.count < 2 {
             selectedDiscard.insert(card)
         }
+    }
+
+    private func reconcileDiscardSelection() {
+        guard projection.legal.canDiscard else {
+            selectedDiscard.removeAll()
+            return
+        }
+        let available = Set((viewerSeat?.hand ?? []).compactMap(\.knownCard)
+            + projection.talon.compactMap(\.knownCard))
+        selectedDiscard.formIntersection(available)
     }
 
     private func displayName(for player: PlayerID) -> String {

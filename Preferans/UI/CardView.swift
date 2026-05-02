@@ -111,6 +111,7 @@ public struct CardView: View {
         .shadow(color: .black.opacity(isPlayable ? 0.22 : 0.10), radius: isPlayable ? 5 : 2, y: 1)
         .scaleEffect(isSelected ? 1.10 : 1)
         .offset(y: isSelected ? -8 : 0)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(card.description)
         .accessibilityIdentifier(identifier)
         .accessibilityAddTraits(.isButton)
@@ -195,4 +196,3 @@ public struct CardView: View {
         return ""
     }
 }
-

@@ -232,16 +232,19 @@ final class MatchUIRobot {
         let button = app.buttons[id]
         XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
                       "Button for \(descriptor) (id: \(id)) never appeared.")
+        XCTAssertTrue(button.isEnabled,
+                      "Button for \(descriptor) (id: \(id)) appeared but was disabled.")
         button.tap()
     }
 
     /// `CardView` always sets `.accessibilityAddTraits(.isButton)`, so cards
-    /// surface as buttons in the XCUI hierarchy. One query, one timeout.
+    /// surface as buttons in the XCUI hierarchy. The hand is an overlapping
+    /// fan, so tap the exposed leading sliver instead of the card center.
     private func tapCard(id: String, descriptor: String) {
         let button = app.buttons[id]
         XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
                       "Card button for \(descriptor) (id: \(id)) never appeared.")
-        button.tap()
+        button.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tap()
     }
 
     private func readInt(id: String, descriptor: String) -> Int {
