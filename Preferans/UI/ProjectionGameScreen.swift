@@ -132,10 +132,6 @@ public struct ProjectionGameScreen: View {
                 .lineLimit(2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier(UIIdentifiers.phaseMessage)
-            Text("you: \(displayName(for: projection.viewer))")
-                .font(.caption2)
-                .foregroundStyle(TableTheme.inkCreamDim)
-                .accessibilityIdentifier(UIIdentifiers.viewerLabel)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -226,6 +222,18 @@ public struct ProjectionGameScreen: View {
                 .font(.caption.bold())
                 .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
+            // The "you" pill replaces the old "you: <name>" line in the
+            // status bar — same signal, anchored next to the viewer's hand
+            // where it actually matters. The accessibilityLabel keeps the
+            // legacy "you: <name>" string for MatchUIRobot.currentViewer().
+            Text("you")
+                .font(.caption2.bold())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .foregroundStyle(TableTheme.inkCream)
+                .background(Color.black.opacity(0.30), in: Capsule())
+                .accessibilityLabel("you: \(displayName(for: projection.viewer))")
+                .accessibilityIdentifier(UIIdentifiers.viewerLabel)
             if seat.isDealer {
                 Text("Dealer")
                     .font(.caption2)

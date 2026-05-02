@@ -29,15 +29,16 @@ public struct TableView: View {
         }
     }
 
-    /// The center of the felt where the current trick or talon sits. The
-    /// felt is the screen background; this view only places the trick /
-    /// talon / phase-message content into the open middle.
+    /// The center of the felt where the current trick sits. The felt is the
+    /// screen background; this view only places the trick / phase-message
+    /// content into the open middle. The talon is intentionally rendered
+    /// only inside the viewer's hand fan during discard (each card carrying a
+    /// "T" badge), so the center felt stays a single source of truth instead
+    /// of a duplicated picker.
     private func playArea(opponentSeats: [PlayerID]) -> some View {
         ZStack {
             if projection.legal.canStartDeal {
                 placeholder("Tap Start Deal")
-            } else if showsTalonOnFelt {
-                talonOnFelt
             } else if projection.currentTrick.isEmpty {
                 placeholder(emptyFeltPlaceholder)
             } else {
@@ -64,28 +65,6 @@ public struct TableView: View {
         }
     }
 
-    private var talonOnFelt: some View {
-        VStack(spacing: 6) {
-            Text("Talon")
-                .font(.caption.bold())
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .tracking(1.2)
-                .textCase(.uppercase)
-            HStack(spacing: 6) {
-                ForEach(Array(projection.talon.enumerated()), id: \.offset) { index, projected in
-                    CardView(
-                        card: projected,
-                        size: .standard,
-                        region: .talon,
-                        indexInRow: index
-                    )
-                }
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(UIIdentifiers.Panel.talon.rawValue)
-    }
-
     private func placeholder(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.subheadline)
@@ -94,26 +73,28 @@ public struct TableView: View {
     }
 
     /// Viewer card lands at the bottom; opponents are placed around the
-    /// felt in their seating order.
+    /// felt in their seating order. Offsets are expressed as multiples of
+    /// the trick-card dimensions so the layout still works if `CardView.Size`
+    /// is ever retuned (or if we drop in a `.compact` trick on small phones).
     private func positionForPlay(player: PlayerID, opponents: [PlayerID]) -> CGSize {
-        if player == projection.viewer { return CGSize(width: 0, height: 50) }
+        let dims = CardView.Size.standard.dimensions
+        let w = dims.width
+        let h = dims.height
+        if player == projection.viewer { return CGSize(width: 0, height: h * 0.7) }
         switch opponents.count {
         case 1:
-            return CGSize(width: 0, height: -50)
+            return CGSize(width: 0, height: -h * 0.7)
         case 2:
-            return player == opponents[0] ? CGSize(width: -55, height: -10) : CGSize(width: 55, height: -10)
+            let x = w * 1.1
+            let y = -h * 0.15
+            return player == opponents[0] ? CGSize(width: -x, height: y) : CGSize(width: x, height: y)
         case 3:
-            if player == opponents[0] { return CGSize(width: -65, height: 0) }
-            if player == opponents[1] { return CGSize(width: 0, height: -55) }
-            return CGSize(width: 65, height: 0)
+            if player == opponents[0] { return CGSize(width: -w * 1.3, height: 0) }
+            if player == opponents[1] { return CGSize(width: 0, height: -h * 0.75) }
+            return CGSize(width: w * 1.3, height: 0)
         default:
             return .zero
         }
-    }
-
-    private var showsTalonOnFelt: Bool {
-        if case .awaitingDiscard = projection.phase { return true }
-        return false
     }
 
     /// Phase-aware text shown on the empty felt. "Waiting for first card" only
@@ -128,11 +109,20 @@ public struct TableView: View {
         case .playing:                   return "Waiting for first card"
         case .waitingForDeal:            return "Tap Start Deal"
         case .dealFinished, .gameOver:   return "Deal complete"
-        case .awaitingDiscard:           return ""
+        case .awaitingDiscard:           return "Choose 2 cards to discard"
         }
     }
 
+    /// Hide the dealer-on-talon (sitting-out) seat. In 4-player Preferans the
+    /// dealer doesn't take part in the deal — surfacing that seat just adds a
+    /// dim, dealer-badged tile that the viewer can't interact with and that
+    /// pushes the active opponents off-center.
     private func orderedOpponents() -> [SeatProjection] {
-        projection.seats.filter { $0.player != projection.viewer }
+        projection.seats.filter { seat in
+            guard seat.player != projection.viewer else { return false }
+            if seat.role == .sittingOut { return false }
+            if seat.isDealer && !seat.isActive { return false }
+            return true
+        }
     }
 }
