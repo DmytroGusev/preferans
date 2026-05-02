@@ -8,6 +8,7 @@ final class PreferansUITests: XCTestCase {
 
     func testLobbyRenders() {
         let app = XCUIApplication()
+        app.disableUITestAnimations()
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Preferans"].firstMatch.waitForExistence(timeout: 5),
@@ -22,6 +23,7 @@ final class PreferansUITests: XCTestCase {
 
     func testStartLocalTableThenDeal() {
         let app = XCUIApplication()
+        app.disableUITestAnimations()
         app.launch()
 
         let startLocal = app.buttons["Start Local Table"]
@@ -45,6 +47,7 @@ final class PreferansUITests: XCTestCase {
 
     func testFourPlayerRosterAddsSeat() {
         let app = XCUIApplication()
+        app.disableUITestAnimations()
         app.launch()
 
         XCTAssertTrue(app.buttons["4 players"].waitForExistence(timeout: 5))
@@ -58,6 +61,7 @@ final class PreferansUITests: XCTestCase {
     func testBiddingExposesPassAndMisereOptions() {
         let app = XCUIApplication()
         app.launchArguments += ["-uiTestViewerFollowsActor"]
+        app.disableUITestAnimations()
         app.launch()
 
         app.buttons["Start Local Table"].tap()
@@ -74,6 +78,7 @@ final class PreferansUITests: XCTestCase {
     func testAllPassDrivesEngineIntoPlayingPhase() {
         let app = XCUIApplication()
         app.launchArguments += ["-uiTestViewerFollowsActor"]
+        app.disableUITestAnimations()
         app.launch()
 
         app.buttons["Start Local Table"].tap()
@@ -102,6 +107,7 @@ final class PreferansUITests: XCTestCase {
             "-uiTestFirstDealer", "south",
             "-uiTestDealScenario", "sortedDeck"
         ]
+        app.disableUITestAnimations()
         app.launch()
 
         app.buttons["Start Local Table"].tap()
@@ -128,6 +134,7 @@ final class PreferansUITests: XCTestCase {
             "-uiTestFirstDealer", "south",
             "-uiTestDealScenario", "northBidsSpadesSix"
         ]
+        app.disableUITestAnimations()
         app.launch()
 
         app.buttons["Start Local Table"].tap()
@@ -157,6 +164,7 @@ final class PreferansUITests: XCTestCase {
 
     func testGameScreenShowsCoreSectionsAfterDeal() {
         let app = XCUIApplication()
+        app.disableUITestAnimations()
         app.launch()
 
         app.buttons["Start Local Table"].tap()

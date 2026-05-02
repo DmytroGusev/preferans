@@ -18,16 +18,10 @@ import PreferansEngine
 /// ``ScriptedDealSource`` of recipe-built decks. Other launch arguments
 /// override individual fields after the script is resolved.
 public enum TestHarness {
-    public enum Flag {
-        public static let viewerFollowsActor = "-uiTestViewerFollowsActor"
-        public static let firstDealer        = "-uiTestFirstDealer"
-        public static let dealSeed           = "-uiTestDealSeed"
-        public static let dealScenario       = "-uiTestDealScenario"
-        public static let matchScript        = "-uiTestMatchScript"
-        public static let players            = "-uiTestPlayers"
-        public static let poolTarget         = "-uiTestPoolTarget"
-        public static let raspasyPolicy      = "-uiTestRaspasyPolicy"
-        public static let totusPolicy        = "-uiTestTotusPolicy"
+    public typealias Flag = UITestFlags
+
+    public static func disableAnimations(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.disableAnimations)
     }
 
     /// A fully resolved table configuration the lobby can use to build a

@@ -231,3 +231,19 @@ public extension UIIdentifiers {
         }
     }
 }
+
+/// Launch-argument flags consumed by the app's `TestHarness` and produced
+/// by the UI test target. Single source of truth so the producer (UI tests)
+/// and the consumer (running app) can't drift on a flag string.
+public enum UITestFlags {
+    public static let viewerFollowsActor = "-uiTestViewerFollowsActor"
+    public static let firstDealer        = "-uiTestFirstDealer"
+    public static let dealSeed           = "-uiTestDealSeed"
+    public static let dealScenario       = "-uiTestDealScenario"
+    public static let matchScript        = "-uiTestMatchScript"
+    public static let players            = "-uiTestPlayers"
+    public static let poolTarget         = "-uiTestPoolTarget"
+    public static let raspasyPolicy      = "-uiTestRaspasyPolicy"
+    public static let totusPolicy        = "-uiTestTotusPolicy"
+    public static let disableAnimations  = "-uiTestDisableAnimations"
+}

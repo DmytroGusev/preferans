@@ -12,7 +12,9 @@ final class RedesignScreenshotTests: XCTestCase {
     /// snapshotting at each state so a human can eyeball the felt redesign.
     func testCaptureRedesignScreens() {
         let app = XCUIApplication()
-        app.configureForMatchScript("game1")
+        // Animations are part of what we're capturing; opt out of the
+        // speed-focused default that disables them for taps-only tests.
+        app.configureForMatchScript("game1", disableAnimations: false)
         app.launch()
 
         let robot = MatchUIRobot(app: app)

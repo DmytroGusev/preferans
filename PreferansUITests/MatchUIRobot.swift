@@ -65,7 +65,7 @@ final class MatchUIRobot {
     func discard(_ cards: [Card]) {
         precondition(cards.count == 2, "Discard must contain exactly two cards; got \(cards.count).")
         for card in cards {
-            tapStaticText(id: UIIdentifiers.card(card, in: .discardSelect), descriptor: "discard pick \(card)")
+            tapCard(id: UIIdentifiers.card(card, in: .discardSelect), descriptor: "discard pick \(card)")
         }
         tapButton(id: UIIdentifiers.buttonDiscardSelected, descriptor: "Discard selected")
     }
@@ -90,7 +90,7 @@ final class MatchUIRobot {
     }
 
     func play(_ card: Card, by player: PlayerID) {
-        tapStaticText(id: UIIdentifiers.card(card, in: .hand(seat: player)),
+        tapCard(id: UIIdentifiers.card(card, in: .hand(seat: player)),
                       descriptor: "play \(card) from \(player)'s hand")
     }
 
@@ -235,19 +235,13 @@ final class MatchUIRobot {
         button.tap()
     }
 
-    /// CardView adds `.accessibilityAddTraits(.isButton)` so the tap target
-    /// surfaces as a `button`. Earlier renders may treat it as static text,
-    /// so query both.
-    private func tapStaticText(id: String, descriptor: String) {
-        let asButton = app.buttons[id]
-        if asButton.waitForExistence(timeout: 1.0) {
-            asButton.tap()
-            return
-        }
-        let asStaticText = app.staticTexts[id]
-        XCTAssertTrue(asStaticText.waitForExistence(timeout: defaultTimeout),
-                      "Tappable element for \(descriptor) (id: \(id)) never appeared.")
-        asStaticText.tap()
+    /// `CardView` always sets `.accessibilityAddTraits(.isButton)`, so cards
+    /// surface as buttons in the XCUI hierarchy. One query, one timeout.
+    private func tapCard(id: String, descriptor: String) {
+        let button = app.buttons[id]
+        XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
+                      "Card button for \(descriptor) (id: \(id)) never appeared.")
+        button.tap()
     }
 
     private func readInt(id: String, descriptor: String) -> Int {
@@ -261,29 +255,25 @@ final class MatchUIRobot {
 // MARK: - Launch-argument builder
 
 extension XCUIApplication {
-    /// Launch-argument flag strings duplicated here (must stay in sync with
-    /// `Preferans/Support/TestHarness.swift`). The app target's TestHarness
-    /// isn't visible to the UI test target, so the robot owns the strings.
-    enum Flag {
-        static let viewerFollowsActor = "-uiTestViewerFollowsActor"
-        static let firstDealer        = "-uiTestFirstDealer"
-        static let dealSeed           = "-uiTestDealSeed"
-        static let dealScenario       = "-uiTestDealScenario"
-        static let matchScript        = "-uiTestMatchScript"
-        static let players            = "-uiTestPlayers"
-        static let poolTarget         = "-uiTestPoolTarget"
-        static let raspasyPolicy      = "-uiTestRaspasyPolicy"
-        static let totusPolicy        = "-uiTestTotusPolicy"
+    /// Convenience: appends the harness flags needed to load a canonical
+    /// match script and have the rotating viewer follow the actor. Animations
+    /// are disabled by default so taps land on settled frames; pass
+    /// `disableAnimations: false` for screenshot tests that need motion.
+    func configureForMatchScript(_ name: String, extra: [String] = [], disableAnimations: Bool = true) {
+        launchArguments += [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.matchScript, name
+        ]
+        if disableAnimations {
+            launchArguments += [UITestFlags.disableAnimations]
+        }
+        launchArguments += extra
     }
 
-    /// Convenience: appends the harness flags needed to load a canonical
-    /// match script and have the rotating viewer follow the actor. Tests
-    /// add domain-specific overrides on top of this.
-    func configureForMatchScript(_ name: String, extra: [String] = []) {
-        launchArguments += [
-            Flag.viewerFollowsActor,
-            Flag.matchScript, name
-        ]
-        launchArguments += extra
+    /// Apply the disable-animations harness flag without any match-script
+    /// configuration. Use for raw lobby/bidding tests that build their own
+    /// launch-argument list but still want the animation-free fast path.
+    func disableUITestAnimations() {
+        launchArguments += [UITestFlags.disableAnimations]
     }
 }
