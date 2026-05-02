@@ -7,11 +7,13 @@ public final class GameViewModel: ObservableObject {
     @Published public private(set) var lastError: String?
     @Published public private(set) var eventLog: [String] = []
     @Published public var selectedViewer: PlayerID
+    public var viewerFollowsActor: Bool
     public let tableID: UUID = UUID()
 
-    public init(players: [PlayerID], rules: PreferansRules = .sochi, firstDealer: PlayerID? = nil) throws {
+    public init(players: [PlayerID], rules: PreferansRules = .sochi, firstDealer: PlayerID? = nil, viewerFollowsActor: Bool = false) throws {
         self.engine = try PreferansEngine(players: players, rules: rules, firstDealer: firstDealer)
         self.selectedViewer = players.first ?? PlayerID("player")
+        self.viewerFollowsActor = viewerFollowsActor
     }
 
     public func send(_ action: PreferansAction) {
@@ -20,9 +22,16 @@ public final class GameViewModel: ObservableObject {
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: events.map { String(describing: $0) })
             lastError = nil
+            if viewerFollowsActor, let actor = currentActor() {
+                selectedViewer = actor
+            }
         } catch {
             lastError = error.localizedDescription
         }
+    }
+
+    private func currentActor() -> PlayerID? {
+        projection(revealAll: false).seats.first(where: { $0.isCurrentActor })?.player
     }
 
     public func startDeal() {

@@ -127,7 +127,8 @@ public struct LobbyView: View {
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .map { PlayerID($0) }
-            localModel = try GameViewModel(players: players, rules: .sochi)
+            let followActor = ProcessInfo.processInfo.arguments.contains("-uiTestViewerFollowsActor")
+            localModel = try GameViewModel(players: players, rules: .sochi, viewerFollowsActor: followActor)
             errorText = nil
         } catch {
             errorText = error.localizedDescription
