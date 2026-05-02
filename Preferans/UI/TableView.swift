@@ -30,35 +30,10 @@ public struct TableView: View {
     }
 
     /// The center of the felt where the current trick or talon sits. The
-    /// felt itself is the screen background — this view only adds a subtle
-    /// embroidered oval to suggest where cards belong, then layers in the
-    /// trick / talon / phase-message content.
+    /// felt is the screen background; this view only places the trick /
+    /// talon / phase-message content into the open middle.
     private func playArea(opponentSeats: [PlayerID]) -> some View {
         ZStack {
-            GeometryReader { geo in
-                let w = geo.size.width
-                let h = geo.size.height
-                ZStack {
-                    Ellipse()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    TableTheme.feltHigh.opacity(0.55),
-                                    TableTheme.feltDeep.opacity(0.0)
-                                ],
-                                center: .center,
-                                startRadius: 0,
-                                endRadius: max(w, h) * 0.55
-                            )
-                        )
-                    Ellipse()
-                        .strokeBorder(TableTheme.gold.opacity(0.18), lineWidth: 1)
-                        .padding(.horizontal, w * 0.06)
-                        .padding(.vertical, h * 0.04)
-                }
-                .allowsHitTesting(false)
-            }
-
             if projection.legal.canStartDeal {
                 placeholder("Tap Start Deal")
             } else if showsTalonOnFelt {

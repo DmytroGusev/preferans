@@ -16,42 +16,49 @@ public struct OpponentSeatView: View {
             statusRow
             cardBacksRow
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(seatBackground)
-        .opacity(seat.isActive ? 1 : 0.55)
+        .opacity(seat.isActive ? 1 : 0.6)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
     }
 
-    /// Active seats get a soft pool of light suggesting a "place at the
-    /// table"; inactive seats sit directly on the felt with no chrome.
+    /// A soft dark-felt pill grounds every seat; the active seat additionally
+    /// gets a gold border + subtle warm glow so it reads as the place at the
+    /// table that's currently in play.
     @ViewBuilder
     private var seatBackground: some View {
-        if seat.isCurrentActor {
+        ZStack {
             RoundedRectangle(cornerRadius: 14)
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            TableTheme.goldBright.opacity(0.18),
-                            TableTheme.goldBright.opacity(0.0)
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 90
+                .fill(Color.black.opacity(seat.isCurrentActor ? 0.32 : 0.22))
+            if seat.isCurrentActor {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                TableTheme.goldBright.opacity(0.14),
+                                TableTheme.goldBright.opacity(0.0)
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 80
+                        )
                     )
+            }
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(
+                    seat.isCurrentActor
+                        ? TableTheme.goldBright.opacity(0.55)
+                        : TableTheme.gold.opacity(0.10),
+                    lineWidth: seat.isCurrentActor ? 1 : 0.5
                 )
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(TableTheme.goldBright.opacity(0.55), lineWidth: 1)
-                }
-        } else {
-            Color.clear
         }
     }
 
     private var statusRow: some View {
-        HStack(spacing: 5) {
+        let isSittingOut = seat.role == .sittingOut || (seat.isDealer && !seat.isActive)
+        return HStack(spacing: 5) {
             if seat.isCurrentActor {
                 Circle()
                     .fill(TableTheme.goldBright)
@@ -63,21 +70,13 @@ public struct OpponentSeatView: View {
                 .font(.caption.bold())
                 .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
-            if seat.isDealer {
-                Text("D")
-                    .font(.system(size: 9, weight: .bold))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .background(Color.black.opacity(0.30), in: Capsule())
-                    .accessibilityLabel("Dealer")
-                    .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
-            }
-            // 4-player only: dealer sits out the deal entirely. Make that
-            // explicit with a dedicated pill so the seat doesn't read as
-            // "loading" on a compact iPhone layout.
-            if seat.role == .sittingOut || (seat.isDealer && !seat.isActive) {
+            // "Out" wins over "D" when a 4-player dealer is sitting out —
+            // showing both pills crowds the seat and the dealer-and-out
+            // combination is implied by the rules. Keep "D" only when the
+            // dealer is also the active actor (3-player table).
+            if isSittingOut {
                 Text("Out")
                     .font(.system(size: 9, weight: .bold))
                     .padding(.horizontal, 4)
@@ -86,6 +85,15 @@ public struct OpponentSeatView: View {
                     .background(TableTheme.inkCreamSoft, in: Capsule())
                     .accessibilityLabel("Sitting out this deal")
                     .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
+            } else if seat.isDealer {
+                Text("D")
+                    .font(.system(size: 9, weight: .bold))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .background(Color.black.opacity(0.30), in: Capsule())
+                    .accessibilityLabel("Dealer")
+                    .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
             }
             Spacer(minLength: 0)
             Text("\(seat.trickCount)")

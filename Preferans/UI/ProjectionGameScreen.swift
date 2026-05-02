@@ -33,6 +33,8 @@ public struct ProjectionGameScreen: View {
         .navigationTitle(projection.phase.title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         #endif
         .toolbar { toolbarContent }
         .sheet(item: $activeSheet) { sheet in
@@ -112,6 +114,9 @@ public struct ProjectionGameScreen: View {
 
     private var phaseStatusBar: some View {
         HStack(spacing: 8) {
+            // iOS 26 stops surfacing inline nav-bar titles to UI tests /
+            // VoiceOver, so the phase title also lives here as a visible
+            // tag carrying its accessibility id.
             Text(projection.phase.title)
                 .font(.caption.bold())
                 .foregroundStyle(TableTheme.inkCream)
@@ -148,7 +153,7 @@ public struct ProjectionGameScreen: View {
             let cards: [ProjectedCard] = isDiscardPhase
                 ? sortedHandFan(seat.hand + projection.talon)
                 : seat.hand
-            VStack(spacing: 0) {
+            VStack(spacing: 4) {
                 CardFanView(
                     cards: cards,
                     playableCards: playable,
@@ -169,6 +174,30 @@ public struct ProjectionGameScreen: View {
                 .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
                 ownerNamePlate(seat: seat)
             }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 4)
+            .background(handRail)
+        }
+    }
+
+    /// A "leather card rest" rail behind the viewer's hand — slightly darker
+    /// than the felt, edged with a thin gold line up top so the cards have a
+    /// clear shelf to sit on instead of floating against the felt.
+    private var handRail: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.32),
+                    Color.black.opacity(0.18)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.25))
+                .frame(height: 0.5)
         }
     }
 

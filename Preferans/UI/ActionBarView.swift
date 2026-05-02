@@ -50,7 +50,7 @@ public struct ActionBarView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(.regularMaterial)
+        .feltBand()
     }
 
     private var startDealRow: some View {
@@ -64,8 +64,7 @@ public struct ActionBarView: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
+        .buttonStyle(.feltPrimary)
         .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
     }
 
@@ -92,16 +91,13 @@ public struct ActionBarView: View {
                 }
                 if let suit = label.suit {
                     Text(suit.symbol)
-                        .foregroundStyle(suit == .hearts || suit == .diamonds ? .red : .primary)
+                        .foregroundStyle(label.bidColor(for: suit))
                 }
                 Text(label.text)
                     .fontWeight(.semibold)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
         }
-        .buttonStyle(.bordered)
-        .tint(label.tint)
+        .buttonStyle(label.style)
         .accessibilityIdentifier(UIIdentifiers.bidButton(call))
     }
 
@@ -122,10 +118,8 @@ public struct ActionBarView: View {
                                 .foregroundStyle(strainColor(contract.strain))
                                 .fontWeight(.bold)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.feltSecondary)
                     .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
                 }
             }
@@ -140,10 +134,8 @@ public struct ActionBarView: View {
                     Text(call.description)
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
                 }
-                .buttonStyle(.bordered)
-                .tint(call == .whist ? .accentColor : .secondary)
+                .buttonStyle(call == .whist ? .feltPrimary : .feltDim)
                 .accessibilityIdentifier(UIIdentifiers.whistButton(call))
             }
         }
@@ -161,9 +153,8 @@ public struct ActionBarView: View {
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.feltPrimary)
                 .accessibilityIdentifier(UIIdentifiers.defenderModeButton(mode))
             }
         }
@@ -174,9 +165,10 @@ public struct ActionBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Pick 2 to discard")
                     .font(.subheadline.bold())
+                    .foregroundStyle(TableTheme.inkCream)
                 Text("\(selectedDiscard.count)/2 selected")
                     .font(.caption2)
-                    .foregroundStyle(selectedDiscard.count == 2 ? Color.accentColor : .secondary)
+                    .foregroundStyle(selectedDiscard.count == 2 ? TableTheme.goldBright : TableTheme.inkCreamSoft)
             }
             Spacer()
             Button {
@@ -184,10 +176,8 @@ public struct ActionBarView: View {
             } label: {
                 Text("Confirm")
                     .fontWeight(.semibold)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(FeltButtonStyle(emphasis: selectedDiscard.count == 2 ? .primary : .dim))
             .disabled(selectedDiscard.count != 2)
             .accessibilityIdentifier(UIIdentifiers.buttonDiscardSelected)
         }
@@ -198,14 +188,14 @@ public struct ActionBarView: View {
             if let actor = currentActorName {
                 Image(systemName: "hourglass")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
                 Text("Waiting for \(actor)")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
             } else {
                 Text(projection.message)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
                     .lineLimit(2)
             }
             Spacer()
@@ -215,31 +205,57 @@ public struct ActionBarView: View {
     // MARK: - Helpers
 
     private struct BidLabel {
+        enum Kind { case pass, game, misere, totus }
         var text: String
         var suit: Suit?
         var icon: String?
-        var tint: Color
+        var kind: Kind
+
+        var style: FeltButtonStyle {
+            switch kind {
+            case .pass:   return FeltButtonStyle(emphasis: .dim)
+            case .game:   return FeltButtonStyle(emphasis: .secondary)
+            case .misere: return FeltButtonStyle(emphasis: .secondary, tint: TableTheme.goldBright)
+            case .totus:  return FeltButtonStyle(emphasis: .primary, tint: TableTheme.goldBright)
+            }
+        }
+
+        /// Suit pip color tuned for the felt — reds stay red, blacks are
+        /// rendered cream so they remain legible on the dark pill.
+        func bidColor(for suit: Suit) -> Color {
+            switch suit {
+            case .hearts, .diamonds:
+                return Color(red: 0.95, green: 0.45, blue: 0.42)
+            case .spades, .clubs:
+                return TableTheme.inkCream
+            }
+        }
     }
 
     private func bidLabel(for call: BidCall) -> BidLabel {
         switch call {
         case .pass:
-            return BidLabel(text: "Pass", suit: nil, icon: "xmark", tint: .secondary)
+            return BidLabel(text: "Pass", suit: nil, icon: "xmark", kind: .pass)
         case let .bid(bid):
             switch bid {
             case let .game(contract):
-                return BidLabel(text: "\(contract.tricks)", suit: contract.strain.suit, icon: nil, tint: .accentColor)
+                return BidLabel(text: "\(contract.tricks)", suit: contract.strain.suit, icon: nil, kind: .game)
             case .misere:
-                return BidLabel(text: "Misere", suit: nil, icon: nil, tint: .purple)
+                return BidLabel(text: "Misere", suit: nil, icon: nil, kind: .misere)
             case .totus:
-                return BidLabel(text: "Totus", suit: nil, icon: nil, tint: .orange)
+                return BidLabel(text: "Totus", suit: nil, icon: nil, kind: .totus)
             }
         }
     }
 
+    /// Strain color tuned for the felt — hearts/diamonds glow warmer red,
+    /// spades/clubs render in cream so they read on the dark contract pill.
     private func strainColor(_ strain: Strain) -> Color {
-        guard let suit = strain.suit else { return .primary }
-        return (suit == .hearts || suit == .diamonds) ? .red : .primary
+        guard let suit = strain.suit else { return TableTheme.inkCream }
+        switch suit {
+        case .hearts, .diamonds: return Color(red: 0.95, green: 0.45, blue: 0.42)
+        case .spades, .clubs:    return TableTheme.inkCream
+        }
     }
 
     private var isTotusDeclaration: Bool {

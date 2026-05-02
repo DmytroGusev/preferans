@@ -157,13 +157,20 @@ public struct CardView: View {
     private var cardBack: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size.cornerRadius)
-                .fill(Color(red: 0.13, green: 0.30, blue: 0.55))
+                .fill(LinearGradient(
+                    colors: [
+                        Color(red: 0.32, green: 0.06, blue: 0.08),
+                        Color(red: 0.18, green: 0.03, blue: 0.04)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
             RoundedRectangle(cornerRadius: size.cornerRadius - 2)
-                .stroke(Color.white.opacity(0.45), lineWidth: 1)
+                .strokeBorder(Color(red: 0.83, green: 0.67, blue: 0.34).opacity(0.55), lineWidth: 0.8)
                 .padding(3)
             Image(systemName: "suit.club.fill")
                 .font(size.pipFont)
-                .foregroundStyle(Color.white.opacity(0.55))
+                .foregroundStyle(Color(red: 0.83, green: 0.67, blue: 0.34).opacity(0.65))
         }
     }
 
