@@ -6,9 +6,9 @@ public struct ScoreDelta: Equatable, Codable, Sendable {
     public private(set) var whists: [PlayerID: [PlayerID: Int]]
 
     public init(players: [PlayerID]) {
-        self.pool = Dictionary(uniqueKeysWithValues: players.map { ($0, 0) })
-        self.mountain = Dictionary(uniqueKeysWithValues: players.map { ($0, 0) })
-        self.whists = Dictionary(uniqueKeysWithValues: players.map { ($0, [:]) })
+        self.pool = players.dictionary(filledWith: 0)
+        self.mountain = players.dictionary(filledWith: 0)
+        self.whists = players.dictionary(filledWith: [:])
     }
 
     public mutating func addPool(_ points: Int, to player: PlayerID) {
@@ -41,9 +41,9 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
 
     public init(players: [PlayerID]) {
         self.players = players
-        self.pool = Dictionary(uniqueKeysWithValues: players.map { ($0, 0) })
-        self.mountain = Dictionary(uniqueKeysWithValues: players.map { ($0, 0) })
-        self.whists = Dictionary(uniqueKeysWithValues: players.map { ($0, [:]) })
+        self.pool = players.dictionary(filledWith: 0)
+        self.mountain = players.dictionary(filledWith: 0)
+        self.whists = players.dictionary(filledWith: [:])
     }
 
     public mutating func apply(_ delta: ScoreDelta) {
@@ -68,7 +68,7 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         poolPointValue: Double = 10,
         mountainPointValue: Double = 10
     ) -> [PlayerID: Double] {
-        var balances = Dictionary(uniqueKeysWithValues: players.map { ($0, 0.0) })
+        var balances = players.dictionary(filledWith: 0.0)
 
         for player in players {
             balances[player, default: 0] += Double(pool[player] ?? 0) * poolPointValue

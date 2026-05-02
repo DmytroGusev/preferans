@@ -1,23 +1,34 @@
 import Foundation
+import GameplayKit
 
-/// Deterministic 64-bit pseudo-random number generator (SplitMix64).
+/// Deterministic 64-bit pseudo-random number generator backed by
+/// `GameplayKit`'s Mersenne Twister source — the canonical Apple
+/// platform seeded RNG, with a longer period and better statistical
+/// distribution than a hand-rolled SplitMix64.
 ///
-/// Reference type so that copies share state — multiple `shuffled(using:)`
-/// calls advance the same sequence, which makes scripted tests both
-/// deterministic and easy to reason about across deals.
+/// `GKMersenneTwisterRandomSource.nextInt()` returns 32 random bits
+/// per call (uniform across `Int32`'s full range), so each `next()`
+/// pulls two and concatenates to produce 64 bits the
+/// `RandomNumberGenerator` protocol asks for.
+///
+/// Reference type so that copies share state — multiple
+/// `shuffled(using:)` calls advance the same sequence, which makes
+/// scripted tests both deterministic and easy to reason about across
+/// deals.
 public final class SeededRandomNumberGenerator: RandomNumberGenerator {
-    private var state: UInt64
+    private let source: GKMersenneTwisterRandomSource
 
     public init(seed: UInt64) {
-        self.state = seed == 0 ? 0x9E37_79B9_7F4A_7C15 : seed
+        // GKMersenneTwisterRandomSource accepts any UInt64 including 0;
+        // keep the legacy "0 → fixed sentinel" behavior so tests that
+        // pass seed 0 still get a deterministic non-trivial sequence.
+        self.source = GKMersenneTwisterRandomSource(seed: seed == 0 ? 0x9E37_79B9_7F4A_7C15 : seed)
     }
 
     public func next() -> UInt64 {
-        state &+= 0x9E37_79B9_7F4A_7C15
-        var z = state
-        z = (z ^ (z &>> 30)) &* 0xBF58_476D_1CE4_E5B9
-        z = (z ^ (z &>> 27)) &* 0x94D0_49BB_1331_11EB
-        return z ^ (z &>> 31)
+        let lo = UInt32(bitPattern: Int32(truncatingIfNeeded: source.nextInt()))
+        let hi = UInt32(bitPattern: Int32(truncatingIfNeeded: source.nextInt()))
+        return (UInt64(hi) << 32) | UInt64(lo)
     }
 }
 

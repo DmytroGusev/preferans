@@ -97,7 +97,11 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
             baseHostSequence: projection?.sequence ?? 0
         )
         if isHost {
-            Task { await applyLocalHostAction(envelope) }
+            Task { [localSeat] in
+                await applyClientAction(envelope, sender: localSeat) { error in
+                    self.errorText = error.localizedDescription
+                }
+            }
         } else {
             guard let hostPlayer, let transport else {
                 errorText = "No host connection."
@@ -190,7 +194,14 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
         case let .clientAction(envelope):
             guard isHost else { return }
             let senderID = PlayerID(received.sender.gamePlayerID)
-            await applyRemoteClientAction(envelope, sender: senderID, replyTo: received.sender)
+            await applyClientAction(envelope, sender: senderID) { error in
+                sendHostError(
+                    to: received.sender,
+                    recipient: envelope.actor,
+                    nonce: envelope.clientNonce,
+                    message: error.localizedDescription
+                )
+            }
 
         case let .projection(envelope):
             guard !isHost else { return }
@@ -224,25 +235,23 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func applyLocalHostAction(_ envelope: ClientActionEnvelope) async {
-        guard let hostActor else { return }
-        do {
-            let update = try await hostActor.applyClientAction(envelope, sender: localSeat)
-            await publish(update)
-            await persistAfter(update)
-        } catch {
-            errorText = error.localizedDescription
-        }
-    }
-
-    private func applyRemoteClientAction(_ envelope: ClientActionEnvelope, sender: PlayerID, replyTo: GKPlayer) async {
+    /// Applies a client envelope through the host actor and surfaces the
+    /// result. `sender` is the seat the envelope speaks for (used by the
+    /// actor for spoof checks); `onError` decides what to do when the
+    /// engine rejects the action — locally we set ``errorText``, for a
+    /// remote sender we ship a ``HostErrorEnvelope`` back.
+    private func applyClientAction(
+        _ envelope: ClientActionEnvelope,
+        sender: PlayerID?,
+        onError: (Error) -> Void
+    ) async {
         guard let hostActor else { return }
         do {
             let update = try await hostActor.applyClientAction(envelope, sender: sender)
             await publish(update)
             await persistAfter(update)
         } catch {
-            sendHostError(to: replyTo, recipient: envelope.actor, nonce: envelope.clientNonce, message: error.localizedDescription)
+            onError(error)
         }
     }
 

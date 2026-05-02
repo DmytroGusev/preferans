@@ -86,7 +86,7 @@ public struct TableView: View {
         .accessibilityIdentifier(UIIdentifiers.Panel.talon.rawValue)
     }
 
-    private func placeholder(_ text: String) -> some View {
+    private func placeholder(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.subheadline)
             .foregroundStyle(TableTheme.inkCreamSoft)
@@ -119,7 +119,7 @@ public struct TableView: View {
     /// Phase-aware text shown on the empty felt. "Waiting for first card" only
     /// makes sense once we're in the trick-play phase; bidding/whist/contract
     /// phases get their own copy.
-    private var emptyFeltPlaceholder: String {
+    private var emptyFeltPlaceholder: LocalizedStringKey {
         switch projection.phase {
         case .bidding:                   return "Auction in progress"
         case .awaitingContract:          return "Declarer is naming the contract"

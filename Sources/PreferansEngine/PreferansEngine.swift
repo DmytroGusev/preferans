@@ -167,7 +167,7 @@ public struct PreferansEngine: Sendable {
         let deck = try preparedDeck(suppliedDeck)
         let deal = dealHands(deck: deck, activePlayers: activePlayers)
 
-        nextDealer = player(after: dealer)
+        nextDealer = players.cyclicNext(after: dealer)
         state = .bidding(
             BiddingState(
                 dealer: dealer,
@@ -463,7 +463,7 @@ public struct PreferansEngine: Sendable {
         var events: [PreferansEvent] = [.cardPlayed(play)]
 
         if playing.currentTrick.count < playing.activePlayers.count {
-            playing.currentPlayer = nextActivePlayer(after: player, activePlayers: playing.activePlayers)
+            playing.currentPlayer = playing.activePlayers.cyclicNext(after: player)
             state = .playing(playing)
             return events
         }
@@ -572,26 +572,11 @@ public struct PreferansEngine: Sendable {
     /// seats fill the rotation. Exposed publicly so test harnesses and UI
     /// fixtures can pre-compute the rotation before calling ``startDeal``.
     public func activePlayers(forDealer dealer: PlayerID) -> [PlayerID] {
-        let start = player(after: dealer)
-        var ordered: [PlayerID] = []
-        var current = start
-        repeat {
-            if players.count == 3 || current != dealer {
-                ordered.append(current)
-            }
-            current = player(after: current)
-        } while current != start
-        return ordered
-    }
-
-    private func player(after player: PlayerID) -> PlayerID {
-        guard let index = players.firstIndex(of: player) else { return players[0] }
-        return players[(index + 1) % players.count]
-    }
-
-    private func nextActivePlayer(after player: PlayerID, activePlayers: [PlayerID]) -> PlayerID {
-        guard let index = activePlayers.firstIndex(of: player) else { return activePlayers[0] }
-        return activePlayers[(index + 1) % activePlayers.count]
+        guard let dealerIndex = players.firstIndex(of: dealer) else { return [] }
+        let rotated = Array(players[(dealerIndex + 1)...]) + Array(players[..<dealerIndex])
+        // 3-player tables fold the dealer back at the end of the rotation;
+        // 4-player tables let the dealer sit the deal out.
+        return players.count == 3 ? rotated + [dealer] : rotated
     }
 
     private func nextBidder(after player: PlayerID, in bidding: BiddingState) -> PlayerID? {
@@ -607,10 +592,10 @@ public struct PreferansEngine: Sendable {
 
     private func defenders(after declarer: PlayerID, activePlayers: [PlayerID]) -> [PlayerID] {
         var defenders: [PlayerID] = []
-        var current = nextActivePlayer(after: declarer, activePlayers: activePlayers)
+        var current = activePlayers.cyclicNext(after: declarer)
         while current != declarer {
             defenders.append(current)
-            current = nextActivePlayer(after: current, activePlayers: activePlayers)
+            current = activePlayers.cyclicNext(after: current)
         }
         return defenders
     }
@@ -653,7 +638,7 @@ public struct PreferansEngine: Sendable {
 
     private func dealHands(deck: [Card], activePlayers: [PlayerID]) -> (hands: [PlayerID: [Card]], talon: [Card]) {
         var deck = deck
-        var hands = Dictionary(uniqueKeysWithValues: activePlayers.map { ($0, [Card]()) })
+        var hands = activePlayers.dictionary(filledWith: [Card]())
         var talon: [Card] = []
 
         for packet in 0..<5 {
@@ -740,14 +725,11 @@ public struct PreferansEngine: Sendable {
     private mutating func scorePassedOut(_ whist: WhistState) -> [PreferansEvent] {
         var delta = ScoreDelta(players: players)
         delta.addPool(whist.contract.value + whist.bonusPoolOnSuccess, to: whist.declarer)
-        let result = DealResult(
+        return finalize(.unplayed(
             kind: .passedOut,
             activePlayers: whist.activePlayers,
-            trickCounts: Dictionary(uniqueKeysWithValues: whist.activePlayers.map { ($0, 0) }),
-            completedTricks: [],
             scoreDelta: delta
-        )
-        return finalize(result)
+        ))
     }
 
     private mutating func scoreHalfWhist(_ whist: WhistState, halfWhister: PlayerID) -> [PreferansEvent] {
@@ -758,14 +740,11 @@ public struct PreferansEngine: Sendable {
             writer: halfWhister,
             on: whist.declarer
         )
-        let result = DealResult(
+        return finalize(.unplayed(
             kind: .halfWhist(declarer: whist.declarer, contract: whist.contract, halfWhister: halfWhister),
             activePlayers: whist.activePlayers,
-            trickCounts: Dictionary(uniqueKeysWithValues: whist.activePlayers.map { ($0, 0) }),
-            completedTricks: [],
             scoreDelta: delta
-        )
-        return finalize(result)
+        ))
     }
 
     /// Applies the deal's score delta, increments the deal counter, and
@@ -908,19 +887,16 @@ public struct PreferansEngine: Sendable {
             }
         }
 
-        if context.whisters.count == 1, let whister = context.whisters.first {
-            let whistTricks: Int
-            switch rules.singleWhistScoring {
-            case .greedy:
-                whistTricks = defenderTricks
-            case .ownHandOnly:
-                whistTricks = Self.tricks(whister, in: playing.trickCounts)
-            }
+        // Multi-whister and "own hand only" single-whister both credit each
+        // writer with their own trick count. Greedy single-whister rolls
+        // *every* defender trick into the lone writer (the non-whisting
+        // defender's tricks become whists for the team).
+        let usesGreedyAggregation = context.whisters.count == 1 && rules.singleWhistScoring == .greedy
+        for whister in context.whisters {
+            let whistTricks = usesGreedyAggregation
+                ? defenderTricks
+                : Self.tricks(whister, in: playing.trickCounts)
             delta.addWhists(value * whistTricks, writer: whister, on: context.declarer)
-        } else {
-            for whister in context.whisters {
-                delta.addWhists(value * Self.tricks(whister, in: playing.trickCounts), writer: whister, on: context.declarer)
-            }
         }
 
         if rules.whistResponsibility == .responsible {

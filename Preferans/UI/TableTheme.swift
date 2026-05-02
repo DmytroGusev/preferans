@@ -1,4 +1,5 @@
 import SwiftUI
+import PreferansEngine
 
 /// Visual language for the card table. Everything that lives on the felt —
 /// status bars, opponent seats, action buttons — pulls its colors from here
@@ -140,4 +141,25 @@ extension ButtonStyle where Self == FeltButtonStyle {
     public static var feltPrimary: FeltButtonStyle { FeltButtonStyle(emphasis: .primary) }
     public static var feltSecondary: FeltButtonStyle { FeltButtonStyle(emphasis: .secondary) }
     public static var feltDim: FeltButtonStyle { FeltButtonStyle(emphasis: .dim) }
+}
+
+extension Suit {
+    /// Color to render this suit's pip / strain glyph against. Two
+    /// palettes: cards sit on a white face (deep red on black); the felt
+    /// surface is dark, so reds glow warmer and blacks render as cream so
+    /// they stay legible.
+    public enum Palette { case cardFace, felt }
+
+    public func color(on palette: Palette) -> Color {
+        switch (palette, self) {
+        case (.cardFace, .hearts), (.cardFace, .diamonds):
+            return Color(red: 0.78, green: 0.10, blue: 0.10)
+        case (.cardFace, .spades), (.cardFace, .clubs):
+            return .black
+        case (.felt, .hearts), (.felt, .diamonds):
+            return Color(red: 0.95, green: 0.45, blue: 0.42)
+        case (.felt, .spades), (.felt, .clubs):
+            return TableTheme.inkCream
+        }
+    }
 }

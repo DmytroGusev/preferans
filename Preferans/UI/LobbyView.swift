@@ -137,8 +137,8 @@ public struct LobbyView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 8) {
-                    seatCountButton(count: 3, label: "3 players", id: UIIdentifiers.lobbyPlayerCountThree)
-                    seatCountButton(count: 4, label: "4 players", id: UIIdentifiers.lobbyPlayerCountFour)
+                    seatCountButton(count: 3, id: UIIdentifiers.lobbyPlayerCountThree)
+                    seatCountButton(count: 4, id: UIIdentifiers.lobbyPlayerCountFour)
                 }
 
                 VStack(spacing: 8) {
@@ -241,11 +241,11 @@ public struct LobbyView: View {
         if gameCenter.isAuthenticated || hasAttemptedSignIn {
             return gameCenter.statusText
         }
-        return "Sign in to play online"
+        return String(localized: "Sign in to play online")
     }
     #endif
 
-    private func card<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+    private func card<Content: View>(title: LocalizedStringKey, icon: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
@@ -261,11 +261,11 @@ public struct LobbyView: View {
     }
 
     @ViewBuilder
-    private func seatCountButton(count: Int, label: String, id: String) -> some View {
+    private func seatCountButton(count: Int, id: String) -> some View {
         let isSelected = seats.count == count
         if isSelected {
             Button { setSeatCount(count) } label: {
-                Text(label)
+                Text("\(count) players")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -276,7 +276,7 @@ public struct LobbyView: View {
             .accessibilityIdentifier(id)
         } else {
             Button { setSeatCount(count) } label: {
-                Text(label)
+                Text("\(count) players")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -452,12 +452,18 @@ extension LobbySeat {
 }
 
 extension Array where Element == LobbySeat {
-    /// One-line caption for the lobby (e.g. "1 human · 2 bots").
+    /// One-line caption for the lobby (e.g. "1 human · 2 bots"). The two
+    /// halves are localized independently (so each language gets its own
+    /// plural rules) and joined with a language-neutral middot separator.
     var rosterSummary: String {
         let bots = filter { $0.kind == .bot }.count
         let humans = count - bots
-        let humanLabel = humans == 1 ? "1 human" : "\(humans) humans"
-        let botLabel = bots == 1 ? "1 bot" : "\(bots) bots"
+        let humanLabel: String = humans == 1
+            ? String(localized: "1 human")
+            : String(localized: "\(humans) humans")
+        let botLabel: String = bots == 1
+            ? String(localized: "1 bot")
+            : String(localized: "\(bots) bots")
         return "\(humanLabel) · \(botLabel)"
     }
 
@@ -466,13 +472,13 @@ extension Array where Element == LobbySeat {
     var validationError: String? {
         let names = map(\.trimmedName)
         if names.contains(where: \.isEmpty) {
-            return "Every seat needs a name."
+            return String(localized: "Every seat needs a name.")
         }
         if Set(names).count != names.count {
-            return "Names must be unique."
+            return String(localized: "Names must be unique.")
         }
         if filter({ $0.kind == .human }).isEmpty {
-            return "At least one seat must be human."
+            return String(localized: "At least one seat must be human.")
         }
         return nil
     }

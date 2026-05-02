@@ -31,7 +31,7 @@ public enum GameLogReplayer {
             guard record.sequence == expected else {
                 throw GameLogReplayError.sequenceGap(expected: expected, actual: record.sequence)
             }
-            _ = try engine.apply(record.action.action)
+            _ = try engine.apply(record.action)
             expected += 1
         }
         return engine

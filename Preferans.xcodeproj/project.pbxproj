@@ -17,7 +17,6 @@
 		B00000000000000000000007 /* GameCenterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* GameCenterService.swift */; };
 		B00000000000000000000008 /* GameKitRealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000038 /* GameKitRealtimeTransport.swift */; };
 		B00000000000000000000009 /* GameWireMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000039 /* GameWireMessage.swift */; };
-		B0000000000000000000000A /* WirePreferansAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003A /* WirePreferansAction.swift */; };
 		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
 		B0000000000000000000000C /* HostGameActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003C /* HostGameActor.swift */; };
 		B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */; };
@@ -35,6 +34,8 @@
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
 		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
 		B00000000000000000000065 /* TableTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000075 /* TableTheme.swift */; };
+		B0000000000000000000A080 /* Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A082 /* Localized.swift */; };
+		B0000000000000000000A081 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A083 /* Localizable.xcstrings */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
 		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
 		C00000000000000000000020 /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* Domain.swift */; };
@@ -119,7 +120,6 @@
 		B00000000000000000000037 /* GameCenterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameCenterService.swift"; sourceTree = "<group>"; };
 		B00000000000000000000038 /* GameKitRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameKitRealtimeTransport.swift"; sourceTree = "<group>"; };
 		B00000000000000000000039 /* GameWireMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameWireMessage.swift"; sourceTree = "<group>"; };
-		B0000000000000000000003A /* WirePreferansAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/WirePreferansAction.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/GameLogReplayer.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003C /* HostGameActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostGameActor.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostedOnlineGameCoordinator.swift"; sourceTree = "<group>"; };
@@ -137,6 +137,8 @@
 		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ActionBarView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableTheme.swift"; sourceTree = "<group>"; };
+		B0000000000000000000A082 /* Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/Localized.swift"; sourceTree = "<group>"; };
+		B0000000000000000000A083 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
 		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreBoardView.swift"; sourceTree = "<group>"; };
 		C00000000000000000000010 /* PreferansEngine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PreferansEngine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -218,7 +220,6 @@
 				B00000000000000000000037 /* GameCenterService.swift */,
 				B00000000000000000000038 /* GameKitRealtimeTransport.swift */,
 				B00000000000000000000039 /* GameWireMessage.swift */,
-				B0000000000000000000003A /* WirePreferansAction.swift */,
 				B0000000000000000000003B /* GameLogReplayer.swift */,
 				B0000000000000000000003C /* HostGameActor.swift */,
 				B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */,
@@ -239,6 +240,8 @@
 				B00000000000000000000073 /* TableView.swift */,
 				B00000000000000000000074 /* ActionBarView.swift */,
 				B00000000000000000000075 /* TableTheme.swift */,
+				B0000000000000000000A082 /* Localized.swift */,
+				B0000000000000000000A083 /* Localizable.xcstrings */,
 				A00000000000000000000018 /* Assets.xcassets */,
 				A00000000000000000000019 /* README.md */,
 			);
@@ -374,6 +377,8 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				ru,
+				uk,
 				Base,
 			);
 			mainGroup = A00000000000000000000021;
@@ -394,6 +399,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A00000000000000000000008 /* Assets.xcassets in Resources */,
+				B0000000000000000000A081 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -413,7 +419,6 @@
 				B00000000000000000000007 /* GameCenterService.swift in Sources */,
 				B00000000000000000000008 /* GameKitRealtimeTransport.swift in Sources */,
 				B00000000000000000000009 /* GameWireMessage.swift in Sources */,
-				B0000000000000000000000A /* WirePreferansAction.swift in Sources */,
 				B0000000000000000000000B /* GameLogReplayer.swift in Sources */,
 				B0000000000000000000000C /* HostGameActor.swift in Sources */,
 				B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */,
@@ -434,6 +439,7 @@
 				B00000000000000000000063 /* TableView.swift in Sources */,
 				B00000000000000000000064 /* ActionBarView.swift in Sources */,
 				B00000000000000000000065 /* TableTheme.swift in Sources */,
+				B0000000000000000000A080 /* Localized.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

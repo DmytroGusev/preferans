@@ -43,6 +43,28 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
             return nil
         }
     }
+
+    /// The declarer of the current deal, when one has been determined —
+    /// any state from ``awaitingDiscard`` through ``playing`` (game/misère
+    /// kinds). `nil` during bidding (no winner yet), all-pass play, and
+    /// between deals. Used by projections to decide which seats can see
+    /// the talon and the discard pile.
+    public var declarer: PlayerID? {
+        switch self {
+        case let .awaitingDiscard(s):      return s.declarer
+        case let .awaitingContract(s):     return s.declarer
+        case let .awaitingWhist(s):        return s.declarer
+        case let .awaitingDefenderMode(s): return s.declarer
+        case let .playing(s):
+            switch s.kind {
+            case let .game(ctx):    return ctx.declarer
+            case let .misere(ctx):  return ctx.declarer
+            case .allPass:          return nil
+            }
+        case .bidding, .waitingForDeal, .dealFinished, .gameOver:
+            return nil
+        }
+    }
 }
 
 public struct BiddingState: Equatable, Codable, Sendable {
@@ -324,7 +346,7 @@ public struct PlayingState: Equatable, Codable, Sendable {
         self.currentPlayer = currentPlayer
         self.currentTrick = currentTrick
         self.completedTricks = completedTricks
-        self.trickCounts = trickCounts ?? Dictionary(uniqueKeysWithValues: activePlayers.map { ($0, 0) })
+        self.trickCounts = trickCounts ?? activePlayers.dictionary(filledWith: 0)
         self.kind = kind
     }
 
@@ -361,6 +383,23 @@ public struct DealResult: Equatable, Codable, Sendable {
         self.completedTricks = completedTricks
         self.scoreDelta = scoreDelta
     }
+
+    /// Result for a deal that ended before any card was played — `passedOut`
+    /// (auction-won by default-grant) and `halfWhist`. No trick was taken
+    /// by anyone, so `trickCounts` is zeroed and `completedTricks` empty.
+    static func unplayed(
+        kind: DealResultKind,
+        activePlayers: [PlayerID],
+        scoreDelta: ScoreDelta
+    ) -> DealResult {
+        DealResult(
+            kind: kind,
+            activePlayers: activePlayers,
+            trickCounts: activePlayers.dictionary(filledWith: 0),
+            completedTricks: [],
+            scoreDelta: scoreDelta
+        )
+    }
 }
 
 public enum PreferansEvent: Equatable, Codable, Sendable {
@@ -387,6 +426,24 @@ public enum PreferansAction: Equatable, Codable, Sendable {
     case whist(player: PlayerID, call: WhistCall)
     case chooseDefenderMode(player: PlayerID, mode: DefenderPlayMode)
     case playCard(player: PlayerID, card: Card)
+
+    /// Player whose seat the action speaks for, or `nil` for `startDeal`
+    /// (which is dealer-driven and can be requested by any seat). Used by
+    /// the host actor to detect spoofed actions arriving from the wrong
+    /// GameKit sender.
+    public var actor: PlayerID? {
+        switch self {
+        case .startDeal:
+            return nil
+        case let .bid(player, _),
+             let .discard(player, _),
+             let .declareContract(player, _),
+             let .whist(player, _),
+             let .chooseDefenderMode(player, _),
+             let .playCard(player, _):
+            return player
+        }
+    }
 }
 
 public struct PreferansSnapshot: Equatable, Codable, Sendable {

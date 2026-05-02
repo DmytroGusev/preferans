@@ -1,0 +1,900 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "1 bot" : {
+      "comment" : "Lobby roster summary, singular bot.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1 bot" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "1 бот" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "1 бот" } }
+      }
+    },
+    "1 human" : {
+      "comment" : "Lobby roster summary, singular human.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1 human" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "1 человек" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "1 людина" } }
+      }
+    },
+    "%lld bots" : {
+      "comment" : "Lobby roster summary, plural bots.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld bot" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld bots" } }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld бот" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld бота" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld ботов" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld ботов" } }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld бот" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld боти" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld ботів" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld ботів" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld humans" : {
+      "comment" : "Lobby roster summary, plural humans.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld human" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld humans" } }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld человек" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld человека" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld человек" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld человек" } }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld людина" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld людини" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld людей" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld людей" } }
+            }
+          }
+        }
+      }
+    },
+    "%@ failed %@ (%lld tricks)" : {
+      "comment" : "Deal-finished headline — declarer lost a game contract. %1$@=declarer name, %2$@=contract label, %3$lld=tricks won by declarer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ failed %@ (%lld tricks)" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ — без %2$@ (взяток: %3$lld)" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ — без %2$@ (взяток: %3$lld)" } }
+      }
+    },
+    "%@ failed %@ (%lld tricks) · whisters: %@" : {
+      "comment" : "Deal-finished headline — declarer lost, with whisters listed. %1$@=declarer, %2$@=contract, %3$lld=tricks, %4$@=whister names joined.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ failed %@ (%lld tricks) · whisters: %@" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ — без %2$@ (взяток: %3$lld) · вистующие: %4$@" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ — без %2$@ (взяток: %3$lld) · вістуючі: %4$@" } }
+      }
+    },
+    "%@ failed misère (%lld tricks taken)" : {
+      "comment" : "Deal-finished headline — declarer broke their misère by taking tricks.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ failed misère (%lld tricks taken)" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ — без мизера (взято: %2$lld)" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ — без мізера (взято: %2$lld)" } }
+      }
+    },
+    "%@ granted %@ – %@ half-whisted" : {
+      "comment" : "Deal-finished headline — half-whist outcome. %1$@=declarer, %2$@=contract, %3$@=half-whister.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ granted %@ – %@ half-whisted" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ играет %2$@ — %3$@ полу-вистовал" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ грає %2$@ — %3$@ пів-вістував" } }
+      }
+    },
+    "%@ made %@ (%lld tricks)" : {
+      "comment" : "Deal-finished headline — declarer fulfilled a game contract. %1$@=declarer name, %2$@=contract label, %3$lld=tricks won.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ made %@ (%lld tricks)" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ сыграл %2$@ (взяток: %3$lld)" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ зіграв %2$@ (взяток: %3$lld)" } }
+      }
+    },
+    "%@ made %@ (%lld tricks) · whisters: %@" : {
+      "comment" : "Deal-finished headline — declarer made it, with whisters listed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ made %@ (%lld tricks) · whisters: %@" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ сыграл %2$@ (взяток: %3$lld) · вистующие: %4$@" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ зіграв %2$@ (взяток: %3$lld) · вістуючі: %4$@" } }
+      }
+    },
+    "%@ made misère (%lld tricks taken)" : {
+      "comment" : "Deal-finished headline — declarer fulfilled their misère.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ made misère (%lld tricks taken)" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ сыграл мизер (взято: %2$lld)" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%1$@ зіграв мізер (взято: %2$lld)" } }
+      }
+    },
+    "All defenders passed – declarer awarded the contract" : {
+      "comment" : "Deal-finished headline — all defenders passed without whisting; declarer wins by default.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "All defenders passed – declarer awarded the contract" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Все защитники спасовали — контракт засчитан без игры" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Усі захисники спасували — контракт зараховано без гри" } }
+      }
+    },
+    "Hand passed out (raspasy)" : {
+      "comment" : "Deal-finished headline — auction collapsed without a contract.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hand passed out (raspasy)" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Распасы" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Розпаси" } }
+      }
+    },
+    "Contract" : {
+      "comment" : "Result-sheet label for the contract value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Contract" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Контракт" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Контракт" } }
+      }
+    },
+    "Declarer" : {
+      "comment" : "Result-sheet label — the declarer of the deal.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Declarer" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Разыгрывающий" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Розіграш" } }
+      }
+    },
+    "Tricks won" : {
+      "comment" : "Result-sheet label — tricks the declarer won (game contract).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tricks won" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Взято взяток" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Взято взяток" } }
+      }
+    },
+    "Tricks taken" : {
+      "comment" : "Result-sheet label — tricks the declarer took (misère).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tricks taken" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Принято взяток" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Прийнято взяток" } }
+      }
+    },
+    "%lld players" : {
+      "comment" : "Seat-count selector buttons in the lobby.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "translated", "value" : "%lld player" } },
+              "other" : { "stringUnit" : { "state" : "translated", "value" : "%lld players" } }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld игрок" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld игрока" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld игроков" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld игроков" } }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld гравець" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld гравці" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld гравців" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld гравців" } }
+            }
+          }
+        }
+      }
+    },
+    "%lld/2 selected" : {
+      "comment" : "Discard selection counter.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "%lld/2 selected" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld/2 выбрано" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "%lld/2 вибрано" } }
+      }
+    },
+    "At least one seat must be human." : {
+      "comment" : "Lobby roster validation error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "At least one seat must be human." } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Хотя бы одно место должно быть человеком." } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Принаймні одне місце має бути людиною." } }
+      }
+    },
+    "Auction in progress" : {
+      "comment" : "Empty-felt placeholder during the bidding phase.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Auction in progress" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Идут торги" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Триває аукціон" } }
+      }
+    },
+    "Balance" : {
+      "comment" : "Scoresheet section: zero-sum balance across the table.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Balance" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Баланс" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Баланс" } }
+      }
+    },
+    "Bidding" : {
+      "comment" : "Phase title — auction phase.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bidding" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Торги" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Торги" } }
+      }
+    },
+    "Bot" : {
+      "comment" : "Lobby seat toggle: switch a seat between human and bot.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bot" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Бот" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Бот" } }
+      }
+    },
+    "Bullet" : {
+      "comment" : "Scoresheet section — fulfilled-contract points (Russian: Пуля).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bullet" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Пуля" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Пуля" } }
+      }
+    },
+    "Classic Sochi & Rostov rules" : {
+      "comment" : "Lobby tagline under the app title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Classic Sochi & Rostov rules" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Классические сочинские и ростовские правила" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Класичні сочинські та ростовські правила" } }
+      }
+    },
+    "Closed" : {
+      "comment" : "Defender play mode — hands hidden.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Closed" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Тёмная" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Темна" } }
+      }
+    },
+    "Confirm" : {
+      "comment" : "Confirm-discard button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Confirm" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Подтвердить" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Підтвердити" } }
+      }
+    },
+    "Deal complete" : {
+      "comment" : "Empty-felt placeholder once the deal has been scored.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deal complete" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Раздача окончена" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Роздачу завершено" } }
+      }
+    },
+    "Deal finished" : {
+      "comment" : "Phase title — deal-finished sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deal finished" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Раздача окончена" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Роздачу завершено" } }
+      }
+    },
+    "Dealer" : {
+      "comment" : "Seat badge for the dealer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dealer" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Сдатчик" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Здавач" } }
+      }
+    },
+    "Deals played: %lld" : {
+      "comment" : "Game-over screen — number of deals played in the match.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deals played: %lld" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Сыграно раздач: %lld" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Зіграно роздач: %lld" } }
+      }
+    },
+    "Debug" : {
+      "comment" : "Section header on debug menu (debug builds only).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Debug" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Отладка" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Налагодження" } }
+      }
+    },
+    "Declare contract" : {
+      "comment" : "Phase title — declarer chooses final contract.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Declare contract" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Объявление контракта" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Оголошення контракту" } }
+      }
+    },
+    "Declarer is naming the contract" : {
+      "comment" : "Empty-felt placeholder while declarer chooses contract.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Declarer is naming the contract" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Разыгрывающий называет контракт" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Розіграш визначає контракт" } }
+      }
+    },
+    "Defender mode" : {
+      "comment" : "Phase title — whister chooses open/closed defender play.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Defender mode" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Режим защиты" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Режим захисту" } }
+      }
+    },
+    "Defenders are calling whist" : {
+      "comment" : "Empty-felt placeholder during whist auction.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Defenders are calling whist" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Защитники объявляют вист" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Захисники оголошують віст" } }
+      }
+    },
+    "Developer menu" : {
+      "comment" : "Accessibility label for the toolbar dev-menu button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Developer menu" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Меню разработчика" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Меню розробника" } }
+      }
+    },
+    "Done" : {
+      "comment" : "Sheet dismiss button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Done" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Готово" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Готово" } }
+      }
+    },
+    "Event log" : {
+      "comment" : "Sheet/menu title — recent engine events.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Event log" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Журнал событий" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Журнал подій" } }
+      }
+    },
+    "Every seat needs a name." : {
+      "comment" : "Lobby roster validation error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Every seat needs a name." } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Каждое место должно иметь имя." } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Кожне місце потребує імені." } }
+      }
+    },
+    "Find match" : {
+      "comment" : "Lobby button — open Game Center matchmaker.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Find match" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Найти матч" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Знайти матч" } }
+      }
+    },
+    "From talon" : {
+      "comment" : "Card accessibility label — card came from the talon during discard.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "From talon" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Из прикупа" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "З прикупу" } }
+      }
+    },
+    "Game over" : {
+      "comment" : "Phase title — match summary screen.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Game over" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Игра окончена" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Гру завершено" } }
+      }
+    },
+    "Half-whist" : {
+      "comment" : "Whist call — split defender contribution (Russian: полу-вист).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Half-whist" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Полу-вист" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Пів-віст" } }
+      }
+    },
+    "Hand passed out" : {
+      "comment" : "Deal-finished result line for raspasy / all-pass.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Hand passed out" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Распасы" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Розпаси" } }
+      }
+    },
+    "Leave" : {
+      "comment" : "Toolbar button — leave the online table back to the lobby.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Leave" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Выйти" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Вийти" } }
+      }
+    },
+    "Local table" : {
+      "comment" : "Lobby card title — pass-and-play / vs-bots table.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Local table" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Локальный стол" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Локальний стіл" } }
+      }
+    },
+    "Misere" : {
+      "comment" : "Bid call — declarer pledges to take zero tricks (French: misère).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Misère" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Мизер" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Мізер" } }
+      }
+    },
+    "Mountain" : {
+      "comment" : "Scoresheet section — penalty points (Russian: Гора).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mountain" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Гора" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Гора" } }
+      }
+    },
+    "Names must be unique." : {
+      "comment" : "Lobby roster validation error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Names must be unique." } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Имена должны быть уникальными." } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Імена мають бути унікальними." } }
+      }
+    },
+    "NT" : {
+      "comment" : "Strain — no trump (Russian: БК — без козыря).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "NT" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "БК" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "БК" } }
+      }
+    },
+    "Online match" : {
+      "comment" : "Lobby card title — Game Center match.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Online match" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Онлайн-матч" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Онлайн-матч" } }
+      }
+    },
+    "on →" : {
+      "comment" : "Whists matrix header — \"writer wrote on target\".",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "on →" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "на →" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "на →" } }
+      }
+    },
+    "Open" : {
+      "comment" : "Defender play mode — hands revealed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Светлая" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Світла" } }
+      }
+    },
+    "Out" : {
+      "comment" : "Seat badge — sitting out this deal (4-player).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Out" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Вне" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Поза" } }
+      }
+    },
+    "Pass" : {
+      "comment" : "Bid call / whist call — skip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pass" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Пас" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Пас" } }
+      }
+    },
+    "Pick 2 to discard" : {
+      "comment" : "Discard prompt — declarer must drop two cards.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pick 2 to discard" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Выберите 2 для сноса" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Виберіть 2 для знесення" } }
+      }
+    },
+    "Player %lld" : {
+      "comment" : "Default lobby seat name placeholder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Player %lld" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Игрок %lld" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Гравець %lld" } }
+      }
+    },
+    "Playing" : {
+      "comment" : "Phase title — trick-play in progress.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Playing" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Игра" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Гра" } }
+      }
+    },
+    "Preferans" : {
+      "comment" : "App title (proper noun).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preferans" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Преферанс" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Преферанс" } }
+      }
+    },
+    "Quick play vs bots" : {
+      "comment" : "Lobby CTA — start a default 1-human-2-bots table.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick play vs bots" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Быстрая игра с ботами" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Швидка гра з ботами" } }
+      }
+    },
+    "Recent events" : {
+      "comment" : "Event-log section header.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recent events" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Недавние события" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Недавні події" } }
+      }
+    },
+    "Reveal all hands" : {
+      "comment" : "Debug toggle (DEBUG builds only) — reveal all opponent hands.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reveal all hands" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Раскрыть все руки" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Розкрити всі руки" } }
+      }
+    },
+    "Scoresheet" : {
+      "comment" : "Toolbar button / sheet title — pulka scoring view.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scoresheet" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Пулька" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Пулька" } }
+      }
+    },
+    "Sign in to Game Center" : {
+      "comment" : "Lobby button — start Game Center sign-in flow.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Game Center" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Войти в Game Center" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Увійти в Game Center" } }
+      }
+    },
+    "Sign in to play online" : {
+      "comment" : "Lobby online-card status text before sign-in.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to play online" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Войдите, чтобы играть онлайн" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Увійдіть, щоб грати онлайн" } }
+      }
+    },
+    "Sitting out this deal" : {
+      "comment" : "Accessibility label — 4-player seat sitting out.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sitting out this deal" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Не играет эту раздачу" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Не грає цю роздачу" } }
+      }
+    },
+    "Standings" : {
+      "comment" : "Game-over standings header.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Standings" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Итоги" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Підсумки" } }
+      }
+    },
+    "Start deal" : {
+      "comment" : "Action-bar button — begin the next deal.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start deal" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Сдать" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Здати" } }
+      }
+    },
+    "Start next deal" : {
+      "comment" : "Deal-finished sheet button — proceed to next deal.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start next deal" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Следующая раздача" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Наступна роздача" } }
+      }
+    },
+    "Start table" : {
+      "comment" : "Lobby button — start a local table.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Start table" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Начать стол" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Розпочати стіл" } }
+      }
+    },
+    "T" : {
+      "comment" : "Card-corner badge — card came from talon (single letter).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "T" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "П" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "П" } }
+      }
+    },
+    "Talon" : {
+      "comment" : "Centre-of-felt label — talon during discard phase.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Talon" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Прикуп" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Прикуп" } }
+      }
+    },
+    "Talon exchange" : {
+      "comment" : "Phase title — declarer takes talon and discards two cards.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Talon exchange" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Обмен прикупа" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Обмін прикупу" } }
+      }
+    },
+    "Tap Start Deal" : {
+      "comment" : "Empty-felt placeholder before the first deal.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tap Start Deal" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Нажмите «Сдать»" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Натисніть «Здати»" } }
+      }
+    },
+    "Totus" : {
+      "comment" : "Bid call — declarer pledges all 10 tricks.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Totus" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Тотус" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Тотус" } }
+      }
+    },
+    "Tricks: %lld" : {
+      "comment" : "Per-seat trick count display.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tricks: %lld" } },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } }
+            }
+          }
+        },
+        "uk" : {
+          "variations" : {
+            "plural" : {
+              "one" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } },
+              "few" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } },
+              "many" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } },
+              "other" : { "stringUnit" : { "state" : "needs_review", "value" : "Взяток: %lld" } }
+            }
+          }
+        }
+      }
+    },
+    "Turn" : {
+      "comment" : "Accessibility label — current-actor indicator dot.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Ход" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Хід" } }
+      }
+    },
+    "View as" : {
+      "comment" : "Hot-seat menu / accessibility label — switch viewer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View as" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Смотреть как" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Дивитися як" } }
+      }
+    },
+    "Waiting for %@" : {
+      "comment" : "Status row when an opponent is acting.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting for %@" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Ожидание: %@" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Очікування: %@" } }
+      }
+    },
+    "Waiting for deal" : {
+      "comment" : "Phase title — between deals.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting for deal" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Ожидание раздачи" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Очікування роздачі" } }
+      }
+    },
+    "Waiting for first card" : {
+      "comment" : "Empty-felt placeholder before the first card of a trick.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Waiting for first card" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Ожидание первой карты" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Очікування першої карти" } }
+      }
+    },
+    "Whist" : {
+      "comment" : "Whist call — defender pledges to take tricks against declarer (and phase title for whist auction).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Whist" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Вист" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Віст" } }
+      }
+    },
+    "Whister is choosing open or closed" : {
+      "comment" : "Empty-felt placeholder while whister picks open/closed.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Whister is choosing open or closed" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Вистующий выбирает открытую или тёмную защиту" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Вістуючий обирає світлу чи темну гру" } }
+      }
+    },
+    "Whists" : {
+      "comment" : "Scoresheet section — whist-points matrix (Russian: Висты).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Whists" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Висты" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Вісти" } }
+      }
+    },
+    "Winner: %@" : {
+      "comment" : "Game-over screen — name of the player with the highest balance.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Winner: %@" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Победитель: %@" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Переможець: %@" } }
+      }
+    },
+    "you: %@" : {
+      "comment" : "Status-bar tag identifying the current viewer.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "you: %@" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "вы: %@" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "ви: %@" } }
+      }
+    },
+    "Your turn" : {
+      "comment" : "Seat badge — viewer is the current actor.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your turn" } },
+        "ru" : { "stringUnit" : { "state" : "needs_review", "value" : "Ваш ход" } },
+        "uk" : { "stringUnit" : { "state" : "needs_review", "value" : "Ваш хід" } }
+      }
+    }
+  }
+}

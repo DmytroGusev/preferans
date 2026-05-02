@@ -30,7 +30,7 @@ public struct ProjectionGameScreen: View {
                 regularBody
             }
         }
-        .navigationTitle(projection.phase.title)
+        .navigationTitle(Localized.phaseTitle(projection.phase))
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -117,11 +117,14 @@ public struct ProjectionGameScreen: View {
             // iOS 26 stops surfacing inline nav-bar titles to UI tests /
             // VoiceOver, so the phase title also lives here as a visible
             // tag carrying its accessibility id.
-            Text(projection.phase.title)
+            Text(Localized.phaseTitle(projection.phase))
                 .font(.caption.bold())
                 .foregroundStyle(TableTheme.inkCream)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
+            // FIXME(l10n): `projection.message` is a runtime English string
+            // built in PlayerProjectionBuilder. Refactor the projection to a
+            // typed `ProjectedStatusMessage` enum and localize at this site.
             Text(projection.message)
                 .font(.caption)
                 .foregroundStyle(TableTheme.inkCreamSoft)
@@ -321,7 +324,7 @@ public struct ProjectionGameScreen: View {
         }
     }
 
-    private var navigationTitleForResult: String {
+    private var navigationTitleForResult: LocalizedStringKey {
         if case .gameOver = projection.phase { return "Game over" }
         return "Deal complete"
     }
@@ -330,7 +333,7 @@ public struct ProjectionGameScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             // Human-readable headline; the encoded id stays in a hidden
             // accessibility carrier so UI tests can still pin on the kind.
-            Text(humanResultHeadline(result))
+            Localized.dealResultHeadline(result, displayName: { displayName(for: $0) })
                 .font(.title2.bold())
                 .accessibilityIdentifier(UIIdentifiers.dealResultKind)
             Text(UIIdentifiers.encode(result.kind))
@@ -340,14 +343,14 @@ public struct ProjectionGameScreen: View {
             switch result.kind {
             case let .game(declarer, contract, _):
                 resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
-                resultLine("Contract", contract.description, idForValue: UIIdentifiers.dealResultContract)
+                resultLine("Contract", Localized.renderedGameContract(contract), idForValue: UIIdentifiers.dealResultContract)
                 resultLine("Tricks won", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
             case let .misere(declarer):
                 resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
                 resultLine("Tricks taken", "\(result.trickCounts[declarer] ?? 0)", idForValue: UIIdentifiers.dealResultTricks)
             case let .halfWhist(declarer, contract, _):
                 resultLine("Declarer", displayName(for: declarer), idForValue: UIIdentifiers.dealResultDeclarer)
-                resultLine("Contract", contract.description, idForValue: UIIdentifiers.dealResultContract)
+                resultLine("Contract", Localized.renderedGameContract(contract), idForValue: UIIdentifiers.dealResultContract)
             case .passedOut, .allPass:
                 Text("Hand passed out")
                     .foregroundStyle(.secondary)
@@ -374,33 +377,6 @@ public struct ProjectionGameScreen: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
-    }
-
-    private func humanResultHeadline(_ result: DealResult) -> String {
-        switch result.kind {
-        case let .game(declarer, contract, whisters):
-            let made = (result.trickCounts[declarer] ?? 0) >= contract.tricks
-            let verb = made ? "made" : "failed"
-            let tricks = result.trickCounts[declarer] ?? 0
-            let whoString: String
-            if whisters.isEmpty {
-                whoString = ""
-            } else {
-                let names = whisters.map { displayName(for: $0) }.joined(separator: " + ")
-                whoString = " · whisters: \(names)"
-            }
-            return "\(displayName(for: declarer)) \(verb) \(contract.description) (\(tricks) tricks)\(whoString)"
-        case let .misere(declarer):
-            let tricks = result.trickCounts[declarer] ?? 0
-            let verb = tricks == 0 ? "made misère" : "failed misère"
-            return "\(displayName(for: declarer)) \(verb) (\(tricks) tricks taken)"
-        case let .halfWhist(declarer, contract, halfWhister):
-            return "\(displayName(for: declarer)) granted \(contract.description) – \(displayName(for: halfWhister)) half-whisted"
-        case .passedOut:
-            return "All defenders passed – declarer awarded the contract"
-        case .allPass:
-            return "Hand passed out (raspasy)"
-        }
     }
 
     private func gameOverContent(summary: MatchSummary) -> some View {
@@ -449,7 +425,7 @@ public struct ProjectionGameScreen: View {
         .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
     }
 
-    private func resultLine(_ label: String, _ value: String, idForValue: String) -> some View {
+    private func resultLine(_ label: LocalizedStringKey, _ value: String, idForValue: String) -> some View {
         HStack {
             Text(label).foregroundStyle(.secondary)
             Spacer()

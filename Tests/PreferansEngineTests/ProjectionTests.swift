@@ -28,16 +28,14 @@ final class ProjectionTests: XCTestCase {
         XCTAssertTrue(projection.talon.allSatisfy { $0.knownCard == nil })
     }
 
-    func testWireActionRoundTripsWithoutPreferansActionCodable() throws {
+    func testActionRoundTripsThroughJSON() throws {
         let action = PreferansAction.bid(
             player: "north",
             call: .bid(.game(GameContract(6, .suit(.spades))))
         )
-        let wire = WirePreferansAction(action)
-        let encoded = try JSONEncoder().encode(wire)
-        let decoded = try JSONDecoder().decode(WirePreferansAction.self, from: encoded)
-        XCTAssertEqual(decoded, wire)
-        XCTAssertEqual(WirePreferansAction(decoded.action), wire)
+        let encoded = try JSONEncoder().encode(action)
+        let decoded = try JSONDecoder().decode(PreferansAction.self, from: encoded)
+        XCTAssertEqual(decoded, action)
     }
 
     func testHostStartDealStoresExplicitDeckForReplay() async throws {

@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "PreferansEngine",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v15),
         .macOS(.v14),
@@ -25,6 +26,9 @@ let package = Package(
                 "Preferans.entitlements",
                 "PreferansApp.swift",
                 "Support/Preferans.entitlements.example"
+            ],
+            resources: [
+                .process("Resources/Localizable.xcstrings")
             ]
         ),
         .testTarget(

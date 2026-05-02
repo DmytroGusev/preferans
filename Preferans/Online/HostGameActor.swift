@@ -26,7 +26,7 @@ public struct ValidatedActionRecord: Codable, Sendable, Equatable, Identifiable 
     public var tableID: UUID
     public var sequence: Int
     public var actor: PlayerID
-    public var action: WirePreferansAction
+    public var action: PreferansAction
     public var clientNonce: UUID
     public var baseHostSequence: Int
     public var createdAt: Date
@@ -36,7 +36,7 @@ public struct ValidatedActionRecord: Codable, Sendable, Equatable, Identifiable 
         tableID: UUID,
         sequence: Int,
         actor: PlayerID,
-        action: WirePreferansAction,
+        action: PreferansAction,
         clientNonce: UUID,
         baseHostSequence: Int,
         createdAt: Date,
@@ -116,7 +116,7 @@ public actor HostGameActor {
             throw HostGameError.duplicateClientNonce(envelope.clientNonce)
         }
 
-        let authoritativeAction = makeAuthoritative(envelope.action.action)
+        let authoritativeAction = makeAuthoritative(envelope.action)
         let events = try engine.apply(authoritativeAction)
         sequence += 1
         appliedNonces.insert(envelope.clientNonce)
@@ -126,7 +126,7 @@ public actor HostGameActor {
             tableID: tableID,
             sequence: sequence,
             actor: envelope.actor,
-            action: WirePreferansAction(authoritativeAction),
+            action: authoritativeAction,
             clientNonce: envelope.clientNonce,
             baseHostSequence: envelope.baseHostSequence,
             createdAt: Date(),

@@ -94,48 +94,47 @@ public struct HeuristicStrategy: PlayerStrategy {
 
     private func chooseDiscard(state: ExchangeState, viewer: PlayerID) -> [Card] {
         let combined = (state.hands[viewer] ?? []) + state.talon
+        let scored = scoredDiscardPairs(in: combined, finalBid: state.finalBid)
         switch state.finalBid {
         case .misere:
-            return bestPair(in: combined, comparator: <) { kept in
-                HandEvaluator.expectedMisereTricks(grouped: HandEvaluator.groupBySuit(kept))
-            }
+            return scored.min(by: { $0.score < $1.score })?.pair ?? Array(combined.prefix(2))
         case .game, .totus:
-            return bestPair(in: combined, comparator: >) { kept in
-                let grouped = HandEvaluator.groupBySuit(kept)
-                return Strain.allStandard
-                    .map { HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: $0.suit) }
-                    .max() ?? 0
-            }
+            return scored.max(by: { $0.score < $1.score })?.pair ?? Array(combined.prefix(2))
         }
     }
 
-    /// Iterates every unordered pair from `cards` and returns the pair
-    /// whose *kept* hand (the rest) optimizes `score` under `comparator`.
-    /// Pass `>` to maximize score, `<` to minimize.
-    private func bestPair(
-        in cards: [Card],
-        comparator: (Double, Double) -> Bool,
-        score: ([Card]) -> Double
-    ) -> [Card] {
-        guard cards.count >= 2 else { return Array(cards.prefix(2)) }
-        var bestScore: Double = comparator(1, 0) ? -.infinity : .infinity
-        var bestPair: [Card] = [cards[0], cards[1]]
+    /// Every unordered pair from `cards` together with the score of the
+    /// 10-card hand that remains after removing the pair. Caller picks
+    /// `min` (misère wants the leanest tricks-forced hand) or `max`
+    /// (game/totus wants the highest expected-tricks hand).
+    private func scoredDiscardPairs(in cards: [Card], finalBid: ContractBid) -> [(pair: [Card], score: Double)] {
+        guard cards.count >= 2 else { return [] }
         var kept: [Card] = []
         kept.reserveCapacity(cards.count - 2)
+        var scored: [(pair: [Card], score: Double)] = []
+        scored.reserveCapacity(cards.count * (cards.count - 1) / 2)
         for i in 0..<cards.count {
             for j in (i + 1)..<cards.count {
                 kept.removeAll(keepingCapacity: true)
                 for k in 0..<cards.count where k != i && k != j {
                     kept.append(cards[k])
                 }
-                let s = score(kept)
-                if comparator(s, bestScore) {
-                    bestScore = s
-                    bestPair = [cards[i], cards[j]]
-                }
+                scored.append((pair: [cards[i], cards[j]], score: keptHandScore(kept, finalBid: finalBid)))
             }
         }
-        return bestPair
+        return scored
+    }
+
+    private func keptHandScore(_ kept: [Card], finalBid: ContractBid) -> Double {
+        let grouped = HandEvaluator.groupBySuit(kept)
+        switch finalBid {
+        case .misere:
+            return HandEvaluator.expectedMisereTricks(grouped: grouped)
+        case .game, .totus:
+            return Strain.allStandard
+                .map { HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: $0.suit) }
+                .max() ?? 0
+        }
     }
 
     private func chooseContract(

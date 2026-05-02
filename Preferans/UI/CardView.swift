@@ -118,7 +118,7 @@ public struct CardView: View {
     }
 
     private func cardFace(known: Card) -> some View {
-        let color = suitColor(known.suit)
+        let color = known.suit.color(on: .cardFace)
         let pad: CGFloat = size == .compact ? 3 : 4
         return ZStack {
             RoundedRectangle(cornerRadius: size.cornerRadius)
@@ -171,13 +171,6 @@ public struct CardView: View {
             Image(systemName: "suit.club.fill")
                 .font(size.pipFont)
                 .foregroundStyle(Color(red: 0.83, green: 0.67, blue: 0.34).opacity(0.65))
-        }
-    }
-
-    private func suitColor(_ suit: Suit) -> Color {
-        switch suit {
-        case .hearts, .diamonds: return Color(red: 0.78, green: 0.10, blue: 0.10)
-        case .spades, .clubs:    return .black
         }
     }
 

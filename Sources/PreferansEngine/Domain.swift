@@ -15,6 +15,26 @@ public struct PlayerID: Hashable, Codable, Sendable, ExpressibleByStringLiteral,
     public var description: String { rawValue }
 }
 
+public extension Array where Element == PlayerID {
+    /// Player after `player` in cyclic seating order. Returns `self[0]` when
+    /// `player` is not in the rotation — matches the engine's pre-existing
+    /// fallback for unrecognised seats.
+    func cyclicNext(after player: PlayerID) -> PlayerID {
+        guard !isEmpty else { preconditionFailure("cyclicNext on empty rotation") }
+        guard let index = firstIndex(of: player) else { return self[0] }
+        return self[(index + 1) % count]
+    }
+}
+
+public extension Sequence where Element: Hashable {
+    /// Builds a dictionary mapping every element of the sequence to `value`.
+    /// Used to seed per-player counters with a known initial value (zeroed
+    /// trick counts, empty whist matrices, blank hands).
+    func dictionary<V>(filledWith value: V) -> [Element: V] {
+        Dictionary(uniqueKeysWithValues: lazy.map { ($0, value) })
+    }
+}
+
 public enum Suit: Int, CaseIterable, Codable, Sendable, Comparable, CustomStringConvertible {
     case spades = 0
     case clubs = 1
@@ -80,6 +100,20 @@ public struct Card: Hashable, Codable, Sendable, Comparable, CustomStringConvert
         if lhs.suit == rhs.suit {
             return lhs.rank < rhs.rank
         }
+        return lhs.suit < rhs.suit
+    }
+
+    /// Comparator that orders by rank first, suit as tiebreaker. Use when
+    /// the caller cares about rank precedence (filler-card selection,
+    /// trick-greedy play) — the default `Comparable` order is suit-first
+    /// for canonical hand layout.
+    public static func byRankAscending(_ lhs: Card, _ rhs: Card) -> Bool {
+        if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
+        return lhs.suit < rhs.suit
+    }
+
+    public static func byRankDescending(_ lhs: Card, _ rhs: Card) -> Bool {
+        if lhs.rank != rhs.rank { return lhs.rank > rhs.rank }
         return lhs.suit < rhs.suit
     }
 

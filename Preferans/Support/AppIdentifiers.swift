@@ -10,3 +10,22 @@ public enum AppIdentifiers {
     public static let cloudSchemaVersion = 1
     public static let gameWireSchemaVersion = 1
 }
+
+/// Shared JSON encoder/decoder for every persistence and wire path
+/// (CloudKit blobs, GameKit messages). Both use ISO-8601 dates so a record
+/// written by one can be read by the other. Each call site treats the
+/// instance as immutable after construction; concurrent encode/decode is
+/// fine, mutating the strategies after init is not.
+public enum PreferansJSONCoder {
+    public static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    public static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+}

@@ -13,17 +13,13 @@ public final class GameKitRealtimeTransport: NSObject, ObservableObject, GKMatch
     @Published public private(set) var connectedPlayerIDs: Set<String>
     @Published public private(set) var lastError: String?
 
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
+    private var encoder: JSONEncoder { PreferansJSONCoder.encoder }
+    private var decoder: JSONDecoder { PreferansJSONCoder.decoder }
     private var continuations: [UUID: AsyncStream<ReceivedGameKitMessage>.Continuation] = [:]
 
     public init(match: GKMatch) {
         self.match = match
         self.connectedPlayerIDs = Set(match.players.map(\.gamePlayerID))
-        self.encoder = JSONEncoder()
-        self.decoder = JSONDecoder()
-        self.encoder.dateEncodingStrategy = .iso8601
-        self.decoder.dateDecodingStrategy = .iso8601
         super.init()
         self.match.delegate = self
     }

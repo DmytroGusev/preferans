@@ -146,14 +146,9 @@ public enum TestHarness {
         for deal in script.deals {
             let active = helper.activePlayers(forDealer: dealer)
             decks.append(deal.recipe.deck(for: active))
-            dealer = nextDealer(after: dealer, in: script.players)
+            dealer = script.players.cyclicNext(after: dealer)
         }
         return ScriptedDealSource(decks: decks)
-    }
-
-    private static func nextDealer(after dealer: PlayerID, in players: [PlayerID]) -> PlayerID {
-        guard let index = players.firstIndex(of: dealer) else { return players[0] }
-        return players[(index + 1) % players.count]
     }
 
     private static func parseRaspasyPolicy(_ raw: String) -> RaspasyPolicy? {

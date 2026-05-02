@@ -392,13 +392,15 @@ public enum PlayerProjectionBuilder {
     }
 
     private static func projectTalon(_ talon: [Card], state: DealState, viewer: PlayerID, revealAll: Bool) -> [ProjectedCard] {
-        if revealAll { return talon.sorted().map(ProjectedCard.known) }
-        switch state {
-        case let .awaitingDiscard(exchange) where exchange.declarer == viewer:
-            return talon.sorted().map(ProjectedCard.known)
-        default:
-            return Array(repeating: .hidden, count: talon.count)
+        // Only the declarer sees talon faces, and only during the talon
+        // exchange — once they pick two cards the talon is set aside.
+        let isDeclarerExchanging: Bool
+        if case let .awaitingDiscard(exchange) = state, exchange.declarer == viewer {
+            isDeclarerExchanging = true
+        } else {
+            isDeclarerExchanging = false
         }
+        return reveal(talon, when: revealAll || isDeclarerExchanging)
     }
 
     private static func projectDiscard(
@@ -409,27 +411,13 @@ public enum PlayerProjectionBuilder {
         revealDeclarerDiscardToDeclarer: Bool
     ) -> [ProjectedCard] {
         guard !discard.isEmpty else { return [] }
-        if revealAll { return discard.sorted().map(ProjectedCard.known) }
-        guard revealDeclarerDiscardToDeclarer else {
-            return Array(repeating: .hidden, count: discard.count)
-        }
-        switch state {
-        case let .awaitingContract(declaration) where declaration.declarer == viewer:
-            return discard.sorted().map(ProjectedCard.known)
-        case let .awaitingWhist(whist) where whist.declarer == viewer:
-            return discard.sorted().map(ProjectedCard.known)
-        case let .awaitingDefenderMode(mode) where mode.declarer == viewer:
-            return discard.sorted().map(ProjectedCard.known)
-        case let .playing(playing):
-            if case let .game(context) = playing.kind, context.declarer == viewer {
-                return discard.sorted().map(ProjectedCard.known)
-            }
-            if case let .misere(context) = playing.kind, context.declarer == viewer {
-                return discard.sorted().map(ProjectedCard.known)
-            }
-            return Array(repeating: .hidden, count: discard.count)
-        default:
-            return Array(repeating: .hidden, count: discard.count)
-        }
+        let isDeclarerViewer = revealDeclarerDiscardToDeclarer && state.declarer == viewer
+        return reveal(discard, when: revealAll || isDeclarerViewer)
+    }
+
+    private static func reveal(_ cards: [Card], when shouldReveal: Bool) -> [ProjectedCard] {
+        if shouldReveal { return cards.sorted().map(ProjectedCard.known) }
+        return Array(repeating: .hidden, count: cards.count)
     }
 }
+

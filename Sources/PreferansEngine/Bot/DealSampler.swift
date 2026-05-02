@@ -8,13 +8,24 @@ import Foundation
 public struct DealSampler {
     private static let fullDeck: Set<Card> = Set(Deck.standard32)
 
+    fileprivate enum SlotKind: Hashable {
+        case seat(PlayerID)
+        case discard
+    }
+
+    fileprivate struct Slot {
+        let kind: SlotKind
+        var size: Int
+        var allowed: Set<Suit>
+    }
+
     public init() {}
 
-    public func samples(
+    public func samples<RNG: RandomNumberGenerator>(
         from snapshot: PreferansSnapshot,
         viewer: PlayerID,
         count: Int,
-        rng: inout SystemRandomNumberGenerator
+        rng: inout RNG
     ) -> [PreferansSnapshot] {
         guard case let .playing(playing) = snapshot.state else {
             return Array(repeating: snapshot, count: count)
@@ -57,12 +68,12 @@ public struct DealSampler {
         return voids
     }
 
-    private func sampleOnce(
+    private func sampleOnce<RNG: RandomNumberGenerator>(
         snapshot: PreferansSnapshot,
         playing: PlayingState,
         viewer: PlayerID,
         voids: [PlayerID: Set<Suit>],
-        rng: inout SystemRandomNumberGenerator
+        rng: inout RNG
     ) -> PreferansSnapshot? {
         let viewerHand = playing.hands[viewer] ?? []
         let allPlayed = (playing.completedTricks.flatMap(\.plays) + playing.currentTrick).map(\.card)
@@ -84,16 +95,6 @@ public struct DealSampler {
         }()
         if discardKnown {
             hidden.subtract(playing.discard)
-        }
-
-        struct Slot {
-            let kind: SlotKind
-            var size: Int
-            var allowed: Set<Suit>
-        }
-        enum SlotKind: Hashable {
-            case seat(PlayerID)
-            case discard
         }
 
         var slots: [Slot] = []

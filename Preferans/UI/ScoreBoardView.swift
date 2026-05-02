@@ -89,7 +89,7 @@ public struct ScoreBoardView: View {
     // MARK: - Layout helpers
 
     private func section<Content: View>(
-        title: String,
+        title: LocalizedStringKey,
         subtitle: String?,
         @ViewBuilder content: () -> Content
     ) -> some View {

@@ -102,20 +102,14 @@ public enum HandRecipe: Hashable, Sendable {
         let topCount = willTake
         let fillerCount = 10 - topCount
         let strainCards = sortedDescending(of: contract.strain).prefix(topCount)
-        let nonStrainByRank = nonStrainCards(strain: contract.strain).sorted { lhs, rhs in
-            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
-            return lhs.suit < rhs.suit
-        }
+        let nonStrainByRank = nonStrainCards(strain: contract.strain).sorted(by: Card.byRankAscending)
         let filler = nonStrainByRank.prefix(fillerCount)
         let declarerHand = Array(strainCards) + Array(filler)
         return planSplittingLeftover(declarerHand: declarerHand, declarer: declarer, activePlayers: activePlayers)
     }
 
     private func planForCleanMisere(declarer: PlayerID, activePlayers: [PlayerID]) -> DeckPlan {
-        let allByRankAscending = Deck.standard32.sorted { lhs, rhs in
-            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
-            return lhs.suit < rhs.suit
-        }
+        let allByRankAscending = Deck.standard32.sorted(by: Card.byRankAscending)
         // Declarer's *final* hand is the 10 lowest cards. Talon holds two
         // throwaways from the leftover pool that declarer will discard.
         let declarerHand = Array(allByRankAscending.prefix(10))
@@ -127,10 +121,7 @@ public enum HandRecipe: Hashable, Sendable {
         // Cleaner gets the ten lowest cards globally; with lowest-legal play
         // they cannot win any trick because every other seat outranks them
         // both as leader and as follower.
-        let allByRankAscending = Deck.standard32.sorted { lhs, rhs in
-            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
-            return lhs.suit < rhs.suit
-        }
+        let allByRankAscending = Deck.standard32.sorted(by: Card.byRankAscending)
         let cleanerHand = Array(allByRankAscending.prefix(10))
         var leftoverPool = Set(Deck.standard32).subtracting(cleanerHand)
 
@@ -198,21 +189,24 @@ public enum HandRecipe: Hashable, Sendable {
     private func topCards(forContract contract: GameContract, count: Int) -> [Card] {
         switch contract.strain {
         case let .suit(trump):
-            // Take up to `contract.tricks` pure trumps (capped at 8 — the
-            // suit's full size) and fill the remaining slots with highest
-            // pure non-trump cards. Keeping the two pools disjoint avoids
-            // duplicate-card bugs around 9- and 10-trick contracts.
-            let allTrumps = Deck.standard32.filter { $0.suit == trump }.sorted().reversed()
-            let trumps = Array(allTrumps.prefix(contract.tricks))
+            // Up to `contract.tricks` pure trumps (capped at 8 — the suit's
+            // full size) plus highest pure non-trump cards by rank. Keeping
+            // the two pools disjoint avoids duplicate-card bugs around 9-
+            // and 10-trick contracts.
+            let trumps = Deck.standard32
+                .filter { $0.suit == trump }
+                .sorted(by: Card.byRankDescending)
+                .prefix(contract.tricks)
             let needed = count - trumps.count
-            let nonTrumpsByRank = Deck.standard32.filter { $0.suit != trump }.sorted { lhs, rhs in
-                if lhs.rank != rhs.rank { return lhs.rank > rhs.rank }
-                return lhs.suit < rhs.suit
-            }
-            let sideHigh = needed > 0 ? Array(nonTrumpsByRank.prefix(needed)) : []
-            return trumps + sideHigh
+            let sideHigh = needed > 0
+                ? Deck.standard32
+                    .filter { $0.suit != trump }
+                    .sorted(by: Card.byRankDescending)
+                    .prefix(needed)
+                : []
+            return Array(trumps) + Array(sideHigh)
         case .noTrump:
-            return Array(sortedDescending(of: .noTrump).prefix(count))
+            return Array(Deck.standard32.sorted(by: Card.byRankDescending).prefix(count))
         }
     }
 
@@ -223,16 +217,10 @@ public enum HandRecipe: Hashable, Sendable {
         switch strain {
         case let .suit(trump):
             let trumpCards = Deck.standard32.filter { $0.suit == trump }.sorted().reversed()
-            let others = Deck.standard32.filter { $0.suit != trump }.sorted { lhs, rhs in
-                if lhs.rank != rhs.rank { return lhs.rank > rhs.rank }
-                return lhs.suit < rhs.suit
-            }
+            let others = Deck.standard32.filter { $0.suit != trump }.sorted(by: Card.byRankDescending)
             return Array(trumpCards) + others
         case .noTrump:
-            return Deck.standard32.sorted { lhs, rhs in
-                if lhs.rank != rhs.rank { return lhs.rank > rhs.rank }
-                return lhs.suit < rhs.suit
-            }
+            return Deck.standard32.sorted(by: Card.byRankDescending)
         }
     }
 

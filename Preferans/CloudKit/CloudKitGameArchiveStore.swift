@@ -20,18 +20,14 @@ public actor CloudKitGameArchiveStore {
 
     private let container: CKContainer
     private let database: CKDatabase
-    private let encoder: JSONEncoder
-    private let decoder: JSONDecoder
+    private var encoder: JSONEncoder { PreferansJSONCoder.encoder }
+    private var decoder: JSONDecoder { PreferansJSONCoder.decoder }
     private let zoneID: CKRecordZone.ID
     private var didEnsureZone = false
 
     public init(containerIdentifier: String = AppIdentifiers.cloudKitContainer) {
         self.container = CKContainer(identifier: containerIdentifier)
         self.database = container.privateCloudDatabase
-        self.encoder = JSONEncoder()
-        self.decoder = JSONDecoder()
-        self.encoder.dateEncodingStrategy = .iso8601
-        self.decoder.dateDecodingStrategy = .iso8601
         self.zoneID = CKRecordZone.ID(zoneName: PreferansCKZone.tables, ownerName: CKCurrentUserDefaultName)
     }
 
@@ -239,7 +235,7 @@ public actor CloudKitGameArchiveStore {
             tableID: tableID,
             sequence: record.int(for: PreferansCKField.sequence) ?? 0,
             actor: PlayerID(actorText),
-            action: try decoder.decode(WirePreferansAction.self, from: actionData),
+            action: try decoder.decode(PreferansAction.self, from: actionData),
             clientNonce: nonce,
             baseHostSequence: record.int(for: PreferansCKField.baseHostSequence) ?? 0,
             createdAt: record.date(for: PreferansCKField.createdAt) ?? Date(),

@@ -44,7 +44,7 @@ public struct ClientActionEnvelope: Codable, Sendable, Equatable, Identifiable {
     public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
     public var tableID: UUID
     public var actor: PlayerID
-    public var action: WirePreferansAction
+    public var action: PreferansAction
     public var clientNonce: UUID
     public var baseHostSequence: Int
     public var sentAt: Date
@@ -59,7 +59,7 @@ public struct ClientActionEnvelope: Codable, Sendable, Equatable, Identifiable {
     ) {
         self.tableID = tableID
         self.actor = actor
-        self.action = WirePreferansAction(action)
+        self.action = action
         self.clientNonce = clientNonce
         self.baseHostSequence = baseHostSequence
         self.sentAt = sentAt

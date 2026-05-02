@@ -103,7 +103,7 @@ public struct ActionBarView: View {
                 }
                 if let suit = label.suit {
                     Text(suit.symbol)
-                        .foregroundStyle(label.bidColor(for: suit))
+                        .foregroundStyle(suit.color(on: .felt))
                 }
                 Text(label.text)
                     .fontWeight(.semibold)
@@ -126,7 +126,7 @@ public struct ActionBarView: View {
                                 Text("\(contract.tricks)")
                                     .fontWeight(.bold)
                             }
-                            Text(contract.strain.description)
+                            Text(Localized.strain(contract.strain))
                                 .foregroundStyle(strainColor(contract.strain))
                                 .fontWeight(.bold)
                         }
@@ -167,7 +167,7 @@ public struct ActionBarView: View {
         HStack(spacing: 8) {
             ForEach(projection.legal.whistCalls, id: \.self) { call in
                 Button { onSend(.whist(player: projection.viewer, call: call)) } label: {
-                    Text(call.description)
+                    Text(Localized.whistCall(call))
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                 }
@@ -185,7 +185,7 @@ public struct ActionBarView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: mode == .open ? "eye" : "eye.slash")
-                        Text(mode == .open ? "Open" : "Closed")
+                        Text(Localized.defenderMode(mode))
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
@@ -242,7 +242,7 @@ public struct ActionBarView: View {
 
     private struct BidLabel {
         enum Kind { case pass, game, misere, totus }
-        var text: String
+        var text: LocalizedStringKey
         var suit: Suit?
         var icon: String?
         var kind: Kind
@@ -256,16 +256,6 @@ public struct ActionBarView: View {
             }
         }
 
-        /// Suit pip color tuned for the felt — reds stay red, blacks are
-        /// rendered cream so they remain legible on the dark pill.
-        func bidColor(for suit: Suit) -> Color {
-            switch suit {
-            case .hearts, .diamonds:
-                return Color(red: 0.95, green: 0.45, blue: 0.42)
-            case .spades, .clubs:
-                return TableTheme.inkCream
-            }
-        }
     }
 
     private func bidLabel(for call: BidCall) -> BidLabel {
@@ -284,14 +274,11 @@ public struct ActionBarView: View {
         }
     }
 
-    /// Strain color tuned for the felt — hearts/diamonds glow warmer red,
-    /// spades/clubs render in cream so they read on the dark contract pill.
+    /// Strain color tuned for the felt. NoTrump (no suit) reads as cream;
+    /// suit strains delegate to ``Suit.color(on:)`` so the same pip color
+    /// is used everywhere on the dark pill.
     private func strainColor(_ strain: Strain) -> Color {
-        guard let suit = strain.suit else { return TableTheme.inkCream }
-        switch suit {
-        case .hearts, .diamonds: return Color(red: 0.95, green: 0.45, blue: 0.42)
-        case .spades, .clubs:    return TableTheme.inkCream
-        }
+        strain.suit?.color(on: .felt) ?? TableTheme.inkCream
     }
 
     private var isTotusDeclaration: Bool {
