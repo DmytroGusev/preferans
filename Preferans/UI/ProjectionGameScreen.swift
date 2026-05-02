@@ -90,6 +90,7 @@ public struct ProjectionGameScreen: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.bidding.rawValue)
         }
     }
@@ -114,6 +115,7 @@ public struct ProjectionGameScreen: View {
                 .disabled(selectedDiscard.count != 2)
                 .accessibilityIdentifier(UIIdentifiers.buttonDiscardSelected)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.discard.rawValue)
         }
     }
@@ -136,6 +138,7 @@ public struct ProjectionGameScreen: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.contract.rawValue)
         }
     }
@@ -157,6 +160,7 @@ public struct ProjectionGameScreen: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.whist.rawValue)
         }
     }
@@ -175,6 +179,7 @@ public struct ProjectionGameScreen: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.defenderMode.rawValue)
         }
     }
@@ -224,6 +229,7 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
     }
 
@@ -266,6 +272,7 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
     }
 
@@ -297,6 +304,7 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
     }
 
@@ -307,12 +315,14 @@ public struct ProjectionGameScreen: View {
                     .font(.headline)
                 CardRowView(cards: projection.talon, region: .talon)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.talon.rawValue)
             VStack(alignment: .leading) {
                 Text("Discard")
                     .font(.headline)
                 CardRowView(cards: projection.discard, region: .discard)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.discardArea.rawValue)
         }
     }
@@ -334,6 +344,7 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.table.rawValue)
     }
 
@@ -350,6 +361,7 @@ public struct ProjectionGameScreen: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.eventLog.rawValue)
     }
 

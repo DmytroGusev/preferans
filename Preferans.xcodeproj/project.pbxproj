@@ -50,6 +50,9 @@
 		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
+		E0000000000000000000A030 /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
+		E0000000000000000000A041 /* MatchUIRobot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A040 /* MatchUIRobot.swift */; };
+		E0000000000000000000A043 /* MatchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A042 /* MatchUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +69,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A00000000000000000000030;
 			remoteInfo = Preferans;
+		};
+		E0000000000000000000A031 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A00000000000000000000033 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C00000000000000000000050;
+			remoteInfo = PreferansEngine;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -130,6 +140,8 @@
 		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/TestHarness.swift"; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
+		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
+		E0000000000000000000A042 /* MatchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,6 +164,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E0000000000000000000A030 /* PreferansEngine.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -238,6 +251,8 @@
 			isa = PBXGroup;
 			children = (
 				E00000000000000000000002 /* PreferansUITests.swift */,
+				E0000000000000000000A040 /* MatchUIRobot.swift */,
+				E0000000000000000000A042 /* MatchUITests.swift */,
 			);
 			path = PreferansUITests;
 			sourceTree = "<group>";
@@ -291,6 +306,7 @@
 			);
 			dependencies = (
 				E00000000000000000000031 /* PBXTargetDependency */,
+				E0000000000000000000A032 /* PBXTargetDependency */,
 			);
 			name = PreferansUITests;
 			productName = PreferansUITests;
@@ -406,6 +422,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				E00000000000000000000003 /* PreferansUITests.swift in Sources */,
+				E0000000000000000000A041 /* MatchUIRobot.swift in Sources */,
+				E0000000000000000000A043 /* MatchUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -421,6 +439,11 @@
 			isa = PBXTargetDependency;
 			target = A00000000000000000000030 /* Preferans */;
 			targetProxy = E00000000000000000000030 /* PBXContainerItemProxy */;
+		};
+		E0000000000000000000A032 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C00000000000000000000050 /* PreferansEngine */;
+			targetProxy = E0000000000000000000A031 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

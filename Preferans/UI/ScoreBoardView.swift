@@ -22,6 +22,7 @@ public struct ScoreBoardView: View {
         }
         .padding()
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.score.rawValue)
     }
 
