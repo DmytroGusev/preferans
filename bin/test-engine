@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Run the fast PreferansEngine test target via SwiftPM (no simulator).
+#
+# Usage:
+#   bin/test-engine                                # all engine tests
+#   bin/test-engine --filter ScenarioFlowTests     # one suite
+#   WATCH=1 bin/test-engine                        # rerun on .swift change
+#                                                  # (requires watchexec)
+#
+# Engine tests prove correctness of bidding/play/scoring without booting a
+# simulator. Pair with bin/test-ui for the e2e UI surface; this script is the
+# inner loop while you're iterating on engine logic.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+if [[ "${WATCH:-0}" == "1" ]]; then
+  if ! command -v watchexec >/dev/null 2>&1; then
+    echo "WATCH=1 requires watchexec (brew install watchexec)" >&2
+    exit 1
+  fi
+  exec watchexec --exts swift --restart -- swift test "$@"
+fi
+
+exec swift test "$@"
