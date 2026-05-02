@@ -31,3 +31,17 @@ public enum PreferansError: Error, Equatable, LocalizedError, Sendable {
         }
     }
 }
+
+/// Engine-internal invariant failure. Never thrown to callers in production —
+/// ``PreferansEngine/assertInvariants()`` traps on it. Surfaced as a thrown
+/// error only via ``PreferansEngine/validateInvariants(_:)`` so tests can
+/// assert which invariant fired without crashing the test process.
+public struct InvariantViolation: Error, Equatable, CustomStringConvertible, Sendable {
+    public let message: String
+
+    public init(message: String) {
+        self.message = message
+    }
+
+    public var description: String { message }
+}

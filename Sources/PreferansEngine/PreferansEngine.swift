@@ -41,6 +41,7 @@ public struct PreferansEngine: Sendable {
         self.score = snapshot.score
         self.nextDealer = snapshot.nextDealer
         self.dealsPlayed = snapshot.dealsPlayed
+        assertInvariants()
     }
 
     public var snapshot: PreferansSnapshot {
@@ -61,6 +62,12 @@ public struct PreferansEngine: Sendable {
     }
 
     public mutating func apply(_ action: PreferansAction) throws -> [PreferansEvent] {
+        let events = try dispatch(action)
+        assertInvariants()
+        return events
+    }
+
+    private mutating func dispatch(_ action: PreferansAction) throws -> [PreferansEvent] {
         switch action {
         case let .startDeal(dealer, deck):
             return try applyStartDeal(dealer: dealer, deck: deck)
@@ -885,8 +892,8 @@ public struct PreferansEngine: Sendable {
 
     private func scoreGame(_ playing: PlayingState, context: GamePlayContext) -> DealResult {
         var delta = ScoreDelta(players: players)
-        let declarerTricks = playing.trickCounts[context.declarer] ?? 0
-        let defenderTricks = context.defenders.reduce(0) { $0 + (playing.trickCounts[$1] ?? 0) }
+        let declarerTricks = Self.tricks(context.declarer, in: playing.trickCounts)
+        let defenderTricks = context.defenders.reduce(0) { $0 + Self.tricks($1, in: playing.trickCounts) }
         let value = context.contract.value
 
         if declarerTricks >= context.contract.tricks {
@@ -907,12 +914,12 @@ public struct PreferansEngine: Sendable {
             case .greedy:
                 whistTricks = defenderTricks
             case .ownHandOnly:
-                whistTricks = playing.trickCounts[whister] ?? 0
+                whistTricks = Self.tricks(whister, in: playing.trickCounts)
             }
             delta.addWhists(value * whistTricks, writer: whister, on: context.declarer)
         } else {
             for whister in context.whisters {
-                delta.addWhists(value * (playing.trickCounts[whister] ?? 0), writer: whister, on: context.declarer)
+                delta.addWhists(value * Self.tricks(whister, in: playing.trickCounts), writer: whister, on: context.declarer)
             }
         }
 
@@ -963,7 +970,7 @@ public struct PreferansEngine: Sendable {
 
         let quota = requirement / max(1, whisters.count)
         for whister in whisters {
-            let own = trickCounts[whister] ?? 0
+            let own = Self.tricks(whister, in: trickCounts)
             let missing = max(0, quota - own)
             delta.addMountain(missing * value, to: whister)
         }
@@ -971,7 +978,7 @@ public struct PreferansEngine: Sendable {
 
     private func scoreMisere(_ playing: PlayingState, context: MiserePlayContext) -> DealResult {
         var delta = ScoreDelta(players: players)
-        let tricks = playing.trickCounts[context.declarer] ?? 0
+        let tricks = Self.tricks(context.declarer, in: playing.trickCounts)
         if tricks == 0 {
             delta.addPool(10, to: context.declarer)
         } else {
@@ -986,6 +993,174 @@ public struct PreferansEngine: Sendable {
         )
     }
 
+    /// Postcondition check called after every successful `apply(_:)` and on
+    /// snapshot rehydration. Delegates to ``validateInvariants(_:)`` and
+    /// traps via `precondition` on violation — these are engine-internal
+    /// bugs, not recoverable input errors. The throwing validator exists so
+    /// tests can verify each invariant fires without crashing the process.
+    /// Adding new state arms or new mutators? Add the matching invariant in
+    /// ``validateInvariants(_:)``.
+    private func assertInvariants(file: StaticString = #file, line: UInt = #line) {
+        do {
+            try Self.validateInvariants(state)
+        } catch let violation as InvariantViolation {
+            preconditionFailure(violation.message, file: file, line: line)
+        } catch {
+            preconditionFailure("unexpected error during invariant check: \(error)", file: file, line: line)
+        }
+    }
+
+    /// Throws ``InvariantViolation`` if `state` violates any structural
+    /// invariant that mutators are responsible for maintaining (seat counts,
+    /// hand keys, hand sizes, trick-count keys, discard size, current/leader
+    /// membership). Used by both ``assertInvariants()`` (which traps) and the
+    /// invariant tests (which assert the throw).
+    static func validateInvariants(_ state: DealState) throws {
+        switch state {
+        case .waitingForDeal, .gameOver:
+            return
+        case let .dealFinished(result):
+            try checkActiveSeats(result.activePlayers)
+            try require(
+                Set(result.trickCounts.keys) == Set(result.activePlayers),
+                "dealFinished trickCounts keys \(sorted(result.trickCounts.keys)) ≠ activePlayers \(sorted(result.activePlayers))"
+            )
+        case let .bidding(s):
+            try checkActiveSeats(s.activePlayers)
+            try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.talon.count == 2, "bidding talon must be 2 cards, got \(s.talon.count)")
+            try require(
+                s.activePlayers.contains(s.currentPlayer),
+                "bidding currentPlayer \(s.currentPlayer) ∉ activePlayers"
+            )
+            try require(
+                s.passed.isSubset(of: Set(s.activePlayers)),
+                "bidding passed \(sorted(s.passed)) ⊄ activePlayers"
+            )
+        case let .awaitingDiscard(s):
+            try checkActiveSeats(s.activePlayers)
+            try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.talon.count == 2, "awaitingDiscard talon must be 2 cards, got \(s.talon.count)")
+            try require(
+                s.activePlayers.contains(s.declarer),
+                "awaitingDiscard declarer \(s.declarer) ∉ activePlayers"
+            )
+        case let .awaitingContract(s):
+            try checkActiveSeats(s.activePlayers)
+            try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.discard.count == 2, "awaitingContract discard must be 2 cards, got \(s.discard.count)")
+            try require(
+                s.activePlayers.contains(s.declarer),
+                "awaitingContract declarer \(s.declarer) ∉ activePlayers"
+            )
+        case let .awaitingWhist(s):
+            try checkActiveSeats(s.activePlayers)
+            try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.discard.count == 2, "awaitingWhist discard must be 2 cards, got \(s.discard.count)")
+            try require(
+                s.activePlayers.contains(s.declarer),
+                "awaitingWhist declarer \(s.declarer) ∉ activePlayers"
+            )
+            try require(
+                s.activePlayers.contains(s.currentPlayer),
+                "awaitingWhist currentPlayer \(s.currentPlayer) ∉ activePlayers"
+            )
+            try require(
+                Set(s.defenders).isSubset(of: Set(s.activePlayers)),
+                "defenders \(sorted(s.defenders)) ⊄ activePlayers"
+            )
+            try require(!s.defenders.contains(s.declarer), "declarer \(s.declarer) ∈ defenders")
+        case let .awaitingDefenderMode(s):
+            try checkActiveSeats(s.activePlayers)
+            try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.discard.count == 2, "awaitingDefenderMode discard must be 2 cards, got \(s.discard.count)")
+            try require(
+                s.activePlayers.contains(s.declarer),
+                "awaitingDefenderMode declarer \(s.declarer) ∉ activePlayers"
+            )
+            try require(
+                s.activePlayers.contains(s.whister),
+                "awaitingDefenderMode whister \(s.whister) ∉ activePlayers"
+            )
+        case let .playing(s):
+            try checkActiveSeats(s.activePlayers)
+            try require(
+                Set(s.hands.keys) == Set(s.activePlayers),
+                "playing hand keys \(sorted(s.hands.keys)) ≠ activePlayers \(sorted(s.activePlayers))"
+            )
+            try require(
+                Set(s.trickCounts.keys) == Set(s.activePlayers),
+                "playing trickCounts keys \(sorted(s.trickCounts.keys)) ≠ activePlayers \(sorted(s.activePlayers))"
+            )
+            try require(
+                s.activePlayers.contains(s.currentPlayer),
+                "playing currentPlayer \(s.currentPlayer) ∉ activePlayers"
+            )
+            try require(
+                s.activePlayers.contains(s.leader),
+                "playing leader \(s.leader) ∉ activePlayers"
+            )
+            let expectedRemaining = 10 - s.completedTricks.count
+            for (player, hand) in s.hands {
+                let inFlight = s.currentTrick.contains(where: { $0.player == player }) ? 1 : 0
+                try require(
+                    hand.count + inFlight == expectedRemaining,
+                    "\(player) hand \(hand.count) + inFlight \(inFlight) ≠ expected \(expectedRemaining)"
+                )
+                try require(Set(hand).count == hand.count, "\(player) holds duplicate cards")
+            }
+            let trickSum = s.trickCounts.values.reduce(0, +)
+            try require(
+                trickSum == s.completedTricks.count,
+                "trickCounts sum \(trickSum) ≠ completedTricks \(s.completedTricks.count)"
+            )
+        }
+    }
+
+    private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {
+        if !condition {
+            throw InvariantViolation(message: message())
+        }
+    }
+
+    private static func checkActiveSeats(_ seats: [PlayerID]) throws {
+        try require(seats.count == 3, "active seats must be 3, got \(seats.count): \(sorted(seats))")
+        try require(Set(seats).count == seats.count, "duplicate seat in activePlayers: \(sorted(seats))")
+    }
+
+    private static func checkHands(
+        _ hands: [PlayerID: [Card]],
+        seats: [PlayerID],
+        expected: Int
+    ) throws {
+        try require(
+            Set(hands.keys) == Set(seats),
+            "hand keys \(sorted(hands.keys)) ≠ seats \(sorted(seats))"
+        )
+        for (player, hand) in hands {
+            try require(
+                hand.count == expected,
+                "\(player) has \(hand.count) cards, expected \(expected)"
+            )
+            try require(Set(hand).count == hand.count, "\(player) holds duplicate cards")
+        }
+    }
+
+    private static func sorted<S: Sequence>(_ ids: S) -> [String] where S.Element == PlayerID {
+        ids.map(\.rawValue).sorted()
+    }
+
+    /// Static helper that resolves a player's trick count from a guaranteed-
+    /// non-nil dictionary. Traps if missing — by the time scoring runs, the
+    /// playing-state invariant guarantees `trickCounts` has every active
+    /// player as a key. A nil read is an engine bug, not a recoverable case.
+    fileprivate static func tricks(_ player: PlayerID, in trickCounts: [PlayerID: Int]) -> Int {
+        guard let count = trickCounts[player] else {
+            preconditionFailure("trickCounts missing entry for \(player) — invariant violated")
+        }
+        return count
+    }
+
     private func scoreAllPass(_ playing: PlayingState) -> DealResult {
         var delta = ScoreDelta(players: players)
         let multiplier: Int
@@ -995,9 +1170,9 @@ public struct PreferansEngine: Sendable {
             multiplier = m
             amnesty = a
         }
-        let minimum = playing.activePlayers.map { playing.trickCounts[$0] ?? 0 }.min() ?? 0
+        let minimum = playing.activePlayers.map { Self.tricks($0, in: playing.trickCounts) }.min() ?? 0
         for player in playing.activePlayers {
-            let tricks = playing.trickCounts[player] ?? 0
+            let tricks = Self.tricks(player, in: playing.trickCounts)
             if tricks == 0, rules.zeroTricksAllPassPoolBonus > 0 {
                 delta.addPool(rules.zeroTricksAllPassPoolBonus * multiplier, to: player)
             }
