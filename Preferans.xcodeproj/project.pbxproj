@@ -30,7 +30,10 @@
 		B00000000000000000000014 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* CardView.swift */; };
 		B00000000000000000000015 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* LobbyView.swift */; };
 		B00000000000000000000016 /* LocalGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000046 /* LocalGameScreen.swift */; };
-		B00000000000000000000017 /* PlayerHandView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000047 /* PlayerHandView.swift */; };
+		B00000000000000000000061 /* CardFanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000071 /* CardFanView.swift */; };
+		B00000000000000000000062 /* OpponentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000072 /* OpponentSeatView.swift */; };
+		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
+		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
 		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
 		C00000000000000000000020 /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* Domain.swift */; };
@@ -122,7 +125,10 @@
 		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LobbyView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000046 /* LocalGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LocalGameScreen.swift"; sourceTree = "<group>"; };
-		B00000000000000000000047 /* PlayerHandView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/PlayerHandView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000071 /* CardFanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardFanView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/OpponentSeatView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableView.swift"; sourceTree = "<group>"; };
+		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ActionBarView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
 		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreBoardView.swift"; sourceTree = "<group>"; };
 		C00000000000000000000010 /* PreferansEngine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PreferansEngine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -212,9 +218,12 @@
 				B00000000000000000000044 /* CardView.swift */,
 				B00000000000000000000045 /* LobbyView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
-				B00000000000000000000047 /* PlayerHandView.swift */,
 				B00000000000000000000048 /* ProjectionGameScreen.swift */,
 				B00000000000000000000049 /* ScoreBoardView.swift */,
+				B00000000000000000000071 /* CardFanView.swift */,
+				B00000000000000000000072 /* OpponentSeatView.swift */,
+				B00000000000000000000073 /* TableView.swift */,
+				B00000000000000000000074 /* ActionBarView.swift */,
 				A00000000000000000000018 /* Assets.xcassets */,
 				A00000000000000000000019 /* README.md */,
 			);
@@ -397,9 +406,12 @@
 				B00000000000000000000014 /* CardView.swift in Sources */,
 				B00000000000000000000015 /* LobbyView.swift in Sources */,
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
-				B00000000000000000000017 /* PlayerHandView.swift in Sources */,
 				B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */,
 				B00000000000000000000019 /* ScoreBoardView.swift in Sources */,
+				B00000000000000000000061 /* CardFanView.swift in Sources */,
+				B00000000000000000000062 /* OpponentSeatView.swift in Sources */,
+				B00000000000000000000063 /* TableView.swift in Sources */,
+				B00000000000000000000064 /* ActionBarView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

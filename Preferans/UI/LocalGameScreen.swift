@@ -3,7 +3,7 @@ import PreferansEngine
 
 public struct LocalGameScreen: View {
     @ObservedObject public var model: GameViewModel
-    @State private var revealAll = true
+    @State private var revealAll = false
 
     public init(model: GameViewModel) {
         self.model = model
@@ -14,23 +14,37 @@ public struct LocalGameScreen: View {
         ProjectionGameScreen(projection: projection, eventLog: model.eventLog, onSend: model.send)
             .toolbar {
                 ToolbarItem(placement: .automatic) {
-                    Picker("Viewer", selection: $model.selectedViewer) {
-                        ForEach(model.engine.players, id: \.self) { player in
-                            Text(player.rawValue).tag(player)
+                    Menu {
+                        Section("View as") {
+                            ForEach(model.engine.players, id: \.self) { player in
+                                Button {
+                                    model.selectedViewer = player
+                                } label: {
+                                    if player == model.selectedViewer {
+                                        Label(player.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(player.rawValue)
+                                    }
+                                }
+                            }
                         }
+                        Section {
+                            Toggle("Reveal all hands", isOn: $revealAll)
+                        }
+                    } label: {
+                        Image(systemName: "person.crop.circle.badge")
+                            .accessibilityLabel("Local table debug")
                     }
                 }
-                ToolbarItem(placement: .automatic) {
-                    Toggle("Reveal", isOn: $revealAll)
-                }
             }
-            .overlay(alignment: .bottom) {
+            .overlay(alignment: .top) {
                 if let error = model.lastError {
                     Text(error)
                         .font(.caption)
-                        .padding()
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
                         .background(.regularMaterial, in: Capsule())
-                        .padding()
+                        .padding(.top, 8)
                         .accessibilityIdentifier(UIIdentifiers.errorBanner)
                 }
             }

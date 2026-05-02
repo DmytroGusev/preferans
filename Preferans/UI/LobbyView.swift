@@ -11,14 +11,16 @@ public struct LobbyView: View {
     #endif
 
     @State private var localModel: GameViewModel?
-    @State private var playerNames = ["north", "east", "south"]
+    @State private var playerNames = ["You", "East", "South"]
     @State private var errorText: String?
     @State private var showingMatchmaker = false
+
+    private var seatCount: Int { playerNames.count }
 
     public init() {}
 
     public var body: some View {
-        NavigationView {
+        NavigationStack {
             Group {
                 if let localModel {
                     LocalGameScreen(model: localModel)
@@ -27,7 +29,9 @@ public struct LobbyView: View {
                     if let projection = online.projection {
                         ProjectionGameScreen(projection: projection, eventLog: online.eventLog, onSend: online.send)
                             .toolbar {
-                                Button("Leave") { online.detach() }
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Leave") { online.detach() }
+                                }
                             }
                     } else {
                         lobbyContent
@@ -37,7 +41,6 @@ public struct LobbyView: View {
                     #endif
                 }
             }
-            .navigationTitle("Preferans")
         }
         #if canImport(GameKit) && canImport(UIKit)
         .background(GameCenterAuthenticationPresenter(viewController: gameCenter.authenticationViewController).frame(width: 0, height: 0))
@@ -60,76 +63,184 @@ public struct LobbyView: View {
     }
 
     private var lobbyContent: some View {
-        VStack(spacing: 18) {
+        ScrollView {
+            VStack(spacing: 28) {
+                hero
+
+                localTableCard
+
+                #if canImport(GameKit) && canImport(UIKit)
+                onlineCard
+                #endif
+
+                if let errorText {
+                    Text(errorText)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier(UIIdentifiers.lobbyError)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 24)
+            .frame(maxWidth: 560)
+            .frame(maxWidth: .infinity)
+        }
+        .background(Color(.systemGroupedBackground))
+    }
+
+    private var hero: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "suit.spade.fill")
+                .font(.system(size: 38))
+                .foregroundStyle(LinearGradient(
+                    colors: [Color(red: 0.13, green: 0.40, blue: 0.27), Color(red: 0.10, green: 0.30, blue: 0.20)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ))
             Text("Preferans")
                 .font(.largeTitle.bold())
                 .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
-
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Local table players")
-                    .font(.headline)
-                ForEach(playerNames.indices, id: \.self) { index in
-                    TextField("Player \(index + 1)", text: $playerNames[index])
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
-                }
-            }
-
-            HStack {
-                Button("3 players") {
-                    playerNames = Array(playerNames.prefix(3))
-                    while playerNames.count < 3 { playerNames.append("player\(playerNames.count + 1)") }
-                }
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountThree)
-                Button("4 players") {
-                    while playerNames.count < 4 { playerNames.append("player\(playerNames.count + 1)") }
-                }
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountFour)
-            }
-            .buttonStyle(.bordered)
-
-            Button("Start Local Table") {
-                startLocalTable()
-            }
-            .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
-
-            #if canImport(GameKit) && canImport(UIKit)
-            Divider()
-            Text(gameCenter.statusText)
-                .font(.footnote)
+            Text("Classic Sochi & Rostov rules")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
+        }
+        .padding(.top, 8)
+    }
 
-            Button(gameCenter.isAuthenticated ? "Find Game Center Match" : "Sign in to Game Center") {
-                if gameCenter.isAuthenticated {
-                    showingMatchmaker = true
-                } else {
-                    gameCenter.authenticate()
+    private var localTableCard: some View {
+        card(title: "Local table", icon: "person.3.fill") {
+            VStack(spacing: 14) {
+                HStack(spacing: 8) {
+                    seatCountButton(count: 3, label: "3 players", id: UIIdentifiers.lobbyPlayerCountThree)
+                    seatCountButton(count: 4, label: "4 players", id: UIIdentifiers.lobbyPlayerCountFour)
                 }
-            }
-            .buttonStyle(.borderedProminent)
 
-            if let onlineError = online.errorText {
-                Text(onlineError)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-            }
-            #endif
+                VStack(spacing: 8) {
+                    ForEach(0..<seatCount, id: \.self) { index in
+                        HStack(spacing: 10) {
+                            Image(systemName: "person.crop.circle")
+                                .foregroundStyle(.secondary)
+                            TextField("Player \(index + 1)", text: binding(for: index))
+                                .textFieldStyle(.plain)
+                                .submitLabel(.done)
+                                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
+                        }
+                        .padding(10)
+                        .background(.background, in: RoundedRectangle(cornerRadius: 10))
+                    }
+                }
 
-            if let errorText {
-                Text(errorText)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .accessibilityIdentifier(UIIdentifiers.lobbyError)
+                Button {
+                    startLocalTable()
+                } label: {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("Start table")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
             }
         }
-        .padding()
-        .frame(maxWidth: 520)
+    }
+
+    #if canImport(GameKit) && canImport(UIKit)
+    private var onlineCard: some View {
+        card(title: "Online match", icon: "globe") {
+            VStack(spacing: 12) {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(gameCenter.isAuthenticated ? Color.green : Color.orange)
+                        .frame(width: 8, height: 8)
+                    Text(gameCenter.statusText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                Button {
+                    if gameCenter.isAuthenticated {
+                        showingMatchmaker = true
+                    } else {
+                        gameCenter.authenticate()
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: gameCenter.isAuthenticated ? "magnifyingglass" : "person.crop.circle.badge.questionmark")
+                        Text(gameCenter.isAuthenticated ? "Find match" : "Sign in to Game Center")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                if let onlineError = online.errorText {
+                    Text(onlineError)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+        }
+    }
+    #endif
+
+    private func card<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundStyle(Color.accentColor)
+                Text(title)
+                    .font(.headline)
+            }
+            content()
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func seatCountButton(count: Int, label: String, id: String) -> some View {
+        Button { setSeatCount(count) } label: {
+            Text(label)
+                .fontWeight(.medium)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+        }
+        .buttonStyle(.bordered)
+        .tint(seatCount == count ? .accentColor : .secondary)
+        .accessibilityIdentifier(id)
+    }
+
+    private func binding(for index: Int) -> Binding<String> {
+        Binding(
+            get: { playerNames.indices.contains(index) ? playerNames[index] : "" },
+            set: { newValue in
+                guard playerNames.indices.contains(index) else { return }
+                playerNames[index] = newValue
+            }
+        )
+    }
+
+    private func setSeatCount(_ count: Int) {
+        let defaults = ["You", "East", "South", "West"]
+        if count > playerNames.count {
+            while playerNames.count < count {
+                playerNames.append(defaults[playerNames.count])
+            }
+        } else if count < playerNames.count {
+            playerNames = Array(playerNames.prefix(count))
+        }
     }
 
     private func startLocalTable() {
         do {
             let lobbyPlayers = playerNames
+                .prefix(seatCount)
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .map { PlayerID($0) }
