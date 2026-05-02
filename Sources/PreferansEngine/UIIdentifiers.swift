@@ -145,6 +145,8 @@ public enum UIIdentifiers {
 
     public static let buttonStartDeal          = "button.startDeal"
     public static let buttonDiscardSelected    = "button.discardSelected"
+    public static let buttonScoreSheet         = "button.scoreSheet"
+    public static let buttonDismissSheet       = "button.dismissSheet"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }
     public static func contractButton(_ c: GameContract) -> String { "contract.\(encode(c))" }

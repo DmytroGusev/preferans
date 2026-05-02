@@ -55,10 +55,11 @@ struct MatchUIDriver {
                            "Game-over winner must match the engine's standings leader.")
         }
         // Cross-check final pool/mountain via the UI.
+        let finalScores = robot.scoreSnapshot(for: script.players)
         for player in script.players {
-            XCTAssertEqual(robot.pool(of: player), summary.finalScore.pool[player] ?? 0,
+            XCTAssertEqual(finalScores[player]?.pool, summary.finalScore.pool[player] ?? 0,
                            "UI pool for \(player) drifted from internal engine.")
-            XCTAssertEqual(robot.mountain(of: player), summary.finalScore.mountain[player] ?? 0,
+            XCTAssertEqual(finalScores[player]?.mountain, summary.finalScore.mountain[player] ?? 0,
                            "UI mountain for \(player) drifted from internal engine.")
         }
     }

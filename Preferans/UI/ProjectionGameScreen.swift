@@ -57,6 +57,7 @@ public struct ProjectionGameScreen: View {
                 Image(systemName: "list.number")
                     .accessibilityLabel("Scoresheet")
             }
+            .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
         }
         ToolbarItem(placement: .automatic) {
             Menu {
@@ -277,6 +278,7 @@ public struct ProjectionGameScreen: View {
             .toolbar {
                 ToolbarItem(placement: .automatic) {
                     Button("Done") { activeSheet = nil }
+                        .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
                 }
             }
         }

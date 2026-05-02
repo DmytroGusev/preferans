@@ -38,9 +38,10 @@ final class MatchUITests: XCTestCase {
                        "viewerFollowsActor should pin the viewer to the first bidder.")
 
         // Score sheet is empty before any deal scores.
+        let initialScores = robot.scoreSnapshot(for: MatchScriptFixtures.players)
         for player in MatchScriptFixtures.players {
-            XCTAssertEqual(robot.pool(of: player), 0, "Pool for \(player) must start at 0.")
-            XCTAssertEqual(robot.mountain(of: player), 0, "Mountain for \(player) must start at 0.")
+            XCTAssertEqual(initialScores[player]?.pool, 0, "Pool for \(player) must start at 0.")
+            XCTAssertEqual(initialScores[player]?.mountain, 0, "Mountain for \(player) must start at 0.")
         }
 
         // East opens 6♠.
@@ -63,7 +64,7 @@ final class MatchUITests: XCTestCase {
                        "viewer should follow the declarer into the discard window.")
 
         // No score has accrued yet — the deal is mid-flight.
-        XCTAssertEqual(robot.pool(of: "east"), 0)
+        XCTAssertEqual(robot.scoreSnapshot(for: ["east"])["east"]?.pool, 0)
         XCTAssertNil(robot.errorBanner(), "Engine should not have surfaced any errors during the auction.")
     }
 }

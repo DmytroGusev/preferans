@@ -20,6 +20,7 @@ final class MatchUIRobot {
     /// 500ms on cold-start frames. 5 seconds keeps the test responsive
     /// without flaking on a busy CI runner.
     let defaultTimeout: TimeInterval
+    private let optionalReadTimeout: TimeInterval = 0.25
 
     init(app: XCUIApplication, defaultTimeout: TimeInterval = 5.0) {
         self.app = app
@@ -30,23 +31,20 @@ final class MatchUIRobot {
 
     func startLocalTable() {
         let button = app.buttons[UIIdentifiers.lobbyStartLocalTable]
-        XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
-                      "Lobby's Start Local Table button never appeared.")
+        assertExists(button, "Lobby's Start Local Table button never appeared.")
         button.tap()
     }
 
     func selectPlayerCount(_ count: Int) {
         let id = count == 4 ? UIIdentifiers.lobbyPlayerCountFour : UIIdentifiers.lobbyPlayerCountThree
         let button = app.buttons[id]
-        XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
-                      "Lobby's player-count(\(count)) button never appeared.")
+        assertExists(button, "Lobby's player-count(\(count)) button never appeared.")
         button.tap()
     }
 
     func setPlayerName(at index: Int, to name: String) {
         let field = app.textFields[UIIdentifiers.lobbyPlayerNameField(index: index)]
-        XCTAssertTrue(field.waitForExistence(timeout: defaultTimeout),
-                      "Lobby's player-name field [\(index)] never appeared.")
+        assertExists(field, "Lobby's player-name field [\(index)] never appeared.")
         field.tap()
         field.press(forDuration: 1.2)
         // Select-all then type — most reliable cross-iOS-version replacement.
@@ -103,22 +101,21 @@ final class MatchUIRobot {
     /// Current phase title (e.g. "Bidding", "Talon exchange", "Game over").
     func phaseTitle() -> String {
         let element = app.staticTexts[UIIdentifiers.phaseTitle]
-        XCTAssertTrue(element.waitForExistence(timeout: defaultTimeout),
-                      "Phase title never appeared.")
+        assertExists(element, "Phase title never appeared.")
         return element.label
     }
 
     /// Current phase message (the secondary line under the title).
     func phaseMessage() -> String {
         let element = app.staticTexts[UIIdentifiers.phaseMessage]
-        XCTAssertTrue(element.waitForExistence(timeout: defaultTimeout))
+        assertExists(element, "Phase message never appeared.")
         return element.label
     }
 
     /// Player the screen is currently following (parsed from "you: X").
     func currentViewer() -> PlayerID? {
         let element = app.staticTexts[UIIdentifiers.viewerLabel]
-        guard element.waitForExistence(timeout: defaultTimeout) else { return nil }
+        guard exists(element, timeout: optionalReadTimeout) else { return nil }
         let prefix = "you: "
         let label = element.label
         guard label.hasPrefix(prefix) else { return nil }
@@ -127,18 +124,32 @@ final class MatchUIRobot {
 
     /// Pool value for a player (parsed from the score cell).
     func pool(of player: PlayerID) -> Int {
-        readInt(id: UIIdentifiers.scorePool(player), descriptor: "pool for \(player)")
+        scoreSnapshot(for: [player])[player]?.pool ?? 0
     }
 
     /// Mountain value for a player.
     func mountain(of player: PlayerID) -> Int {
-        readInt(id: UIIdentifiers.scoreMountain(player), descriptor: "mountain for \(player)")
+        scoreSnapshot(for: [player])[player]?.mountain ?? 0
+    }
+
+    /// Pool/mountain values for the given players. On compact layouts the
+    /// scoresheet lives in a toolbar sheet, so read all requested cells in
+    /// one visit instead of opening the sheet per assertion.
+    func scoreSnapshot(for players: [PlayerID]) -> [PlayerID: (pool: Int, mountain: Int)] {
+        withScoreSheet {
+            players.reduce(into: [:]) { snapshot, player in
+                snapshot[player] = (
+                    pool: readInt(id: UIIdentifiers.scorePool(player), descriptor: "pool for \(player)"),
+                    mountain: readInt(id: UIIdentifiers.scoreMountain(player), descriptor: "mountain for \(player)")
+                )
+            }
+        }
     }
 
     /// Trick count displayed on a player's seat.
     func trickCount(of player: PlayerID) -> Int {
         let element = app.staticTexts[UIIdentifiers.seatTrickCount(player)]
-        guard element.waitForExistence(timeout: defaultTimeout) else { return 0 }
+        guard exists(element, timeout: optionalReadTimeout) else { return 0 }
         // Label form: "Tricks: 3"
         let raw = element.label.replacingOccurrences(of: "Tricks: ", with: "")
         return Int(raw) ?? 0
@@ -195,6 +206,7 @@ final class MatchUIRobot {
     /// the *label* that changes between phases.
     func waitForPhase(_ expected: String, timeout: TimeInterval? = nil) {
         let element = app.staticTexts[UIIdentifiers.phaseTitle]
+        if element.exists, element.label == expected { return }
         let predicate = NSPredicate(format: "label == %@", expected)
         let exp = XCTNSPredicateExpectation(predicate: predicate, object: element)
         let waitTime = timeout ?? defaultTimeout
@@ -208,8 +220,7 @@ final class MatchUIRobot {
     /// auction win).
     func waitForElement(_ identifier: String, timeout: TimeInterval? = nil) {
         let element = app.descendants(matching: .any).matching(identifier: identifier).element
-        XCTAssertTrue(element.waitForExistence(timeout: timeout ?? defaultTimeout),
-                      "Element \"\(identifier)\" never appeared.")
+        assertExists(element, timeout: timeout, "Element \"\(identifier)\" never appeared.")
     }
 
     /// Blocks until the integer value at a score cell crosses `target` from
@@ -230,8 +241,7 @@ final class MatchUIRobot {
 
     private func tapButton(id: String, descriptor: String) {
         let button = app.buttons[id]
-        XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
-                      "Button for \(descriptor) (id: \(id)) never appeared.")
+        assertExists(button, "Button for \(descriptor) (id: \(id)) never appeared.")
         XCTAssertTrue(button.isEnabled,
                       "Button for \(descriptor) (id: \(id)) appeared but was disabled.")
         button.tap()
@@ -242,16 +252,58 @@ final class MatchUIRobot {
     /// fan, so tap the exposed leading sliver instead of the card center.
     private func tapCard(id: String, descriptor: String) {
         let button = app.buttons[id]
-        XCTAssertTrue(button.waitForExistence(timeout: defaultTimeout),
-                      "Card button for \(descriptor) (id: \(id)) never appeared.")
+        assertExists(button, "Card button for \(descriptor) (id: \(id)) never appeared.")
         button.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tap()
     }
 
     private func readInt(id: String, descriptor: String) -> Int {
         let element = app.staticTexts[id]
-        XCTAssertTrue(element.waitForExistence(timeout: defaultTimeout),
-                      "Score cell \(descriptor) (id: \(id)) never appeared.")
+        assertExists(element, "Score cell \(descriptor) (id: \(id)) never appeared.")
         return Int(element.label) ?? 0
+    }
+
+    private func withScoreSheet<T>(_ body: () -> T) -> T {
+        let scorePanel = app.otherElements[UIIdentifiers.Panel.score.rawValue]
+        guard !scorePanel.exists else { return body() }
+
+        let scoreButton = app.buttons[UIIdentifiers.buttonScoreSheet]
+        assertExists(scoreButton, "Scoresheet button never appeared.")
+        scoreButton.tap()
+        waitForElement(UIIdentifiers.Panel.score.rawValue)
+        let value = body()
+        let doneButton = app.buttons[UIIdentifiers.buttonDismissSheet]
+        if exists(doneButton, timeout: optionalReadTimeout) {
+            doneButton.tap()
+        }
+        return value
+    }
+
+    @discardableResult
+    private func assertExists(
+        _ element: XCUIElement,
+        timeout: TimeInterval? = nil,
+        _ message: @autoclosure () -> String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        let found = exists(element, timeout: timeout)
+        XCTAssertTrue(found, "\(message())\(phaseContextSuffix())", file: file, line: line)
+        return found
+    }
+
+    private func exists(_ element: XCUIElement, timeout: TimeInterval? = nil) -> Bool {
+        element.exists || element.waitForExistence(timeout: timeout ?? defaultTimeout)
+    }
+
+    private func phaseContextSuffix() -> String {
+        let phase = app.staticTexts[UIIdentifiers.phaseTitle]
+        let viewer = app.staticTexts[UIIdentifiers.viewerLabel]
+        let error = app.staticTexts[UIIdentifiers.errorBanner]
+        var context: [String] = []
+        if phase.exists { context.append("phase: \(phase.label)") }
+        if viewer.exists { context.append("viewer: \(viewer.label)") }
+        if error.exists { context.append("error: \(error.label)") }
+        return context.isEmpty ? "" : " [\(context.joined(separator: ", "))]"
     }
 }
 
