@@ -8,12 +8,20 @@ public final class GameViewModel: ObservableObject {
     @Published public private(set) var eventLog: [String] = []
     @Published public var selectedViewer: PlayerID
     public var viewerFollowsActor: Bool
+    public var dealSource: DealSource
     public let tableID: UUID = UUID()
 
-    public init(players: [PlayerID], rules: PreferansRules = .sochi, firstDealer: PlayerID? = nil, viewerFollowsActor: Bool = false) throws {
+    public init(
+        players: [PlayerID],
+        rules: PreferansRules = .sochi,
+        firstDealer: PlayerID? = nil,
+        viewerFollowsActor: Bool = false,
+        dealSource: DealSource = RandomDealSource()
+    ) throws {
         self.engine = try PreferansEngine(players: players, rules: rules, firstDealer: firstDealer)
         self.selectedViewer = players.first ?? PlayerID("player")
         self.viewerFollowsActor = viewerFollowsActor
+        self.dealSource = dealSource
     }
 
     public func send(_ action: PreferansAction) {
@@ -22,7 +30,7 @@ public final class GameViewModel: ObservableObject {
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: events.map { String(describing: $0) })
             lastError = nil
-            if viewerFollowsActor, let actor = currentActor() {
+            if viewerFollowsActor, let actor = currentActor(), actor != selectedViewer {
                 selectedViewer = actor
             }
         } catch {
@@ -31,11 +39,19 @@ public final class GameViewModel: ObservableObject {
     }
 
     private func currentActor() -> PlayerID? {
-        projection(revealAll: false).seats.first(where: { $0.isCurrentActor })?.player
+        switch engine.state {
+        case let .bidding(state): return state.currentPlayer
+        case let .awaitingDiscard(state): return state.declarer
+        case let .awaitingContract(state): return state.declarer
+        case let .awaitingWhist(state): return state.currentPlayer
+        case let .awaitingDefenderMode(state): return state.whister
+        case let .playing(state): return state.currentPlayer
+        case .waitingForDeal, .dealFinished: return nil
+        }
     }
 
     public func startDeal() {
-        send(.startDeal(dealer: engine.nextDealer, deck: Deck.standard32.shuffled()))
+        send(.startDeal(dealer: nil, deck: nil))
     }
 
     public func projection(revealAll: Bool = true) -> PlayerGameProjection {
@@ -52,7 +68,7 @@ public final class GameViewModel: ObservableObject {
     private func makeAuthoritative(_ action: PreferansAction) -> PreferansAction {
         switch action {
         case .startDeal:
-            return .startDeal(dealer: engine.nextDealer, deck: Deck.standard32.shuffled())
+            return .startDeal(dealer: engine.nextDealer, deck: dealSource.nextDeck())
         default:
             return action
         }

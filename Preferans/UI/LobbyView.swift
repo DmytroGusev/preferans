@@ -127,8 +127,17 @@ public struct LobbyView: View {
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }
                 .map { PlayerID($0) }
-            let followActor = ProcessInfo.processInfo.arguments.contains("-uiTestViewerFollowsActor")
-            localModel = try GameViewModel(players: players, rules: .sochi, viewerFollowsActor: followActor)
+            let args = ProcessInfo.processInfo.arguments
+            let followActor = TestHarness.viewerFollowsActor(in: args)
+            let firstDealer = TestHarness.firstDealer(from: args)
+            let dealSource = TestHarness.dealSource(from: args)
+            localModel = try GameViewModel(
+                players: players,
+                rules: .sochi,
+                firstDealer: firstDealer,
+                viewerFollowsActor: followActor,
+                dealSource: dealSource
+            )
             errorText = nil
         } catch {
             errorText = error.localizedDescription

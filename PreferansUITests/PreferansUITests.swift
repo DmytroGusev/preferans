@@ -95,6 +95,66 @@ final class PreferansUITests: XCTestCase {
                        "Bidding header should be gone once all-pass play begins")
     }
 
+    func testDeterministicScenarioPinsFirstBidderAndDealtCards() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-uiTestViewerFollowsActor",
+            "-uiTestFirstDealer", "south",
+            "-uiTestDealScenario", "sortedDeck"
+        ]
+        app.launch()
+
+        app.buttons["Start Local Table"].tap()
+        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
+        app.buttons["Start Deal"].tap()
+
+        // sortedDeck + dealer=south -> activePlayers=[north, east, south],
+        // first bidder = north, talon = ♠K, ♠A.
+        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Auction: north to call."].exists,
+                      "Pinned dealer should put north on the bid")
+        XCTAssertTrue(app.staticTexts["You are: north"].exists,
+                      "viewerFollowsActor should rotate the viewer to north")
+        XCTAssertTrue(app.staticTexts["K♠"].exists,
+                      "Sorted-deck talon must include the ♠K")
+        XCTAssertTrue(app.staticTexts["A♠"].exists,
+                      "Sorted-deck talon must include the ♠A")
+    }
+
+    func testNorthSpadesSixScenarioDrivesEngineToDiscardWindow() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-uiTestViewerFollowsActor",
+            "-uiTestFirstDealer", "south",
+            "-uiTestDealScenario", "northBidsSpadesSix"
+        ]
+        app.launch()
+
+        app.buttons["Start Local Table"].tap()
+        XCTAssertTrue(app.buttons["Start Deal"].waitForExistence(timeout: 5))
+        app.buttons["Start Deal"].tap()
+
+        // North's hand has the ♠A pinned in this scenario, so the bid panel
+        // must offer "6♠".
+        XCTAssertTrue(app.staticTexts["Bidding"].waitForExistence(timeout: 5))
+        let sixSpades = app.buttons["6♠"]
+        XCTAssertTrue(sixSpades.waitForExistence(timeout: 2),
+                      "6♠ must be a legal opening bid for north")
+        sixSpades.tap()
+
+        // East and south must each pass to advance auction.
+        for label in ["east", "south"] {
+            XCTAssertTrue(app.staticTexts["Auction: \(label) to call."].waitForExistence(timeout: 3))
+            app.buttons["Pass"].firstMatch.tap()
+        }
+
+        // Auction won — declarer takes the talon and the discard panel opens.
+        XCTAssertTrue(app.staticTexts["Talon exchange"].waitForExistence(timeout: 5),
+                      "Phase title should switch to Talon exchange once auction is won")
+        XCTAssertTrue(app.staticTexts["Select exactly two cards to discard"].exists,
+                      "Discard prompt should appear for the declarer")
+    }
+
     func testGameScreenShowsCoreSectionsAfterDeal() {
         let app = XCUIApplication()
         app.launch()

@@ -39,6 +39,8 @@
 		C00000000000000000000023 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000014 /* Rules.swift */; };
 		C00000000000000000000024 /* Score.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000015 /* Score.swift */; };
 		C00000000000000000000025 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000016 /* State.swift */; };
+		C00000000000000000000026 /* DealSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000017 /* DealSource.swift */; };
+		B0000000000000000000001A /* TestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000004A /* TestHarness.swift */; };
 		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
@@ -112,6 +114,8 @@
 		C00000000000000000000014 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
 		C00000000000000000000015 /* Score.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Score.swift; sourceTree = "<group>"; };
 		C00000000000000000000016 /* State.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State.swift; sourceTree = "<group>"; };
+		C00000000000000000000017 /* DealSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealSource.swift; sourceTree = "<group>"; };
+		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/TestHarness.swift"; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -175,6 +179,7 @@
 				B00000000000000000000041 /* PlayerIdentity.swift */,
 				B00000000000000000000042 /* PreferansEngine+UI.swift */,
 				B00000000000000000000043 /* PreferansGameStatus.swift */,
+				B0000000000000000000004A /* TestHarness.swift */,
 				B00000000000000000000044 /* CardView.swift */,
 				B00000000000000000000045 /* LobbyView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
@@ -206,6 +211,7 @@
 				C00000000000000000000014 /* Rules.swift */,
 				C00000000000000000000015 /* Score.swift */,
 				C00000000000000000000016 /* State.swift */,
+				C00000000000000000000017 /* DealSource.swift */,
 			);
 			path = Sources/PreferansEngine;
 			sourceTree = "<group>";
@@ -347,6 +353,7 @@
 				B00000000000000000000011 /* PlayerIdentity.swift in Sources */,
 				B00000000000000000000012 /* PreferansEngine+UI.swift in Sources */,
 				B00000000000000000000013 /* PreferansGameStatus.swift in Sources */,
+				B0000000000000000000001A /* TestHarness.swift in Sources */,
 				B00000000000000000000014 /* CardView.swift in Sources */,
 				B00000000000000000000015 /* LobbyView.swift in Sources */,
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
@@ -366,6 +373,7 @@
 				C00000000000000000000023 /* Rules.swift in Sources */,
 				C00000000000000000000024 /* Score.swift in Sources */,
 				C00000000000000000000025 /* State.swift in Sources */,
+				C00000000000000000000026 /* DealSource.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
