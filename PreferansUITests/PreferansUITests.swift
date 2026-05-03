@@ -24,7 +24,6 @@ final class PreferansUITests: XCTestCase {
         robot.waitForElement(UIIdentifiers.lobbyPlayerCountThree)
         robot.waitForElement(UIIdentifiers.lobbyPlayerCountFour)
         robot.waitForElement(UIIdentifiers.lobbyPlayerNameField(index: 0))
-        robot.waitForElement(UIIdentifiers.lobbyBotToggle(index: 1))
         robot.waitForElement(UIIdentifiers.lobbyBotSpeedPicker)
         robot.waitForElement(UIIdentifiers.lobbyStartLocalTable)
     }
@@ -49,7 +48,6 @@ final class PreferansUITests: XCTestCase {
         robot.selectPlayerCount(4)
 
         robot.waitForElement(UIIdentifiers.lobbyPlayerNameField(index: 3))
-        robot.waitForElement(UIIdentifiers.lobbyBotToggle(index: 3))
     }
 
     func testBiddingExposesPassAndMisereOptions() {

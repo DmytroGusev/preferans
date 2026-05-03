@@ -60,7 +60,7 @@ public final class GameViewModel: ObservableObject {
         rules: PreferansRules = .sochi,
         match: MatchSettings = .unbounded,
         firstDealer: PlayerID? = nil,
-        viewerPolicy: ViewerPolicy = .followsActor,
+        viewerPolicy: ViewerPolicy,
         dealSource: DealSource = RandomDealSource()
     ) throws {
         self.engine = try PreferansEngine(players: players, rules: rules, match: match, firstDealer: firstDealer)
@@ -401,13 +401,13 @@ extension GameViewModel {
 /// How the on-screen viewer (whose hand is rendered face-up at the bottom)
 /// should change in response to gameplay.
 ///
-/// - `pinned`: the viewer never moves. Use when there is exactly one human
-///   at the table — the device shows that human's seat and bots play their
-///   turns without ever revealing their hands.
+/// - `pinned`: the viewer never moves. The only policy ever used in
+///   production — every roster gets a fixed perspective so the device
+///   cannot leak a bot's hand by rotating the viewer onto its seat.
 /// - `followsActor`: viewer rotates to match the seat the engine is
-///   currently waiting on. Use for hot-seat play (every seat is a human
-///   passing the device around), so each player sees their own hand on
-///   their turn without diving into the debug picker.
+///   currently waiting on. **Test-harness only.** UI tests opt in via the
+///   launch flag so a single XCUI run can drive every seat through the
+///   same hand fan. There is no user-facing hot-seat mode.
 public enum ViewerPolicy: Equatable, Sendable {
     case pinned(PlayerID)
     case followsActor

@@ -112,7 +112,6 @@ public enum UIIdentifiers {
     public static let lobbyPlayerCountThree    = "button.playerCount.3"
     public static let lobbyPlayerCountFour     = "button.playerCount.4"
     public static func lobbyPlayerNameField(index: Int) -> String { "lobby.playerName.\(index)" }
-    public static func lobbyBotToggle(index: Int) -> String       { "lobby.botToggle.\(index)" }
     public static let lobbyBotSpeedPicker     = "lobby.botSpeed"
     public static let lobbyError               = "lobby.error"
     public static let lobbyValidationError     = "lobby.validationError"

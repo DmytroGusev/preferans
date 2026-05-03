@@ -167,9 +167,7 @@ public struct LobbyView: View {
                     }
                 }
 
-                if seats.contains(where: { $0.kind == .bot }) {
-                    botSpeedPicker
-                }
+                botSpeedPicker
 
                 if let validation = seats.validationError {
                     Text(validation)
@@ -272,12 +270,15 @@ public struct LobbyView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(TableTheme.goldBright, in: Capsule())
+            } else {
+                Text("BOT")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.black.opacity(0.30), in: Capsule())
             }
-            Toggle("Bot", isOn: botBinding(for: index))
-                .toggleStyle(.switch)
-                .tint(TableTheme.gold)
-                .labelsHidden()
-                .accessibilityIdentifier(UIIdentifiers.lobbyBotToggle(index: index))
         }
         .padding(10)
         .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
@@ -325,7 +326,7 @@ public struct LobbyView: View {
                 } label: {
                     HStack {
                         Image(systemName: gameCenter.isAuthenticated ? "magnifyingglass" : "person.crop.circle.badge.questionmark")
-                        Text(gameCenter.isAuthenticated ? "Find a table" : "Sign in to Game Center")
+                        Text(onlineButtonTitle)
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
@@ -351,6 +352,10 @@ public struct LobbyView: View {
             return gameCenter.statusText
         }
         return String(localized: "Sign in to find a table")
+    }
+
+    private var onlineButtonTitle: LocalizedStringKey {
+        gameCenter.isAuthenticated ? "Find a table" : "Sign in to Game Center"
     }
     #endif
 
@@ -401,16 +406,6 @@ public struct LobbyView: View {
         )
     }
 
-    private func botBinding(for index: Int) -> Binding<Bool> {
-        Binding(
-            get: { seats.indices.contains(index) ? seats[index].kind == .bot : false },
-            set: { newValue in
-                guard seats.indices.contains(index) else { return }
-                seats[index].kind = newValue ? .bot : .human
-            }
-        )
-    }
-
     private func setSeatCount(_ count: Int) {
         seats = LobbySeat.resize(seats, to: count)
     }
@@ -422,15 +417,15 @@ public struct LobbyView: View {
 
     private func watchBots() {
         seats = LobbySeat.demoBots(count: 3)
-        startLocalTable(allowSpectator: true, speedOverride: .instant)
+        startLocalTable(speedOverride: .instant)
     }
 
     /// `speedOverride` lets the watch-bots demo run instantly without
     /// stomping the lobby's `botSpeed` picker — otherwise the .instant
     /// setting would leak into the next "Sit down" and silently zero
     /// the bot delay for normal play.
-    private func startLocalTable(allowSpectator: Bool = false, speedOverride: BotMoveSpeed? = nil) {
-        guard seats.validationError(allowSpectator: allowSpectator) == nil else { return }
+    private func startLocalTable(speedOverride: BotMoveSpeed? = nil) {
+        guard seats.validationError == nil else { return }
         do {
             let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
             // First dealer = last seat so the first seat (the human) is
@@ -444,10 +439,11 @@ public struct LobbyView: View {
                 defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
             )
 
-            // Viewer policy: pin to the single human if there is exactly one
-            // (vs-bots), otherwise follow the active actor (hot-seat). UI
-            // tests can force `.followsActor` via the launch flag so the
-            // robot can drive each seat's turn from one device.
+            // Viewer policy: always pin. There is no hot-seat mode — every
+            // production roster (1 human + bots, or all-bots watch demo) gets
+            // a fixed perspective so the device never reveals a bot's hand by
+            // rotating the viewer onto its seat. UI tests can still force
+            // `.followsActor` via the launch flag.
             let viewerPolicy = configuration.viewerPolicyOverride
                 ?? defaultViewerPolicy(for: configuration.players)
 
@@ -496,16 +492,12 @@ public struct LobbyView: View {
         }
     }
 
-    /// Default viewer policy when a UI test hasn't forced an override:
-    /// pin to the lone human if there is exactly one, otherwise follow
-    /// the actor (hot-seat). All-bot tables also follow the actor so the
-    /// rendered seat stays current during demos.
+    /// Default viewer policy when a UI test hasn't forced an override.
+    /// Always pinned to the first seat. Local play has the human at seat 0;
+    /// the watch-bots demo has bots in every seat and the user just spectates
+    /// from seat 0's perspective. There is no pass-the-device mode.
     private func defaultViewerPolicy(for players: [PlayerID]) -> ViewerPolicy {
-        let humanIndices = seats.indices.filter { seats[$0].kind == .human }
-        if humanIndices.count == 1, players.indices.contains(humanIndices[0]) {
-            return .pinned(players[humanIndices[0]])
-        }
-        return .followsActor
+        .pinned(players.first ?? PlayerID("player"))
     }
 }
 
@@ -627,20 +619,16 @@ extension Array where Element == LobbySeat {
 
     /// Why this roster can't start a table, or `nil` when it's ready.
     /// Drives the inline validation message and disables the Start button.
+    /// The seat kinds are locked by the lobby's factory methods (seat 0 is
+    /// always human for "Sit down", every seat is bot for "Watch bots"), so
+    /// only the user-editable name fields need validating.
     var validationError: String? {
-        validationError(allowSpectator: false)
-    }
-
-    func validationError(allowSpectator: Bool) -> String? {
         let names = map(\.trimmedName)
         if names.contains(where: \.isEmpty) {
             return String(localized: "Every seat needs a name.")
         }
         if Set(names).count != names.count {
             return String(localized: "Names must be unique.")
-        }
-        if !allowSpectator, filter({ $0.kind == .human }).isEmpty {
-            return String(localized: "One seat must be a human player.")
         }
         return nil
     }
