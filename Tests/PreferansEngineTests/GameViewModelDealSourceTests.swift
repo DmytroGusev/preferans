@@ -70,8 +70,8 @@ final class GameViewModelDealSourceTests: XCTestCase {
 
     func testBotMoveSpeedMapsToModelDelay() {
         XCTAssertEqual(BotMoveSpeed.instant.delay, .zero)
-        XCTAssertEqual(BotMoveSpeed.normal.delay, .milliseconds(500))
-        XCTAssertEqual(BotMoveSpeed.slow.delay, .seconds(1))
+        XCTAssertEqual(BotMoveSpeed.normal.delay, .milliseconds(1200))
+        XCTAssertEqual(BotMoveSpeed.slow.delay, .milliseconds(2200))
     }
 
 }

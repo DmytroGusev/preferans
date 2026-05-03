@@ -24,6 +24,14 @@ public enum TestHarness {
         arguments.contains(Flag.disableAnimations)
     }
 
+    /// True when the test harness has asked for full-speed bot pacing.
+    /// Decoupled from `disableAnimations` so an interactive `bin/sim` run
+    /// can disable visual animations (for snappier feedback) while still
+    /// using the user-chosen Bot speed.
+    public static func zeroBotDelay(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.zeroBotDelay)
+    }
+
     /// A fully resolved table configuration the lobby can use to build a
     /// `GameViewModel`. All fields are populated from launch arguments,
     /// canonical fixtures, or sensible production defaults.

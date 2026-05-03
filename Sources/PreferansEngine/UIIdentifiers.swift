@@ -154,6 +154,9 @@ public enum UIIdentifiers {
     public static let buttonDiscardSelected    = "button.discardSelected"
     public static let buttonScoreSheet         = "button.scoreSheet"
     public static let buttonDismissSheet       = "button.dismissSheet"
+    public static let buttonLeaveTable         = "button.leaveTable"
+    public static let buttonRematch            = "button.rematch"
+    public static let buttonBackToLobby        = "button.backToLobby"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }
     public static func contractButton(_ c: GameContract) -> String { "contract.\(encode(c))" }
@@ -257,6 +260,10 @@ public enum UITestFlags {
     public static let raspasyPolicy      = "-uiTestRaspasyPolicy"
     public static let totusPolicy        = "-uiTestTotusPolicy"
     public static let disableAnimations  = "-uiTestDisableAnimations"
+    /// Force bot pacing to 0ms. Tests pass this to keep match-driver
+    /// runs under the 30-second budget; interactive sim runs leave it
+    /// off so the user sees the chosen Bot speed (Normal = 1.2s).
+    public static let zeroBotDelay       = "-uiTestZeroBotDelay"
 }
 
 /// Strings rendered by the app and parsed back by UI tests. Keeping

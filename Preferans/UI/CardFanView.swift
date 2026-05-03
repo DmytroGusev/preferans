@@ -138,9 +138,15 @@ public struct CardFanView: View {
 
     private func stepWidth(available: CGFloat, cardWidth: CGFloat, count: Int) -> CGFloat {
         guard count > 1 else { return 0 }
-        let natural = cardWidth * 0.78
+        // Prefer leaving a clear gap between cards (90% step) so the rank
+        // and pip in each card's top-left corner are unmistakably tied to a
+        // single card. Tighten only when the hand is wide enough that the
+        // full fan won't fit; never collapse below 45% so the corner glyph
+        // always stays readable.
+        let natural = cardWidth * 0.92
         let maxStepThatFits = (available - cardWidth) / CGFloat(count - 1)
-        return min(natural, max(cardWidth * 0.32, maxStepThatFits))
+        let minimumReadable = cardWidth * 0.45
+        return min(natural, max(minimumReadable, maxStepThatFits))
     }
 
     private struct IndexedCard: Identifiable {

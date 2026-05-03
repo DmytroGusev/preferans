@@ -111,6 +111,7 @@ final class RedesignScreenshotTests: XCTestCase {
         app.launchArguments += [
             UITestFlags.viewerFollowsActor,
             UITestFlags.disableAnimations,
+            UITestFlags.zeroBotDelay,
             UITestFlags.poolTarget, "6",
         ]
         app.launch()

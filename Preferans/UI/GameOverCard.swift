@@ -7,9 +7,17 @@ import PreferansEngine
 /// hop into the scoresheet without dismissing anything first.
 public struct GameOverCard: View {
     public var summary: MatchSummary
+    public var onRematch: (() -> Void)?
+    public var onLeaveTable: (() -> Void)?
 
-    public init(summary: MatchSummary) {
+    public init(
+        summary: MatchSummary,
+        onRematch: (() -> Void)? = nil,
+        onLeaveTable: (() -> Void)? = nil
+    ) {
         self.summary = summary
+        self.onRematch = onRematch
+        self.onLeaveTable = onLeaveTable
     }
 
     public var body: some View {
@@ -25,6 +33,9 @@ public struct GameOverCard: View {
                         .foregroundStyle(TableTheme.inkCream)
                         .accessibilityLabel("\(AccessibilityStrings.gameOverWinnerPrefix)\(winner.player.rawValue)")
                         .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
+                    Text("Match won")
+                        .font(.caption2)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
                 }
                 Text("\(summary.dealsPlayed) completed \(summary.dealsPlayed == 1 ? "deal" : "deals")")
                     .font(.caption)
@@ -34,6 +45,10 @@ public struct GameOverCard: View {
             }
 
             standingsTable
+
+            if onRematch != nil || onLeaveTable != nil {
+                ctaRow
+            }
         }
         .padding(16)
         .background(
@@ -48,6 +63,40 @@ public struct GameOverCard: View {
         .padding(.vertical, 8)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
+    }
+
+    private var ctaRow: some View {
+        HStack(spacing: 8) {
+            if let onLeaveTable {
+                Button {
+                    onLeaveTable()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Lobby")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.feltSecondary)
+                .accessibilityIdentifier(UIIdentifiers.buttonBackToLobby)
+            }
+            if let onRematch {
+                Button {
+                    onRematch()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Rematch")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.feltPrimary)
+                .accessibilityIdentifier(UIIdentifiers.buttonRematch)
+            }
+        }
+        .padding(.top, 4)
     }
 
     private var standingsTable: some View {

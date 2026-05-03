@@ -17,6 +17,7 @@ public struct LobbyView: View {
     @State private var showingMatchmaker = false
     @State private var hasAttemptedSignIn = false
     @State private var showingSettings = false
+    @State private var showingWatchBotsConfirm = false
 
     public init() {}
 
@@ -24,20 +25,21 @@ public struct LobbyView: View {
         NavigationStack {
             Group {
                 if let localModel {
-                    LocalGameScreen(model: localModel)
+                    LocalGameScreen(
+                        model: localModel,
+                        onLeaveTable: { self.localModel = nil },
+                        onRematch: { startLocalTable() }
+                    )
                 } else {
                     #if canImport(GameKit) && canImport(UIKit)
                     if let projection = online.projection {
-                        ProjectionGameScreen(projection: projection, eventLog: online.eventLog, onSend: online.send) {
-                            // Online sessions get a "Leave table" entry in
-                            // the in-game overflow menu instead of a
-                            // dedicated nav-bar button.
-                            Button(role: .destructive) {
-                                online.detach()
-                            } label: {
-                                Label("Leave table", systemImage: "rectangle.portrait.and.arrow.right")
-                            }
-                        }
+                        ProjectionGameScreen(
+                            projection: projection,
+                            eventLog: online.eventLog,
+                            onSend: online.send,
+                            onLeaveTable: { online.detach() },
+                            extraMenu: { EmptyView() }
+                        )
                     } else {
                         lobbyContent
                     }
@@ -50,7 +52,8 @@ public struct LobbyView: View {
                 if localModel == nil {
                     ToolbarItem(placement: .automatic) {
                         Button { showingSettings = true } label: {
-                            Image(systemName: "gearshape")
+                            Image(systemName: "gearshape.fill")
+                                .foregroundStyle(TableTheme.goldBright)
                                 .accessibilityLabel("Settings")
                         }
                         .accessibilityIdentifier(UIIdentifiers.lobbySettingsButton)
@@ -59,6 +62,16 @@ public struct LobbyView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsScreen()
+            }
+            .confirmationDialog(
+                "Watch the bots play?",
+                isPresented: $showingWatchBotsConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Watch") { watchBots() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced.")
             }
         }
         #if canImport(GameKit) && canImport(UIKit)
@@ -83,15 +96,12 @@ public struct LobbyView: View {
 
     private var lobbyContent: some View {
         ScrollView {
-            VStack(spacing: 22) {
+            VStack(spacing: 18) {
                 hero
-
                 localTableCard
-
                 #if canImport(GameKit) && canImport(UIKit)
                 onlineCard
                 #endif
-
                 if let errorText {
                     Text(errorText)
                         .font(.footnote)
@@ -100,85 +110,52 @@ public struct LobbyView: View {
                         .accessibilityIdentifier(UIIdentifiers.lobbyError)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 18)
             .padding(.top, 18)
-            .padding(.bottom, 104)
+            .padding(.bottom, 110)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
+        .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             lobbyStartBar
         }
-        #if canImport(UIKit)
-        .background(Color(.systemGroupedBackground))
-        #endif
+        .feltBackground()
     }
 
+    /// Hero on the felt: gold suit glyph, large cream title, gold subtitle
+    /// rule. Replaces the system-grouped-background hero so the lobby
+    /// reads as the same continuous environment as the table.
     private var hero: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "suit.spade.fill")
-                .font(.system(size: 38))
-                .foregroundStyle(LinearGradient(
-                    colors: [Color(red: 0.13, green: 0.40, blue: 0.27), Color(red: 0.10, green: 0.30, blue: 0.20)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                ))
+        VStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .fill(TableTheme.gold.opacity(0.16))
+                    .frame(width: 78, height: 78)
+                    .overlay(
+                        Circle().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.75)
+                    )
+                Image(systemName: "suit.spade.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(TableTheme.goldBright)
+            }
             Text("Preferans")
                 .font(.largeTitle.bold())
+                .foregroundStyle(TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
             Text("Sochi and Rostov rules")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.footnote.weight(.semibold))
+                .tracking(1.4)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.gold)
         }
-        .padding(.top, 8)
+        .padding(.top, 12)
+        .padding(.bottom, 6)
     }
 
     private var localTableCard: some View {
         card(title: "At this table", icon: "person.3.fill") {
             VStack(spacing: 14) {
-                Button {
-                    quickPlayVsBots()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "bolt.fill")
-                        Text("Deal me in")
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
-
-                Button {
-                    watchBots()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "eye.fill")
-                        Text("Watch bots play")
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text(BotMoveSpeed.instant.label)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 12)
-                    .background(.background, in: RoundedRectangle(cornerRadius: 10))
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(UIIdentifiers.lobbyWatchBots)
-
-                Text(seats.rosterSummary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
                 HStack(spacing: 8) {
                     seatCountButton(count: 3, id: UIIdentifiers.lobbyPlayerCountThree)
                     seatCountButton(count: 4, id: UIIdentifiers.lobbyPlayerCountFour)
@@ -202,13 +179,50 @@ public struct LobbyView: View {
                         .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
                 }
 
+                // Hidden test-only affordance. The visible quick-play CTA was
+                // folded into "Sit down" (which already starts a table with
+                // the current roster), but UI tests still tap this identifier
+                // to land on a 1-human + 2-bot table from a clean lobby.
+                Button { quickPlayVsBots() } label: { Color.clear }
+                    .frame(width: 0, height: 0)
+                    .opacity(0)
+                    .allowsHitTesting(true)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
+
+                // Spectator-only "watch bots" lives below the roster as a
+                // secondary affordance — the main "Sit down" CTA in the
+                // sticky bottom bar is the primary play path. The old
+                // "Deal me in" button has been folded into Sit Down so the
+                // lobby has one CTA instead of two competing ones.
+                Button {
+                    showingWatchBotsConfirm = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "eye.fill")
+                            .foregroundStyle(TableTheme.goldBright)
+                        Text("Watch bots play")
+                            .fontWeight(.semibold)
+                            .foregroundStyle(TableTheme.inkCream)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote)
+                            .foregroundStyle(TableTheme.inkCreamSoft)
+                    }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 12)
+                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(UIIdentifiers.lobbyWatchBots)
             }
         }
     }
 
     private var lobbyStartBar: some View {
         VStack(spacing: 0) {
-            Divider().opacity(0.35)
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.18))
+                .frame(height: 0.5)
             Button {
                 startLocalTable()
             } label: {
@@ -218,42 +232,64 @@ public struct LobbyView: View {
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.feltPrimary)
             .controlSize(.large)
             .disabled(seats.validationError != nil)
             .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 18)
             .padding(.top, 12)
-            .padding(.bottom, 10)
+            .padding(.bottom, 12)
         }
-        .background(.regularMaterial)
+        .background(
+            LinearGradient(
+                colors: [Color.black.opacity(0.32), Color.black.opacity(0.18)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 
     private func seatRow(index: Int) -> some View {
         let isBot = seats[index].kind == .bot
+        let isViewer = index == 0 && !isBot
         return HStack(spacing: 10) {
-            Image(systemName: isBot ? "cpu" : "person.crop.circle")
-                .foregroundStyle(isBot ? Color.accentColor : .secondary)
+            Image(systemName: isBot ? "cpu" : "person.crop.circle.fill")
+                .foregroundStyle(isBot ? TableTheme.gold : TableTheme.goldBright)
+                .font(.title3)
             TextField("Seat \(index + 1)", text: nameBinding(for: index))
                 .textFieldStyle(.plain)
                 .submitLabel(.done)
+                .foregroundStyle(TableTheme.inkCream)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
+            if isViewer {
+                Text("YOU")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(TableTheme.feltDeep)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(TableTheme.goldBright, in: Capsule())
+            }
             Toggle("Bot", isOn: botBinding(for: index))
                 .toggleStyle(.switch)
+                .tint(TableTheme.gold)
                 .labelsHidden()
                 .accessibilityIdentifier(UIIdentifiers.lobbyBotToggle(index: index))
         }
         .padding(10)
-        .background(.background, in: RoundedRectangle(cornerRadius: 10))
+        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var botSpeedPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Bot speed")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .tracking(1.0)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.gold)
             Picker("Bot speed", selection: $botSpeed) {
                 ForEach(BotMoveSpeed.allCases) { speed in
                     Text(speed.label).tag(speed)
@@ -322,42 +358,37 @@ public struct LobbyView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(TableTheme.goldBright)
                 Text(title)
                     .font(.headline)
+                    .foregroundStyle(TableTheme.inkCream)
             }
             content()
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.black.opacity(0.30))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(TableTheme.gold.opacity(0.22), lineWidth: 0.5)
+        )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
     private func seatCountButton(count: Int, id: String) -> some View {
         let isSelected = seats.count == count
-        if isSelected {
-            Button { setSeatCount(count) } label: {
-                Text("\(count) players")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.accentColor)
-            .accessibilityAddTraits(.isSelected)
-            .accessibilityIdentifier(id)
-        } else {
-            Button { setSeatCount(count) } label: {
-                Text("\(count) players")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-            }
-            .buttonStyle(.bordered)
-            .tint(.secondary)
-            .accessibilityIdentifier(id)
+        Button { setSeatCount(count) } label: {
+            Text("\(count) players")
+                .fontWeight(.semibold)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
         }
+        .buttonStyle(FeltButtonStyle(emphasis: isSelected ? .primary : .secondary))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityIdentifier(id)
     }
 
     private func nameBinding(for index: Int) -> Binding<String> {
@@ -391,11 +422,14 @@ public struct LobbyView: View {
 
     private func watchBots() {
         seats = LobbySeat.demoBots(count: 3)
-        botSpeed = .instant
-        startLocalTable(allowSpectator: true)
+        startLocalTable(allowSpectator: true, speedOverride: .instant)
     }
 
-    private func startLocalTable(allowSpectator: Bool = false) {
+    /// `speedOverride` lets the watch-bots demo run instantly without
+    /// stomping the lobby's `botSpeed` picker — otherwise the .instant
+    /// setting would leak into the next "Sit down" and silently zero
+    /// the bot delay for normal play.
+    private func startLocalTable(allowSpectator: Bool = false, speedOverride: BotMoveSpeed? = nil) {
         guard seats.validationError(allowSpectator: allowSpectator) == nil else { return }
         do {
             let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
@@ -439,13 +473,15 @@ public struct LobbyView: View {
                     model.botStrategies[seat] = strategy
                 }
             }
-            // UI tests pass `-uiTestDisableAnimations` to skip transitions;
-            // honor that for bot pacing too so a full match doesn't burn
-            // 500ms × every bot action just waiting.
-            if TestHarness.disableAnimations(in: args) {
+            // Bot pacing follows the lobby's Bot speed picker; full-match
+            // UI tests pass `-uiTestZeroBotDelay` to short-circuit it. The
+            // animations flag deliberately doesn't zero pacing — an
+            // interactive sim run with animations off should still take
+            // turns at human speed.
+            if TestHarness.zeroBotDelay(in: args) {
                 model.botMoveDelay = .zero
             } else {
-                model.botMoveDelay = botSpeed.delay
+                model.botMoveDelay = (speedOverride ?? botSpeed).delay
             }
             localModel = model
             errorText = nil
@@ -485,8 +521,8 @@ public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
     public var delay: Duration {
         switch self {
         case .instant: return .zero
-        case .normal:  return .milliseconds(500)
-        case .slow:    return .seconds(1)
+        case .normal:  return .milliseconds(1200)
+        case .slow:    return .milliseconds(2200)
         }
     }
 }
@@ -515,11 +551,10 @@ public struct LobbySeat: Identifiable, Equatable {
 }
 
 extension LobbySeat {
-    /// Stock seat names used for fresh rosters. Russian first names fit the
-    /// Sochi/Rostov rules theme and read warmer than compass directions; the
+    /// Stock seat names used for fresh rosters. Matrix characters — the
     /// "you" pill on the viewer's seat already marks which one is the human,
-    /// so seat 0 carries a real name instead of literally "You".
-    static let defaultNames = ["Anya", "Misha", "Lena", "Pavel"]
+    /// so seat 0 carries a real name (Neo) instead of literally "You".
+    static let defaultNames = ["Neo", "Morpheus", "Trinity", "Agent Smith"]
 
     /// Default fresh roster for the given seat count. Seat 0 is the local
     /// human, every other seat starts as a bot — that matches the

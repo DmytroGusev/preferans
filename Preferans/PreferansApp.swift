@@ -13,6 +13,11 @@ struct PreferansApp: App {
     private let animationsDisabled: Bool
 
     init() {
+        // Default to Russian on first launch (overridable in Settings). Has
+        // to land before any view loads so `Bundle.main`'s catalog lookup
+        // picks the right language for this process.
+        AppLanguage.apply(AppLanguage.current)
+
         // UIKit's flag stops UIView animations; the SwiftUI .transaction
         // modifier below stops implicit/explicit SwiftUI animations the
         // UIKit flag misses. Both are needed to land XCUITest taps on
@@ -29,6 +34,7 @@ struct PreferansApp: App {
     var body: some Scene {
         WindowGroup {
             LobbyView()
+                .environment(\.locale, Locale(identifier: AppLanguage.current.rawValue))
                 .transaction { transaction in
                     if animationsDisabled { transaction.animation = nil }
                 }

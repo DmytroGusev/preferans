@@ -14,39 +14,131 @@ public struct TableView: View {
     /// during the pre-first-deal idle state. When `nil`, the centered CTA
     /// is suppressed and the felt falls back to the phase placeholder.
     public var onStartDeal: (() -> Void)?
+    /// "Back to lobby" CTA on the game-over card.
+    public var onLeaveTable: (() -> Void)?
+    /// "Rematch" CTA on the game-over card.
+    public var onRematch: (() -> Void)?
+    /// When false, the top opponent row + DealStateStrip are suppressed —
+    /// the landscape layout owns those externally. Only the play area is
+    /// rendered. Defaults to true (portrait layout).
+    public var renderOpponentsAtTop: Bool
 
     public init(
         projection: PlayerGameProjection,
         animationNamespace: Namespace.ID,
         onAdvance: (() -> Void)? = nil,
-        onStartDeal: (() -> Void)? = nil
+        onStartDeal: (() -> Void)? = nil,
+        onLeaveTable: (() -> Void)? = nil,
+        onRematch: (() -> Void)? = nil,
+        renderOpponentsAtTop: Bool = true
     ) {
         self.projection = projection
         self.animationNamespace = animationNamespace
         self.onAdvance = onAdvance
         self.onStartDeal = onStartDeal
+        self.onLeaveTable = onLeaveTable
+        self.onRematch = onRematch
+        self.renderOpponentsAtTop = renderOpponentsAtTop
     }
 
     public var body: some View {
         let opponents = orderedOpponents()
-        VStack(spacing: 8) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(opponents) { seat in
-                    OpponentSeatView(seat: seat)
-                        .frame(maxWidth: .infinity)
-                }
+        if renderOpponentsAtTop {
+            VStack(spacing: 4) {
+                DealStateStrip(projection: projection)
+                tableLayout(opponents: opponents)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        } else {
             playArea(opponentSeats: opponents.map(\.player))
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 160)
+                .frame(minHeight: 200)
         }
     }
 
-    /// Phase-aware text shown on the empty felt. Routed through `Localized`
-    /// so the catalog is the single source of phase copy — title and felt
-    /// placeholder live next to each other for translators.
-    private var emptyFeltPlaceholder: LocalizedStringKey {
-        Localized.feltPlaceholder(projection.phase)
+    /// Real card-table layout: opponents are positioned around the felt
+    /// (top, left, right) at their seat slots — not stacked
+    /// shoulder-to-shoulder at the top. The trick area sits in the center
+    /// and grows to fill the available real estate.
+    private func tableLayout(opponents: [SeatProjection]) -> some View {
+        GeometryReader { geo in
+            let bounds = geo.size
+            ZStack {
+                // Center: trick area / phase content. Sized smaller than
+                // the felt so seat fans can sit at the edges without
+                // overlapping it.
+                playArea(opponentSeats: opponents.map(\.player))
+                    .frame(width: max(0, bounds.width * 0.78),
+                           height: max(0, bounds.height * 0.62))
+                    .position(x: bounds.width * 0.5, y: bounds.height * 0.55)
+
+                // Opponent seats positioned around the felt edge.
+                ForEach(Array(opponentSlots(opponents: opponents).enumerated()), id: \.offset) { _, slot in
+                    OpponentSeatView(seat: slot.seat, orientation: slot.orientation)
+                        .frame(width: slotFrameSize(for: slot, bounds: bounds).width,
+                               height: slotFrameSize(for: slot, bounds: bounds).height)
+                        .position(x: slot.position.x * bounds.width,
+                                  y: slot.position.y * bounds.height)
+                }
+            }
+            .frame(width: bounds.width, height: bounds.height)
+        }
+        .frame(minHeight: 320)
+    }
+
+    /// One slot per opponent — its position (normalised 0–1 of the felt),
+    /// its orientation hint for the fan, and its frame size category. The
+    /// number of opponents drives which corner each seat lands in:
+    ///   - 1 opponent → top center
+    ///   - 2 opponents → top-left + top-right
+    ///   - 3 opponents → left edge + top + right edge
+    private func opponentSlots(opponents: [SeatProjection]) -> [OpponentSlot] {
+        switch opponents.count {
+        case 1:
+            return [OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.5, y: 0.10), orientation: .top, kind: .topWide)]
+        case 2:
+            return [
+                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.26, y: 0.12), orientation: .top, kind: .topNarrow),
+                OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.74, y: 0.12), orientation: .top, kind: .topNarrow),
+            ]
+        case 3:
+            return [
+                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.12, y: 0.45), orientation: .left, kind: .side),
+                OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.50, y: 0.10), orientation: .top, kind: .topNarrow),
+                OpponentSlot(seat: opponents[2], position: CGPoint(x: 0.88, y: 0.45), orientation: .right, kind: .side),
+            ]
+        default:
+            // Fallback: spread across the top
+            return opponents.enumerated().map { idx, seat in
+                let x = (CGFloat(idx) + 1) / CGFloat(opponents.count + 1)
+                return OpponentSlot(seat: seat, position: CGPoint(x: x, y: 0.12), orientation: .top, kind: .topNarrow)
+            }
+        }
+    }
+
+    private func slotFrameSize(for slot: OpponentSlot, bounds: CGSize) -> CGSize {
+        switch slot.kind {
+        case .topWide:
+            return CGSize(width: min(bounds.width * 0.78, 320),
+                          height: 100)
+        case .topNarrow:
+            return CGSize(width: min(bounds.width * 0.44, 200),
+                          height: 100)
+        case .side:
+            // Side seats: name chip on top, vertical (rotated) fan below.
+            // Width is just wide enough for the chip; height reserves the
+            // rotated fan's footprint plus the chip header.
+            return CGSize(width: 100,
+                          height: 240)
+        }
+    }
+
+    fileprivate struct OpponentSlot {
+        var seat: SeatProjection
+        var position: CGPoint
+        var orientation: OpponentSeatView.Orientation
+        var kind: Kind
+        enum Kind { case topWide, topNarrow, side }
     }
 
     /// The center of the felt where the current trick sits. The felt is the
@@ -58,7 +150,7 @@ public struct TableView: View {
     @ViewBuilder
     private func playArea(opponentSeats: [PlayerID]) -> some View {
         if case let .gameOver(summary) = projection.phase {
-            GameOverCard(summary: summary)
+            GameOverCard(summary: summary, onRematch: onRematch, onLeaveTable: onLeaveTable)
         } else if case let .dealFinished(result) = projection.phase {
             dealSummaryCard(result: result)
                 .accessibilityElement(children: .contain)
@@ -74,7 +166,7 @@ public struct TableView: View {
         } else {
             ZStack {
                 if projection.currentTrick.isEmpty {
-                    placeholder(emptyFeltPlaceholder)
+                    phaseContext()
                 } else {
                     trickPlays(opponentSeats: opponentSeats)
                 }
@@ -82,6 +174,41 @@ public struct TableView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
         }
+    }
+
+    /// Phase-aware center-felt content. The DealStateStrip above the play
+    /// area already surfaces auction state, contract, whisters, and
+    /// vzyatki, so the center is reserved for things that need real
+    /// estate: the talon during exchange, played cards during play, or a
+    /// quiet "waiting on …" line when nothing is on the felt yet.
+    @ViewBuilder
+    private func phaseContext() -> some View {
+        switch projection.phase {
+        case .awaitingDiscard:
+            talonContext()
+        default:
+            EmptyView()
+        }
+    }
+
+    /// Talon exchange: render the two prikup cards face-up centered on the
+    /// felt so the declarer (and observers) see what the declarer just
+    /// took. The hand fan also shows the same cards with a "P" badge for
+    /// the discard interaction; this center view is purely informational.
+    private func talonContext() -> some View {
+        VStack(spacing: 8) {
+            Text("Prikup")
+                .font(.caption.weight(.bold))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.goldBright)
+            HStack(spacing: 6) {
+                ForEach(Array(projection.talon.enumerated()), id: \.offset) { _, card in
+                    CardView(card: card, size: .standard)
+                }
+            }
+        }
+        .multilineTextAlignment(.center)
     }
 
     /// Centered Deal CTA shown on the empty felt during the pre-first-deal
@@ -209,19 +336,40 @@ public struct TableView: View {
         }
     }
 
+    /// Played cards from the current trick, each anchored to its owner's
+    /// seat slot with a small name caption below the card so a glance at
+    /// the felt tells the user who played what. Replaces the previous
+    /// raw-card layout where played cards drifted independently of seats.
     private func trickPlays(opponentSeats: [PlayerID]) -> some View {
         ZStack {
             ForEach(Array(projection.currentTrick.enumerated()), id: \.offset) { _, play in
                 let pos = positionForPlay(player: play.player, opponents: opponentSeats)
-                CardView(
-                    card: .known(play.card),
-                    size: .standard,
-                    region: .trick(seat: play.player)
-                )
-                .matchedGeometryEffect(id: play.card, in: animationNamespace)
-                .offset(x: pos.width, y: pos.height)
-                .transition(.scale.combined(with: .opacity))
+                trickPlayMarker(play: play)
+                    .matchedGeometryEffect(id: play.card, in: animationNamespace)
+                    .offset(x: pos.width, y: pos.height)
+                    .transition(.scale.combined(with: .opacity))
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// One played card + a subtle name caption. The caption stays below
+    /// the card regardless of seat orientation so the eye reads the table
+    /// consistently — no upside-down text for the top opponent.
+    private func trickPlayMarker(play: CardPlay) -> some View {
+        VStack(spacing: 3) {
+            CardView(
+                card: .known(play.card),
+                size: .standard,
+                region: .trick(seat: play.player)
+            )
+            Text(projection.displayName(for: play.player))
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 1)
+                .background(Color.black.opacity(0.45), in: Capsule())
+                .lineLimit(1)
         }
     }
 
@@ -257,15 +405,12 @@ public struct TableView: View {
         }
     }
 
-    /// Hide the dealer-on-talon (sitting-out) seat. In 4-player Preferans the
-    /// dealer doesn't take part in the deal — surfacing that seat just adds a
-    /// dim, dealer-badged tile that the viewer can't interact with and that
-    /// pushes the active opponents off-center.
+    /// Every seat except the viewer's, including the 4-player sitting-out
+    /// dealer. The sitting-out seat is rendered dimmed (with an "OUT"
+    /// badge) so the user always sees the full table — hiding the
+    /// dealer entirely was confusing for users who couldn't see who's
+    /// at the table during the deal they're sitting out.
     private func orderedOpponents() -> [SeatProjection] {
-        projection.seats.filter { seat in
-            guard seat.player != projection.viewer else { return false }
-            if seat.role == .sittingOut { return false }
-            return true
-        }
+        projection.seats.filter { $0.player != projection.viewer }
     }
 }

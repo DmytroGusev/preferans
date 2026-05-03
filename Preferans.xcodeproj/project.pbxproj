@@ -37,6 +37,7 @@
 		B00000000000000000000066 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000076 /* SettingsScreen.swift */; };
 		B00000000000000000000067 /* ScoreFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000077 /* ScoreFormatting.swift */; };
 		B00000000000000000000068 /* GameOverCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000078 /* GameOverCard.swift */; };
+		B00000000000000000000069 /* DealStateStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000079 /* DealStateStrip.swift */; };
 		B0000000000000000000A080 /* Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A082 /* Localized.swift */; };
 		B0000000000000000000A081 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A083 /* Localizable.xcstrings */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
@@ -144,6 +145,7 @@
 		B00000000000000000000076 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/SettingsScreen.swift"; sourceTree = "<group>"; };
 		B00000000000000000000077 /* ScoreFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreFormatting.swift"; sourceTree = "<group>"; };
 		B00000000000000000000078 /* GameOverCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/GameOverCard.swift"; sourceTree = "<group>"; };
+		B00000000000000000000079 /* DealStateStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/DealStateStrip.swift"; sourceTree = "<group>"; };
 		B0000000000000000000A082 /* Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/Localized.swift"; sourceTree = "<group>"; };
 		B0000000000000000000A083 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
@@ -251,6 +253,7 @@
 				B00000000000000000000076 /* SettingsScreen.swift */,
 				B00000000000000000000077 /* ScoreFormatting.swift */,
 				B00000000000000000000078 /* GameOverCard.swift */,
+				B00000000000000000000079 /* DealStateStrip.swift */,
 				B0000000000000000000A082 /* Localized.swift */,
 				B0000000000000000000A083 /* Localizable.xcstrings */,
 				A00000000000000000000018 /* Assets.xcassets */,
@@ -454,6 +457,7 @@
 				B00000000000000000000066 /* SettingsScreen.swift in Sources */,
 				B00000000000000000000067 /* ScoreFormatting.swift in Sources */,
 				B00000000000000000000068 /* GameOverCard.swift in Sources */,
+				B00000000000000000000069 /* DealStateStrip.swift in Sources */,
 				B0000000000000000000A080 /* Localized.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -629,7 +633,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -662,7 +666,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

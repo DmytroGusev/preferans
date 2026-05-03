@@ -1,14 +1,15 @@
 import SwiftUI
 import PreferansEngine
 
-/// Standard preferans pulka (scoresheet) form.
+/// Traditional preferans pulka, one card per player.
 ///
-/// The traditional pulka has three sections per player — Bullet (Пуля) for
-/// fulfilled-contract points, Mountain (Гора) for penalty points, and a Whists
-/// (Висты) matrix recording how many whist points each player has written on
-/// each opponent. The radial triangle layout used on paper doesn't translate
-/// well to a phone, so this view uses a tabular form with the same three
-/// sections explicit and labelled.
+/// On paper the pulka is drawn as a triangle (3-player) or square (4-player)
+/// with each player owning a corner. Each corner records that player's
+/// **Пуля** (bullet — fulfilled-contract points), **Гора** (mountain —
+/// penalty points), and the **Висты** that player wrote on each opponent.
+/// This view keeps the same four sections (Пуля → Гора → Висты → Баланс)
+/// per player, stacked as a list of cards so the form scales to 3 or 4
+/// players without rewrapping a tabular layout.
 public struct ScoreBoardView: View {
     public var score: ScoreSheet
 
@@ -17,193 +18,126 @@ public struct ScoreBoardView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 14) {
-                bulletSection
-                Divider().opacity(0.4)
-                mountainSection
-                Divider().opacity(0.4)
-                whistsSection
-                Divider().opacity(0.4)
-                balanceSection
+        VStack(spacing: 12) {
+            ForEach(score.players, id: \.self) { player in
+                playerCard(player: player)
             }
-            .padding(14)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-
             legend
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.Panel.score.rawValue)
     }
 
-    // MARK: - Sections
+    // MARK: - Per-player card
 
-    private var bulletSection: some View {
-        section(title: "Bullet", subtitle: "Пуля") {
-            playerColumns { player in
-                scoreCell(
-                    "\(score.pool(for: player))",
-                    id: UIIdentifiers.scorePool(player),
-                    weight: .semibold
-                )
+    private func playerCard(player: PlayerID) -> some View {
+        let balance = score.balance(for: player)
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(player.rawValue)
+                    .font(.title3.bold())
+                    .accessibilityIdentifier(UIIdentifiers.scorePlayer(player))
+                Spacer()
+                balanceBadge(balance: balance, id: UIIdentifiers.scoreBalance(player))
+            }
+            HStack(alignment: .top, spacing: 14) {
+                pulaCell(player: player)
+                Divider().frame(height: 44)
+                goraCell(player: player)
+                Divider().frame(height: 44)
+                vistyCell(player: player)
             }
         }
+        .padding(14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(.separator.opacity(0.6), lineWidth: 0.5)
+        )
     }
 
-    private var mountainSection: some View {
-        section(title: "Mountain", subtitle: "Гора") {
-            playerColumns { player in
-                scoreCell(
-                    "\(score.mountain(for: player))",
-                    id: UIIdentifiers.scoreMountain(player),
-                    color: score.mountain(for: player) > 0 ? .red : .primary
-                )
-            }
-        }
-    }
-
-    private var whistsSection: some View {
-        section(title: "Whists", subtitle: "Висты") {
-            VStack(spacing: 6) {
-                whistHeaderRow
-                ForEach(score.players, id: \.self) { writer in
-                    whistRow(writer: writer)
-                }
-            }
-        }
-    }
-
-    private var balanceSection: some View {
-        section(title: "Balance", subtitle: nil) {
-            playerColumns { player in
-                scoreCell(
-                    ScoreFormatting.balance(score.balance(for: player)),
-                    id: UIIdentifiers.scoreBalance(player),
-                    weight: .bold,
-                    color: balanceColor(score.balance(for: player))
-                )
-            }
-        }
-    }
-
-    // MARK: - Layout helpers
-
-    private func section<Content: View>(
-        title: LocalizedStringKey,
-        subtitle: String?,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            content()
-        }
-    }
-
-    private func playerColumns<Content: View>(
-        @ViewBuilder cell: @escaping (PlayerID) -> Content
-    ) -> some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 0) {
-                ForEach(score.players, id: \.self) { player in
-                    Text(player.rawValue)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .accessibilityIdentifier(UIIdentifiers.scorePlayer(player))
-                }
-            }
-            HStack(spacing: 0) {
-                ForEach(score.players, id: \.self) { player in
-                    cell(player)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-        }
-    }
-
-    private func scoreCell(
-        _ text: String,
-        id: String,
-        weight: Font.Weight = .medium,
-        color: Color = .primary
-    ) -> some View {
-        Text(text)
-            .font(.body.monospacedDigit().weight(weight))
-            .foregroundStyle(color)
-            .accessibilityIdentifier(id)
-    }
-
-    // MARK: - Whists matrix
-
-    private var whistHeaderRow: some View {
-        HStack(spacing: 0) {
-            Text("on →")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .frame(width: 56, alignment: .leading)
-            ForEach(score.players, id: \.self) { target in
-                Text(target.rawValue)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-    }
-
-    private func whistRow(writer: PlayerID) -> some View {
-        HStack(spacing: 0) {
-            Text(writer.rawValue)
+    private func pulaCell(player: PlayerID) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Bullet")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .frame(width: 56, alignment: .leading)
-            ForEach(score.players, id: \.self) { target in
-                whistCell(writer: writer, target: target)
-                    .frame(maxWidth: .infinity)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            Text("\(score.pool(for: player))")
+                .font(.title.bold().monospacedDigit())
+                .accessibilityIdentifier(UIIdentifiers.scorePool(player))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func goraCell(player: PlayerID) -> some View {
+        let value = score.mountain(for: player)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text("Mountain")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            Text("\(value)")
+                .font(.title.bold().monospacedDigit())
+                .foregroundStyle(value > 0 ? .red : .primary)
+                .accessibilityIdentifier(UIIdentifiers.scoreMountain(player))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Per-player whists section: one row per opponent showing the points
+    /// this player has written on them. The traditional pulka draws each
+    /// pair-wise relationship in the diagonal between two seats; on a
+    /// phone we collapse it to "vs Misha 4 / vs Lena 3" inside the
+    /// player's own card.
+    private func vistyCell(player: PlayerID) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Whists")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(score.players.filter { $0 != player }, id: \.self) { target in
+                    let value = score.whistsWritten(by: player, on: target)
+                    HStack(spacing: 4) {
+                        Text("vs \(target.rawValue)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        Text("\(value)")
+                            .font(.caption.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(value > 0 ? .primary : .tertiary)
+                            .accessibilityIdentifier(UIIdentifiers.scoreWhists(writer: player, on: target))
+                    }
+                }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
-    private func whistCell(writer: PlayerID, target: PlayerID) -> some View {
-        if writer == target {
-            Text("—")
-                .font(.body.monospacedDigit())
-                .foregroundStyle(.tertiary)
-        } else {
-            let value = score.whistsWritten(by: writer, on: target)
-            Text("\(value)")
-                .font(.body.monospacedDigit())
-                .foregroundStyle(value > 0 ? .primary : .tertiary)
-                .accessibilityIdentifier(UIIdentifiers.scoreWhists(writer: writer, on: target))
-        }
-    }
-
-    // MARK: - Formatting
-
-    private func balanceColor(_ value: Double) -> Color {
-        if value > 0.05 { return .green }
-        if value < -0.05 { return .red }
-        return .primary
+    private func balanceBadge(balance: Double, id: String) -> some View {
+        let formatted = ScoreFormatting.balance(balance)
+        let color: Color = balance > 0.05 ? .green : (balance < -0.05 ? .red : .secondary)
+        return Text(formatted)
+            .font(.subheadline.bold().monospacedDigit())
+            .foregroundStyle(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.12), in: Capsule())
+            .accessibilityIdentifier(id)
     }
 
     // MARK: - Legend
 
     private var legend: some View {
         VStack(alignment: .leading, spacing: 4) {
-            legendRow(title: "Bullet (Пуля)", description: "Points for fulfilled contracts (higher is better)")
-            legendRow(title: "Mountain (Гора)", description: "Penalty points; lower is better")
-            legendRow(title: "Whists (Висты)", description: "Whist points written on each opponent")
-            legendRow(title: "Balance", description: "Standings; zero-sum across the table — positive means ahead")
+            legendRow(title: "Пуля (bullet)", description: "Points for fulfilled contracts. Higher is better.")
+            legendRow(title: "Гора (mountain)", description: "Penalty points. Lower is better.")
+            legendRow(title: "Висты (whists)", description: "Whist points each player has written on every opponent.")
+            legendRow(title: "Баланс (balance)", description: "Standings — zero-sum across the table.")
         }
         .font(.caption)
         .foregroundStyle(.secondary)

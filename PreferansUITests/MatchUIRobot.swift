@@ -458,7 +458,10 @@ extension XCUIApplication {
     func configureForMatchScript(_ name: String, extra: [String] = [], disableAnimations: Bool = true) {
         launchArguments += [
             UITestFlags.viewerFollowsActor,
-            UITestFlags.matchScript, name
+            UITestFlags.matchScript, name,
+            // Tests always want zero bot delay so a 10-trick match
+            // doesn't run for 12+ s of pure pacing.
+            UITestFlags.zeroBotDelay,
         ]
         if disableAnimations {
             launchArguments += [UITestFlags.disableAnimations]
@@ -470,6 +473,6 @@ extension XCUIApplication {
     /// configuration. Use for raw lobby/bidding tests that build their own
     /// launch-argument list but still want the animation-free fast path.
     func disableUITestAnimations() {
-        launchArguments += [UITestFlags.disableAnimations]
+        launchArguments += [UITestFlags.disableAnimations, UITestFlags.zeroBotDelay]
     }
 }

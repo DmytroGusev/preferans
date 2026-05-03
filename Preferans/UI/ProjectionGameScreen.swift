@@ -5,6 +5,14 @@ public struct ProjectionGameScreen<Menu: View>: View {
     public var projection: PlayerGameProjection
     public var eventLog: [String]
     public var onSend: (PreferansAction) -> Void
+    /// When non-nil, renders an explicit "Leave table" button in the header
+    /// and a "Back to lobby" CTA on the game-over card so the user always
+    /// has a one-tap exit.
+    public var onLeaveTable: (() -> Void)?
+    /// When non-nil, the game-over card shows a "Rematch" CTA that triggers
+    /// this closure (resets the engine and starts a new match with the same
+    /// roster).
+    public var onRematch: (() -> Void)?
     private let extraMenu: Menu
 
     private enum Sheet: String, Identifiable {
@@ -14,24 +22,32 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     @State private var selectedDiscard: Set<Card> = []
     @State private var activeSheet: Sheet?
+    @State private var showLeaveConfirm = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Namespace private var cardNamespace
 
     public init(
         projection: PlayerGameProjection,
         eventLog: [String] = [],
         onSend: @escaping (PreferansAction) -> Void,
+        onLeaveTable: (() -> Void)? = nil,
+        onRematch: (() -> Void)? = nil,
         @ViewBuilder extraMenu: () -> Menu = { EmptyView() }
     ) {
         self.projection = projection
         self.eventLog = eventLog
         self.onSend = onSend
+        self.onLeaveTable = onLeaveTable
+        self.onRematch = onRematch
         self.extraMenu = extraMenu()
     }
 
     public var body: some View {
         Group {
-            if horizontalSizeClass == .compact {
+            if isCompactLandscape {
+                landscapeBody
+            } else if horizontalSizeClass == .compact {
                 compactBody
             } else {
                 regularBody
@@ -68,21 +84,98 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 projection: projection,
                 animationNamespace: cardNamespace,
                 onAdvance: advanceToNextDeal,
-                onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil
+                onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
+                onLeaveTable: onLeaveTable,
+                onRematch: onRematch
             )
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             if shouldShowActionBar {
                 ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
             }
-            viewerHandFan
-                .padding(.horizontal, 8)
-                .padding(.top, 4)
-                .padding(.bottom, 4)
-                .layoutPriority(1)
+            if shouldShowHandRail {
+                viewerHandFan
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
+                    .padding(.bottom, 4)
+                    .layoutPriority(1)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .feltBackground()
+    }
+
+    // MARK: - Compact landscape (iPhone landscape)
+
+    /// iPhone landscape: vertical real estate is tight, horizontal is
+    /// abundant. Three columns: opponent fans on the left, trick + state
+    /// in the center (the action bar tucks under it), viewer hand spans
+    /// the bottom of the right column. Maximizes the felt without losing
+    /// the chip rail.
+    private var landscapeBody: some View {
+        VStack(spacing: 0) {
+            headerStrip
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+                .padding(.bottom, 4)
+            HStack(alignment: .top, spacing: 8) {
+                landscapeOpponentColumn
+                    .frame(width: 180)
+                VStack(spacing: 4) {
+                    DealStateStrip(projection: projection)
+                    landscapeTablePlayArea
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    if shouldShowActionBar {
+                        ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                    }
+                    if shouldShowHandRail {
+                        viewerHandFan
+                            .padding(.horizontal, 4)
+                            .padding(.top, 2)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 4)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .feltBackground()
+    }
+
+    private var landscapeOpponentColumn: some View {
+        VStack(spacing: 6) {
+            ForEach(orderedOpponentSeats) { seat in
+                OpponentSeatView(seat: seat, orientation: .top)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// Trick area only — no opponent row (the column on the left owns
+    /// that). Reuses the same TableView play-area branch as portrait.
+    @ViewBuilder
+    private var landscapeTablePlayArea: some View {
+        TableView(
+            projection: projection,
+            animationNamespace: cardNamespace,
+            onAdvance: advanceToNextDeal,
+            onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
+            onLeaveTable: onLeaveTable,
+            onRematch: onRematch,
+            renderOpponentsAtTop: false
+        )
+    }
+
+    private var orderedOpponentSeats: [SeatProjection] {
+        projection.seats.filter { $0.player != projection.viewer }
+    }
+
+    /// True when the device is in compact landscape (iPhone rotated). Used
+    /// to switch to a side-by-side layout that fits the felt + hand into
+    /// the limited vertical real estate.
+    private var isCompactLandscape: Bool {
+        horizontalSizeClass == .compact && verticalSizeClass == .compact
     }
 
     // MARK: - Regular (iPad / wider)
@@ -98,15 +191,19 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     projection: projection,
                     animationNamespace: cardNamespace,
                     onAdvance: advanceToNextDeal,
-                    onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil
+                    onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
+                    onLeaveTable: onLeaveTable,
+                    onRematch: onRematch
                 )
                 .frame(maxHeight: .infinity)
                 if shouldShowActionBar {
                     ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
                 }
-                viewerHandFan
-                    .padding(.horizontal, 8)
-                    .padding(.top, 4)
+                if shouldShowHandRail {
+                    viewerHandFan
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
+                }
             }
             .frame(maxWidth: .infinity)
             ScoreBoardView(score: projection.score)
@@ -144,6 +241,20 @@ public struct ProjectionGameScreen<Menu: View>: View {
         return true
     }
 
+    /// Hand rail visibility. The rail is purely decorative when the viewer
+    /// has nothing to play (pre-deal idle, deal scored, match over, sitting
+    /// out a 4-player deal) — keep it offscreen so the felt isn't permanently
+    /// haunted by an empty pill at the bottom.
+    private var shouldShowHandRail: Bool {
+        guard let seat = viewerSeat else { return false }
+        if case .gameOver = projection.phase { return false }
+        if case .dealFinished = projection.phase { return false }
+        if shouldShowCenterDealCTA { return false }
+        // Sitting-out seats hold no cards and have no action — same logic.
+        if seat.role == .sittingOut, !projection.legal.canDiscard { return false }
+        return !seat.hand.isEmpty || projection.legal.canDiscard
+    }
+
     private func advanceToNextDeal() {
         onSend(.startDeal(dealer: nil, deck: nil))
     }
@@ -159,8 +270,57 @@ public struct ProjectionGameScreen<Menu: View>: View {
         HStack(alignment: .center, spacing: 8) {
             phaseChip
             Spacer(minLength: 8)
+            scoresheetButton
+            if onLeaveTable != nil {
+                leaveButton
+            }
             overflowMenu
         }
+        .confirmationDialog(
+            "Leave this table?",
+            isPresented: $showLeaveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Leave table", role: .destructive) {
+                onLeaveTable?()
+            }
+            Button("Stay", role: .cancel) {}
+        } message: {
+            Text("Your current match will be discarded.")
+        }
+    }
+
+    /// One-tap exit from the live table. Always reachable so the user is
+    /// never trapped — confirms before tearing down the match so a
+    /// mistapped exit doesn't lose the deal.
+    private var leaveButton: some View {
+        Button {
+            showLeaveConfirm = true
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                .font(.title3)
+                .padding(4)
+        }
+        .accessibilityLabel("Leave table")
+        .accessibilityIdentifier(UIIdentifiers.buttonLeaveTable)
+    }
+
+    /// Surfaces the scoresheet directly in the header instead of burying it
+    /// in the overflow menu — it's the most-wanted info during a match.
+    private var scoresheetButton: some View {
+        Button {
+            activeSheet = .score
+        } label: {
+            Image(systemName: "list.number")
+                .foregroundStyle(TableTheme.inkCream)
+                .font(.subheadline.weight(.semibold))
+                .padding(6)
+                .background(Color.black.opacity(0.30), in: Capsule())
+        }
+        .accessibilityLabel("Scoresheet")
+        .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
     }
 
     private var phaseChip: some View {
@@ -200,13 +360,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     private var overflowMenu: some View {
         SwiftUI.Menu {
-            Button {
-                activeSheet = .score
-            } label: {
-                Label("Scoresheet", systemImage: "list.number")
-            }
-            .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
-
             extraMenu
 
             Button {
@@ -219,6 +372,14 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 activeSheet = .settings
             } label: {
                 Label("Settings", systemImage: "gearshape")
+            }
+            if onLeaveTable != nil {
+                Divider()
+                Button(role: .destructive) {
+                    showLeaveConfirm = true
+                } label: {
+                    Label("Leave table", systemImage: "rectangle.portrait.and.arrow.right")
+                }
             }
         } label: {
             Image(systemName: "ellipsis.circle.fill")
@@ -266,23 +427,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 4)
-            .background(handRail)
-        }
-    }
-
-    /// "Card rest" rail behind the viewer's hand. Slightly darker than the
-    /// felt with a hairline gold edge up top so the cards have a clear
-    /// shelf to sit on instead of floating against the felt.
-    private var handRail: some View {
-        LinearGradient(
-            colors: [Color.black.opacity(0.28), Color.black.opacity(0.16)],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(TableTheme.gold.opacity(0.22))
-                .frame(height: 0.5)
         }
     }
 
@@ -296,54 +440,83 @@ public struct ProjectionGameScreen<Menu: View>: View {
         }
     }
 
+    /// Single-row name plate for the viewer's seat. One signal per piece of
+    /// info: name (always cream — gold-on-turn was redundant with the
+    /// "Your turn" pill below), one inline pill (Your turn > Dealer >
+    /// Sitting out > silent fallback), and a quiet trick counter. The
+    /// previous version stacked a hand-icon, gold name, "you" pill, dot,
+    /// "X tricks" label, "Dealer" pill, and "Your turn" pill in one row —
+    /// seven signals for two pieces of state.
     private func ownerNamePlate(seat: SeatProjection) -> some View {
-        HStack(spacing: 6) {
-            if seat.isCurrentActor {
-                Image(systemName: "hand.point.up.left.fill")
-                    .font(.caption2)
-                    .foregroundStyle(TableTheme.goldBright)
-            }
+        HStack(spacing: 8) {
             Text(seat.displayName)
                 .font(.caption.bold())
-                .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
+                .foregroundStyle(TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
-            // The "you" pill replaces the old "you: <name>" line in the
-            // status bar. The accessibility label renders "Viewing as <name>"
-            // for MatchUIRobot.currentViewer().
+                .accessibilityLabel("Viewing as \(projection.displayName(for: projection.viewer))")
+                .accessibilityValue("you")
             Text("you")
                 .font(.caption2.bold())
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.inkCream)
-                .background(Color.black.opacity(0.30), in: Capsule())
-                .accessibilityLabel("Viewing as \(projection.displayName(for: projection.viewer))")
+                .padding(.horizontal, 0)
+                .frame(width: 0, height: 0)
+                .opacity(0)
+                .accessibilityHidden(true)
                 .accessibilityIdentifier(UIIdentifiers.viewerLabel)
-            if seat.isDealer {
-                Text("Dealer")
-                    .font(.caption2)
+            seatStatusPill(seat: seat)
+            Spacer(minLength: 4)
+            if seat.trickCount > 0 || isPlayingPhase {
+                Text("\(seat.trickCount)")
+                    .font(.caption2.weight(.semibold).monospacedDigit())
                     .foregroundStyle(TableTheme.inkCreamSoft)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(Color.black.opacity(0.30), in: Capsule())
-                    .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
+                    .accessibilityLabel("\(seat.trickCount) tricks")
+                    .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
             }
-            if seat.isCurrentActor {
-                Text("Your turn")
-                    .font(.caption2.bold())
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .foregroundStyle(TableTheme.feltDeep)
-                    .background(TableTheme.goldBright, in: Capsule())
-                    .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
-            }
-            Spacer()
-            Text("\(seat.trickCount) tricks")
-                .font(.caption2)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)
+    }
+
+    /// Mutually-exclusive status pill for the viewer's seat. "Your turn"
+    /// wins because it's actionable; everything else is informational and
+    /// lower-priority. Sitting-out 4-player dealers get the same treatment
+    /// as opponent tiles so the user knows the deal will skip them.
+    @ViewBuilder
+    private func seatStatusPill(seat: SeatProjection) -> some View {
+        if seat.isCurrentActor {
+            Text("Your turn")
+                .font(.caption2.bold())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .foregroundStyle(TableTheme.feltDeep)
+                .background(TableTheme.goldBright, in: Capsule())
+                .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
+        } else if seat.role == .sittingOut {
+            Text("Sitting out")
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .background(Color.black.opacity(0.30), in: Capsule())
+                .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
+        } else if seat.isDealer {
+            Text("Dealer")
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 1)
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .background(Color.black.opacity(0.30), in: Capsule())
+                .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
+        } else {
+            EmptyView()
+        }
+    }
+
+    /// True during the trick-play phase. Used to surface "0" tricks during
+    /// play (so the user can see they haven't won any yet) but suppress it
+    /// during bidding/talon where the counter is meaningless.
+    private var isPlayingPhase: Bool {
+        if case .playing = projection.phase { return true }
+        return false
     }
 
     // MARK: - Sheets
