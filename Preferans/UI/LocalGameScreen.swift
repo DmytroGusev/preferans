@@ -24,12 +24,15 @@ public struct LocalGameScreen: View {
     }
 
     public var body: some View {
-        let projection = model.projection(revealAll: revealAllHands)
+        let projection = model.displayProjection(revealAll: revealAllHands)
         ProjectionGameScreen(
             projection: projection,
             eventLog: model.eventLog,
             recentEvents: model.recentEvents,
+            pendingAdvance: model.pendingAdvance,
+            idleHintActive: model.idleHintActive,
             onSend: model.send,
+            onTapToAdvance: model.advance,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch
         ) {

@@ -34,6 +34,13 @@ public enum TestHarness {
         arguments.contains(Flag.fastBotDelay)
     }
 
+    /// True when the harness has asked for the tap-to-advance gate to be
+    /// off. UI tests pass this so a scripted match doesn't deadlock on a
+    /// "Tap to continue" overlay no XCUI action is targeting.
+    public static func skipTapToAdvance(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.skipTapToAdvance)
+    }
+
     /// A fully resolved table configuration the lobby can use to build a
     /// `GameViewModel`. All fields are populated from launch arguments,
     /// canonical fixtures, or sensible production defaults.

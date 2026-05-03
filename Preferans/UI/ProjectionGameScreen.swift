@@ -9,7 +9,18 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// have access to the typed stream — they get the legacy UX without
     /// notifications.
     public var recentEvents: [PreferansEvent]
+    /// Active tap-to-advance pause descriptor. When non-nil, the felt
+    /// shows a "tap to continue" overlay and any tap on the table area
+    /// invokes `onTapToAdvance`.
+    public var pendingAdvance: PendingAdvance?
+    /// Set to true once the pause has been up long enough that the table
+    /// should escalate the hint into a more prominent "Waiting for you"
+    /// pulse. The felt overlay reads this flag to switch styling.
+    public var idleHintActive: Bool
     public var onSend: (PreferansAction) -> Void
+    /// Invoked when the user taps the felt during a tap-to-advance pause.
+    /// `nil` outside of local play (online tables don't gate per-tap).
+    public var onTapToAdvance: (() -> Void)?
     /// When non-nil, renders an explicit "Leave table" button in the header
     /// and a "Back to lobby" CTA on the game-over card so the user always
     /// has a one-tap exit.
@@ -36,7 +47,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
         projection: PlayerGameProjection,
         eventLog: [String] = [],
         recentEvents: [PreferansEvent] = [],
+        pendingAdvance: PendingAdvance? = nil,
+        idleHintActive: Bool = false,
         onSend: @escaping (PreferansAction) -> Void,
+        onTapToAdvance: (() -> Void)? = nil,
         onLeaveTable: (() -> Void)? = nil,
         onRematch: (() -> Void)? = nil,
         @ViewBuilder extraMenu: () -> Menu = { EmptyView() }
@@ -44,7 +58,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
         self.projection = projection
         self.eventLog = eventLog
         self.recentEvents = recentEvents
+        self.pendingAdvance = pendingAdvance
+        self.idleHintActive = idleHintActive
         self.onSend = onSend
+        self.onTapToAdvance = onTapToAdvance
         self.onLeaveTable = onLeaveTable
         self.onRematch = onRematch
         self.extraMenu = extraMenu()
@@ -108,19 +125,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 6)
                 .padding(.bottom, 8)
-            TableView(
-                projection: projection,
-                animationNamespace: cardNamespace,
-                onAdvance: advanceToNextDeal,
-                onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
-                onLeaveTable: onLeaveTable,
-                onRematch: onRematch,
-                seatActions: seatActions,
-                seatRoleBadges: seatRoleBadges,
-                bannerAction: bannerAction
-            )
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            tableView(seatRoleBadges: seatRoleBadges)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             if shouldShowActionBar {
                 ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
             }
@@ -192,6 +199,15 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// that). Reuses the same TableView play-area branch as portrait.
     @ViewBuilder
     private var landscapeTablePlayArea: some View {
+        tableView(renderOpponentsAtTop: false)
+    }
+
+    /// Single source of truth for the TableView trailing arguments.
+    /// Every layout (compact, landscape, regular) passes the same
+    /// projection / handlers / pause state — only `renderOpponentsAtTop`
+    /// and `seatRoleBadges` vary.
+    private func tableView(renderOpponentsAtTop: Bool = true,
+                           seatRoleBadges: [PlayerID: SeatRoleBadge] = [:]) -> TableView {
         TableView(
             projection: projection,
             animationNamespace: cardNamespace,
@@ -199,9 +215,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
             onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch,
-            renderOpponentsAtTop: false,
+            renderOpponentsAtTop: renderOpponentsAtTop,
             seatActions: seatActions,
-            bannerAction: bannerAction
+            seatRoleBadges: seatRoleBadges,
+            bannerAction: bannerAction,
+            pendingAdvance: pendingAdvance,
+            idleHintActive: idleHintActive,
+            onTapToAdvance: onTapToAdvance
         )
     }
 
@@ -225,17 +245,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 6)
                     .padding(.bottom, 8)
-                TableView(
-                    projection: projection,
-                    animationNamespace: cardNamespace,
-                    onAdvance: advanceToNextDeal,
-                    onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
-                    onLeaveTable: onLeaveTable,
-                    onRematch: onRematch,
-                    seatActions: seatActions,
-                    bannerAction: bannerAction
-                )
-                .frame(maxHeight: .infinity)
+                tableView()
+                    .frame(maxHeight: .infinity)
                 if shouldShowActionBar {
                     ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
                 }

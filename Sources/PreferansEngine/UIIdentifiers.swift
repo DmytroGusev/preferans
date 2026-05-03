@@ -131,6 +131,14 @@ public enum UIIdentifiers {
     /// by tests that want to confirm an action surfaced visibly rather
     /// than only mutating state.
     public static let actionBanner             = "action.banner"
+    /// Tap-to-advance overlay shown on the felt while the table is paused
+    /// between card-play beats. Tests can target this to confirm the
+    /// gate is up; tapping it resumes the table.
+    public static let tapToAdvance             = "table.tapToAdvance"
+    /// Prominent "Waiting for you" pulse that appears once the gate has
+    /// been up for a few seconds. Tests assert on this to verify the
+    /// idle escalation.
+    public static let waitingForViewer         = "table.waitingForViewer"
     /// Per-seat last-action badge inline in the seat name chip. Suffix the
     /// PlayerID so tests can target the chip for a specific seat.
     public static func seatLastAction(_ player: PlayerID) -> String {
@@ -276,10 +284,21 @@ public enum UITestFlags {
     public static let raspasyPolicy      = "-uiTestRaspasyPolicy"
     public static let totusPolicy        = "-uiTestTotusPolicy"
     public static let disableAnimations  = "-uiTestDisableAnimations"
-    /// Force bot pacing to 0ms. Tests pass this to keep match-driver
-    /// runs under the 30-second budget; interactive sim runs leave it
-    /// off so the user sees the chosen Bot speed (Normal = 1.2s).
-    public static let zeroBotDelay       = "-uiTestZeroBotDelay"
+    /// Force bot pacing to `BotPacing.testFast` (10ms). Tests pass this
+    /// to keep match-driver runs under the 30-second budget while still
+    /// leaving SwiftUI a render cycle between actions; interactive sim
+    /// runs leave it off so the user sees the chosen Bot speed.
+    public static let fastBotDelay       = "-uiTestFastBotDelay"
+    /// Skip the tap-to-advance gate that pauses card-play between
+    /// reveals in production. UI tests can't tap a "reveal next" overlay
+    /// while also driving the match script, so this flag bypasses the
+    /// gate and lets the engine cascade as it always did.
+    public static let skipTapToAdvance   = "-uiTestSkipTapToAdvance"
+    /// Force `AppLanguage.apply(.en)` at launch so XCUI assertions on
+    /// localized strings ("Bidding", "Play", etc.) don't drift on
+    /// simulators whose preferred language is neither English nor the
+    /// app's `AppLanguage.default`.
+    public static let pinLanguageEn      = "-uiTestPinLanguageEn"
 }
 
 /// Strings rendered by the app and parsed back by UI tests. Keeping

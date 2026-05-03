@@ -484,6 +484,11 @@ public struct LobbyView: View {
             } else {
                 model.botMoveDelay = (speedOverride ?? botSpeed).delay
             }
+            // No-human runs and UI tests skip the tap-to-advance gate.
+            let hasHumanSeat = seats.contains { $0.kind == .human }
+            if TestHarness.skipTapToAdvance(in: args) || !hasHumanSeat {
+                model.tapToAdvanceEnabled = false
+            }
             localModel = model
             errorText = nil
         } catch {

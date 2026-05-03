@@ -1,4 +1,5 @@
 import SwiftUI
+import PreferansEngine
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -15,8 +16,15 @@ struct PreferansApp: App {
     init() {
         // Default to Russian on first launch (overridable in Settings). Has
         // to land before any view loads so `Bundle.main`'s catalog lookup
-        // picks the right language for this process.
-        AppLanguage.apply(AppLanguage.current)
+        // picks the right language for this process. The UI-test flag
+        // pins English so XCUI assertions don't drift on simulators
+        // whose preferred language differs from the app default.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains(UITestFlags.pinLanguageEn) {
+            AppLanguage.apply(.en)
+        } else {
+            AppLanguage.apply(AppLanguage.current)
+        }
 
         // UIKit's flag stops UIView animations; the SwiftUI .transaction
         // modifier below stops implicit/explicit SwiftUI animations the

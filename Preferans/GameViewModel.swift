@@ -31,7 +31,29 @@ public final class GameViewModel: ObservableObject {
     /// drift on the same number.
     public var botMoveDelay: Duration = BotPacing.interactive
 
+    /// When true (the production default), card-play events pause the UI
+    /// until the human viewer taps to advance. Disabled by UI tests and by
+    /// the all-bots Watch demo, where there's no human to tap.
+    public var tapToAdvanceEnabled: Bool = true
+
+    /// How long the gate waits before flipping ``idleHintActive`` to true.
+    /// The UI uses the flag to escalate the "tap to continue" hint into a
+    /// more prominent "Waiting for you" pulse so a player who set the
+    /// device down doesn't lose the game thread.
+    public var idleHintDelay: Duration = .seconds(4)
+
+    /// When non-nil, the table is paused on a beat the human just observed
+    /// (their card landing, a bot's reply, a trick completing). The UI
+    /// reads ``displayProjection(revealAll:)`` to render the frozen frame
+    /// and waits for ``advance()`` to move on.
+    @Published public private(set) var pendingAdvance: PendingAdvance?
+
+    /// Becomes true once the gate has been up for ``idleHintDelay``. Reset
+    /// on every advance and on every action.
+    @Published public private(set) var idleHintActive: Bool = false
+
     private var pendingBotTask: Task<Void, Never>?
+    private var idleHintTask: Task<Void, Never>?
 
     public init(
         players: [PlayerID],
@@ -49,6 +71,12 @@ public final class GameViewModel: ObservableObject {
 
     public func send(_ action: PreferansAction) {
         do {
+            // Snapshot the projection before applying so we can later
+            // override the displayed phase when the engine moves past
+            // `.playing` on the same step that closed a trick (last trick
+            // of a deal jumps straight to `.dealScored` and the trick
+            // would otherwise vanish before the user sees it).
+            let preProjection = projection(revealAll: true)
             let authoritativeAction = makeAuthoritative(action)
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: events.map { String(describing: $0) })
@@ -59,7 +87,15 @@ public final class GameViewModel: ObservableObject {
             lastError = nil
             lastErrorCategory = nil
             applyViewerPolicy()
-            scheduleBotIfNeeded()
+            if let pending = makePendingAdvance(events: events, preProjection: preProjection) {
+                pendingAdvance = pending
+                startIdleHintTimer()
+                pendingBotTask?.cancel()
+                pendingBotTask = nil
+            } else {
+                clearAdvanceGate()
+                scheduleBotIfNeeded()
+            }
         } catch let error as PreferansError {
             lastError = error.errorDescription
             lastErrorCategory = ErrorCategory(error)
@@ -67,6 +103,120 @@ public final class GameViewModel: ObservableObject {
             lastError = error.localizedDescription
             lastErrorCategory = .system
         }
+    }
+
+    /// Resume the table after a tap-to-advance pause. Drops the freeze
+    /// and lets the next bot move (if any) schedule.
+    public func advance() {
+        guard pendingAdvance != nil else { return }
+        clearAdvanceGate()
+        scheduleBotIfNeeded()
+    }
+
+    private func clearAdvanceGate() {
+        pendingAdvance = nil
+        idleHintActive = false
+        idleHintTask?.cancel()
+        idleHintTask = nil
+    }
+
+    private func startIdleHintTimer() {
+        idleHintTask?.cancel()
+        idleHintActive = false
+        let delay = idleHintDelay
+        guard delay > .zero else {
+            // Tests set the delay to zero so the prominent hint shows
+            // immediately and the assertion doesn't need to sleep.
+            idleHintActive = true
+            return
+        }
+        idleHintTask = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self else { return }
+            await MainActor.run {
+                guard self.pendingAdvance != nil else { return }
+                self.idleHintActive = true
+            }
+        }
+    }
+
+    /// Build the pause descriptor for a freshly-applied action, or `nil`
+    /// when the table should keep moving without a tap. The gate fires only
+    /// after a `cardPlayed` event whose follow-up is something the human
+    /// viewer needs to observe — a bot move or a just-completed trick.
+    /// Bidding, discard, and other phases are driven by explicit user
+    /// taps already, so they don't get an extra "tap to continue" beat.
+    private func makePendingAdvance(events: [PreferansEvent], preProjection: PlayerGameProjection) -> PendingAdvance? {
+        guard tapToAdvanceEnabled else { return nil }
+        // Watch-bots demo / all-bot table: no human to tap, just cascade.
+        guard !isBotSeat(selectedViewer) else { return nil }
+        var hadCardPlayed = false
+        var completedTrick: Trick?
+        for event in events {
+            if case .cardPlayed = event { hadCardPlayed = true }
+            if case let .trickCompleted(trick) = event, completedTrick == nil { completedTrick = trick }
+        }
+        guard hadCardPlayed else { return nil }
+        let nextIsBot = engine.state.currentActor.map(isBotSeat(_:)) ?? false
+        guard nextIsBot || completedTrick != nil else { return nil }
+        if let trick = completedTrick {
+            // Engine has already cleared `currentTrick` and rotated the
+            // leader; the projection's phase may even have moved past
+            // `.playingTrick` (e.g., to `.dealScored` on the closing
+            // trick of the deal). Snapshot the pre-action phase / count
+            // so the override holds the felt on the completed trick.
+            return PendingAdvance(
+                waitingOn: selectedViewer,
+                trickPlays: trick.plays,
+                trickWinner: trick.winner,
+                phaseOverride: preProjection.phase,
+                completedTrickCountOverride: preProjection.completedTrickCount
+            )
+        }
+        return PendingAdvance(
+            waitingOn: selectedViewer,
+            trickPlays: nil,
+            trickWinner: nil,
+            phaseOverride: nil,
+            completedTrickCountOverride: nil
+        )
+    }
+
+    private func isBotSeat(_ player: PlayerID) -> Bool {
+        botStrategies[player] != nil
+    }
+
+    /// Variant of ``projection(revealAll:)`` that applies the active
+    /// tap-to-advance freeze. Views render this so the user sees the
+    /// just-played beat before the engine's follow-up state.
+    public func displayProjection(revealAll: Bool = true) -> PlayerGameProjection {
+        var p = projection(revealAll: revealAll)
+        guard let advance = pendingAdvance else { return p }
+        if let plays = advance.trickPlays {
+            p.currentTrick = plays
+        }
+        if let winner = advance.trickWinner {
+            // Roll the winner's count back to its pre-close value so the
+            // tally on the felt matches what the user is staring at.
+            let prev = p.trickCounts[winner] ?? 0
+            p.trickCounts[winner] = max(0, prev - 1)
+            if let i = p.seats.firstIndex(where: { $0.player == winner }) {
+                p.seats[i].trickCount = max(0, p.seats[i].trickCount - 1)
+            }
+        }
+        if let count = advance.completedTrickCountOverride {
+            p.completedTrickCount = count
+        }
+        if let phase = advance.phaseOverride {
+            p.phase = phase
+        }
+        // While the gate is up, suppress legal-action affordances so a
+        // viewer who happens to be the next actor (e.g., after winning
+        // a trick) can't tap a card and skip past the freeze. The first
+        // tap acknowledges the beat; the second tap makes the move.
+        p.legal.playableCards = []
+        p.legal.canStartDeal = false
+        return p
     }
 
     /// The error message that should be surfaced to the user as a banner,
@@ -127,6 +277,10 @@ public final class GameViewModel: ObservableObject {
     /// supersedes any in-flight decision.
     private func scheduleBotIfNeeded() {
         pendingBotTask?.cancel()
+        guard pendingAdvance == nil else {
+            pendingBotTask = nil
+            return
+        }
         guard let actor = currentActor(), let strategy = botStrategies[actor] else {
             pendingBotTask = nil
             return
@@ -150,6 +304,34 @@ public final class GameViewModel: ObservableObject {
             }
         }
     }
+}
+
+/// Tap-to-advance pause descriptor. When non-nil on the view model, the
+/// table is frozen on a beat the user just watched land — their own card,
+/// a bot's reply, or a completed trick. The view model holds the gate up
+/// until ``GameViewModel/advance()`` is called (typically by a tap on the
+/// felt). Bidding, discard, and other phases skip the gate entirely;
+/// they're already driven by explicit user taps.
+public struct PendingAdvance: Equatable, Sendable {
+    /// Seat that must tap to advance. Today this is always the on-screen
+    /// viewer; the field exists so the "Waiting for X" hint reads from a
+    /// single source rather than re-deriving the seat in every view.
+    public let waitingOn: PlayerID
+    /// When set, render these plays as the current trick on the felt.
+    /// Used after `trickCompleted` to hold the four-card trick visible
+    /// even though the engine has already cleared its `currentTrick`.
+    public let trickPlays: [CardPlay]?
+    /// Seat that just won the trick. Used to roll the displayed
+    /// trick-count back to its pre-close value while the trick is frozen.
+    public let trickWinner: PlayerID?
+    /// Phase to display while the gate is up. Lets the felt stay on
+    /// `.playingTrick` even when the engine has moved to `.dealScored`
+    /// or `.matchOver` (the closing trick of a deal).
+    public let phaseOverride: ProjectedPhase?
+    /// Completed-trick count to display while the gate is up. Held at the
+    /// pre-close value so the auction-trail / felt indicators don't tick
+    /// the trick number forward before the user has acknowledged it.
+    public let completedTrickCountOverride: Int?
 }
 
 extension GameViewModel {

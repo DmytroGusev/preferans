@@ -35,6 +35,17 @@ public struct TableView: View {
     /// The most recent banner-worthy action across the whole table. Drives
     /// the centered toast that fades out after a short hold.
     public var bannerAction: RecentAction?
+    /// When non-nil, the felt is paused on a beat the human just observed
+    /// (their card landing, a bot's reply, a completed trick). The table
+    /// renders a "tap to continue" overlay and any tap on the felt fires
+    /// `onTapToAdvance`. Hand and overflow-menu interactions remain live
+    /// underneath.
+    public var pendingAdvance: PendingAdvance?
+    /// True once the pause has been up long enough that the table should
+    /// escalate the hint into a more prominent "Waiting for you" pulse.
+    public var idleHintActive: Bool
+    /// Called when the felt is tapped during a tap-to-advance pause.
+    public var onTapToAdvance: (() -> Void)?
 
     public init(
         projection: PlayerGameProjection,
@@ -46,7 +57,10 @@ public struct TableView: View {
         renderOpponentsAtTop: Bool = true,
         seatActions: [PlayerID: RecentAction] = [:],
         seatRoleBadges: [PlayerID: SeatRoleBadge] = [:],
-        bannerAction: RecentAction? = nil
+        bannerAction: RecentAction? = nil,
+        pendingAdvance: PendingAdvance? = nil,
+        idleHintActive: Bool = false,
+        onTapToAdvance: (() -> Void)? = nil
     ) {
         self.projection = projection
         self.animationNamespace = animationNamespace
@@ -58,23 +72,79 @@ public struct TableView: View {
         self.seatActions = seatActions
         self.seatRoleBadges = seatRoleBadges
         self.bannerAction = bannerAction
+        self.pendingAdvance = pendingAdvance
+        self.idleHintActive = idleHintActive
+        self.onTapToAdvance = onTapToAdvance
     }
 
     public var body: some View {
         let opponents = orderedOpponents()
         let active = opponents.filter { $0.role != .sittingOut }
         let sittingOut = opponents.filter { $0.role == .sittingOut }
-        if renderOpponentsAtTop {
-            VStack(spacing: 4) {
-                DealStateStrip(projection: projection)
-                tableLayout(active: active, sittingOut: sittingOut)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Group {
+            if renderOpponentsAtTop {
+                VStack(spacing: 4) {
+                    DealStateStrip(projection: projection)
+                    tableLayout(active: active, sittingOut: sittingOut)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                playArea(opponentSeats: active.map(\.player))
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 200)
             }
-        } else {
-            playArea(opponentSeats: active.map(\.player))
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: 200)
         }
+        .overlay { tapToAdvanceOverlay }
+    }
+
+    /// Felt-wide tap target shown while the table is paused between card-play beats.
+    @ViewBuilder
+    private var tapToAdvanceOverlay: some View {
+        if let advance = pendingAdvance, let onTap = onTapToAdvance {
+            ZStack {
+                Color.black.opacity(idleHintActive ? 0.18 : 0.05)
+                    .contentShape(Rectangle())
+                    .onTapGesture { onTap() }
+                tapToAdvanceHint(advance: advance)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.tapToAdvance)
+            .transition(.opacity)
+        }
+    }
+
+    private func tapToAdvanceHint(advance: PendingAdvance) -> some View {
+        let waitingName = projection.displayName(for: advance.waitingOn)
+        return VStack(spacing: 4) {
+            if idleHintActive {
+                Text("Waiting for \(waitingName)")
+                    .font(.headline.bold())
+                    .foregroundStyle(TableTheme.goldBright)
+                    .accessibilityIdentifier(UIIdentifiers.waitingForViewer)
+            }
+            HStack(spacing: 6) {
+                Image(systemName: "hand.tap.fill")
+                    .font(.caption)
+                Text("Tap to continue")
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(TableTheme.inkCream)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, idleHintActive ? 10 : 7)
+        .background(
+            Capsule().fill(Color.black.opacity(idleHintActive ? 0.75 : 0.55))
+        )
+        .overlay(
+            Capsule().strokeBorder(
+                idleHintActive ? TableTheme.goldBright.opacity(0.7) : TableTheme.inkCream.opacity(0.15),
+                lineWidth: idleHintActive ? 1.2 : 0.5
+            )
+        )
+        .scaleEffect(idleHintActive ? 1.06 : 1.0)
+        .shadow(color: idleHintActive ? TableTheme.goldBright.opacity(0.45) : .black.opacity(0.25),
+                radius: idleHintActive ? 14 : 4)
+        .animation(.easeInOut(duration: 0.35), value: idleHintActive)
     }
 
     /// Real card-table layout: opponents are positioned around the felt

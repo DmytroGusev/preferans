@@ -456,6 +456,7 @@ extension XCUIApplication {
     /// are disabled by default so taps land on settled frames; pass
     /// `disableAnimations: false` for screenshot tests that need motion.
     func configureForMatchScript(_ name: String, extra: [String] = [], disableAnimations: Bool = true) {
+        pinTestLocaleEnglish()
         launchArguments += [
             UITestFlags.viewerFollowsActor,
             UITestFlags.matchScript, name,
@@ -463,6 +464,10 @@ extension XCUIApplication {
             // doesn't run for 12+ s of pure pacing while still leaving
             // SwiftUI a render cycle between actions.
             UITestFlags.fastBotDelay,
+            // Scripted matches pre-program every action, so the
+            // tap-to-advance gate has no human to tap and would deadlock
+            // the script. Bypass it for the duration of the test.
+            UITestFlags.skipTapToAdvance,
         ]
         if disableAnimations {
             launchArguments += [UITestFlags.disableAnimations]
@@ -474,6 +479,23 @@ extension XCUIApplication {
     /// configuration. Use for raw lobby/bidding tests that build their own
     /// launch-argument list but still want the animation-free fast path.
     func disableUITestAnimations() {
-        launchArguments += [UITestFlags.disableAnimations, UITestFlags.fastBotDelay]
+        pinTestLocaleEnglish()
+        launchArguments += [
+            UITestFlags.disableAnimations,
+            UITestFlags.fastBotDelay,
+            UITestFlags.skipTapToAdvance,
+        ]
+    }
+
+    /// Lock the app's locale to English so XCUI assertions on phase
+    /// titles, button labels, and other localized strings don't depend
+    /// on the simulator's preferred language. The app forces
+    /// `AppLanguage.apply(.en)` when this flag is present (see
+    /// `PreferansApp.init`); we also pass the standard Foundation
+    /// overrides for formatters that read `Locale.current` directly.
+    func pinTestLocaleEnglish() {
+        launchArguments += [UITestFlags.pinLanguageEn,
+                            "-AppleLanguages", "(en)",
+                            "-AppleLocale", "en_US"]
     }
 }

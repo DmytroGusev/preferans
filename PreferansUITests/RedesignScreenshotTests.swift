@@ -108,10 +108,12 @@ final class RedesignScreenshotTests: XCTestCase {
         let app = XCUIApplication()
         // Pool target = 6, viewer follows actor, animations off so the
         // simulator burns less time on transitions.
+        app.pinTestLocaleEnglish()
         app.launchArguments += [
             UITestFlags.viewerFollowsActor,
             UITestFlags.disableAnimations,
             UITestFlags.fastBotDelay,
+            UITestFlags.skipTapToAdvance,
             UITestFlags.poolTarget, "6",
         ]
         app.launch()
