@@ -70,6 +70,7 @@ public struct CardFanView: View {
                             isSelected: isSelected,
                             exposesAccessibility: !isInteractive
                         )
+                        .opacity(dimsUnplayable && known != nil && !isPlayable ? 0.55 : 1)
                         .allowsHitTesting(!isInteractive)
 
                         if let known, let onTap {
@@ -96,6 +97,10 @@ public struct CardFanView: View {
             .frame(width: available, height: cardHeight + 12, alignment: .topLeading)
         }
         .frame(height: cardHeight + 12)
+    }
+
+    private var dimsUnplayable: Bool {
+        !playableCards.isEmpty
     }
 
     private var indexedCards: [IndexedCard] {

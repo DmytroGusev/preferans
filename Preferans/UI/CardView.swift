@@ -108,9 +108,9 @@ public struct CardView: View {
                     .accessibilityLabel("From the prikup")
             }
         }
-        .shadow(color: .black.opacity(isPlayable ? 0.22 : 0.10), radius: isPlayable ? 5 : 2, y: 1)
+        .shadow(color: .black.opacity(isPlayable ? 0.30 : 0.10), radius: isPlayable ? 6 : 2, y: isPlayable ? 3 : 1)
         .scaleEffect(isSelected ? 1.10 : 1)
-        .offset(y: isSelected ? -8 : 0)
+        .offset(y: isSelected ? -8 : (isPlayable ? -3 : 0))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(card.description)
         .accessibilityIdentifier(identifier)
@@ -177,12 +177,11 @@ public struct CardView: View {
 
     private var borderColor: Color {
         if isSelected { return .accentColor }
-        if isPlayable { return .accentColor.opacity(0.85) }
         return .black.opacity(0.18)
     }
 
     private var borderWidth: CGFloat {
-        isPlayable || isSelected ? 2 : 0.6
+        isSelected ? 2 : 0.6
     }
 
     private var identifier: String {
