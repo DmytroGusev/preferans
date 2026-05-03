@@ -135,4 +135,96 @@ final class GameViewModelTapAdvanceTests: XCTestCase {
         XCTAssertTrue(display.legal.playableCards.isEmpty,
                       "frozen view never offers playable cards — first tap acknowledges the beat")
     }
+
+    func testViewerSelfPlayDoesNotFireGateEvenWithBotsBehind() throws {
+        let model = try makeModel()
+        model.botStrategies["east"] = InertStrategy()
+        model.botStrategies["south"] = InertStrategy()
+        // Park the bot move delay so the bot scheduler can't race the
+        // assertion if the gate-skip path schedules a follow-up move.
+        model.botMoveDelay = .seconds(60)
+        driveToPlay(model)
+
+        model.send(.playCard(player: "north", card: Card(.spades, .ace)))
+
+        XCTAssertNil(model.pendingAdvance,
+                     "viewer's own card play never freezes — they just chose it")
+    }
+
+    func testBotCardPlayFreezesFeltMidTrick() throws {
+        let model = try makeModel()
+        model.botStrategies["east"] = InertStrategy()
+        model.botStrategies["south"] = InertStrategy()
+        model.botMoveDelay = .seconds(60)
+        driveToPlay(model)
+
+        // North leads, East (bot) replies. South (also bot) is up next,
+        // so the gate should freeze on East's card.
+        model.send(.playCard(player: "north", card: Card(.spades, .ace)))
+        XCTAssertNil(model.pendingAdvance, "viewer self-play sanity check")
+        model.send(.playCard(player: "east", card: Card(.spades, .seven)))
+
+        let pending = try XCTUnwrap(model.pendingAdvance,
+                                    "a bot card with another bot up next should freeze the felt")
+        XCTAssertNil(pending.trickPlays,
+                     "mid-trick gate carries no override — the engine state already shows the trick")
+    }
+
+    func testBotCardPlayDoesNotFreezeWhenViewerIsNext() throws {
+        let model = try makeModel()
+        // Pin the viewer to south so after east (bot) plays second, the
+        // viewer is the next actor — the gate must stay quiet because
+        // the viewer's own play will be the advance.
+        model.botStrategies["east"] = InertStrategy()
+        model.botMoveDelay = .seconds(60)
+        model.selectedViewer = "south"
+        driveToPlay(model)
+
+        // North (declarer) leads. East (bot) follows. Viewer (south) is next.
+        model.send(.playCard(player: "north", card: Card(.spades, .ace)))
+        model.send(.playCard(player: "east", card: Card(.spades, .seven)))
+
+        XCTAssertNil(model.pendingAdvance,
+                     "no freeze when the viewer is up next — their own tap is the advance")
+    }
+
+    func testPrikupRevealFreezesForDefenderViewer() throws {
+        let model = try makeModel()
+        // Pinned viewer is north (default in makeModel). Drive an
+        // auction where east wins so north is a defender — the prikup
+        // reveal should freeze on the viewer.
+        model.botStrategies["east"] = InertStrategy()
+        model.botStrategies["south"] = InertStrategy()
+        model.botMoveDelay = .seconds(60)
+        model.startDeal()
+        model.send(.bid(player: "north", call: .pass))
+        model.send(.bid(player: "east", call: .bid(Self.sixSpades)))
+        model.send(.bid(player: "south", call: .pass))
+
+        let pending = try XCTUnwrap(model.pendingAdvance,
+                                    "prikup reveal should freeze for defender viewers")
+        XCTAssertEqual(pending.waitingOn, "north")
+        XCTAssertNil(pending.trickPlays, "prikup gate has no trick override")
+    }
+
+    func testPrikupRevealDoesNotFreezeForDeclarerViewer() throws {
+        let model = try makeModel()
+        // Default viewer (north) wins the auction in driveToPlay's first
+        // three sends. The declarer is the viewer, so no prikup gate.
+        model.startDeal()
+        model.send(.bid(player: "north", call: .bid(Self.sixSpades)))
+        model.send(.bid(player: "east", call: .pass))
+        model.send(.bid(player: "south", call: .pass))
+
+        XCTAssertNil(model.pendingAdvance,
+                     "the declarer is about to discard interactively — no extra acknowledgement tap")
+    }
+}
+
+/// No-op strategy so test seats can be marked as bots without the
+/// bot scheduler interfering with the manually-driven action sequence.
+private struct InertStrategy: PlayerStrategy {
+    func decide(snapshot: PreferansSnapshot, viewer: PlayerID) async -> PreferansAction? {
+        nil
+    }
 }

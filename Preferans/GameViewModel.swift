@@ -141,24 +141,33 @@ public final class GameViewModel: ObservableObject {
     }
 
     /// Build the pause descriptor for a freshly-applied action, or `nil`
-    /// when the table should keep moving without a tap. The gate fires only
-    /// after a `cardPlayed` event whose follow-up is something the human
-    /// viewer needs to observe — a bot move or a just-completed trick.
-    /// Bidding, discard, and other phases are driven by explicit user
-    /// taps already, so they don't get an extra "tap to continue" beat.
+    /// when the table should keep moving without a tap. The gate fires
+    /// only on beats the viewer needs to observe — something landed on
+    /// the felt that they didn't trigger themselves:
+    ///
+    /// * a completed trick (any closing card),
+    /// * a bot's card with another bot up next (so it doesn't get
+    ///   immediately replaced),
+    /// * the prikup being revealed when the viewer isn't the declarer.
+    ///
+    /// Skipped on the viewer's own card play (they just chose it — the
+    /// next beat will gate on its own merits) and on bidding / discard /
+    /// whist phases (already driven by explicit user taps).
     private func makePendingAdvance(events: [PreferansEvent], preProjection: PlayerGameProjection) -> PendingAdvance? {
         guard tapToAdvanceEnabled else { return nil }
         // Watch-bots demo / all-bot table: no human to tap, just cascade.
         guard !isBotSeat(selectedViewer) else { return nil }
-        var hadCardPlayed = false
+        var lastCardPlay: CardPlay?
         var completedTrick: Trick?
+        var auctionDeclarer: PlayerID?
         for event in events {
-            if case .cardPlayed = event { hadCardPlayed = true }
+            if case let .cardPlayed(play) = event { lastCardPlay = play }
             if case let .trickCompleted(trick) = event, completedTrick == nil { completedTrick = trick }
+            if case let .auctionWon(declarer, _) = event { auctionDeclarer = declarer }
         }
-        guard hadCardPlayed else { return nil }
-        let nextIsBot = engine.state.currentActor.map(isBotSeat(_:)) ?? false
-        guard nextIsBot || completedTrick != nil else { return nil }
+
+        // Trick close always freezes — the viewer needs to see who won
+        // before the felt sweeps and a new leader takes over.
         if let trick = completedTrick {
             // Engine has already cleared `currentTrick` and rotated the
             // leader; the projection's phase may even have moved past
@@ -173,13 +182,39 @@ public final class GameViewModel: ObservableObject {
                 completedTrickCountOverride: preProjection.completedTrickCount
             )
         }
-        return PendingAdvance(
-            waitingOn: selectedViewer,
-            trickPlays: nil,
-            trickWinner: nil,
-            phaseOverride: nil,
-            completedTrickCountOverride: nil
-        )
+
+        // A bot played a card and another bot is up next — freeze so
+        // the viewer sees what landed before it gets buried. If the
+        // viewer played the card themselves, or the viewer is the next
+        // actor, no gate: the next interaction is the viewer's tap.
+        if let play = lastCardPlay,
+           play.player != selectedViewer,
+           engine.state.currentActor.map(isBotSeat(_:)) ?? false {
+            return PendingAdvance(
+                waitingOn: selectedViewer,
+                trickPlays: nil,
+                trickWinner: nil,
+                phaseOverride: nil,
+                completedTrickCountOverride: nil
+            )
+        }
+
+        // Auction just resolved — the prikup is now face-up on the felt.
+        // Freeze so a defender viewer sees the two cards before a bot
+        // declarer picks them up and they vanish into the bot's hand.
+        // Skipped when the viewer is the declarer themselves: they're
+        // about to discard interactively and don't need an extra tap.
+        if let declarer = auctionDeclarer, declarer != selectedViewer {
+            return PendingAdvance(
+                waitingOn: selectedViewer,
+                trickPlays: nil,
+                trickWinner: nil,
+                phaseOverride: nil,
+                completedTrickCountOverride: nil
+            )
+        }
+
+        return nil
     }
 
     private func isBotSeat(_ player: PlayerID) -> Bool {
