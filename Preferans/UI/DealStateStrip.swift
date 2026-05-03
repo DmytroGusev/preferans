@@ -112,7 +112,7 @@ public struct DealStateStrip: View {
         let summary = wonContractSummary()
         return HStack(spacing: 6) {
             if let (declarer, bid) = summary {
-                contractChip(declarer: declarer, bid: bid, label: nil)
+                contractChip(declarer: declarer, bid: bid, label: nil, prominent: true)
             }
             Spacer(minLength: 4)
             if let summary, let progress = contractProgress(declarer: summary.0, bid: summary.1) {
@@ -289,8 +289,19 @@ public struct DealStateStrip: View {
 
     /// "Anya — 6♠" pill highlighting the live contract. Used in both the
     /// whist row (just-named contract) and the play row (live contract).
-    private func contractChip(declarer: PlayerID, bid: ContractBid, label: String?) -> some View {
-        HStack(spacing: 4) {
+    /// `prominent` bumps the typography and chrome for trick-play, where
+    /// the contract is the single most important piece of state on screen.
+    private func contractChip(
+        declarer: PlayerID,
+        bid: ContractBid,
+        label: String?,
+        prominent: Bool = false
+    ) -> some View {
+        let nameFont: Font = prominent ? .subheadline.weight(.heavy) : .caption.weight(.bold)
+        let glyphFont: Font = prominent ? .subheadline.weight(.heavy) : .caption.weight(.bold)
+        let hPad: CGFloat = prominent ? 10 : 8
+        let vPad: CGFloat = prominent ? 5 : 3
+        return HStack(spacing: 4) {
             if let label {
                 Text(label)
                     .font(.system(size: 9, weight: .bold))
@@ -299,19 +310,19 @@ public struct DealStateStrip: View {
                     .foregroundStyle(TableTheme.inkCreamSoft)
             }
             Text(projection.displayName(for: declarer))
-                .font(.caption.weight(.bold))
+                .font(nameFont)
                 .foregroundStyle(TableTheme.inkCream)
                 .lineLimit(1)
             bidGlyph(bid: bid)
-                .font(.caption.weight(.bold))
+                .font(glyphFont)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
+        .padding(.horizontal, hPad)
+        .padding(.vertical, vPad)
         .background(
-            Capsule().fill(TableTheme.gold.opacity(0.25))
+            Capsule().fill(TableTheme.gold.opacity(prominent ? 0.38 : 0.25))
         )
         .overlay(
-            Capsule().strokeBorder(TableTheme.gold.opacity(0.55), lineWidth: 0.5)
+            Capsule().strokeBorder(TableTheme.gold.opacity(prominent ? 0.75 : 0.55), lineWidth: prominent ? 0.8 : 0.5)
         )
     }
 
