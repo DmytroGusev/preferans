@@ -1,12 +1,12 @@
 import SwiftUI
 import PreferansEngine
 
-/// Triangular pulka diagram for 3-player preferans. Each player owns a
-/// corner of the triangle showing their bullet (Пуля), mountain (Гора)
-/// and running balance. Cultural shorthand — experienced players "read"
-/// the table state from the corners faster than from a list. For
-/// 4-player tables the parent view falls back to the cards layout; the
-/// square-pulka variant is left for a follow-up.
+/// Pulka diagram for 3- and 4-player preferans. Each player owns a
+/// corner — triangle for 3, diamond/square for 4 — showing their bullet
+/// (Пуля), mountain (Гора) and running balance. Cultural shorthand —
+/// experienced players "read" the table state from the corners faster
+/// than from a list. Player order follows engine seat order so opposite
+/// corners reflect across-the-table seating.
 public struct PulkaDiagramView: View {
     public var score: ScoreSheet
 
@@ -15,36 +15,51 @@ public struct PulkaDiagramView: View {
     }
 
     public var body: some View {
-        let players = Array(score.players.prefix(3))
+        let players = Array(score.players.prefix(4))
+        let layout = layoutKind(for: players.count)
         return GeometryReader { geo in
             let bounds = geo.size
             ZStack {
-                triangleOutline(in: bounds)
+                outline(for: layout, in: bounds)
                 ForEach(Array(players.enumerated()), id: \.offset) { idx, player in
-                    let position = corner(for: idx, in: bounds)
+                    let position = corner(for: idx, layout: layout, in: bounds)
                     cornerCard(player: player)
                         .position(x: position.x, y: position.y)
                 }
             }
         }
-        .frame(height: 220)
+        .frame(height: layout == .square ? 300 : 220)
     }
 
-    private func corner(for index: Int, in bounds: CGSize) -> CGPoint {
-        let xs: [CGFloat] = [0.50, 0.18, 0.82]
-        let ys: [CGFloat] = [0.18, 0.82, 0.82]
-        let i = min(index, xs.count - 1)
-        return CGPoint(x: bounds.width * xs[i], y: bounds.height * ys[i])
+    private enum Layout { case triangle, square }
+
+    private func layoutKind(for count: Int) -> Layout {
+        count >= 4 ? .square : .triangle
     }
 
-    private func triangleOutline(in bounds: CGSize) -> some View {
-        let p0 = corner(for: 0, in: bounds)
-        let p1 = corner(for: 1, in: bounds)
-        let p2 = corner(for: 2, in: bounds)
+    private func corner(for index: Int, layout: Layout, in bounds: CGSize) -> CGPoint {
+        let coords: [(CGFloat, CGFloat)]
+        switch layout {
+        case .triangle:
+            coords = [(0.50, 0.18), (0.18, 0.82), (0.82, 0.82)]
+        case .square:
+            // Diamond — top, right, bottom, left — so opposite seats sit
+            // across the diagram and the corners stay clear of each other.
+            coords = [(0.50, 0.12), (0.88, 0.50), (0.50, 0.88), (0.12, 0.50)]
+        }
+        let i = min(index, coords.count - 1)
+        return CGPoint(x: bounds.width * coords[i].0, y: bounds.height * coords[i].1)
+    }
+
+    private func outline(for layout: Layout, in bounds: CGSize) -> some View {
+        let count = layout == .square ? 4 : 3
+        let points = (0..<count).map { corner(for: $0, layout: layout, in: bounds) }
         return Path { path in
-            path.move(to: p0)
-            path.addLine(to: p1)
-            path.addLine(to: p2)
+            guard let first = points.first else { return }
+            path.move(to: first)
+            for point in points.dropFirst() {
+                path.addLine(to: point)
+            }
             path.closeSubpath()
         }
         .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))

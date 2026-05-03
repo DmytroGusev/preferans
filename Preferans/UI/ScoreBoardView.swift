@@ -19,7 +19,7 @@ public struct ScoreBoardView: View {
 
     public var body: some View {
         VStack(spacing: 16) {
-            if score.players.count == 3 {
+            if (3...4).contains(score.players.count) {
                 PulkaDiagramView(score: score)
             }
             VStack(spacing: 12) {
