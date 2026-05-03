@@ -65,9 +65,9 @@ final class RedesignScreenshotTests: XCTestCase {
 
         recorder.capture(name: "01-lobby")
 
-        let quick = app.buttons["button.quickPlayVsBots"]
-        XCTAssertTrue(quick.waitForExistence(timeout: 5), "Quick-play CTA never appeared")
-        quick.tap()
+        let sitDown = app.buttons[UIIdentifiers.lobbyStartLocalTable]
+        XCTAssertTrue(sitDown.waitForExistence(timeout: 5), "Sit-down CTA never appeared")
+        sitDown.tap()
 
         recorder.capture(name: "02-after-quickplay")
 
@@ -96,6 +96,52 @@ final class RedesignScreenshotTests: XCTestCase {
         }
 
         recorder.capture(name: "99-final")
+    }
+
+    /// Captures the 4-player scoresheet immediately after sit-down so we
+    /// can eyeball the diamond Pulka-diagram geometry. No deals are
+    /// played — the diagram lays out on all-zero balances, which is
+    /// enough to verify corner positions, outline closure, and that the
+    /// top/bottom cards don't collide at the sidebar/sheet widths.
+    func testCaptureFourPlayerPulkaDiagram() {
+        let screenDir = URL(fileURLWithPath: "/Users/sol/projects/preferans/build/screens-pulka")
+        try? FileManager.default.removeItem(at: screenDir)
+
+        let app = XCUIApplication()
+        app.pinTestLocaleEnglish()
+        app.launchArguments += [
+            UITestFlags.disableAnimations,
+            UITestFlags.fastBotDelay,
+        ]
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        let recorder = MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: screenDir,
+            filePrefix: "pulka"
+        )
+
+        let fourPlayers = app.buttons[UIIdentifiers.lobbyPlayerCountFour]
+        XCTAssertTrue(fourPlayers.waitForExistence(timeout: 5))
+        fourPlayers.tap()
+        recorder.capture(name: "01-lobby-4p", force: true, attach: false)
+
+        let startTable = app.buttons[UIIdentifiers.lobbyStartLocalTable]
+        XCTAssertTrue(startTable.waitForExistence(timeout: 3))
+        startTable.tap()
+        recorder.capture(name: "02-table-ready", force: true, attach: false)
+
+        let scoreButton = app.buttons[UIIdentifiers.buttonScoreSheet]
+        XCTAssertTrue(scoreButton.waitForExistence(timeout: 5))
+        scoreButton.tap()
+        let scorePanel = app.otherElements[UIIdentifiers.Panel.score.rawValue]
+        XCTAssertTrue(scorePanel.waitForExistence(timeout: 5))
+        recorder.capture(name: "03-scoresheet-square", force: true, attach: false)
+
+        let dismiss = app.buttons[UIIdentifiers.buttonDismissSheet]
+        if dismiss.waitForExistence(timeout: 3) { dismiss.tap() }
+        recorder.capture(name: "04-after-dismiss", force: true, attach: false)
     }
 
     /// Plays a full 4-player match to pool target = 6 against three bots.
