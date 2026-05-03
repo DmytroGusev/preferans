@@ -18,6 +18,9 @@ Package.resolved
 *.ipa
 AppStore/Screenshots/raw/
 
+# UI test screenshot runs
+bin/.screens/
+
 # Secrets
 *.p8
 *.mobileprovision
