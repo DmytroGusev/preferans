@@ -421,15 +421,17 @@ public enum PlayerProjectionBuilder {
     }
 
     private static func projectTalon(_ talon: [Card], state: DealState, viewer: PlayerID, revealAll: Bool) -> [ProjectedCard] {
-        // Only the declarer sees talon faces, and only during the talon
-        // exchange — once they pick two cards the talon is set aside.
-        let isDeclarerExchanging: Bool
-        if case let .awaitingDiscard(exchange) = state, exchange.declarer == viewer {
-            isDeclarerExchanging = true
+        // The prikup is opened publicly during the talon exchange — every
+        // player sees the two cards the declarer just took. Once the
+        // declarer discards the state advances past .awaitingDiscard and
+        // the talon is set aside (hidden again).
+        let isExchangePhase: Bool
+        if case .awaitingDiscard = state {
+            isExchangePhase = true
         } else {
-            isDeclarerExchanging = false
+            isExchangePhase = false
         }
-        return reveal(talon, when: revealAll || isDeclarerExchanging)
+        return reveal(talon, when: revealAll || isExchangePhase)
     }
 
     private static func projectDiscard(

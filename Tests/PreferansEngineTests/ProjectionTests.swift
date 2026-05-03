@@ -28,6 +28,37 @@ final class ProjectionTests: XCTestCase {
         XCTAssertTrue(projection.talon.allSatisfy { $0.knownCard == nil })
     }
 
+    func testTalonRevealedToAllViewersDuringExchange() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
+        _ = try engine.apply(.startDeal(dealer: "south", deck: Deck.standard32))
+
+        try EngineTestDriver.driveAuctionWinning(
+            engine: &engine,
+            declarer: "north",
+            bid: .game(GameContract(6, .suit(.spades)))
+        )
+
+        guard case .awaitingDiscard = engine.state else {
+            return XCTFail("Expected awaitingDiscard after auction; got \(engine.state.description)")
+        }
+
+        for viewer in players {
+            let projection = PlayerProjectionBuilder.projection(
+                for: viewer,
+                tableID: UUID(),
+                sequence: 0,
+                engine: engine,
+                policy: .online
+            )
+            XCTAssertEqual(projection.talon.count, 2)
+            XCTAssertTrue(
+                projection.talon.allSatisfy { $0.knownCard != nil },
+                "Talon should be revealed to \(viewer) during the exchange so every player can see what the declarer took."
+            )
+        }
+    }
+
     func testFourPlayerDealerProjectsAsSittingOut() throws {
         let players: [PlayerID] = ["north", "east", "south", "west"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "north")
