@@ -28,12 +28,16 @@ public struct LobbyView: View {
                 } else {
                     #if canImport(GameKit) && canImport(UIKit)
                     if let projection = online.projection {
-                        ProjectionGameScreen(projection: projection, eventLog: online.eventLog, onSend: online.send)
-                            .toolbar {
-                                ToolbarItem(placement: .cancellationAction) {
-                                    Button("Leave table") { online.detach() }
-                                }
+                        ProjectionGameScreen(projection: projection, eventLog: online.eventLog, onSend: online.send) {
+                            // Online sessions get a "Leave table" entry in
+                            // the in-game overflow menu instead of a
+                            // dedicated nav-bar button.
+                            Button(role: .destructive) {
+                                online.detach()
+                            } label: {
+                                Label("Leave table", systemImage: "rectangle.portrait.and.arrow.right")
                             }
+                        }
                     } else {
                         lobbyContent
                     }
@@ -79,7 +83,7 @@ public struct LobbyView: View {
 
     private var lobbyContent: some View {
         ScrollView {
-            VStack(spacing: 28) {
+            VStack(spacing: 22) {
                 hero
 
                 localTableCard
@@ -97,9 +101,13 @@ public struct LobbyView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 24)
+            .padding(.top, 18)
+            .padding(.bottom, 104)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            lobbyStartBar
         }
         #if canImport(UIKit)
         .background(Color(.systemGroupedBackground))
@@ -194,22 +202,32 @@ public struct LobbyView: View {
                         .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
                 }
 
-                Button {
-                    startLocalTable()
-                } label: {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text("Sit down")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(seats.validationError != nil)
-                .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
             }
         }
+    }
+
+    private var lobbyStartBar: some View {
+        VStack(spacing: 0) {
+            Divider().opacity(0.35)
+            Button {
+                startLocalTable()
+            } label: {
+                HStack {
+                    Image(systemName: "play.fill")
+                    Text("Sit down")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(seats.validationError != nil)
+            .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 10)
+        }
+        .background(.regularMaterial)
     }
 
     private func seatRow(index: Int) -> some View {

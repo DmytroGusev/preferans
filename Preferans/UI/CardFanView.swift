@@ -85,6 +85,7 @@ public struct CardFanView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(projected.description)
+                            .accessibilityValue(isPlayable ? "Playable" : "Not playable")
                             .accessibilityIdentifier(UIIdentifiers.card(known, in: region))
                         }
                     }

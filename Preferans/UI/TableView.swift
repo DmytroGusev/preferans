@@ -8,21 +8,28 @@ import PreferansEngine
 public struct TableView: View {
     public var projection: PlayerGameProjection
     public var animationNamespace: Namespace.ID
+    /// Tap handler for the deal-summary card's "Next deal" button.
     public var onAdvance: (() -> Void)?
+    /// Tap handler for the centered Deal CTA shown on the empty felt
+    /// during the pre-first-deal idle state. When `nil`, the centered CTA
+    /// is suppressed and the felt falls back to the phase placeholder.
+    public var onStartDeal: (() -> Void)?
 
     public init(
         projection: PlayerGameProjection,
         animationNamespace: Namespace.ID,
-        onAdvance: (() -> Void)? = nil
+        onAdvance: (() -> Void)? = nil,
+        onStartDeal: (() -> Void)? = nil
     ) {
         self.projection = projection
         self.animationNamespace = animationNamespace
         self.onAdvance = onAdvance
+        self.onStartDeal = onStartDeal
     }
 
     public var body: some View {
         let opponents = orderedOpponents()
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
                 ForEach(opponents) { seat in
                     OpponentSeatView(seat: seat)
@@ -50,15 +57,23 @@ public struct TableView: View {
     /// of a duplicated picker.
     @ViewBuilder
     private func playArea(opponentSeats: [PlayerID]) -> some View {
-        if case let .dealFinished(result) = projection.phase {
+        if case let .gameOver(summary) = projection.phase {
+            GameOverCard(summary: summary)
+        } else if case let .dealFinished(result) = projection.phase {
             dealSummaryCard(result: result)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
+        } else if let onStartDeal, projection.legal.canStartDeal {
+            // Idle pre-first-deal: the felt's *only* affordance is the Deal
+            // CTA, centered. The action bar at the bottom is suppressed
+            // while this is up so we never present two buttons that mean
+            // the same thing.
+            startDealCenter(onStartDeal: onStartDeal)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
         } else {
             ZStack {
-                if projection.legal.canStartDeal {
-                    placeholder("Tap Deal to begin")
-                } else if projection.currentTrick.isEmpty {
+                if projection.currentTrick.isEmpty {
                     placeholder(emptyFeltPlaceholder)
                 } else {
                     trickPlays(opponentSeats: opponentSeats)
@@ -67,6 +82,28 @@ public struct TableView: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
         }
+    }
+
+    /// Centered Deal CTA shown on the empty felt during the pre-first-deal
+    /// idle state. Replaces the old combination of (header pill + felt
+    /// placeholder text + bottom action-bar button) with a single,
+    /// optically centered button — the screen's one and only intent.
+    private func startDealCenter(onStartDeal: @escaping () -> Void) -> some View {
+        VStack(spacing: 12) {
+            Button {
+                onStartDeal()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                    Text("Deal")
+                        .fontWeight(.semibold)
+                }
+                .frame(minWidth: 200)
+            }
+            .buttonStyle(.feltPrimary)
+            .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Deal-summary card
@@ -118,22 +155,12 @@ public struct TableView: View {
     }
 
     private var dealSummaryBackground: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.42),
-                            Color.black.opacity(0.30)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-            RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
+        RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
+            .fill(TableTheme.surfaceFill(.card))
+            .overlay(
+                RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
+                    .strokeBorder(TableTheme.surfaceBorder(.card), lineWidth: 1)
+            )
     }
 
     /// Compact tricks-per-active-player grid. Sitting-out seats are excluded
@@ -159,14 +186,14 @@ public struct TableView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.black.opacity(isDeclarer ? 0.35 : 0.20))
+                    RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
+                        .fill(Color.black.opacity(isDeclarer ? 0.32 : 0.18))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
                         .strokeBorder(
-                            isDeclarer ? TableTheme.gold.opacity(0.55) : Color.clear,
-                            lineWidth: 1
+                            isDeclarer ? TableTheme.goldBright.opacity(0.55) : TableTheme.inkCream.opacity(0.06),
+                            lineWidth: isDeclarer ? 1 : 0.5
                         )
                 )
             }

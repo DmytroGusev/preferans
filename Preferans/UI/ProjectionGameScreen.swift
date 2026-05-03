@@ -1,13 +1,14 @@
 import SwiftUI
 import PreferansEngine
 
-public struct ProjectionGameScreen: View {
+public struct ProjectionGameScreen<Menu: View>: View {
     public var projection: PlayerGameProjection
     public var eventLog: [String]
     public var onSend: (PreferansAction) -> Void
+    private let extraMenu: Menu
 
     private enum Sheet: String, Identifiable {
-        case score, log, result
+        case score, log, settings
         var id: String { rawValue }
     }
 
@@ -16,10 +17,16 @@ public struct ProjectionGameScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Namespace private var cardNamespace
 
-    public init(projection: PlayerGameProjection, eventLog: [String] = [], onSend: @escaping (PreferansAction) -> Void) {
+    public init(
+        projection: PlayerGameProjection,
+        eventLog: [String] = [],
+        onSend: @escaping (PreferansAction) -> Void,
+        @ViewBuilder extraMenu: () -> Menu = { EmptyView() }
+    ) {
         self.projection = projection
         self.eventLog = eventLog
         self.onSend = onSend
+        self.extraMenu = extraMenu()
     }
 
     public var body: some View {
@@ -30,47 +37,22 @@ public struct ProjectionGameScreen: View {
                 regularBody
             }
         }
-        // Phase title is rendered by `phaseStatusBar`; nav-bar title stays
-        // empty to avoid duplication.
         .navigationTitle("")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         #endif
-        .toolbar { toolbarContent }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
-            case .score:  scoreSheet
-            case .log:    logSheet
-            case .result: resultSheet
+            case .score:    scoreSheet
+            case .log:      logSheet
+            case .settings: SettingsScreen()
             }
         }
         .onChange(of: projection.sequence) { _, _ in
-            // Auto-present only the terminal `gameOver` result. `.dealFinished`
-            // is now surfaced inline on the felt by `TableView.dealSummaryCard`
-            // so the user doesn't have to dismiss a modal between deals.
-            if case .gameOver = projection.phase { activeSheet = .result }
+            // Game-over rendering is now inline on the felt — see
+            // `TableView.gameOverCard`. No modal auto-presentation here.
             reconcileDiscardSelection()
-        }
-    }
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .automatic) {
-            Button { activeSheet = .score } label: {
-                Image(systemName: "list.number")
-                    .accessibilityLabel("Scoresheet")
-            }
-            .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
-        }
-        ToolbarItem(placement: .automatic) {
-            Menu {
-                Button("Event log") { activeSheet = .log }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .accessibilityLabel("Developer menu")
-            }
         }
     }
 
@@ -78,16 +60,19 @@ public struct ProjectionGameScreen: View {
 
     private var compactBody: some View {
         VStack(spacing: 0) {
-            phaseStatusBar
+            headerStrip
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 8)
             TableView(
                 projection: projection,
                 animationNamespace: cardNamespace,
-                onAdvance: advanceToNextDeal
+                onAdvance: advanceToNextDeal,
+                onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil
             )
             .padding(.horizontal, 12)
-            .padding(.top, 6)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if !isDealFinishedPhase {
+            if shouldShowActionBar {
                 ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
             }
             viewerHandFan
@@ -105,15 +90,18 @@ public struct ProjectionGameScreen: View {
     private var regularBody: some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(spacing: 0) {
-                phaseStatusBar
+                headerStrip
+                    .padding(.horizontal, 12)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
                 TableView(
                     projection: projection,
                     animationNamespace: cardNamespace,
-                    onAdvance: advanceToNextDeal
+                    onAdvance: advanceToNextDeal,
+                    onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil
                 )
-                .padding(.top, 8)
                 .frame(maxHeight: .infinity)
-                if !isDealFinishedPhase {
+                if shouldShowActionBar {
                     ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
                 }
                 viewerHandFan
@@ -129,38 +117,118 @@ public struct ProjectionGameScreen: View {
         .feltBackground()
     }
 
-    /// Tells whether the felt is currently rendering the deal-summary card.
-    /// When true, the bottom action bar is suppressed — the inline card
-    /// already owns the "Next deal" CTA, so showing the action bar's
-    /// duplicated "Deal scored" status would just repeat the message.
+    /// True while the felt is rendering the deal-summary card. The summary
+    /// owns the "Next deal" CTA, so the bottom action bar is suppressed
+    /// while the summary is up.
     private var isDealFinishedPhase: Bool {
         if case .dealFinished = projection.phase { return true }
         return false
+    }
+
+    /// True when the screen should put a single, centered Deal CTA on the
+    /// felt (pre-first-deal idle state). When this is true, the action bar
+    /// hides its own start-deal row to avoid two CTAs for the same intent.
+    private var shouldShowCenterDealCTA: Bool {
+        guard projection.legal.canStartDeal else { return false }
+        if case .waitingForDeal = projection.phase { return true }
+        return false
+    }
+
+    /// Bottom action bar visibility. Hidden whenever the felt itself owns
+    /// the screen's primary affordance: the deal-summary card (Next deal),
+    /// the idle Deal CTA, or the inline game-over standings card.
+    private var shouldShowActionBar: Bool {
+        if isDealFinishedPhase { return false }
+        if shouldShowCenterDealCTA { return false }
+        if case .gameOver = projection.phase { return false }
+        return true
     }
 
     private func advanceToNextDeal() {
         onSend(.startDeal(dealer: nil, deck: nil))
     }
 
-    // MARK: - Status bar
+    // MARK: - Header strip
+    //
+    // Replaces both the old phaseStatusBar and the toolbar pill. One row:
+    // a small phase chip on the left, a single overflow menu on the right.
+    // Score / event log / settings / View-as all live behind that one
+    // ellipsis button instead of competing for top-of-screen real estate.
 
-    private var phaseStatusBar: some View {
-        HStack(spacing: 8) {
+    private var headerStrip: some View {
+        HStack(alignment: .center, spacing: 8) {
+            phaseChip
+            Spacer(minLength: 8)
+            overflowMenu
+        }
+    }
+
+    private var phaseChip: some View {
+        HStack(spacing: 6) {
             Text(Localized.phaseTitle(projection.phase))
-                .font(.caption.bold())
+                .font(.caption.weight(.bold))
                 .foregroundStyle(TableTheme.inkCream)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
-            Localized.statusText(projection)
-                .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier(UIIdentifiers.phaseMessage)
+            if !shouldShowCenterDealCTA {
+                Text("·")
+                    .font(.caption2)
+                    .foregroundStyle(TableTheme.inkCreamDim)
+                Localized.statusText(projection)
+                    .font(.caption)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .lineLimit(1)
+                    .accessibilityIdentifier(UIIdentifiers.phaseMessage)
+            } else {
+                // Idle state: the centered Deal CTA already says everything
+                // the message would. Keep the AX node so XCUI tests that
+                // sample phase.message in idle still find a label, but make
+                // it invisible so the chip stays compact.
+                Localized.statusText(projection)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .frame(width: 0, height: 0)
+                    .clipped()
+                    .opacity(0)
+                    .accessibilityIdentifier(UIIdentifiers.phaseMessage)
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .feltBand()
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .feltSurface(.chip, radius: TableTheme.Radius.pill)
+    }
+
+    private var overflowMenu: some View {
+        SwiftUI.Menu {
+            Button {
+                activeSheet = .score
+            } label: {
+                Label("Scoresheet", systemImage: "list.number")
+            }
+            .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
+
+            extraMenu
+
+            Button {
+                activeSheet = .log
+            } label: {
+                Label("Event log", systemImage: "scroll")
+            }
+            Divider()
+            Button {
+                activeSheet = .settings
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle.fill")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                .font(.title3)
+                .padding(4)
+                .accessibilityLabel("Menu")
+        }
+        .accessibilityIdentifier(UIIdentifiers.overflowMenu)
     }
 
     // MARK: - Viewer hand
@@ -172,9 +240,6 @@ public struct ProjectionGameScreen: View {
             let playable: Set<Card> = isDiscardPhase ? [] : Set(projection.legal.playableCards)
             let selected: Set<Card> = isDiscardPhase ? selectedDiscard : []
             let talonKnown: [Card] = isDiscardPhase ? projection.talon.compactMap(\.knownCard) : []
-            // Merge hand + talon and re-sort so the user sees a single
-            // suit/rank-ordered fan instead of "hand, then two talon cards
-            // appended at the right end."
             let cards: [ProjectedCard] = isDiscardPhase
                 ? sortedHandFan(seat.hand + projection.talon)
                 : seat.hand
@@ -205,23 +270,18 @@ public struct ProjectionGameScreen: View {
         }
     }
 
-    /// A "leather card rest" rail behind the viewer's hand — slightly darker
-    /// than the felt, edged with a thin gold line up top so the cards have a
-    /// clear shelf to sit on instead of floating against the felt.
+    /// "Card rest" rail behind the viewer's hand. Slightly darker than the
+    /// felt with a hairline gold edge up top so the cards have a clear
+    /// shelf to sit on instead of floating against the felt.
     private var handRail: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.32),
-                    Color.black.opacity(0.18)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        }
+        LinearGradient(
+            colors: [Color.black.opacity(0.28), Color.black.opacity(0.16)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(TableTheme.gold.opacity(0.25))
+                .fill(TableTheme.gold.opacity(0.22))
                 .frame(height: 0.5)
         }
     }
@@ -248,9 +308,8 @@ public struct ProjectionGameScreen: View {
                 .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
             // The "you" pill replaces the old "you: <name>" line in the
-            // status bar — same signal, anchored next to the viewer's hand
-            // where it actually matters. The accessibilityLabel renders
-            // "Viewing as <name>" for MatchUIRobot.currentViewer().
+            // status bar. The accessibility label renders "Viewing as <name>"
+            // for MatchUIRobot.currentViewer().
             Text("you")
                 .font(.caption2.bold())
                 .padding(.horizontal, 6)
@@ -334,91 +393,6 @@ public struct ProjectionGameScreen: View {
         }
     }
 
-    @ViewBuilder
-    private var resultSheet: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if case let .gameOver(summary) = projection.phase {
-                        gameOverContent(summary: summary)
-                    }
-                }
-                .padding()
-            }
-            .navigationTitle("Game over")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Done") { activeSheet = nil }
-                }
-            }
-        }
-    }
-
-    private func gameOverContent(summary: MatchSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Game over")
-                .font(.title.bold())
-                .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
-            if let winner = summary.standings.first {
-                Text("\(winner.player.rawValue) takes the pulka")
-                    .font(.title3.bold())
-                    .accessibilityLabel("\(AccessibilityStrings.gameOverWinnerPrefix)\(winner.player.rawValue)")
-                    .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
-            }
-            Text("\(summary.dealsPlayed) completed \(summary.dealsPlayed == 1 ? "deal" : "deals")")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .accessibilityLabel("\(AccessibilityStrings.completedDealsPrefix)\(summary.dealsPlayed)")
-                .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
-            Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Final standings")
-                    .font(.headline)
-                HStack(spacing: 12) {
-                    Text("")
-                        .frame(width: 24, alignment: .leading)
-                    Text("")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("Pool")
-                        .frame(width: 44, alignment: .trailing)
-                    Text("Mountain")
-                        .frame(width: 70, alignment: .trailing)
-                    Text("Balance")
-                        .frame(width: 70, alignment: .trailing)
-                }
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                ForEach(Array(summary.standings.enumerated()), id: \.offset) { index, standing in
-                    HStack(spacing: 12) {
-                        Text("\(index + 1)")
-                            .font(.body.bold())
-                            .frame(width: 24, alignment: .leading)
-                        Text(standing.player.rawValue)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .accessibilityIdentifier(UIIdentifiers.gameOverStandingPlayer(rank: index + 1))
-                        Text("\(standing.pool)")
-                            .font(.body.monospacedDigit())
-                            .frame(width: 50, alignment: .trailing)
-                            .accessibilityIdentifier(UIIdentifiers.gameOverStandingPool(rank: index + 1))
-                        Text("\(standing.mountain)")
-                            .font(.body.monospacedDigit())
-                            .frame(width: 70, alignment: .trailing)
-                            .accessibilityIdentifier(UIIdentifiers.gameOverStandingMountain(rank: index + 1))
-                        Text(standing.balance.formatted(.number.precision(.fractionLength(1))))
-                            .font(.body.monospacedDigit().weight(.semibold))
-                            .frame(width: 60, alignment: .trailing)
-                            .accessibilityIdentifier(UIIdentifiers.gameOverStandingBalance(rank: index + 1))
-                    }
-                }
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
-    }
-
     // MARK: - Helpers
 
     private var viewerSeat: SeatProjection? {
@@ -442,5 +416,4 @@ public struct ProjectionGameScreen: View {
             + projection.talon.compactMap(\.knownCard))
         selectedDiscard.formIntersection(available)
     }
-
 }

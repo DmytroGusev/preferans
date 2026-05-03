@@ -21,9 +21,7 @@ public struct ActionBarView: View {
 
     public var body: some View {
         Group {
-            if shouldShowStartDealRow {
-                startDealRow
-            } else if !projection.legal.bidCalls.isEmpty {
+            if !projection.legal.bidCalls.isEmpty {
                 bidRow
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier(UIIdentifiers.Panel.bidding.rawValue)
@@ -51,34 +49,6 @@ public struct ActionBarView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .feltBand()
-    }
-
-    /// Show "Deal" in the action bar only when the engine is at the
-    /// match's pre-first-deal state. Between deals the deal-finished sheet
-    /// owns the "advance the match" affordance — surfacing both at once
-    /// would render two buttons with the same accessibility identifier
-    /// (the action bar's hidden behind the sheet, the sheet's on top),
-    /// and XCUITest queries that returned the occluded one would silently
-    /// fail to advance the match.
-    private var shouldShowStartDealRow: Bool {
-        guard projection.legal.canStartDeal else { return false }
-        if case .waitingForDeal = projection.phase { return true }
-        return false
-    }
-
-    private var startDealRow: some View {
-        Button {
-            onSend(.startDeal(dealer: nil, deck: nil))
-        } label: {
-            HStack {
-                Image(systemName: "play.fill")
-                Text("Deal")
-                    .fontWeight(.semibold)
-            }
-            .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.feltPrimary)
-        .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
     }
 
     private var bidRow: some View {

@@ -126,6 +126,10 @@ public enum UIIdentifiers {
     public static let phaseMessage             = "phase.message"
     public static let viewerLabel              = "viewer.label"
     public static let errorBanner              = "error.banner"
+    /// The single overflow menu in the game-screen header strip. Holds the
+    /// score, log, settings, and (in local-table mode) the View-as picker.
+    /// XCUITests open this menu before tapping any nested item.
+    public static let overflowMenu             = "menu.overflow"
 
     public enum Panel: String {
         case bidding         = "panel.bidding"

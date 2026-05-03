@@ -129,11 +129,23 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "03-table-ready", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
 
         // Drive the match: each loop iteration takes one human-side action
-        // (or sleeps for bots), and snapshots phase transitions.
-        let stepLimit = 800
+        // (or briefly waits for bots), and snapshots phase transitions.
+        let stepLimit = 320
         var dealStartCount = 0
         var sawGameOver = false
-        for _ in 0..<stepLimit {
+        var lastProgress = ""
+        for step in 0..<stepLimit {
+            let progress = [
+                "step=\(step)",
+                "deal=\(dealStartCount)",
+                "phase=\(robot.labelIfExists(UIIdentifiers.phaseTitle))",
+                "viewer=\(robot.labelIfExists(UIIdentifiers.viewerLabel))",
+                "message=\(robot.labelIfExists(UIIdentifiers.phaseMessage))"
+            ].joined(separator: " ")
+            if progress != lastProgress {
+                print("[match-ui] \(progress)")
+                lastProgress = progress
+            }
             recorder.capture(name: "tick", key: robot.screenshotDeduplicationKey(), attach: false)
 
             if app.otherElements[UIIdentifiers.Panel.gameOver.rawValue].exists ||
@@ -154,16 +166,16 @@ final class RedesignScreenshotTests: XCTestCase {
             }
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "Anya") { continue }
+            if robot.playFirstAcceptedHandCard(for: "Anya", acceptanceTimeout: 0.12) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
 
             // Bot turn — with bot delay = 0 (animations off) the next
             // human-actionable state lands fast; keep the idle short so
             // a stalled match fails loudly within ~30 s.
-            usleep(80_000)
+            usleep(40_000)
         }
 
         recorder.capture(name: "99-final", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
-        XCTAssertTrue(sawGameOver, "Match never reached gameOver in \(stepLimit) ticks (deals started: \(dealStartCount))")
+        XCTAssertTrue(sawGameOver, "Match never reached gameOver in \(stepLimit) ticks. Last progress: \(lastProgress)")
     }
 }

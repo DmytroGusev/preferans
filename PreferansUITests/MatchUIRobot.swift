@@ -119,6 +119,19 @@ final class MatchUIRobot {
     @discardableResult
     func playFirstAcceptedHandCard(for seat: PlayerID, acceptanceTimeout: TimeInterval = 0.25) -> Bool {
         let prefix = "card.hand.\(seat.rawValue)."
+        let playable = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND value == %@", prefix, "Playable")
+        )
+        if playable.count > 0 {
+            let card = playable.element(boundBy: 0)
+            guard card.exists, card.isHittable else { return false }
+            let id = card.identifier
+            card.tap()
+            let gone = NSPredicate(format: "exists == false")
+            let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
+            return XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed
+        }
+
         let predicate = NSPredicate(format: "identifier BEGINSWITH %@", prefix)
         let cards = app.buttons.matching(predicate)
         let count = cards.count
@@ -335,6 +348,10 @@ final class MatchUIRobot {
         let scorePanel = app.otherElements[UIIdentifiers.Panel.score.rawValue]
         guard !scorePanel.exists else { return body() }
 
+        // The Scoresheet entry now lives inside the overflow menu in the
+        // header strip. Open the menu first; the menu items only become
+        // tappable once it's expanded.
+        openOverflowMenu()
         let scoreButton = app.buttons[UIIdentifiers.buttonScoreSheet]
         assertExists(scoreButton, "Scoresheet button never appeared.")
         scoreButton.tap()
@@ -345,6 +362,15 @@ final class MatchUIRobot {
             doneButton.tap()
         }
         return value
+    }
+
+    /// Open the in-game overflow menu (`…`). The Scoresheet, Settings, and
+    /// View-as entries all live inside it, so reads of any of those are
+    /// gated on the menu being expanded first.
+    private func openOverflowMenu() {
+        let menuButton = app.buttons[UIIdentifiers.overflowMenu]
+        assertExists(menuButton, "Overflow menu never appeared.")
+        menuButton.tap()
     }
 
     @discardableResult

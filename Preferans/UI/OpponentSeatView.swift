@@ -1,9 +1,10 @@
 import SwiftUI
 import PreferansEngine
 
-/// Compact opponent seat: shows the player name, status badges (dealer,
-/// turn, role), trick count, and a small fan of card backs (or revealed
-/// cards if the projection exposes them).
+/// Opponent seat tile: name, status badges, trick count, and a small fan
+/// of card backs. Sits at the top of the table; styled as a flat
+/// `feltSurface` chip so every chip on the felt — opponent seat, action
+/// bar, phase pill — reads as the same material.
 public struct OpponentSeatView: View {
     public var seat: SeatProjection
 
@@ -12,53 +13,23 @@ public struct OpponentSeatView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             statusRow
             cardBacksRow
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(seatBackground)
-        .opacity(seat.isActive ? 1 : 0.6)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .feltSurface(seat.isCurrentActor ? .seatActive : .seat,
+                     radius: TableTheme.Radius.sm)
+        .opacity(seat.isActive ? 1 : 0.55)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
     }
 
-    /// A soft dark-felt pill grounds every seat; the active seat additionally
-    /// gets a gold border + subtle warm glow so it reads as the place at the
-    /// table that's currently in play.
-    @ViewBuilder
-    private var seatBackground: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.black.opacity(seat.isCurrentActor ? 0.32 : 0.22))
-            if seat.isCurrentActor {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                TableTheme.goldBright.opacity(0.14),
-                                TableTheme.goldBright.opacity(0.0)
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 80
-                        )
-                    )
-            }
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(
-                    seat.isCurrentActor
-                        ? TableTheme.goldBright.opacity(0.55)
-                        : TableTheme.gold.opacity(0.10),
-                    lineWidth: seat.isCurrentActor ? 1 : 0.5
-                )
-        }
-    }
-
     private var statusRow: some View {
         let isSittingOut = seat.role == .sittingOut
-        return HStack(spacing: 5) {
+        return HStack(spacing: 6) {
             if seat.isCurrentActor {
                 Circle()
                     .fill(TableTheme.goldBright)
@@ -67,7 +38,7 @@ public struct OpponentSeatView: View {
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             Text(seat.displayName)
-                .font(.caption.bold())
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -77,31 +48,37 @@ public struct OpponentSeatView: View {
             // combination is implied by the rules. Keep "D" only when the
             // dealer is also the active actor (3-player table).
             if isSittingOut {
-                Text("Sitting out")
-                    .font(.system(size: 9, weight: .bold))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .foregroundStyle(TableTheme.feltDeep)
-                    .background(TableTheme.inkCreamSoft, in: Capsule())
+                badgePill("Out", role: .sittingOut)
                     .accessibilityLabel("Sitting out this deal")
                     .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
             } else if seat.isDealer {
-                Text("D")
-                    .font(.system(size: 9, weight: .bold))
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .background(Color.black.opacity(0.30), in: Capsule())
+                badgePill("D", role: .dealer)
                     .accessibilityLabel("Dealer")
                     .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
             }
             Spacer(minLength: 0)
             Text("\(seat.trickCount)")
-                .font(.system(size: 10, weight: .semibold).monospacedDigit())
+                .font(.caption.weight(.semibold).monospacedDigit())
                 .foregroundStyle(TableTheme.inkCreamSoft)
                 .accessibilityLabel("\(seat.trickCount) tricks")
                 .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
         }
+    }
+
+    private enum BadgeRole { case sittingOut, dealer }
+
+    private func badgePill(_ text: String, role: BadgeRole) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .bold))
+            .tracking(0.5)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .foregroundStyle(role == .sittingOut ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
+            .background(
+                Capsule().fill(role == .sittingOut
+                               ? TableTheme.inkCreamSoft
+                               : Color.black.opacity(0.30))
+            )
     }
 
     /// Opponents always render as card backs — the projection's hand
@@ -121,5 +98,4 @@ public struct OpponentSeatView: View {
         }
         .frame(height: count == 0 ? 0 : CardView.Size.compact.dimensions.height)
     }
-
 }

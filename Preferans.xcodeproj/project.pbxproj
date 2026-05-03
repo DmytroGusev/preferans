@@ -35,6 +35,8 @@
 		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
 		B00000000000000000000065 /* TableTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000075 /* TableTheme.swift */; };
 		B00000000000000000000066 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000076 /* SettingsScreen.swift */; };
+		B00000000000000000000067 /* ScoreFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000077 /* ScoreFormatting.swift */; };
+		B00000000000000000000068 /* GameOverCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000078 /* GameOverCard.swift */; };
 		B0000000000000000000A080 /* Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A082 /* Localized.swift */; };
 		B0000000000000000000A081 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A083 /* Localizable.xcstrings */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
@@ -140,6 +142,8 @@
 		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ActionBarView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableTheme.swift"; sourceTree = "<group>"; };
 		B00000000000000000000076 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/SettingsScreen.swift"; sourceTree = "<group>"; };
+		B00000000000000000000077 /* ScoreFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreFormatting.swift"; sourceTree = "<group>"; };
+		B00000000000000000000078 /* GameOverCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/GameOverCard.swift"; sourceTree = "<group>"; };
 		B0000000000000000000A082 /* Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/Localized.swift"; sourceTree = "<group>"; };
 		B0000000000000000000A083 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
@@ -245,6 +249,8 @@
 				B00000000000000000000074 /* ActionBarView.swift */,
 				B00000000000000000000075 /* TableTheme.swift */,
 				B00000000000000000000076 /* SettingsScreen.swift */,
+				B00000000000000000000077 /* ScoreFormatting.swift */,
+				B00000000000000000000078 /* GameOverCard.swift */,
 				B0000000000000000000A082 /* Localized.swift */,
 				B0000000000000000000A083 /* Localizable.xcstrings */,
 				A00000000000000000000018 /* Assets.xcassets */,
@@ -446,6 +452,8 @@
 				B00000000000000000000064 /* ActionBarView.swift in Sources */,
 				B00000000000000000000065 /* TableTheme.swift in Sources */,
 				B00000000000000000000066 /* SettingsScreen.swift in Sources */,
+				B00000000000000000000067 /* ScoreFormatting.swift in Sources */,
+				B00000000000000000000068 /* GameOverCard.swift in Sources */,
 				B0000000000000000000A080 /* Localized.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -77,7 +77,7 @@ public struct ScoreBoardView: View {
         section(title: "Balance", subtitle: nil) {
             playerColumns { player in
                 scoreCell(
-                    formatBalance(score.balance(for: player)),
+                    ScoreFormatting.balance(score.balance(for: player)),
                     id: UIIdentifiers.scoreBalance(player),
                     weight: .bold,
                     color: balanceColor(score.balance(for: player))
@@ -189,11 +189,6 @@ public struct ScoreBoardView: View {
     }
 
     // MARK: - Formatting
-
-    private func formatBalance(_ value: Double) -> String {
-        let formatted = value.formatted(.number.precision(.fractionLength(1)))
-        return value > 0 ? "+\(formatted)" : formatted
-    }
 
     private func balanceColor(_ value: Double) -> Color {
         if value > 0.05 { return .green }
