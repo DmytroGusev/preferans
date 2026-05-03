@@ -103,7 +103,11 @@ public struct DealStateStrip: View {
         }
     }
 
-    /// Trick-play row. Contract chip + last-trick winner.
+    /// Trick-play row. Contract chip on the leading edge, contract-
+    /// progress indicator on the trailing edge so the user always sees
+    /// "Anya 6♠ — needs 4 more". The progress pill tints green once
+    /// the declarer is on track, red while behind, neutral mid-deal —
+    /// a quick read on whether the contract is making.
     private var playingRow: some View {
         let summary = wonContractSummary()
         return HStack(spacing: 6) {
@@ -111,8 +115,8 @@ public struct DealStateStrip: View {
                 contractChip(declarer: declarer, bid: bid, label: nil)
             }
             Spacer(minLength: 4)
-            if let last = lastTrickWinner() {
-                lastTrickPill(player: last.player, card: last.card)
+            if let summary, let progress = contractProgress(declarer: summary.0, bid: summary.1) {
+                contractProgressPill(progress: progress)
             }
         }
     }
@@ -168,7 +172,6 @@ public struct DealStateStrip: View {
     }
 
     private var stripLeading: String { String(localized: "strip.leading") }
-    private var stripLast: String { String(localized: "strip.last") }
     private var stripWhist: LocalizedStringKey { "strip.whist" }
     private var stripPass: LocalizedStringKey { "strip.pass" }
 
@@ -256,28 +259,32 @@ public struct DealStateStrip: View {
         .background(background, in: Capsule())
     }
 
-    /// Last-trick winner, with a tiny representation of the winning card.
-    private func lastTrickPill(player: PlayerID, card: Card) -> some View {
-        HStack(spacing: 4) {
-            Text(stripLast)
+    /// Live contract-progress pill: declarer's tricks vs the contract
+    /// target. Tints green once the declarer has met the contract,
+    /// amber when within reach, red when the deal is mathematically
+    /// lost. Rendered only for game contracts — misère and all-pass
+    /// have their own scoring shape and would need a different read.
+    private func contractProgressPill(progress: ContractProgress) -> some View {
+        let palette: (foreground: Color, background: Color) = {
+            switch progress.state {
+            case .met:        return (TableTheme.feltDeep, TableTheme.goldBright)
+            case .onTrack:    return (TableTheme.inkCream, Color.black.opacity(0.32))
+            case .behind:     return (TableTheme.inkCream, Color(red: 0.45, green: 0.18, blue: 0.18))
+            }
+        }()
+        return HStack(spacing: 3) {
+            Text(progress.headline)
                 .font(.system(size: 9, weight: .bold))
                 .tracking(0.4)
                 .textCase(.uppercase)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-            Text(initials(player))
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(TableTheme.inkCream)
-            HStack(spacing: 0) {
-                Text(card.rank.symbol)
-                    .foregroundStyle(card.suit.color(on: .felt))
-                Text(card.suit.symbol)
-                    .foregroundStyle(card.suit.color(on: .felt))
-            }
-            .font(.caption2.weight(.bold))
+                .foregroundStyle(palette.foreground.opacity(0.85))
+            Text("\(progress.taken)/\(progress.target)")
+                .font(.caption.weight(.bold).monospacedDigit())
+                .foregroundStyle(palette.foreground)
         }
-        .padding(.horizontal, 5)
+        .padding(.horizontal, 6)
         .padding(.vertical, 1)
-        .background(Color.black.opacity(0.32), in: Capsule())
+        .background(palette.background, in: Capsule())
     }
 
     /// "Anya — 6♠" pill highlighting the live contract. Used in both the
@@ -374,16 +381,26 @@ public struct DealStateStrip: View {
         }
     }
 
-    /// Last-trick winner inferred from `currentTrick` is not available
-    /// post-trick; the projection doesn't carry trick history yet, so fall
-    /// back to the per-seat trickCount delta — the seat whose count
-    /// matches `completedTrickCount` and whose trickCount jumped most
-    /// recently is the most likely winner. When unavailable, return nil.
-    private func lastTrickWinner() -> (player: PlayerID, card: Card)? {
-        // Without a trick history in the projection there's no clean way to
-        // surface the last trick's leading card. For now, return nil — the
-        // play row will simply skip the pill until the data flows.
-        nil
+    /// Per-deal contract progress: declarer's trick count vs target,
+    /// plus a discrete state (met / on-track / behind) for color tinting.
+    /// `nil` for misère and all-pass deals where the contract-vs-target
+    /// shape doesn't apply.
+    private func contractProgress(declarer: PlayerID, bid: ContractBid) -> ContractProgress? {
+        guard case let .game(contract) = bid else { return nil }
+        guard case .playing = projection.phase else { return nil }
+        let target = contract.tricks
+        let taken = projection.trickCounts[declarer] ?? 0
+        let played = projection.completedTrickCount
+        let remaining = max(0, 10 - played)
+        let state: ContractProgress.State
+        if taken >= target {
+            state = .met
+        } else if taken + remaining < target {
+            state = .behind
+        } else {
+            state = .onTrack
+        }
+        return ContractProgress(taken: taken, target: target, state: state)
     }
 
     private func defenderStatuses(declarer: PlayerID?) -> [DefenderRow] {
@@ -406,5 +423,25 @@ public struct DealStateStrip: View {
         var player: PlayerID
         var status: Status
         enum Status { case whist, halfWhist, pass, pending }
+    }
+
+    fileprivate struct ContractProgress {
+        var taken: Int
+        var target: Int
+        var state: State
+
+        enum State { case onTrack, met, behind }
+
+        /// Short uppercase headline shown ahead of the digits. "MET" once
+        /// the contract is satisfied, "LOST" when it's mathematically
+        /// unreachable, "TRICKS" otherwise so the pill always reads as a
+        /// score line rather than a bare ratio.
+        var headline: String {
+            switch state {
+            case .met:     return String(localized: "strip.contract.met")
+            case .behind:  return String(localized: "strip.contract.lost")
+            case .onTrack: return String(localized: "strip.contract.tricks")
+            }
+        }
     }
 }

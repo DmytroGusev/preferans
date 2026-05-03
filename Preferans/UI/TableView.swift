@@ -22,10 +22,16 @@ public struct TableView: View {
     /// the landscape layout owns those externally. Only the play area is
     /// rendered. Defaults to true (portrait layout).
     public var renderOpponentsAtTop: Bool
-    /// Per-seat latest action, used to render an inline pill on each
-    /// opponent's name chip. The screen above us derives the dictionary
-    /// from the engine event stream so this view only reads it.
+    /// Per-seat latest auction-trail action, used to render an inline pill
+    /// on each opponent's name chip during bidding/discard/whist phases.
+    /// The screen above us derives the dictionary from the engine event
+    /// stream so this view only reads it. Cleared once trick play starts —
+    /// the persistent role badge takes over from then on.
     public var seatActions: [PlayerID: RecentAction]
+    /// Per-seat persistent contract-role pill ("Declarer" / "Whist" / "½"
+    /// / "Pass"). Pre-computed by the screen above us from the projection
+    /// so each subview only renders.
+    public var seatRoleBadges: [PlayerID: SeatRoleBadge]
     /// The most recent banner-worthy action across the whole table. Drives
     /// the centered toast that fades out after a short hold.
     public var bannerAction: RecentAction?
@@ -39,6 +45,7 @@ public struct TableView: View {
         onRematch: (() -> Void)? = nil,
         renderOpponentsAtTop: Bool = true,
         seatActions: [PlayerID: RecentAction] = [:],
+        seatRoleBadges: [PlayerID: SeatRoleBadge] = [:],
         bannerAction: RecentAction? = nil
     ) {
         self.projection = projection
@@ -49,6 +56,7 @@ public struct TableView: View {
         self.onRematch = onRematch
         self.renderOpponentsAtTop = renderOpponentsAtTop
         self.seatActions = seatActions
+        self.seatRoleBadges = seatRoleBadges
         self.bannerAction = bannerAction
     }
 
@@ -100,7 +108,8 @@ public struct TableView: View {
                     OpponentSeatView(
                         seat: slot.seat,
                         orientation: slot.orientation,
-                        lastAction: seatActions[slot.seat.player]
+                        lastAction: seatActions[slot.seat.player],
+                        roleBadge: seatRoleBadges[slot.seat.player]
                     )
                     .frame(width: slotFrameSize(for: slot, bounds: bounds).width,
                            height: slotFrameSize(for: slot, bounds: bounds).height)
@@ -127,7 +136,8 @@ public struct TableView: View {
                             OpponentSeatView(
                                 seat: seat,
                                 orientation: .top,
-                                lastAction: nil
+                                lastAction: nil,
+                                roleBadge: nil
                             )
                         }
                     }

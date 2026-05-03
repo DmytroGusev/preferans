@@ -58,6 +58,19 @@ public struct ProjectionGameScreen<Menu: View>: View {
         RecentActionFeed.banner(from: recentEvents)
     }
 
+    /// Per-seat contract-role pill keyed by PlayerID. Computed once per
+    /// render so every seat view doesn't re-derive the same dictionary
+    /// from the projection.
+    private var seatRoleBadges: [PlayerID: SeatRoleBadge] {
+        var result: [PlayerID: SeatRoleBadge] = [:]
+        for seat in projection.seats {
+            if let badge = projection.roleBadge(for: seat.player) {
+                result[seat.player] = badge
+            }
+        }
+        return result
+    }
+
     public var body: some View {
         Group {
             if isCompactLandscape {
@@ -103,6 +116,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 onLeaveTable: onLeaveTable,
                 onRematch: onRematch,
                 seatActions: seatActions,
+                seatRoleBadges: seatRoleBadges,
                 bannerAction: bannerAction
             )
             .padding(.horizontal, 12)
@@ -166,7 +180,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 OpponentSeatView(
                     seat: seat,
                     orientation: .top,
-                    lastAction: seatActions[seat.player]
+                    lastAction: seatActions[seat.player],
+                    roleBadge: seatRoleBadges[seat.player]
                 )
             }
             Spacer(minLength: 0)
@@ -467,11 +482,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     /// Single-row name plate for the viewer's seat. One signal per piece of
     /// info: name (always cream — gold-on-turn was redundant with the
-    /// "Your turn" pill below), one inline pill (Your turn > Dealer >
-    /// Sitting out > silent fallback), and a quiet trick counter. The
-    /// previous version stacked a hand-icon, gold name, "you" pill, dot,
-    /// "X tricks" label, "Dealer" pill, and "Your turn" pill in one row —
-    /// seven signals for two pieces of state.
+    /// "Your turn" pill below), one inline status pill (Your turn > Dealer
+    /// > Sitting out > silent fallback), one persistent role pill
+    /// ("Declarer" / "Whist" / "½" / "Pass") so the player can see their
+    /// own contract role without scanning the strip, and a quiet trick
+    /// counter.
     private func ownerNamePlate(seat: SeatProjection) -> some View {
         HStack(spacing: 8) {
             Text(seat.displayName)
@@ -488,6 +503,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .accessibilityHidden(true)
                 .accessibilityIdentifier(UIIdentifiers.viewerLabel)
             seatStatusPill(seat: seat)
+            if let badge = seatRoleBadges[seat.player] {
+                viewerRolePill(badge: badge, player: seat.player)
+            }
             if let lastAction = seatActions[seat.player] {
                 viewerLastActionPill(action: lastAction)
             }
@@ -504,10 +522,30 @@ public struct ProjectionGameScreen<Menu: View>: View {
         .padding(.top, 4)
     }
 
-    /// Inline gold-tinted pill rendering the viewer's most recent action,
-    /// matching the per-seat badge on opponents. Lets the player see at a
-    /// glance what they last did without having to mentally replay the
-    /// auction trail.
+    /// Persistent contract-role pill for the viewer, matching the seat
+    /// version on opponents. Sticks for the entire deal once a contract
+    /// is on the table.
+    private func viewerRolePill(badge: SeatRoleBadge, player: PlayerID) -> some View {
+        Text(badge.label)
+            .font(.caption2.weight(.bold))
+            .tracking(0.3)
+            .foregroundStyle(badge.isAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(
+                Capsule().fill(
+                    badge.isAccent
+                        ? TableTheme.goldBright
+                        : Color.black.opacity(0.30)
+                )
+            )
+            .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(player))
+    }
+
+    /// Inline gold-tinted pill rendering the viewer's most recent
+    /// auction-trail action (bid / pass / whist / declared / discarded /
+    /// defender mode). Cleared once trick play starts — the role pill
+    /// then carries the same information persistently.
     private func viewerLastActionPill(action: RecentAction) -> some View {
         HStack(spacing: 4) {
             action.label.glyph(emphasis: .seat)

@@ -14,11 +14,16 @@ public struct OpponentSeatView: View {
     /// the viewer's POV so cards never rotate vertically and clip the
     /// trick area).
     public var orientation: Orientation
-    /// Latest action this seat took during the current deal. When non-nil
-    /// the seat's name chip carries an inline pill ("Pass", "6♠", "Whist")
-    /// so the user can see at a glance what the seat just did without
-    /// having to scan the auction trail.
+    /// Latest auction-trail action this seat took during the current deal.
+    /// When non-nil the seat's name chip carries an inline pill ("Pass",
+    /// "6♠", "Whist") so the user can see at a glance what the seat just
+    /// did without scanning the trail. Cleared once trick play starts —
+    /// the persistent `roleBadge` takes over from then on.
     public var lastAction: RecentAction?
+    /// Persistent contract-role pill ("Declarer" / "Whist" / "½" / "Pass").
+    /// Visible from the moment a contract is named through the end of
+    /// the deal so a glance at any seat answers "who is playing what".
+    public var roleBadge: SeatRoleBadge?
 
     public enum Orientation {
         case top
@@ -29,11 +34,13 @@ public struct OpponentSeatView: View {
     public init(
         seat: SeatProjection,
         orientation: Orientation = .top,
-        lastAction: RecentAction? = nil
+        lastAction: RecentAction? = nil,
+        roleBadge: SeatRoleBadge? = nil
     ) {
         self.seat = seat
         self.orientation = orientation
         self.lastAction = lastAction
+        self.roleBadge = roleBadge
     }
 
     public var body: some View {
@@ -104,9 +111,10 @@ public struct OpponentSeatView: View {
         }
     }
 
-    /// One-line player chip: name + dealer/sitting-out/turn pill + trick
-    /// count. No background box — sits directly on the felt with just a
-    /// gold underline when this seat is acting.
+    /// One-line player chip: name + dealer/sitting-out/turn pill +
+    /// contract-role pill + trick count. No background box — sits
+    /// directly on the felt with just a gold underline when this seat
+    /// is acting.
     private var nameChip: some View {
         HStack(spacing: 6) {
             if seat.isCurrentActor {
@@ -123,6 +131,7 @@ public struct OpponentSeatView: View {
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
 
             statusBadge
+            rolePill
 
             Text("\(seat.trickCount)")
                 .font(.caption2.weight(.semibold).monospacedDigit())
@@ -137,6 +146,31 @@ public struct OpponentSeatView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
+    }
+
+    /// Persistent contract-role pill rendered inline next to the seat
+    /// name once a contract is on the table. Accent variants (Declarer,
+    /// Whist, ½) get a gold-tinted capsule; the muted Pass variant uses
+    /// a quiet dark capsule so passing defenders don't visually compete
+    /// with whisters.
+    @ViewBuilder
+    private var rolePill: some View {
+        if let badge = roleBadge {
+            Text(badge.label)
+                .font(.caption2.weight(.bold))
+                .tracking(0.3)
+                .foregroundStyle(badge.isAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(
+                    Capsule().fill(
+                        badge.isAccent
+                            ? TableTheme.goldBright
+                            : Color.black.opacity(0.30)
+                    )
+                )
+                .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(seat.player))
+        }
     }
 
     @ViewBuilder
@@ -171,24 +205,26 @@ public struct OpponentSeatView: View {
         let count = seat.hand.count
         let dims = CardView.Size.compact.dimensions
         let cardsPerRow = 5
-        let rows = splitIntoRows(count: count, perRow: cardsPerRow)
+        let rows = splitIntoRows(seat.hand, perRow: cardsPerRow)
         return VStack(spacing: -dims.height * 0.55) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, rowCount in
-                fanRow(count: rowCount, cardSize: dims)
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                fanRow(cards: row, cardSize: dims)
             }
         }
         .frame(height: count == 0 ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height))
     }
 
-    /// One horizontal row of face-down cards. Cards overlap by ~50% so a
-    /// 5-card row stays narrow enough that three opponent fans fit on
-    /// the upper third of an iPhone width without collisions.
-    private func fanRow(count: Int, cardSize dims: CGSize) -> some View {
+    /// One horizontal row. Cards overlap by ~50% so a 5-card row stays
+    /// narrow enough that three opponent fans fit on the upper third of
+    /// an iPhone width without collisions. Each card renders face-up or
+    /// face-down based on its `ProjectedCard` value, so open-whist hands
+    /// (and any other revealed opponent cards) show their actual faces.
+    private func fanRow(cards: [ProjectedCard], cardSize dims: CGSize) -> some View {
         let step: CGFloat = -dims.width * 0.50
         return HStack(spacing: step) {
-            ForEach(0..<count, id: \.self) { index in
+            ForEach(Array(cards.enumerated()), id: \.offset) { index, card in
                 CardView(
-                    card: .hidden,
+                    card: card,
                     size: .compact,
                     region: .hand(seat: seat.player),
                     indexInRow: index
@@ -200,11 +236,12 @@ public struct OpponentSeatView: View {
     /// Two-row split for hands wider than `perRow`. Top row gets the
     /// remainder, bottom row gets the full row — that way 10 cards split
     /// 5+5, 9 cards split 4+5, etc.
-    private func splitIntoRows(count: Int, perRow: Int) -> [Int] {
-        guard count > 0 else { return [] }
-        if count <= perRow { return [count] }
-        let bottom = perRow
-        let top = count - perRow
+    private func splitIntoRows(_ cards: [ProjectedCard], perRow: Int) -> [[ProjectedCard]] {
+        guard !cards.isEmpty else { return [] }
+        if cards.count <= perRow { return [cards] }
+        let topCount = cards.count - perRow
+        let top = Array(cards.prefix(topCount))
+        let bottom = Array(cards.suffix(perRow))
         return [top, bottom]
     }
 

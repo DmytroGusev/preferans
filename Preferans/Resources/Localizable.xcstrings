@@ -3347,25 +3347,71 @@
         }
       }
     },
-    "strip.last": {
+    "strip.contract.met": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "last"
+            "value": "MET"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "посл."
+            "value": "ВЗЯЛ"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "ост."
+            "value": "ВЗЯВ"
+          }
+        }
+      }
+    },
+    "strip.contract.lost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LOST"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "БЕЗ"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "БЕЗ"
+          }
+        }
+      }
+    },
+    "strip.contract.tricks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRICKS"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ВЗЯТКИ"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ВЗЯТКИ"
           }
         }
       }
