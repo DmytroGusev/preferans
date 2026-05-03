@@ -2066,26 +2066,530 @@
         }
       }
     },
-    "Sochi and Rostov rules": {
-      "comment": "Lobby tagline under the app title — names the two regional rule sets the app supports.",
+    "convention.tagline.help": {
+      "comment": "Hover tooltip on the lobby hero's house-name tagline (whole row). Spelled out per pill in the convention.<name>.help strings.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sochi and Rostov rules"
+            "value": "House names. Tap or hover any name for the standard equivalent."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сочинские и ростовские правила"
+            "value": "Домашние названия. Нажмите или наведите на любое — увидите стандартное соответствие."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сочинські та ростовські правила"
+            "value": "Домашні назви. Натисніть або наведіть на будь-яку — побачите стандартний відповідник."
+          }
+        }
+      }
+    },
+    "convention.tagline.accessibilityLabel": {
+      "comment": "VoiceOver label for the lobby hero's house-name tagline.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "House conventions: Odesa, Wien, Thessaloniki, Kruty"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домашние конвенции: Одесса, Вена, Салоники, Круты"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домашні конвенції: Одеса, Відень, Салоніки, Крути"
+          }
+        }
+      }
+    },
+    "convention.tagline.accessibilityHint": {
+      "comment": "VoiceOver hint for the lobby hero tagline button.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the legend with standard names and short descriptions."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открывает справку со стандартными названиями и краткими описаниями."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкриває довідку зі стандартними назвами та короткими описами."
+          }
+        }
+      }
+    },
+    "convention.odesa.help": {
+      "comment": "Hover tooltip on the Одеса pill in the lobby hero tagline.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одеса (house) → Sochi. Default balanced scoring."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одесса (домашнее) → Сочи. Базовый сбалансированный счёт."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одеса (домашнє) → Сочі. Базовий збалансований підрахунок."
+          }
+        }
+      }
+    },
+    "convention.odesa.hint": {
+      "comment": "VoiceOver hint on the Одеса pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odesa, our house name for Sochi — default balanced scoring."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одесса — наше домашнее название для Сочи; базовый сбалансированный счёт."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Одеса — наша домашня назва для Сочі; базовий збалансований підрахунок."
+          }
+        }
+      }
+    },
+    "convention.wien.help": {
+      "comment": "Hover tooltip on the Wien pill in the lobby hero tagline.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wien (house) → Leningrad. Strict, doubled-points variant."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вена (домашнее) → Ленинград. Строгий вариант с удвоенными очками."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відень (домашнє) → Ленінград. Строгий варіант із подвоєними очками."
+          }
+        }
+      }
+    },
+    "convention.wien.hint": {
+      "comment": "VoiceOver hint on the Wien pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wien, our house name for Leningrad — strict, doubled-points variant."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вена — наше домашнее название для Ленинграда; строгий вариант с удвоенными очками."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відень — наша домашня назва для Ленінграда; строгий варіант із подвоєними очками."
+          }
+        }
+      }
+    },
+    "convention.thessaloniki.help": {
+      "comment": "Hover tooltip on the Θεσσαλονίκη pill in the lobby hero tagline.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Θεσσαλονίκη (house) → Rostov. Aggressive, whist-only variant."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Салоники (домашнее) → Ростов. Агрессивный вариант со ставкой на висты."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Салоніки (домашнє) → Ростов. Агресивний варіант зі ставкою на вісти."
+          }
+        }
+      }
+    },
+    "convention.thessaloniki.hint": {
+      "comment": "VoiceOver hint on the Θεσσαλονίκη pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thessaloniki, our house name for Rostov — aggressive, whist-only variant."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Салоники — наше домашнее название для Ростова; агрессивный вариант со ставкой на висты."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Салоніки — наша домашня назва для Ростова; агресивний варіант зі ставкою на вісти."
+          }
+        }
+      }
+    },
+    "convention.kruty.help": {
+      "comment": "Hover tooltip on the Крути pill in the lobby hero tagline.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крути (house) → Stalingrad. 6♠ forced-defense convention."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Круты (домашнее) → Сталинград. Конвенция принудительного виста на 6♠."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крути (домашнє) → Сталінград. Конвенція примусового вісту на 6♠."
+          }
+        }
+      }
+    },
+    "convention.kruty.hint": {
+      "comment": "VoiceOver hint on the Крути pill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kruty, our house name for Stalingrad — 6♠ forced-defense convention."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Круты — наше домашнее название для Сталинграда; конвенция принудительного виста на 6♠."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крути — наша домашня назва для Сталінграда; конвенція примусового вісту на 6♠."
+          }
+        }
+      }
+    },
+    "convention.legend.title": {
+      "comment": "Title of the convention-legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "House conventions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домашние конвенции"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домашні конвенції"
+          }
+        }
+      }
+    },
+    "convention.legend.intro": {
+      "comment": "Intro paragraph at the top of the convention-legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Names we use at our table. Standard Preferans calls these Sochi, Leningrad, Rostov, and Stalingrad."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Названия, которыми мы пользуемся за нашим столом. В стандартном преферансе они звучат как Сочи, Ленинград, Ростов и Сталинград."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назви, якими ми користуємося за нашим столом. У стандартному преферансі вони звучать як Сочі, Ленінград, Ростов і Сталінград."
+          }
+        }
+      }
+    },
+    "convention.legend.outro": {
+      "comment": "Footer paragraph at the bottom of the convention-legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Outside our circle, players will know the standard names — fall back to those when playing with strangers."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "За пределами нашего круга игроки знают стандартные названия — с незнакомыми соперниками используйте их."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Поза нашим колом гравці знають стандартні назви — з незнайомими суперниками використовуйте їх."
+          }
+        }
+      }
+    },
+    "convention.legend.replaces": {
+      "comment": "Inline label between the house name and the standard name on each row of the convention-legend sheet, e.g. \"Wien REPLACES Leningrad\".",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "replaces"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "вместо"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "замість"
+          }
+        }
+      }
+    },
+    "convention.odesa.standard": {
+      "comment": "Standard Preferans name that Одеса replaces, shown in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Sochi (Сочинка)" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Сочи (Сочинка)" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Сочі (Сочинка)" } }
+      }
+    },
+    "convention.odesa.tradition": {
+      "comment": "Tradition tag for Одеса in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ukrainian" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "украинская" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "українська" } }
+      }
+    },
+    "convention.odesa.summary": {
+      "comment": "One-paragraph summary for Одеса in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default balanced scoring. The Russian proverb «знал бы прикуп, жил бы в Сочи» localises cleanly: «знав би прикуп, жив би в Одесі» — same Black Sea coast, same prosperous-port reputation."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Базовый сбалансированный счёт. Поговорка «знал бы прикуп, жил бы в Сочи» естественно ложится на украинский вариант — «знав би прикуп, жив би в Одесі»: то же Чёрное море, та же репутация процветающего порта."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Базовий збалансований підрахунок. Приказка «знал бы прикуп, жил бы в Сочи» природно лягає на «знав би прикуп, жив би в Одесі» — те саме Чорне море, та сама слава заможного порту."
+          }
+        }
+      }
+    },
+    "convention.wien.standard": {
+      "comment": "Standard Preferans name that Wien replaces, shown in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Leningrad (Ленінградка)" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Ленинград (Ленинградка)" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Ленінград (Ленінградка)" } }
+      }
+    },
+    "convention.wien.tradition": {
+      "comment": "Tradition tag for Wien in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Austrian" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "австрийская" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "австрійська" } }
+      }
+    },
+    "convention.wien.summary": {
+      "comment": "One-paragraph summary for Wien in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strict, doubled-points variant. Vienna is the actual birthplace of the game — Russian Preferans descends from 19th-century Habsburg Préférence — so the strict-and-classical variant takes its name from where the game was actually invented."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Строгий вариант с удвоенными очками. Вена — настоящая родина игры: русский преферанс пошёл от австрийского Préférence XIX века, и «строгий, классический» вариант берёт имя того города, где игра и появилась."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Строгий варіант із подвоєними очками. Відень — справжня батьківщина гри: російський преферанс походить від австрійського Préférence ХІХ століття, тож «строгий, класичний» варіант бере ім’я того міста, де гру й винайшли."
+          }
+        }
+      }
+    },
+    "convention.thessaloniki.standard": {
+      "comment": "Standard Preferans name that Θεσσαλονίκη replaces, shown in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Rostov" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Ростов" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Ростов" } }
+      }
+    },
+    "convention.thessaloniki.tradition": {
+      "comment": "Tradition tag for Θεσσαλονίκη in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Greek" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "греческая" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "грецька" } }
+      }
+    },
+    "convention.thessaloniki.summary": {
+      "comment": "One-paragraph summary for Θεσσαλονίκη in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggressive, fast-paced variant: no dump points, halved whist penalties, bold bidding rewarded. Thessaloniki — Greece’s mercantile second city — fits the energy, and tips a hat to Greek Prefa, our game’s closest living relative."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агрессивный, быстрый вариант: без штрафных очков в гору, висты вдвое меньше, смелые заявки в плюс. Салоники — торговый второй город Греции — подходят по характеру, плюс это поклон греческому преферансу, ближайшему родственнику нашей игры."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Агресивний, швидкий варіант: без штрафних очок у гору, вісти вдвічі менші, сміливі заявки в плюс. Салоніки — торговельне друге місто Греції — пасують за характером, до того ж це уклін грецькому преферансу, найближчому родичу нашої гри."
+          }
+        }
+      }
+    },
+    "convention.kruty.standard": {
+      "comment": "Standard Preferans name that Крути replaces, shown in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stalingrad" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Сталинград" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Сталінград" } }
+      }
+    },
+    "convention.kruty.tradition": {
+      "comment": "Tradition tag for Крути in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Ukrainian" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "украинская" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "українська" } }
+      }
+    },
+    "convention.kruty.summary": {
+      "comment": "One-paragraph summary for Крути in the legend sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On 6♠ both defenders must whist with closed hands — no opting out. In January 1918 a small force of Ukrainian students and cadets held off a much larger Bolshevik advance on Kyiv at Kruty railway station. Same last-stand emotional logic, drawn from Ukrainian rather than Soviet history."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На 6♠ оба защитника обязаны вистовать втёмную — без опций. В январе 1918 года небольшой отряд украинских студентов и юнкеров сдержал значительно превосходящие силы большевиков на станции Круты под Киевом. Та же логика последнего рубежа, но из украинской, а не советской истории."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На 6♠ обидва захисники зобов’язані вістувати в темну — без опцій. У січні 1918 року невеликий загін українських студентів і юнкерів стримав значно переважаючі сили більшовиків під Києвом біля станції Крути. Та сама логіка останнього рубежу, але з української, а не радянської історії."
           }
         }
       }

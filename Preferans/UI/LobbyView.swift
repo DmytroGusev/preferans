@@ -18,6 +18,7 @@ public struct LobbyView: View {
     @State private var hasAttemptedSignIn = false
     @State private var showingSettings = false
     @State private var showingWatchBotsConfirm = false
+    @State private var showingConventionLegend = false
 
     public init() {}
 
@@ -62,6 +63,9 @@ public struct LobbyView: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsScreen()
+            }
+            .sheet(isPresented: $showingConventionLegend) {
+                ConventionLegendSheet()
             }
             .confirmationDialog(
                 "Watch the bots play?",
@@ -143,14 +147,69 @@ public struct LobbyView: View {
                 .font(.largeTitle.bold())
                 .foregroundStyle(TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
-            Text("Sochi and Rostov rules")
-                .font(.footnote.weight(.semibold))
-                .tracking(1.4)
-                .textCase(.uppercase)
-                .foregroundStyle(TableTheme.gold)
+            houseConventionTagline
         }
         .padding(.top, 12)
         .padding(.bottom, 6)
+    }
+
+    /// Hero tagline: four house-named conventions in their renamed forms
+    /// (Одеса, Wien, Θεσσαλονίκη, Крути) instead of the standard
+    /// Sochi / Leningrad / Rostov / Stalingrad. Each name carries its own
+    /// `.help(...)` (hover tooltip on iPad-with-pointer / Mac Catalyst /
+    /// macOS) and `.accessibilityHint(...)` (VoiceOver) mapping it back to
+    /// the standard name plus a one-line description. Tapping anywhere on
+    /// the row opens the full legend sheet — that's the iPhone fallback for
+    /// devices without hover.
+    private var houseConventionTagline: some View {
+        Button {
+            showingConventionLegend = true
+        } label: {
+            HStack(spacing: 6) {
+                conventionPill(verbatim: "Одеса",
+                               helpKey: "convention.odesa.help",
+                               hintKey: "convention.odesa.hint")
+                conventionDot
+                conventionPill(verbatim: "Wien",
+                               helpKey: "convention.wien.help",
+                               hintKey: "convention.wien.hint")
+                conventionDot
+                conventionPill(verbatim: "Θεσσαλονίκη",
+                               helpKey: "convention.thessaloniki.help",
+                               hintKey: "convention.thessaloniki.hint")
+                conventionDot
+                conventionPill(verbatim: "Крути",
+                               helpKey: "convention.kruty.help",
+                               hintKey: "convention.kruty.hint")
+            }
+            .font(.footnote.weight(.semibold))
+            .tracking(1.4)
+            .textCase(.uppercase)
+            .foregroundStyle(TableTheme.gold)
+            .lineLimit(1)
+            .minimumScaleFactor(0.55)
+        }
+        .buttonStyle(.plain)
+        .help("convention.tagline.help")
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("convention.tagline.accessibilityLabel")
+        .accessibilityHint("convention.tagline.accessibilityHint")
+        .accessibilityIdentifier(UIIdentifiers.lobbyHouseConventions)
+    }
+
+    private func conventionPill(verbatim name: String,
+                                helpKey: LocalizedStringKey,
+                                hintKey: LocalizedStringKey) -> some View {
+        Text(verbatim: name)
+            .help(helpKey)
+            .accessibilityLabel(Text(verbatim: name))
+            .accessibilityHint(hintKey)
+    }
+
+    private var conventionDot: some View {
+        Text(verbatim: "·")
+            .foregroundStyle(TableTheme.gold.opacity(0.45))
+            .accessibilityHidden(true)
     }
 
     private var localTableCard: some View {
@@ -631,5 +690,122 @@ extension Array where Element == LobbySeat {
             return String(localized: "Names must be unique.")
         }
         return nil
+    }
+}
+
+// MARK: - Convention legend sheet
+
+/// Tap target on the lobby hero's house-name tagline. Spells out the
+/// mapping from our private rename (Одеса / Wien / Θεσσαλονίκη / Крути)
+/// to the names a wider Preferans audience would recognize
+/// (Sochi / Leningrad / Rostov / Stalingrad). The hover/VoiceOver hints
+/// on the tagline pills cover the same ground in one line; this sheet is
+/// the iPhone fallback for devices without pointer hover.
+struct ConventionLegendSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private struct Entry: Identifiable {
+        let id: String
+        let house: String
+        let standard: LocalizedStringKey
+        let tradition: LocalizedStringKey
+        let summary: LocalizedStringKey
+    }
+
+    private let entries: [Entry] = [
+        Entry(id: "odesa",
+              house: "Одеса",
+              standard: "convention.odesa.standard",
+              tradition: "convention.odesa.tradition",
+              summary: "convention.odesa.summary"),
+        Entry(id: "wien",
+              house: "Wien",
+              standard: "convention.wien.standard",
+              tradition: "convention.wien.tradition",
+              summary: "convention.wien.summary"),
+        Entry(id: "thessaloniki",
+              house: "Θεσσαλονίκη",
+              standard: "convention.thessaloniki.standard",
+              tradition: "convention.thessaloniki.tradition",
+              summary: "convention.thessaloniki.summary"),
+        Entry(id: "kruty",
+              house: "Крути",
+              standard: "convention.kruty.standard",
+              tradition: "convention.kruty.tradition",
+              summary: "convention.kruty.summary")
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("convention.legend.intro")
+                        .font(.callout)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+
+                    VStack(spacing: 10) {
+                        ForEach(entries) { entry in
+                            entryCard(entry)
+                        }
+                    }
+
+                    Text("convention.legend.outro")
+                        .font(.footnote)
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                        .padding(.top, 4)
+                }
+                .padding(20)
+            }
+            .scrollIndicators(.hidden)
+            .feltBackground()
+            .navigationTitle(Text("convention.legend.title"))
+            #if canImport(UIKit)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: { dismiss() }) {
+                        Text("Done").foregroundStyle(TableTheme.goldBright)
+                    }
+                }
+            }
+        }
+        .accessibilityIdentifier(UIIdentifiers.conventionLegendSheet)
+    }
+
+    private func entryCard(_ entry: Entry) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(verbatim: entry.house)
+                    .font(.title3.bold())
+                    .foregroundStyle(TableTheme.goldBright)
+                Text("convention.legend.replaces")
+                    .font(.caption2.weight(.semibold))
+                    .tracking(0.8)
+                    .textCase(.uppercase)
+                    .foregroundStyle(TableTheme.inkCreamDim)
+                Text(entry.standard)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(TableTheme.inkCream)
+                Spacer(minLength: 0)
+                Text(entry.tradition)
+                    .font(.caption2)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+            }
+            Text(entry.summary)
+                .font(.footnote)
+                .foregroundStyle(TableTheme.inkCream)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.30))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(TableTheme.gold.opacity(0.22), lineWidth: 0.5)
+        )
     }
 }
