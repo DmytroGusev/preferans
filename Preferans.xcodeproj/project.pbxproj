@@ -44,6 +44,7 @@
 		B0000000000000000000A081 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A083 /* Localizable.xcstrings */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
 		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
+		B00000000000000000000090 /* PulkaDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000000000000000000A0 /* PulkaDiagramView.swift */; };
 		C00000000000000000000020 /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* Domain.swift */; };
 		C00000000000000000000021 /* PreferansEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000012 /* PreferansEngine.swift */; };
 		C00000000000000000000022 /* PreferansError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000013 /* PreferansError.swift */; };
@@ -155,6 +156,7 @@
 		B0000000000000000000A083 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
 		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreBoardView.swift"; sourceTree = "<group>"; };
+		B000000000000000000000A0 /* PulkaDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/PulkaDiagramView.swift"; sourceTree = "<group>"; };
 		C00000000000000000000010 /* PreferansEngine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PreferansEngine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C00000000000000000000011 /* Domain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Domain.swift; sourceTree = "<group>"; };
 		C00000000000000000000012 /* PreferansEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansEngine.swift; sourceTree = "<group>"; };
@@ -251,6 +253,7 @@
 				B00000000000000000000046 /* LocalGameScreen.swift */,
 				B00000000000000000000048 /* ProjectionGameScreen.swift */,
 				B00000000000000000000049 /* ScoreBoardView.swift */,
+				B000000000000000000000A0 /* PulkaDiagramView.swift */,
 				B00000000000000000000071 /* CardFanView.swift */,
 				B00000000000000000000072 /* OpponentSeatView.swift */,
 				B00000000000000000000073 /* TableView.swift */,
@@ -458,6 +461,7 @@
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
 				B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */,
 				B00000000000000000000019 /* ScoreBoardView.swift in Sources */,
+				B00000000000000000000090 /* PulkaDiagramView.swift in Sources */,
 				B00000000000000000000061 /* CardFanView.swift in Sources */,
 				B00000000000000000000062 /* OpponentSeatView.swift in Sources */,
 				B00000000000000000000063 /* TableView.swift in Sources */,

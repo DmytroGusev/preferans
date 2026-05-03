@@ -18,9 +18,14 @@ public struct ScoreBoardView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 12) {
-            ForEach(score.players, id: \.self) { player in
-                playerCard(player: player)
+        VStack(spacing: 16) {
+            if score.players.count == 3 {
+                PulkaDiagramView(score: score)
+            }
+            VStack(spacing: 12) {
+                ForEach(score.players, id: \.self) { player in
+                    playerCard(player: player)
+                }
             }
             legend
         }
