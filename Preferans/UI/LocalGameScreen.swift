@@ -28,6 +28,7 @@ public struct LocalGameScreen: View {
         ProjectionGameScreen(
             projection: projection,
             eventLog: model.eventLog,
+            recentEvents: model.recentEvents,
             onSend: model.send,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch

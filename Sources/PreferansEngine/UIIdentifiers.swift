@@ -126,6 +126,16 @@ public enum UIIdentifiers {
     public static let phaseMessage             = "phase.message"
     public static let viewerLabel              = "viewer.label"
     public static let errorBanner              = "error.banner"
+    /// Transient toast at the felt's optical center announcing the most
+    /// recent player action (bid, whist call, contract declaration). Used
+    /// by tests that want to confirm an action surfaced visibly rather
+    /// than only mutating state.
+    public static let actionBanner             = "action.banner"
+    /// Per-seat last-action badge inline in the seat name chip. Suffix the
+    /// PlayerID so tests can target the chip for a specific seat.
+    public static func seatLastAction(_ player: PlayerID) -> String {
+        "seat.\(player.rawValue).lastAction"
+    }
     /// The single overflow menu in the game-screen header strip. Holds the
     /// score, log, settings, and (in local-table mode) the View-as picker.
     /// XCUITests open this menu before tapping any nested item.
@@ -190,6 +200,12 @@ public enum UIIdentifiers {
     // MARK: - Per-seat indicators
 
     public static func seatRole(_ player: PlayerID) -> String         { "seat.\(player.rawValue).role" }
+    /// Persistent contract-role badge ("Declarer" / "Whist" / "½" /
+    /// "Pass") rendered inline on a seat once a contract is on the
+    /// table. Distinct from `seatRole` (which encodes the legacy text
+    /// "OUT" pill for sitting-out seats) so tests can target the new
+    /// pill without breaking existing identifier consumers.
+    public static func seatRoleBadge(_ player: PlayerID) -> String    { "seat.\(player.rawValue).roleBadge" }
     public static func seatDealer(_ player: PlayerID) -> String       { "seat.\(player.rawValue).dealer" }
     public static func seatCurrentActor(_ player: PlayerID) -> String { "seat.\(player.rawValue).actor" }
     public static func seatTrickCount(_ player: PlayerID) -> String   { "seat.\(player.rawValue).trickCount" }

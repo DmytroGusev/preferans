@@ -22,6 +22,13 @@ public struct TableView: View {
     /// the landscape layout owns those externally. Only the play area is
     /// rendered. Defaults to true (portrait layout).
     public var renderOpponentsAtTop: Bool
+    /// Per-seat latest action, used to render an inline pill on each
+    /// opponent's name chip. The screen above us derives the dictionary
+    /// from the engine event stream so this view only reads it.
+    public var seatActions: [PlayerID: RecentAction]
+    /// The most recent banner-worthy action across the whole table. Drives
+    /// the centered toast that fades out after a short hold.
+    public var bannerAction: RecentAction?
 
     public init(
         projection: PlayerGameProjection,
@@ -30,7 +37,9 @@ public struct TableView: View {
         onStartDeal: (() -> Void)? = nil,
         onLeaveTable: (() -> Void)? = nil,
         onRematch: (() -> Void)? = nil,
-        renderOpponentsAtTop: Bool = true
+        renderOpponentsAtTop: Bool = true,
+        seatActions: [PlayerID: RecentAction] = [:],
+        bannerAction: RecentAction? = nil
     ) {
         self.projection = projection
         self.animationNamespace = animationNamespace
@@ -39,18 +48,22 @@ public struct TableView: View {
         self.onLeaveTable = onLeaveTable
         self.onRematch = onRematch
         self.renderOpponentsAtTop = renderOpponentsAtTop
+        self.seatActions = seatActions
+        self.bannerAction = bannerAction
     }
 
     public var body: some View {
         let opponents = orderedOpponents()
+        let active = opponents.filter { $0.role != .sittingOut }
+        let sittingOut = opponents.filter { $0.role == .sittingOut }
         if renderOpponentsAtTop {
             VStack(spacing: 4) {
                 DealStateStrip(projection: projection)
-                tableLayout(opponents: opponents)
+                tableLayout(active: active, sittingOut: sittingOut)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         } else {
-            playArea(opponentSeats: opponents.map(\.player))
+            playArea(opponentSeats: active.map(\.player))
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 200)
         }
@@ -59,11 +72,16 @@ public struct TableView: View {
     /// Real card-table layout: opponents are positioned around the felt
     /// (top, left, right) at their seat slots — not stacked
     /// shoulder-to-shoulder at the top. The trick area sits in the center
-    /// and grows to fill the available real estate.
-    private func tableLayout(opponents: [SeatProjection]) -> some View {
+    /// and grows to fill the available real estate. The 4-player
+    /// sitting-out dealer is excluded from the main slot layout so that
+    /// active opponents claim the full upper third instead of sharing it
+    /// with a player who isn't dealing in this hand; the sitting-out seat
+    /// collapses to a small corner chip so the user still sees who's at
+    /// the table.
+    private func tableLayout(active: [SeatProjection], sittingOut: [SeatProjection]) -> some View {
         GeometryReader { geo in
             let bounds = geo.size
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 // Center: trick area / phase content. Sized smaller than
                 // the felt so seat fans can sit at the edges without
                 // overlapping it.
@@ -72,18 +90,49 @@ public struct TableView: View {
                 // upper third (y ≤ ~0.30) so the trick area can claim
                 // the lower two-thirds and stay optically centered for
                 // every seat configuration.
-                playArea(opponentSeats: opponents.map(\.player))
+                playArea(opponentSeats: active.map(\.player))
                     .frame(width: max(0, bounds.width * 0.86),
                            height: max(0, bounds.height * 0.62))
                     .position(x: bounds.width * 0.5, y: bounds.height * 0.62)
 
-                // Opponent seats positioned around the felt edge.
-                ForEach(Array(opponentSlots(opponents: opponents).enumerated()), id: \.offset) { _, slot in
-                    OpponentSeatView(seat: slot.seat, orientation: slot.orientation)
-                        .frame(width: slotFrameSize(for: slot, bounds: bounds).width,
-                               height: slotFrameSize(for: slot, bounds: bounds).height)
-                        .position(x: slot.position.x * bounds.width,
-                                  y: slot.position.y * bounds.height)
+                // Active opponent seats positioned around the felt edge.
+                ForEach(Array(opponentSlots(opponents: active).enumerated()), id: \.offset) { _, slot in
+                    OpponentSeatView(
+                        seat: slot.seat,
+                        orientation: slot.orientation,
+                        lastAction: seatActions[slot.seat.player]
+                    )
+                    .frame(width: slotFrameSize(for: slot, bounds: bounds).width,
+                           height: slotFrameSize(for: slot, bounds: bounds).height)
+                    .position(x: slot.position.x * bounds.width,
+                              y: slot.position.y * bounds.height)
+                }
+
+                // Centered action banner (transient toast). Sits above the
+                // play area but ignores hit testing so it never blocks
+                // taps on the trick or the deal-summary CTA.
+                CenterActionBanner(
+                    action: bannerAction,
+                    displayName: { projection.displayName(for: $0) }
+                )
+                .position(x: bounds.width * 0.5, y: bounds.height * 0.50)
+
+                // Sitting-out dealer(s) tucked into the top-right corner
+                // as compact chips so they don't claim a full opponent
+                // slot. The chip itself is rendered by OpponentSeatView's
+                // sitting-out branch.
+                if !sittingOut.isEmpty {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        ForEach(sittingOut) { seat in
+                            OpponentSeatView(
+                                seat: seat,
+                                orientation: .top,
+                                lastAction: nil
+                            )
+                        }
+                    }
+                    .padding(.top, 4)
+                    .padding(.trailing, 6)
                 }
             }
             .frame(width: bounds.width, height: bounds.height)
@@ -414,10 +463,11 @@ public struct TableView: View {
     }
 
     /// Every seat except the viewer's, including the 4-player sitting-out
-    /// dealer. The sitting-out seat is rendered dimmed (with an "OUT"
-    /// badge) so the user always sees the full table — hiding the
-    /// dealer entirely was confusing for users who couldn't see who's
-    /// at the table during the deal they're sitting out.
+    /// dealer. The caller splits this into active vs sitting-out so the
+    /// active opponents claim the main slot layout while the sitting-out
+    /// seat is rendered as a compact corner chip — hiding the dealer
+    /// entirely was confusing for users who couldn't see who's at the
+    /// table during the deal they're sitting out.
     private func orderedOpponents() -> [SeatProjection] {
         projection.seats.filter { $0.player != projection.viewer }
     }

@@ -14,6 +14,11 @@ public struct OpponentSeatView: View {
     /// the viewer's POV so cards never rotate vertically and clip the
     /// trick area).
     public var orientation: Orientation
+    /// Latest action this seat took during the current deal. When non-nil
+    /// the seat's name chip carries an inline pill ("Pass", "6♠", "Whist")
+    /// so the user can see at a glance what the seat just did without
+    /// having to scan the auction trail.
+    public var lastAction: RecentAction?
 
     public enum Orientation {
         case top
@@ -21,19 +26,82 @@ public struct OpponentSeatView: View {
         case right
     }
 
-    public init(seat: SeatProjection, orientation: Orientation = .top) {
+    public init(
+        seat: SeatProjection,
+        orientation: Orientation = .top,
+        lastAction: RecentAction? = nil
+    ) {
         self.seat = seat
         self.orientation = orientation
+        self.lastAction = lastAction
     }
 
     public var body: some View {
-        VStack(spacing: 3) {
-            nameChip
-            fan
+        if seat.role == .sittingOut {
+            sittingOutChip
+        } else {
+            VStack(spacing: 3) {
+                nameChip
+                actionRow
+                fan
+            }
+            .opacity(seat.isActive ? 1 : 0.55)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
         }
-        .opacity(seat.isActive ? 1 : 0.55)
+    }
+
+    /// Single-line chip for the 4-player sitting-out dealer. The full seat
+    /// tile (name + action pill + face-down fan) wastes a slot's worth of
+    /// real estate on a player who isn't dealing in this hand, so the
+    /// sitting-out seat collapses to a quiet name + "OUT" pill that the
+    /// table can tuck into a corner.
+    private var sittingOutChip: some View {
+        HStack(spacing: 5) {
+            Text(seat.displayName)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
+            Text("OUT")
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.5)
+                .foregroundStyle(TableTheme.feltDeep)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1)
+                .background(TableTheme.inkCreamSoft, in: Capsule())
+                .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .opacity(0.65)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
+    }
+
+    /// One-line action pill below the seat's name, present only when the
+    /// seat has taken an action in the current deal. Replaces "you have to
+    /// scan the auction trail" with a per-seat label that lingers until
+    /// superseded.
+    @ViewBuilder
+    private var actionRow: some View {
+        if let lastAction {
+            HStack(spacing: 4) {
+                lastAction.label.glyph(emphasis: .seat)
+                    .font(.caption2.weight(.bold))
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(
+                Capsule().fill(TableTheme.gold.opacity(0.20))
+            )
+            .overlay(
+                Capsule().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.5)
+            )
+            .transition(.scale.combined(with: .opacity))
+            .accessibilityIdentifier(UIIdentifiers.seatLastAction(seat.player))
+        }
     }
 
     /// One-line player chip: name + dealer/sitting-out/turn pill + trick

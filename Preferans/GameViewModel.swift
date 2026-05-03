@@ -12,6 +12,11 @@ public final class GameViewModel: ObservableObject {
     /// still see the error in `lastError` regardless.
     @Published public private(set) var lastErrorCategory: ErrorCategory?
     @Published public private(set) var eventLog: [String] = []
+    /// Typed mirror of `eventLog`. The UI uses this to surface "what just
+    /// happened" — the centered action banner and the per-seat last-action
+    /// badge both derive from this stream, walking backward to the most
+    /// recent `dealStarted` so stale actions never leak across deals.
+    @Published public private(set) var recentEvents: [PreferansEvent] = []
     @Published public var selectedViewer: PlayerID
     public var viewerPolicy: ViewerPolicy
     public var dealSource: DealSource
@@ -45,6 +50,10 @@ public final class GameViewModel: ObservableObject {
             let authoritativeAction = makeAuthoritative(action)
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: events.map { String(describing: $0) })
+            recentEvents.append(contentsOf: events)
+            if recentEvents.count > 120 {
+                recentEvents.removeFirst(recentEvents.count - 120)
+            }
             lastError = nil
             lastErrorCategory = nil
             applyViewerPolicy()

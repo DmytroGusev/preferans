@@ -4,6 +4,11 @@ import PreferansEngine
 public struct ProjectionGameScreen<Menu: View>: View {
     public var projection: PlayerGameProjection
     public var eventLog: [String]
+    /// Typed mirror of `eventLog`. Drives the centered action banner and
+    /// the per-seat last-action badge. Optional for callers that don't
+    /// have access to the typed stream — they get the legacy UX without
+    /// notifications.
+    public var recentEvents: [PreferansEvent]
     public var onSend: (PreferansAction) -> Void
     /// When non-nil, renders an explicit "Leave table" button in the header
     /// and a "Back to lobby" CTA on the game-over card so the user always
@@ -30,6 +35,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     public init(
         projection: PlayerGameProjection,
         eventLog: [String] = [],
+        recentEvents: [PreferansEvent] = [],
         onSend: @escaping (PreferansAction) -> Void,
         onLeaveTable: (() -> Void)? = nil,
         onRematch: (() -> Void)? = nil,
@@ -37,10 +43,19 @@ public struct ProjectionGameScreen<Menu: View>: View {
     ) {
         self.projection = projection
         self.eventLog = eventLog
+        self.recentEvents = recentEvents
         self.onSend = onSend
         self.onLeaveTable = onLeaveTable
         self.onRematch = onRematch
         self.extraMenu = extraMenu()
+    }
+
+    private var seatActions: [PlayerID: RecentAction] {
+        RecentActionFeed.perSeat(from: recentEvents)
+    }
+
+    private var bannerAction: RecentAction? {
+        RecentActionFeed.banner(from: recentEvents)
     }
 
     public var body: some View {
@@ -86,7 +101,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 onAdvance: advanceToNextDeal,
                 onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
                 onLeaveTable: onLeaveTable,
-                onRematch: onRematch
+                onRematch: onRematch,
+                seatActions: seatActions,
+                bannerAction: bannerAction
             )
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -146,7 +163,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var landscapeOpponentColumn: some View {
         VStack(spacing: 6) {
             ForEach(orderedOpponentSeats) { seat in
-                OpponentSeatView(seat: seat, orientation: .top)
+                OpponentSeatView(
+                    seat: seat,
+                    orientation: .top,
+                    lastAction: seatActions[seat.player]
+                )
             }
             Spacer(minLength: 0)
         }
@@ -163,7 +184,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
             onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch,
-            renderOpponentsAtTop: false
+            renderOpponentsAtTop: false,
+            seatActions: seatActions,
+            bannerAction: bannerAction
         )
     }
 
@@ -193,7 +216,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     onAdvance: advanceToNextDeal,
                     onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
                     onLeaveTable: onLeaveTable,
-                    onRematch: onRematch
+                    onRematch: onRematch,
+                    seatActions: seatActions,
+                    bannerAction: bannerAction
                 )
                 .frame(maxHeight: .infinity)
                 if shouldShowActionBar {
@@ -463,6 +488,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .accessibilityHidden(true)
                 .accessibilityIdentifier(UIIdentifiers.viewerLabel)
             seatStatusPill(seat: seat)
+            if let lastAction = seatActions[seat.player] {
+                viewerLastActionPill(action: lastAction)
+            }
             Spacer(minLength: 4)
             if seat.trickCount > 0 || isPlayingPhase {
                 Text("\(seat.trickCount)")
@@ -474,6 +502,24 @@ public struct ProjectionGameScreen<Menu: View>: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 4)
+    }
+
+    /// Inline gold-tinted pill rendering the viewer's most recent action,
+    /// matching the per-seat badge on opponents. Lets the player see at a
+    /// glance what they last did without having to mentally replay the
+    /// auction trail.
+    private func viewerLastActionPill(action: RecentAction) -> some View {
+        HStack(spacing: 4) {
+            action.label.glyph(emphasis: .seat)
+                .font(.caption2.weight(.bold))
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 1)
+        .background(Capsule().fill(TableTheme.gold.opacity(0.20)))
+        .overlay(
+            Capsule().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.5)
+        )
+        .accessibilityIdentifier(UIIdentifiers.seatLastAction(action.player))
     }
 
     /// Mutually-exclusive status pill for the viewer's seat. "Your turn"
