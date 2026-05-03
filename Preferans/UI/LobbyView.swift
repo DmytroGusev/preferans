@@ -473,24 +473,14 @@ public struct LobbyView: View {
                     model.botStrategies[seat] = strategy
                 }
             }
-            // Bot pacing follows the lobby's Bot speed picker; full-match
-            // UI tests pass `-uiTestZeroBotDelay` to short-circuit it. The
-            // animations flag deliberately doesn't zero pacing — an
-            // interactive sim run with animations off should still take
-            // turns at human speed.
-            //
-            // The "zero" flag actually pins the delay to 10ms rather than
-            // a literal zero: SwiftUI needs at least one render cycle
-            // between consecutive bot moves so @Published state changes
-            // (auction trail, recent-action banner, viewer rotation) get
-            // a chance to land. A literal .zero collapsed multi-action
-            // sequences into a single tick and made transient UI like the
-            // center action banner effectively invisible during fast
-            // bot-only stretches. 10ms is still ~50× faster than real
-            // play — a 30-deal match adds well under a second of total
-            // wait time.
-            if TestHarness.zeroBotDelay(in: args) {
-                model.botMoveDelay = .milliseconds(10)
+            // Bot pacing follows the lobby's Bot speed picker. Automated
+            // UI tests pass `-uiTestFastBotDelay` to short-circuit it
+            // (`BotPacing.testFast`); manual `bin/sim` runs and shipping
+            // builds never see that path. The animations flag deliberately
+            // doesn't zero pacing — an interactive sim run with animations
+            // off should still take turns at human speed.
+            if TestHarness.fastBotDelay(in: args) {
+                model.botMoveDelay = BotPacing.testFast
             } else {
                 model.botMoveDelay = (speedOverride ?? botSpeed).delay
             }
@@ -531,7 +521,7 @@ public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
 
     public var delay: Duration {
         switch self {
-        case .instant: return .zero
+        case .instant: return BotPacing.instant
         case .normal:  return .milliseconds(1200)
         case .slow:    return .milliseconds(2200)
         }

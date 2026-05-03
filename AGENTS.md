@@ -18,9 +18,14 @@ restructure before re-running:
 - Snapshot/screenshot dumps must dedupe — don't write 200 identical PNGs
   while waiting for a bot animation; key off (phase, viewer, deal#)
   transitions only.
-- The bot pacing default is `botMoveDelay = 500ms` — for tests, set it to
-  `.zero` (or pass `-uiTestDisableAnimations` and add a launch flag for
-  bot delay) so a 10-trick all-pass deal isn't 15 s of pure waiting.
+- Bot pacing constants live in `BotPacing` (Sources/PreferansEngine/BotPacing.swift):
+  `BotPacing.interactive` (500ms, the production default), `BotPacing.testFast`
+  (10ms, gated by the `-uiTestFastBotDelay` launch flag — UI tests only,
+  never manual sim), and `BotPacing.instant` (0, the lobby's "Watch bots"
+  demo path). Don't inline raw durations elsewhere; reference the constants.
+  `testFast` is non-zero on purpose — SwiftUI needs a render cycle between
+  consecutive bot moves so transient UI (auction trail, action banner)
+  doesn't get re-keyed before it animates.
 - If you find yourself reaching for `timeout: 600000` (10 min) on a Bash
   call, that's a sign the underlying loop has no bound. Add the bound
   to the loop, not the wrapper.

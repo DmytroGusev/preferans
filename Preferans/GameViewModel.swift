@@ -26,8 +26,10 @@ public final class GameViewModel: ObservableObject {
     public var botStrategies: [PlayerID: PlayerStrategy] = [:]
 
     /// Pacing between bot moves so consecutive plays don't all fire in the
-    /// same frame — gives the UI room to animate.
-    public var botMoveDelay: Duration = .milliseconds(500)
+    /// same frame — gives the UI room to animate. Named constants live in
+    /// `BotPacing` so the lobby's test override and the picker enum can't
+    /// drift on the same number.
+    public var botMoveDelay: Duration = BotPacing.interactive
 
     private var pendingBotTask: Task<Void, Never>?
 

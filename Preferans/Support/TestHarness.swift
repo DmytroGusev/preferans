@@ -24,12 +24,14 @@ public enum TestHarness {
         arguments.contains(Flag.disableAnimations)
     }
 
-    /// True when the test harness has asked for full-speed bot pacing.
-    /// Decoupled from `disableAnimations` so an interactive `bin/sim` run
-    /// can disable visual animations (for snappier feedback) while still
-    /// using the user-chosen Bot speed.
-    public static func zeroBotDelay(in arguments: [String]) -> Bool {
-        arguments.contains(Flag.zeroBotDelay)
+    /// True when the test harness has asked for the automated-test bot
+    /// pacing (`BotPacing.testFast`). Decoupled from `disableAnimations`
+    /// so an interactive `bin/sim` run can disable visual animations
+    /// (for snappier feedback) while still using the user-chosen Bot
+    /// speed. **Only** the UI test target sets this flag — manual sim
+    /// launches and shipping builds always honor the picker.
+    public static func fastBotDelay(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.fastBotDelay)
     }
 
     /// A fully resolved table configuration the lobby can use to build a

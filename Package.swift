@@ -6,10 +6,10 @@ let package = Package(
     name: "PreferansEngine",
     defaultLocalization: "en",
     platforms: [
-        .iOS(.v15),
+        .iOS(.v16),
         .macOS(.v14),
-        .tvOS(.v15),
-        .watchOS(.v8)
+        .tvOS(.v16),
+        .watchOS(.v9)
     ],
     products: [
         .library(name: "PreferansEngine", targets: ["PreferansEngine"]),
