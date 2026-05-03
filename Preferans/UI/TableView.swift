@@ -67,10 +67,15 @@ public struct TableView: View {
                 // Center: trick area / phase content. Sized smaller than
                 // the felt so seat fans can sit at the edges without
                 // overlapping it.
+                // Center the play area in the open felt below the
+                // opponent row. Every opponent slot now lives in the
+                // upper third (y ≤ ~0.30) so the trick area can claim
+                // the lower two-thirds and stay optically centered for
+                // every seat configuration.
                 playArea(opponentSeats: opponents.map(\.player))
-                    .frame(width: max(0, bounds.width * 0.78),
+                    .frame(width: max(0, bounds.width * 0.86),
                            height: max(0, bounds.height * 0.62))
-                    .position(x: bounds.width * 0.5, y: bounds.height * 0.55)
+                    .position(x: bounds.width * 0.5, y: bounds.height * 0.62)
 
                 // Opponent seats positioned around the felt edge.
                 ForEach(Array(opponentSlots(opponents: opponents).enumerated()), id: \.offset) { _, slot in
@@ -88,30 +93,34 @@ public struct TableView: View {
 
     /// One slot per opponent — its position (normalised 0–1 of the felt),
     /// its orientation hint for the fan, and its frame size category. The
-    /// number of opponents drives which corner each seat lands in:
+    /// number of opponents drives where each seat lands:
     ///   - 1 opponent → top center
     ///   - 2 opponents → top-left + top-right
-    ///   - 3 opponents → left edge + top + right edge
+    ///   - 3 opponents → upper-left + top + upper-right (every fan
+    ///     horizontal — no rotated vertical columns)
     private func opponentSlots(opponents: [SeatProjection]) -> [OpponentSlot] {
         switch opponents.count {
         case 1:
-            return [OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.5, y: 0.10), orientation: .top, kind: .topWide)]
+            return [OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.5, y: 0.16), orientation: .top, kind: .topWide)]
         case 2:
             return [
-                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.26, y: 0.12), orientation: .top, kind: .topNarrow),
-                OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.74, y: 0.12), orientation: .top, kind: .topNarrow),
+                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.25, y: 0.18), orientation: .top, kind: .topNarrow),
+                OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.75, y: 0.18), orientation: .top, kind: .topNarrow),
             ]
         case 3:
+            // Top opponent sits highest; left/right step down so the
+            // three horizontal fans cascade rather than collide
+            // shoulder-to-shoulder. The vertical stagger also makes the
+            // table read as "around" rather than "across".
             return [
-                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.12, y: 0.45), orientation: .left, kind: .side),
+                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.18, y: 0.26), orientation: .left, kind: .topNarrow),
                 OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.50, y: 0.10), orientation: .top, kind: .topNarrow),
-                OpponentSlot(seat: opponents[2], position: CGPoint(x: 0.88, y: 0.45), orientation: .right, kind: .side),
+                OpponentSlot(seat: opponents[2], position: CGPoint(x: 0.82, y: 0.26), orientation: .right, kind: .topNarrow),
             ]
         default:
-            // Fallback: spread across the top
             return opponents.enumerated().map { idx, seat in
                 let x = (CGFloat(idx) + 1) / CGFloat(opponents.count + 1)
-                return OpponentSlot(seat: seat, position: CGPoint(x: x, y: 0.12), orientation: .top, kind: .topNarrow)
+                return OpponentSlot(seat: seat, position: CGPoint(x: x, y: 0.18), orientation: .top, kind: .topNarrow)
             }
         }
     }
@@ -119,17 +128,12 @@ public struct TableView: View {
     private func slotFrameSize(for slot: OpponentSlot, bounds: CGSize) -> CGSize {
         switch slot.kind {
         case .topWide:
-            return CGSize(width: min(bounds.width * 0.78, 320),
-                          height: 100)
+            return CGSize(width: min(bounds.width * 0.78, 320), height: 130)
         case .topNarrow:
-            return CGSize(width: min(bounds.width * 0.44, 200),
-                          height: 100)
-        case .side:
-            // Side seats: name chip on top, vertical (rotated) fan below.
-            // Width is just wide enough for the chip; height reserves the
-            // rotated fan's footprint plus the chip header.
-            return CGSize(width: 100,
-                          height: 240)
+            // Wide enough for "Agent Smith" + the trick-count chip without
+            // truncating, and tall enough to clear two rows of compact
+            // card backs.
+            return CGSize(width: min(bounds.width * 0.32, 160), height: 130)
         }
     }
 
@@ -138,7 +142,7 @@ public struct TableView: View {
         var position: CGPoint
         var orientation: OpponentSeatView.Orientation
         var kind: Kind
-        enum Kind { case topWide, topNarrow, side }
+        enum Kind { case topWide, topNarrow }
     }
 
     /// The center of the felt where the current trick sits. The felt is the
@@ -394,12 +398,16 @@ public struct TableView: View {
             return CGSize(width: 0, height: -h * 0.7)
         case 2:
             let x = w * 1.1
-            let y = -h * 0.15
+            let y = -h * 0.45
             return player == opponents[0] ? CGSize(width: -x, height: y) : CGSize(width: x, height: y)
         case 3:
-            if player == opponents[0] { return CGSize(width: -w * 1.3, height: 0) }
-            if player == opponents[1] { return CGSize(width: 0, height: -h * 0.75) }
-            return CGSize(width: w * 1.3, height: 0)
+            // Side opponents are now positioned horizontally in the
+            // upper third — pull their played cards both inward and
+            // upward so they hover under the seat fans rather than
+            // floating in the middle row.
+            if player == opponents[0] { return CGSize(width: -w * 1.05, height: -h * 0.55) }
+            if player == opponents[1] { return CGSize(width: 0, height: -h * 0.85) }
+            return CGSize(width: w * 1.05, height: -h * 0.55)
         default:
             return .zero
         }

@@ -4,15 +4,15 @@ import PreferansEngine
 /// Opponent seat rendered as a real face-down hand fan + a quiet name
 /// chip — no dark box. The fan shows one card back per card the opponent
 /// actually holds, so a 10-card hand reads as ten cards and a 1-card
-/// late-trick hand reads as one. The name chip floats above the fan with
-/// turn / dealer / sitting-out indicators inline.
+/// late-trick hand reads as one. Hands wider than ~5 cards wrap to a
+/// second row so the seat footprint stays compact and readable from the
+/// viewer's perspective regardless of where the seat sits at the table.
 public struct OpponentSeatView: View {
     public var seat: SeatProjection
-    /// Position relative to the viewer. Drives the rotation applied to the
-    /// fan so the fan visually "points" at its owner's side of the table:
-    /// top opponents get an upside-down fan, side opponents get a 90°
-    /// rotation. Compact iPhone defaults to .top — there's no horizontal
-    /// room to rotate fans 90° without clipping the trick area.
+    /// Position relative to the viewer. Drives a tiny visual offset (no
+    /// rotation any more — every opponent's hand reads horizontally from
+    /// the viewer's POV so cards never rotate vertically and clip the
+    /// trick area).
     public var orientation: Orientation
 
     public enum Orientation {
@@ -27,49 +27,13 @@ public struct OpponentSeatView: View {
     }
 
     public var body: some View {
-        Group {
-            switch orientation {
-            case .top:
-                VStack(spacing: 3) {
-                    nameChip
-                    fan
-                }
-            case .left, .right:
-                VStack(spacing: 4) {
-                    nameChip
-                    rotatedFan(rotation: orientation == .left ? .degrees(90) : .degrees(-90))
-                }
-            }
+        VStack(spacing: 3) {
+            nameChip
+            fan
         }
         .opacity(seat.isActive ? 1 : 0.55)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
-    }
-
-    /// Side-positioned fan: a horizontal fan rotated 90° so the cards
-    /// stand upright next to the table edge. The wrapping frame
-    /// dimensions match the post-rotation footprint so layout doesn't
-    /// have to "see" through the rotation transform.
-    private func rotatedFan(rotation: Angle) -> some View {
-        let count = seat.hand.count
-        let dims = CardView.Size.compact.dimensions
-        guard count > 0 else {
-            // Sitting-out seat — no fan, but reserve a slim vertical
-            // strip so the seat tile keeps the same height as its peers.
-            return AnyView(Color.clear.frame(width: dims.height, height: 24))
-        }
-        let preferredStep: CGFloat = -dims.width * 0.40
-        let originalWidth: CGFloat = dims.width + CGFloat(count - 1) * (dims.width + preferredStep)
-        let cappedWidth = min(originalWidth, 240)
-        return AnyView(
-            fan
-                .frame(width: originalWidth, height: dims.height)
-                .rotationEffect(rotation)
-                // After 90° rotation, the fan's intrinsic width becomes
-                // the slot's height. Match the frame to that swap so the
-                // surrounding VStack reserves the right space.
-                .frame(width: dims.height, height: cappedWidth)
-        )
     }
 
     /// One-line player chip: name + dealer/sitting-out/turn pill + trick
@@ -87,7 +51,7 @@ public struct OpponentSeatView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.6)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
 
             statusBadge
@@ -129,37 +93,57 @@ public struct OpponentSeatView: View {
         }
     }
 
-    /// Render one card back per card the opponent really holds — the count
-    /// is the truth, not a "5+" approximation. The fan adapts its overlap
-    /// to fit the available column width so even a 10-card hand stays
-    /// inside the seat slot without bleeding into the next opponent.
+    /// Render one card back per card the opponent really holds, wrapping
+    /// to a second row once the hand is wider than `cardsPerRow`. Every
+    /// row is horizontal — even side seats — so cards never rotate
+    /// vertically into the trick area. The first row gets the leading
+    /// half; the second row stacks above it slightly inset so the fan
+    /// reads as a held hand rather than two separate piles.
     private var fan: some View {
         let count = seat.hand.count
         let dims = CardView.Size.compact.dimensions
-        return GeometryReader { geo in
-            let available = max(0, geo.size.width)
-            let totalCardWidth = dims.width
-            // Each subsequent card adds `step` to the row's overall width.
-            // Step is negative when cards overlap; the floor keeps a
-            // hand-suggestion overlap even when there's plenty of room.
-            let maxStepForFit: CGFloat = count > 1
-                ? (available - totalCardWidth) / CGFloat(count - 1)
-                : 0
-            let preferred: CGFloat = -dims.width * 0.40
-            let lowerBound: CGFloat = -dims.width * 0.78
-            let step = max(lowerBound, min(preferred, maxStepForFit))
-            HStack(spacing: step) {
-                ForEach(0..<count, id: \.self) { index in
-                    CardView(
-                        card: .hidden,
-                        size: .compact,
-                        region: .hand(seat: seat.player),
-                        indexInRow: index
-                    )
-                }
+        let cardsPerRow = 5
+        let rows = splitIntoRows(count: count, perRow: cardsPerRow)
+        return VStack(spacing: -dims.height * 0.55) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, rowCount in
+                fanRow(count: rowCount, cardSize: dims)
             }
-            .frame(width: available, alignment: .center)
         }
-        .frame(height: count == 0 ? 0 : dims.height)
+        .frame(height: count == 0 ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height))
+    }
+
+    /// One horizontal row of face-down cards. Cards overlap by ~50% so a
+    /// 5-card row stays narrow enough that three opponent fans fit on
+    /// the upper third of an iPhone width without collisions.
+    private func fanRow(count: Int, cardSize dims: CGSize) -> some View {
+        let step: CGFloat = -dims.width * 0.50
+        return HStack(spacing: step) {
+            ForEach(0..<count, id: \.self) { index in
+                CardView(
+                    card: .hidden,
+                    size: .compact,
+                    region: .hand(seat: seat.player),
+                    indexInRow: index
+                )
+            }
+        }
+    }
+
+    /// Two-row split for hands wider than `perRow`. Top row gets the
+    /// remainder, bottom row gets the full row — that way 10 cards split
+    /// 5+5, 9 cards split 4+5, etc.
+    private func splitIntoRows(count: Int, perRow: Int) -> [Int] {
+        guard count > 0 else { return [] }
+        if count <= perRow { return [count] }
+        let bottom = perRow
+        let top = count - perRow
+        return [top, bottom]
+    }
+
+    private func rowsHeight(rowCount: Int, cardHeight: CGFloat) -> CGFloat {
+        guard rowCount > 0 else { return 0 }
+        // Each subsequent row contributes only the visible 45% slice
+        // (since the rows overlap by 55%).
+        return cardHeight + CGFloat(rowCount - 1) * cardHeight * 0.45
     }
 }

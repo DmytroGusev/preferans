@@ -119,29 +119,42 @@ public struct DealStateStrip: View {
 
     // MARK: - Vzyatki row
 
-    /// "Anya 4 • Misha 2 • Lena 1" — the running tricks-per-active-seat
-    /// always rendered so the user never has to count cards. Sitting-out
-    /// seats are excluded; the declarer (when known) is highlighted gold.
+    /// "Anya 4 • Misha 2 • Lena 1 • Smith —" — running tricks-per-seat
+    /// for the whole table so the user never has to count cards or
+    /// wonder where a missing player went. Sitting-out seats are
+    /// rendered dimmed with an em-dash placeholder; the declarer (when
+    /// known) is highlighted gold.
     private var vzyatkiRow: some View {
         let declarer = wonContractSummary()?.0
         return HStack(spacing: 4) {
-            ForEach(activeSeats, id: \.player) { seat in
+            ForEach(projection.seats, id: \.player) { seat in
                 let isDeclarer = seat.player == declarer
+                let isSittingOut = seat.role == .sittingOut
                 HStack(spacing: 3) {
                     Text(seat.displayName)
                         .font(.caption2.weight(.semibold))
                         .lineLimit(1)
-                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
-                    Text("\(seat.trickCount)")
+                        .foregroundStyle(
+                            isSittingOut
+                                ? TableTheme.inkCreamDim
+                                : (isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        )
+                    Text(isSittingOut ? "—" : "\(seat.trickCount)")
                         .font(.caption2.weight(.bold).monospacedDigit())
-                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        .foregroundStyle(
+                            isSittingOut
+                                ? TableTheme.inkCreamDim
+                                : (isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        )
                 }
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
                 .background(
-                    Capsule().fill(isDeclarer
-                                   ? TableTheme.gold.opacity(0.20)
-                                   : Color.black.opacity(0.30))
+                    Capsule().fill(
+                        isDeclarer
+                            ? TableTheme.gold.opacity(0.20)
+                            : Color.black.opacity(isSittingOut ? 0.18 : 0.30)
+                    )
                 )
                 .overlay(
                     Capsule().strokeBorder(
@@ -332,7 +345,7 @@ public struct DealStateStrip: View {
             return (declarer, finalBid)
         case let .awaitingWhist(_, declarer, contract):
             return (declarer, .game(contract))
-        case let .awaitingDefenderMode(whister, contract):
+        case let .awaitingDefenderMode(whister, _):
             // Defender mode happens after a whister has called; the
             // declarer is the seat that won the auction. Walk the auction
             // for that, falling back to the whister's seat (defensive).
