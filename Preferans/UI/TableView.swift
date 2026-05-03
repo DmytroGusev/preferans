@@ -319,9 +319,73 @@ public struct TableView: View {
         switch projection.phase {
         case .awaitingDiscard:
             talonContext()
+        case .bidding, .awaitingContract:
+            biddingContext()
         default:
             EmptyView()
         }
+    }
+
+    /// Bidding-phase center cluster. One pill per active seat showing
+    /// the latest call (bid / pass) or a quiet "…" while the seat is
+    /// still pending. The current caller's pill is ringed in gold so
+    /// the eye lands on whose turn it is. Replaces the small
+    /// auction-trail row at the top of the strip as the primary read
+    /// of "where is the auction".
+    private func biddingContext() -> some View {
+        let active = projection.seats.filter { $0.role != .sittingOut }
+        return VStack(spacing: 8) {
+            Text("Auction")
+                .font(.caption.weight(.bold))
+                .tracking(1.2)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.goldBright)
+            HStack(spacing: 8) {
+                ForEach(active, id: \.player) { seat in
+                    auctionSeatPill(seat: seat)
+                }
+            }
+        }
+        .multilineTextAlignment(.center)
+    }
+
+    private func auctionSeatPill(seat: SeatProjection) -> some View {
+        let action = seatActions[seat.player]
+        let isCurrent = seat.isCurrentActor
+        return VStack(spacing: 4) {
+            Text(seat.displayName)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .lineLimit(1)
+            Group {
+                if let action {
+                    action.label.glyph(emphasis: .banner)
+                        .font(.subheadline.weight(.heavy))
+                } else if isCurrent {
+                    Text("Calling…")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TableTheme.goldBright)
+                } else {
+                    Text("—")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: TableTheme.Radius.sm, style: .continuous)
+                .fill(Color.black.opacity(isCurrent ? 0.55 : 0.32))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: TableTheme.Radius.sm, style: .continuous)
+                .strokeBorder(
+                    isCurrent ? TableTheme.goldBright.opacity(0.85) : TableTheme.gold.opacity(0.18),
+                    lineWidth: isCurrent ? 1.2 : 0.5
+                )
+        )
+        .shadow(color: isCurrent ? TableTheme.goldBright.opacity(0.35) : .clear, radius: isCurrent ? 8 : 0)
     }
 
     /// Talon exchange: render the two prikup cards face-up centered on the

@@ -64,9 +64,10 @@ public struct DealStateStrip: View {
         }
     }
 
-    /// Bidding-phase row. Shows the current leader (highest bid + declarer)
-    /// and the trail of recent calls, so the user sees how the auction is
-    /// climbing.
+    /// Bidding-phase row. Shows the current leader (highest bid + declarer).
+    /// The per-seat auction pill cluster on the felt now carries the trail
+    /// of recent calls, so the strip stays compact and reserved for "what's
+    /// the high bid right now".
     private var biddingRow: some View {
         HStack(spacing: 6) {
             if let (declarer, bid) = highestBid() {
@@ -75,14 +76,6 @@ public struct DealStateStrip: View {
                 phaseLabel("Auction")
             }
             Spacer(minLength: 4)
-            HStack(spacing: 4) {
-                // Most recent calls land on the right; cap to last 5 so
-                // the chip rail stays compact mid-auction without needing
-                // to scroll on phone widths.
-                ForEach(Array(projection.auction.suffix(5).enumerated()), id: \.offset) { _, call in
-                    auctionPill(call: call)
-                }
-            }
         }
     }
 
@@ -183,29 +176,6 @@ public struct DealStateStrip: View {
             .tracking(1.0)
             .textCase(.uppercase)
             .foregroundStyle(TableTheme.goldBright)
-    }
-
-    /// One pill per auction call. Pass renders as a quiet "—", real bids
-    /// render with the suit symbol so the strain reads at a glance.
-    private func auctionPill(call: AuctionCall) -> some View {
-        HStack(spacing: 3) {
-            Text(initials(call.player))
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(TableTheme.inkCreamSoft)
-            Group {
-                switch call.call {
-                case .pass:
-                    Text("—")
-                        .foregroundStyle(TableTheme.inkCreamDim)
-                case let .bid(bid):
-                    bidGlyph(bid: bid)
-                }
-            }
-            .font(.caption2.weight(.bold))
-        }
-        .padding(.horizontal, 5)
-        .padding(.vertical, 1)
-        .background(Color.black.opacity(0.32), in: Capsule())
     }
 
     @ViewBuilder
