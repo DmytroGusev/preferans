@@ -144,7 +144,7 @@ public struct ScoreBoardView: View {
         .padding(.horizontal, 4)
     }
 
-    private func legendRow(title: String, description: String) -> some View {
+    private func legendRow(title: LocalizedStringKey, description: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 6) {
             Text(title).fontWeight(.semibold).foregroundStyle(.primary)
             Text(description)

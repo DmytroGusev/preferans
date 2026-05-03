@@ -98,7 +98,7 @@ public struct CardView: View {
         }
         .overlay(alignment: .topTrailing) {
             if isTalon {
-                Text("P")
+                Text("badge.prikup")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 4)

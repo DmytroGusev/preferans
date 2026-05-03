@@ -224,10 +224,10 @@ public struct DealStateStrip: View {
                 }
             }
         case .misere:
-            Text("MIS")
+            Text("bid.misere.short")
                 .foregroundStyle(TableTheme.goldBright)
         case .totus:
-            Text("TOT")
+            Text("bid.totus.short")
                 .foregroundStyle(TableTheme.goldBright)
         }
     }

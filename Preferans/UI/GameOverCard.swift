@@ -31,16 +31,15 @@ public struct GameOverCard: View {
                     Text("\(winner.player.rawValue) takes the pulka")
                         .font(.subheadline.bold())
                         .foregroundStyle(TableTheme.inkCream)
-                        .accessibilityLabel("\(AccessibilityStrings.gameOverWinnerPrefix)\(winner.player.rawValue)")
+                        .accessibilityLabel(Text("\(winner.player.rawValue) takes the pulka"))
                         .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
                     Text("Match won")
                         .font(.caption2)
                         .foregroundStyle(TableTheme.inkCreamSoft)
                 }
-                Text("\(summary.dealsPlayed) completed \(summary.dealsPlayed == 1 ? "deal" : "deals")")
+                Text("\(summary.dealsPlayed) completed deals")
                     .font(.caption)
                     .foregroundStyle(TableTheme.inkCreamSoft)
-                    .accessibilityLabel("\(AccessibilityStrings.completedDealsPrefix)\(summary.dealsPlayed)")
                     .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
             }
 

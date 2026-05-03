@@ -293,7 +293,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
         do {
             _ = try await cloudStore.saveTableSummary(summary, latestPublicProjection: projection)
         } catch {
-            errorText = "CloudKit table save failed: \(error.localizedDescription)"
+            errorText = String(localized: "CloudKit table save failed: \(error.localizedDescription)")
         }
     }
 
@@ -328,7 +328,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
                 )
             }
         } catch {
-            errorText = "CloudKit archive failed: \(error.localizedDescription)"
+            errorText = String(localized: "CloudKit archive failed: \(error.localizedDescription)")
         }
     }
 

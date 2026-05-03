@@ -14,7 +14,7 @@ struct PreferansApp: App {
     private let animationsDisabled: Bool
 
     init() {
-        // Default to Russian on first launch (overridable in Settings). Has
+        // Default to Ukrainian on first launch (overridable in Settings). Has
         // to land before any view loads so `Bundle.main`'s catalog lookup
         // picks the right language for this process. The UI-test flag
         // pins English so XCUI assertions don't drift on simulators

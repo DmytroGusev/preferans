@@ -147,7 +147,7 @@ extension RecentAction.Label {
             Text("Discarded")
                 .foregroundStyle(emphasis.bodyColor)
         case let .defenderMode(mode):
-            Text(mode == .open ? "Open" : "Closed")
+            Text(Localized.defenderMode(mode))
                 .foregroundStyle(emphasis.accentColor)
         }
     }
@@ -180,7 +180,7 @@ extension RecentAction.Label {
 private struct BidGlyph: View {
     let bid: ContractBid
     let emphasis: RecentAction.Label.Emphasis
-    var prefix: String? = nil
+    var prefix: LocalizedStringKey? = nil
 
     var body: some View {
         HStack(spacing: 3) {

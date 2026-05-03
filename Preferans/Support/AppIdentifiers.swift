@@ -21,7 +21,7 @@ public enum SettingsKeys {
 
     /// Preferred UI language code (BCP-47). When set, written into
     /// `AppleLanguages` at app start so Foundation/SwiftUI pick the matching
-    /// strings catalog. Defaults to `ru` per product requirement.
+    /// strings catalog. Defaults to `uk` per product requirement.
     public static let appLanguage = "settings.appLanguage"
 }
 
@@ -30,9 +30,9 @@ public enum SettingsKeys {
 /// `displayName` is rendered in the same language so a user who lands on
 /// the wrong default still recognizes their own language.
 public enum AppLanguage: String, CaseIterable, Identifiable {
+    case uk
     case ru
     case en
-    case uk
 
     public var id: String { rawValue }
 
@@ -44,7 +44,7 @@ public enum AppLanguage: String, CaseIterable, Identifiable {
         }
     }
 
-    public static let `default`: AppLanguage = .ru
+    public static let `default`: AppLanguage = .uk
 
     /// Resolve the persisted choice (or default) for the current process.
     public static var current: AppLanguage {

@@ -263,7 +263,7 @@ public struct LobbyView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
             if isViewer {
-                Text("YOU")
+                Text("badge.you")
                     .font(.system(size: 9, weight: .bold))
                     .tracking(0.6)
                     .foregroundStyle(TableTheme.feltDeep)
@@ -271,7 +271,7 @@ public struct LobbyView: View {
                     .padding(.vertical, 2)
                     .background(TableTheme.goldBright, in: Capsule())
             } else {
-                Text("BOT")
+                Text("badge.bot")
                     .font(.system(size: 9, weight: .bold))
                     .tracking(0.6)
                     .foregroundStyle(TableTheme.inkCreamSoft)

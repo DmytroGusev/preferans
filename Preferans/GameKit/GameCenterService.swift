@@ -7,7 +7,9 @@ import PreferansEngine
 @MainActor
 public final class GameCenterService: NSObject, ObservableObject, @preconcurrency GKLocalPlayerListener {
     @Published public private(set) var isAuthenticated = GKLocalPlayer.local.isAuthenticated
-    @Published public private(set) var statusText = GKLocalPlayer.local.isAuthenticated ? "Game Center ready" : "Game Center signed out"
+    @Published public private(set) var statusText = GKLocalPlayer.local.isAuthenticated
+        ? String(localized: "Game Center ready")
+        : String(localized: "Game Center signed out")
     @Published public var authenticationViewController: UIViewController?
     @Published public var activeInvite: GKInvite?
 
@@ -31,16 +33,18 @@ public final class GameCenterService: NSObject, ObservableObject, @preconcurrenc
                 guard let self else { return }
                 if let viewController {
                     self.authenticationViewController = viewController
-                    self.statusText = "Game Center sign-in required"
+                    self.statusText = String(localized: "Game Center sign-in required")
                     return
                 }
                 if let error {
-                    self.statusText = "Game Center error: \(error.localizedDescription)"
+                    self.statusText = String(localized: "Game Center error: \(error.localizedDescription)")
                     self.isAuthenticated = false
                     return
                 }
                 self.isAuthenticated = GKLocalPlayer.local.isAuthenticated
-                self.statusText = self.isAuthenticated ? "Signed in as \(GKLocalPlayer.local.displayName)" : "Game Center unavailable"
+                self.statusText = self.isAuthenticated
+                    ? String(localized: "Signed in as \(GKLocalPlayer.local.displayName)")
+                    : String(localized: "Game Center unavailable")
                 if self.isAuthenticated {
                     GKLocalPlayer.local.register(self)
                 }

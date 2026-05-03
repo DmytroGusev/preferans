@@ -185,7 +185,7 @@ public struct OpponentSeatView: View {
                 .background(TableTheme.inkCreamSoft, in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
         } else if seat.isDealer {
-            Text("D")
+            Text("badge.dealer")
                 .font(.system(size: 9, weight: .bold))
                 .foregroundStyle(TableTheme.inkCream)
                 .padding(.horizontal, 5)

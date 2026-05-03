@@ -397,7 +397,7 @@
 			};
 			buildConfigurationList = A00000000000000000000041 /* Build configuration list for PBXProject "Preferans" */;
 			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
+			developmentRegion = uk;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
