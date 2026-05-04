@@ -20,6 +20,11 @@
 		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
 		B0000000000000000000000C /* HostGameActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003C /* HostGameActor.swift */; };
 		B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */; };
+		B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */; };
+		B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */; };
+		B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B007 /* CloudflareRoomTransport.swift */; };
+		B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */; };
+		B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B00B /* PreferansInviteLink.swift */; };
 		B0000000000000000000000E /* PlayerProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003E /* PlayerProjection.swift */; };
 		B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003F /* AppEngineSnapshot.swift */; };
 		B00000000000000000000010 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000040 /* AppIdentifiers.swift */; };
@@ -29,6 +34,7 @@
 		B00000000000000000000014 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* CardView.swift */; };
 		B00000000000000000000015 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* LobbyView.swift */; };
 		B00000000000000000000016 /* LocalGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000046 /* LocalGameScreen.swift */; };
+		B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B005 /* OnlineRoomGameScreen.swift */; };
 		B00000000000000000000061 /* CardFanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000071 /* CardFanView.swift */; };
 		B00000000000000000000062 /* OpponentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000072 /* OpponentSeatView.swift */; };
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
@@ -132,6 +138,11 @@
 		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/GameLogReplayer.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003C /* HostGameActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostGameActor.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostedOnlineGameCoordinator.swift"; sourceTree = "<group>"; };
+		B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/RoomOnlineGameCoordinator.swift"; sourceTree = "<group>"; };
+		B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/InMemoryOnlineGameSession.swift"; sourceTree = "<group>"; };
+		B0000000000000000000B007 /* CloudflareRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/CloudflareRoomTransport.swift"; sourceTree = "<group>"; };
+		B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/CloudflareOnlineGameSession.swift"; sourceTree = "<group>"; };
+		B0000000000000000000B00B /* PreferansInviteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/PreferansInviteLink.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003E /* PlayerProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Projection/PlayerProjection.swift"; sourceTree = "<group>"; };
 		B0000000000000000000003F /* AppEngineSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/AppEngineSnapshot.swift"; sourceTree = "<group>"; };
 		B00000000000000000000040 /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/AppIdentifiers.swift"; sourceTree = "<group>"; };
@@ -141,6 +152,7 @@
 		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LobbyView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000046 /* LocalGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LocalGameScreen.swift"; sourceTree = "<group>"; };
+		B0000000000000000000B005 /* OnlineRoomGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/OnlineRoomGameScreen.swift"; sourceTree = "<group>"; };
 		B00000000000000000000071 /* CardFanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardFanView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/OpponentSeatView.swift"; sourceTree = "<group>"; };
 		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableView.swift"; sourceTree = "<group>"; };
@@ -241,6 +253,11 @@
 				B0000000000000000000003B /* GameLogReplayer.swift */,
 				B0000000000000000000003C /* HostGameActor.swift */,
 				B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */,
+				B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */,
+				B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */,
+				B0000000000000000000B007 /* CloudflareRoomTransport.swift */,
+				B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */,
+				B0000000000000000000B00B /* PreferansInviteLink.swift */,
 				B0000000000000000000003E /* PlayerProjection.swift */,
 				B0000000000000000000003F /* AppEngineSnapshot.swift */,
 				B00000000000000000000040 /* AppIdentifiers.swift */,
@@ -251,6 +268,7 @@
 				B00000000000000000000044 /* CardView.swift */,
 				B00000000000000000000045 /* LobbyView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
+				B0000000000000000000B005 /* OnlineRoomGameScreen.swift */,
 				B00000000000000000000048 /* ProjectionGameScreen.swift */,
 				B00000000000000000000049 /* ScoreBoardView.swift */,
 				B000000000000000000000A0 /* PulkaDiagramView.swift */,
@@ -449,6 +467,11 @@
 				B0000000000000000000000B /* GameLogReplayer.swift in Sources */,
 				B0000000000000000000000C /* HostGameActor.swift in Sources */,
 				B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */,
+				B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */,
+				B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */,
+				B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */,
+				B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */,
+				B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */,
 				B0000000000000000000000E /* PlayerProjection.swift in Sources */,
 				B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */,
 				B00000000000000000000010 /* AppIdentifiers.swift in Sources */,
@@ -459,6 +482,7 @@
 				B00000000000000000000014 /* CardView.swift in Sources */,
 				B00000000000000000000015 /* LobbyView.swift in Sources */,
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
+				B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */,
 				B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */,
 				B00000000000000000000019 /* ScoreBoardView.swift in Sources */,
 				B00000000000000000000090 /* PulkaDiagramView.swift in Sources */,

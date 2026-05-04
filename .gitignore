@@ -13,6 +13,12 @@ xcuserdata/
 Packages/
 Package.resolved
 
+# JavaScript dependencies
+node_modules/
+
+# Cloudflare Workers
+.wrangler/
+
 # Archives and exports
 *.xcarchive
 *.ipa

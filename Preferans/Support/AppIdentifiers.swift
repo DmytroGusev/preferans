@@ -7,6 +7,9 @@ public enum AppIdentifiers {
     /// Add this ID in a .gamekit bundle / App Store Connect if you use Game Center Activities.
     public static let gameCenterActivityID = "com.mixandmatch.preferans.activity.table"
 
+    public static let roomWorkerBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
+    public static let inviteBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
+
     public static let cloudSchemaVersion = 1
     public static let gameWireSchemaVersion = 1
 }

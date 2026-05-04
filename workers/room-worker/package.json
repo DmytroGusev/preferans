@@ -1,0 +1,17 @@
+{
+  "name": "preferans-room-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "deploy": "wrangler deploy",
+    "smoke:live": "bun scripts/smoke-live.ts",
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260504.1",
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3"
+  }
+}

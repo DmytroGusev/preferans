@@ -120,6 +120,14 @@ public enum UIIdentifiers {
     public static let lobbySettingsButton      = "lobby.settings"
     public static let lobbyHouseConventions    = "lobby.houseConventions"
     public static let conventionLegendSheet    = "lobby.conventionLegend"
+    public static let onlineAccountEmail       = "online.accountEmail"
+    public static let onlineLocalSeatPicker    = "online.localSeat"
+    public static let onlineCreateRoom         = "online.createRoom"
+    public static let onlineJoinRoomCode       = "online.joinRoomCode"
+    public static let onlineJoinRoom           = "online.joinRoom"
+    public static let onlineCreateTestRoom     = "online.createTestRoom"
+    public static let onlineRoomCode           = "online.roomCode"
+    public static let onlineShareInvite        = "online.shareInvite"
 
     // MARK: - Game screen — header / structure
 

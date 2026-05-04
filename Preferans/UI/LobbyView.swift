@@ -11,9 +11,15 @@ public struct LobbyView: View {
     #endif
 
     @State private var localModel: GameViewModel?
+    @State private var onlineSession: InMemoryOnlineGameSession?
+    @State private var cloudOnlineSession: CloudflareOnlineGameSession?
     @State private var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
     @State private var botSpeed: BotMoveSpeed = .normal
     @State private var errorText: String?
+    @State private var onlineAccountEmail = "neo@example.test"
+    @State private var onlineSeatIndex = 0
+    @State private var onlineJoinRoomCode = ""
+    @State private var isOnlineRoomLoading = false
     @State private var showingMatchmaker = false
     @State private var hasAttemptedSignIn = false
     @State private var showingSettings = false
@@ -30,6 +36,19 @@ public struct LobbyView: View {
                         model: localModel,
                         onLeaveTable: { self.localModel = nil },
                         onRematch: { startLocalTable() }
+                    )
+                } else if let onlineSession {
+                    OnlineRoomGameScreen(
+                        coordinator: onlineSession.localCoordinator,
+                        roomCode: onlineSession.roomCode,
+                        onLeaveTable: { leaveOnlineRoom() }
+                    )
+                } else if let cloudOnlineSession {
+                    OnlineRoomGameScreen(
+                        coordinator: cloudOnlineSession.localCoordinator,
+                        roomCode: cloudOnlineSession.roomCode,
+                        inviteURL: cloudOnlineSession.inviteURL,
+                        onLeaveTable: { leaveOnlineRoom() }
                     )
                 } else {
                     #if canImport(GameKit) && canImport(UIKit)
@@ -50,7 +69,7 @@ public struct LobbyView: View {
                 }
             }
             .toolbar {
-                if localModel == nil {
+                if localModel == nil && onlineSession == nil && cloudOnlineSession == nil {
                     ToolbarItem(placement: .automatic) {
                         Button { showingSettings = true } label: {
                             Image(systemName: "gearshape.fill")
@@ -78,6 +97,9 @@ public struct LobbyView: View {
                 Text("All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced.")
             }
         }
+        .onOpenURL { url in
+            handleInviteURL(url)
+        }
         #if canImport(GameKit) && canImport(UIKit)
         .background(GameCenterAuthenticationPresenter(viewController: gameCenter.authenticationViewController).frame(width: 0, height: 0))
         .sheet(isPresented: $showingMatchmaker) {
@@ -103,8 +125,9 @@ public struct LobbyView: View {
             VStack(spacing: 18) {
                 hero
                 localTableCard
+                onlineRoomCard
                 #if canImport(GameKit) && canImport(UIKit)
-                onlineCard
+                gameCenterOnlineCard
                 #endif
                 if let errorText {
                     Text(errorText)
@@ -123,6 +146,9 @@ public struct LobbyView: View {
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             lobbyStartBar
+        }
+        .onChange(of: seats.count) { _, count in
+            onlineSeatIndex = min(onlineSeatIndex, max(0, count - 1))
         }
         .feltBackground()
     }
@@ -361,9 +387,90 @@ public struct LobbyView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var onlineRoomCard: some View {
+        card(title: "Invite room", icon: "link") {
+            VStack(spacing: 12) {
+                TextField("email@example.test", text: $onlineAccountEmail)
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(TableTheme.inkCream)
+                    .padding(10)
+                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                    .accessibilityIdentifier(UIIdentifiers.onlineAccountEmail)
+
+                Picker("Seat", selection: $onlineSeatIndex) {
+                    ForEach(Array(seats.enumerated()), id: \.element.id) { index, seat in
+                        Text(seat.trimmedName.isEmpty ? "Seat \(index + 1)" : seat.trimmedName)
+                            .tag(index)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(UIIdentifiers.onlineLocalSeatPicker)
+
+                Button {
+                    startCloudflareOnlineRoom()
+                } label: {
+                    HStack {
+                        if isOnlineRoomLoading {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "person.3.sequence.fill")
+                        }
+                        Text("Create invite room")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.feltPrimary)
+                .disabled(seats.validationError != nil || isOnlineRoomLoading)
+                .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
+
+                HStack(spacing: 8) {
+                    TextField("Room code", text: $onlineJoinRoomCode)
+                        .textFieldStyle(.plain)
+                        .autocorrectionDisabled()
+                        .foregroundStyle(TableTheme.inkCream)
+                        .padding(10)
+                        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                        .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
+
+                    Button {
+                        joinCloudflareOnlineRoom()
+                    } label: {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.title3)
+                            .frame(width: 34, height: 34)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(TableTheme.goldBright)
+                    .disabled(isOnlineRoomLoading || PreferansInviteLink.normalizedRoomCode(onlineJoinRoomCode) == nil)
+                    .accessibilityLabel("Join table")
+                    .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
+                }
+
+                #if DEBUG
+                Button {
+                    startInMemoryOnlineRoom()
+                } label: {
+                    HStack {
+                        Image(systemName: "testtube.2")
+                        Text("Run local test room")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.feltSecondary)
+                .disabled(seats.validationError != nil || isOnlineRoomLoading)
+                .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
+                #endif
+            }
+        }
+    }
+
     #if canImport(GameKit) && canImport(UIKit)
-    private var onlineCard: some View {
-        card(title: "Online match", icon: "globe") {
+    private var gameCenterOnlineCard: some View {
+        card(title: "Game Center", icon: "globe") {
             VStack(spacing: 12) {
                 HStack(spacing: 8) {
                     Circle()
@@ -477,6 +584,143 @@ public struct LobbyView: View {
     private func watchBots() {
         seats = LobbySeat.demoBots(count: 3)
         startLocalTable(speedOverride: .instant)
+    }
+
+    private func startCloudflareOnlineRoom() {
+        guard seats.validationError == nil, !isOnlineRoomLoading else { return }
+        isOnlineRoomLoading = true
+        errorText = nil
+        let setup = onlineRoomSetup()
+        Task { @MainActor in
+            do {
+                let session = try await CloudflareOnlineGameSession.createRoom(
+                    peers: setup.peers,
+                    localPlayerID: setup.localPlayer,
+                    rules: setup.rules
+                )
+                await session.start()
+                cloudOnlineSession = session
+                onlineJoinRoomCode = session.roomCode
+            } catch {
+                errorText = error.localizedDescription
+            }
+            isOnlineRoomLoading = false
+        }
+    }
+
+    private func joinCloudflareOnlineRoom() {
+        guard !isOnlineRoomLoading,
+              let roomCode = PreferansInviteLink.normalizedRoomCode(onlineJoinRoomCode) else {
+            return
+        }
+        isOnlineRoomLoading = true
+        errorText = nil
+        let setup = onlineRoomSetup()
+        guard let localPeer = setup.peers.first(where: { $0.playerID == setup.localPlayer }) else {
+            errorText = "Selected seat is not available."
+            isOnlineRoomLoading = false
+            return
+        }
+        Task { @MainActor in
+            do {
+                let session = try await CloudflareOnlineGameSession.joinRoom(
+                    roomCode: roomCode,
+                    localPeer: localPeer,
+                    rules: setup.rules
+                )
+                await session.start()
+                cloudOnlineSession = session
+                onlineJoinRoomCode = session.roomCode
+            } catch {
+                errorText = error.localizedDescription
+            }
+            isOnlineRoomLoading = false
+        }
+    }
+
+    private func startInMemoryOnlineRoom() {
+        guard seats.validationError == nil else { return }
+        do {
+            let setup = onlineRoomSetup()
+            let automatedPlayers = Set(setup.peers.map(\.playerID).filter { $0 != setup.localPlayer })
+            let session = try InMemoryOnlineGameSession(
+                roomCode: makeRoomCode(),
+                peers: setup.peers,
+                localPlayerID: setup.localPlayer,
+                hostPlayerID: setup.peers.first?.playerID,
+                automatedPlayerIDs: automatedPlayers,
+                dealSource: setup.dealSource,
+                botDelay: TestHarness.fastBotDelay(in: ProcessInfo.processInfo.arguments) ? BotPacing.testFast : botSpeed.delay
+            )
+            Task { @MainActor in
+                do {
+                    try await session.start(rules: setup.rules)
+                    onlineSession = session
+                    errorText = nil
+                } catch {
+                    session.stop()
+                    errorText = error.localizedDescription
+                }
+            }
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func leaveOnlineRoom() {
+        onlineSession?.stop()
+        onlineSession = nil
+        cloudOnlineSession?.stop()
+        cloudOnlineSession = nil
+    }
+
+    private func handleInviteURL(_ url: URL) {
+        guard let roomCode = PreferansInviteLink.roomCode(from: url) else { return }
+        onlineJoinRoomCode = roomCode
+        errorText = "Invite \(roomCode) is ready. Choose your seat and join the table."
+    }
+
+    private func onlineRoomSetup() -> (
+        peers: [OnlinePeer],
+        localPlayer: PlayerID,
+        rules: PreferansRules,
+        dealSource: DealSource
+    ) {
+        let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
+        let defaultDealer = lobbyPlayers.last
+        let args = ProcessInfo.processInfo.arguments
+        let configuration = TestHarness.resolveConfiguration(
+            from: args,
+            defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
+        )
+        let players = configuration.players
+        let selectedIndex = min(onlineSeatIndex, max(0, players.count - 1))
+        let localPlayer = players[selectedIndex]
+        let account = normalizedOnlineAccount(for: localPlayer)
+        let peers = players.enumerated().map { index, player in
+            OnlinePeer(
+                playerID: player,
+                accountID: index == selectedIndex ? account.id : "pending:\(player.rawValue)",
+                provider: index == selectedIndex ? account.provider : .dev,
+                displayName: player.rawValue
+            )
+        }
+        return (peers, localPlayer, configuration.rules, configuration.dealSource)
+    }
+
+    private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
+        let trimmed = onlineAccountEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return (.dev, "dev:\(player.rawValue.lowercased())@example.test")
+        }
+        if trimmed.hasPrefix("dev:") {
+            return (.dev, trimmed)
+        }
+        return (.email, "email:\(trimmed.lowercased())")
+    }
+
+    private func makeRoomCode() -> String {
+        String(UUID().uuidString.prefix(6))
     }
 
     /// `speedOverride` lets the watch-bots demo run instantly without

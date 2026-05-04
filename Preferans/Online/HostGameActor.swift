@@ -72,6 +72,7 @@ public actor HostGameActor {
     private var appliedNonces: Set<UUID>
     private var actionLog: [ValidatedActionRecord]
     private let projectionPolicy: ProjectionPolicy
+    private let dealSource: DealSource
 
     public init(
         tableID: UUID = UUID(),
@@ -79,7 +80,8 @@ public actor HostGameActor {
         seats: [PlayerIdentity],
         rules: PreferansRules = .sochi,
         firstDealer: PlayerID? = nil,
-        projectionPolicy: ProjectionPolicy = .online
+        projectionPolicy: ProjectionPolicy = .online,
+        dealSource: DealSource = RandomDealSource()
     ) throws {
         let players = seats.map(\.playerID)
         self.tableID = tableID
@@ -90,6 +92,7 @@ public actor HostGameActor {
         self.appliedNonces = []
         self.actionLog = []
         self.projectionPolicy = projectionPolicy
+        self.dealSource = dealSource
     }
 
     public var players: [PlayerID] { engine.players }
@@ -109,8 +112,13 @@ public actor HostGameActor {
         guard engine.players.contains(envelope.actor) else {
             throw HostGameError.unknownPlayer(envelope.actor)
         }
-        if let sender, sender != envelope.actor, envelope.action.actor != nil {
-            throw HostGameError.spoofedActor(expected: sender, actual: envelope.actor)
+        if let actionActor = envelope.action.actor {
+            if envelope.actor != actionActor {
+                throw HostGameError.spoofedActor(expected: envelope.actor, actual: actionActor)
+            }
+            if let sender, sender != envelope.actor {
+                throw HostGameError.spoofedActor(expected: sender, actual: envelope.actor)
+            }
         }
         guard !appliedNonces.contains(envelope.clientNonce) else {
             throw HostGameError.duplicateClientNonce(envelope.clientNonce)
@@ -201,7 +209,7 @@ public actor HostGameActor {
     private func makeAuthoritative(_ action: PreferansAction) -> PreferansAction {
         switch action {
         case .startDeal:
-            return .startDeal(dealer: engine.nextDealer, deck: Deck.standard32.shuffled())
+            return .startDeal(dealer: engine.nextDealer, deck: dealSource.nextDeck())
         default:
             return action
         }
