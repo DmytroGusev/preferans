@@ -76,6 +76,7 @@ public actor CloudKitGameArchiveStore {
         record.setString(action.clientNonce.uuidString, for: PreferansCKField.clientNonce)
         record.setInt(action.baseHostSequence, for: PreferansCKField.baseHostSequence)
         record.setDate(action.createdAt, for: PreferansCKField.createdAt)
+        record.setData(try encoder.encode(action.events), for: PreferansCKField.eventsData)
         record.setData(try encoder.encode(action.eventSummaries), for: PreferansCKField.eventSummariesData)
         record[PreferansCKField.parentTable] = CKRecord.Reference(recordID: parentID, action: .deleteSelf)
         _ = try await database.save(record)
@@ -231,6 +232,12 @@ public actor CloudKitGameArchiveStore {
         } else {
             events = []
         }
+        let structuredEvents: [PreferansEvent]
+        if let eventData = record.data(for: PreferansCKField.eventsData) {
+            structuredEvents = try decoder.decode([PreferansEvent].self, from: eventData)
+        } else {
+            structuredEvents = []
+        }
         return ValidatedActionRecord(
             tableID: tableID,
             sequence: record.int(for: PreferansCKField.sequence) ?? 0,
@@ -239,6 +246,7 @@ public actor CloudKitGameArchiveStore {
             clientNonce: nonce,
             baseHostSequence: record.int(for: PreferansCKField.baseHostSequence) ?? 0,
             createdAt: record.date(for: PreferansCKField.createdAt) ?? Date(),
+            events: structuredEvents,
             eventSummaries: events
         )
     }

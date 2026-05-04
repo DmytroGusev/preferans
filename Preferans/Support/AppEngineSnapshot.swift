@@ -1,9 +1,10 @@
 import Foundation
 import PreferansEngine
 
-/// A codable diagnostic/persistence payload that can be produced by the app without modifying the engine.
-/// It is useful for CloudKit archival. Rehydrating a live engine from this payload still requires either
-/// the optional engine snapshot initializer or a replay of the validated action log.
+/// A codable diagnostic/read-cache payload that can be produced by the app
+/// without modifying the engine. CloudKit stores it as a convenience
+/// projection; the authoritative history is the validated action/event log,
+/// which can rebuild the live engine through `GameLogReplayer`.
 public struct AppEngineSnapshot: Codable, Sendable, Equatable {
     public var players: [PlayerID]
     public var rules: PreferansRules

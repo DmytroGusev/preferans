@@ -25,6 +25,7 @@ public struct OnlineRoomGameScreen: View {
                 ProjectionGameScreen(
                     projection: projection,
                     eventLog: coordinator.eventLog,
+                    recentEvents: coordinator.recentEvents,
                     onSend: coordinator.send,
                     onLeaveTable: onLeaveTable,
                     extraMenu: {

@@ -73,13 +73,43 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
     public var viewer: PlayerID
     public var projection: PlayerGameProjection
     public var eventSummaries: [String]
+    public var events: [PreferansEvent]
 
-    public init(tableID: UUID, sequence: Int, viewer: PlayerID, projection: PlayerGameProjection, eventSummaries: [String]) {
+    public init(
+        tableID: UUID,
+        sequence: Int,
+        viewer: PlayerID,
+        projection: PlayerGameProjection,
+        eventSummaries: [String],
+        events: [PreferansEvent] = []
+    ) {
         self.tableID = tableID
         self.sequence = sequence
         self.viewer = viewer
         self.projection = projection
         self.eventSummaries = eventSummaries
+        self.events = events
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? AppIdentifiers.gameWireSchemaVersion
+        self.tableID = try container.decode(UUID.self, forKey: .tableID)
+        self.sequence = try container.decode(Int.self, forKey: .sequence)
+        self.viewer = try container.decode(PlayerID.self, forKey: .viewer)
+        self.projection = try container.decode(PlayerGameProjection.self, forKey: .projection)
+        self.eventSummaries = try container.decodeIfPresent([String].self, forKey: .eventSummaries) ?? []
+        self.events = try container.decodeIfPresent([PreferansEvent].self, forKey: .events) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case tableID
+        case sequence
+        case viewer
+        case projection
+        case eventSummaries
+        case events
     }
 }
 

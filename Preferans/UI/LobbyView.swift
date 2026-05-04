@@ -56,6 +56,7 @@ public struct LobbyView: View {
                         ProjectionGameScreen(
                             projection: projection,
                             eventLog: online.eventLog,
+                            recentEvents: online.recentEvents,
                             onSend: online.send,
                             onLeaveTable: { online.detach() },
                             extraMenu: { EmptyView() }

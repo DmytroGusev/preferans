@@ -24,6 +24,7 @@ enum PreferansCKField {
     static let actionData = "actionData"
     static let clientNonce = "clientNonce"
     static let baseHostSequence = "baseHostSequence"
+    static let eventsData = "eventsData"
     static let eventSummariesData = "eventSummariesData"
     static let parentTable = "parentTable"
     static let snapshotData = "snapshotData"

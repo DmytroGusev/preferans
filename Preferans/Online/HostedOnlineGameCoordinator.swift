@@ -16,6 +16,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
     @Published public private(set) var state: ConnectionState = .idle
     @Published public private(set) var projection: PlayerGameProjection?
     @Published public private(set) var eventLog: [String] = []
+    @Published public private(set) var recentEvents: [PreferansEvent] = []
     @Published public private(set) var isHost: Bool = false
     @Published public private(set) var localSeat: PlayerID?
     @Published public private(set) var tableID: UUID?
@@ -79,6 +80,8 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
         transport = nil
         hostActor = nil
         projection = nil
+        eventLog = []
+        recentEvents = []
         isHost = false
         localSeat = nil
         tableID = nil
@@ -209,6 +212,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
             tableID = envelope.tableID
             projection = envelope.projection
             eventLog.append(contentsOf: envelope.eventSummaries)
+            appendRecentEvents(envelope.events)
             state = .connectedAsClient
 
         case let .hostError(error):
@@ -261,6 +265,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
             projection = localProjection
         }
         eventLog.append(contentsOf: update.eventSummaries)
+        appendRecentEvents(update.events)
 
         guard let transport else { return }
         for (viewer, projection) in update.projections where viewer != localSeat {
@@ -271,7 +276,8 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
                     sequence: update.sequence,
                     viewer: viewer,
                     projection: projection,
-                    eventSummaries: update.eventSummaries
+                    eventSummaries: update.eventSummaries,
+                    events: update.events
                 )
                 try transport.send(.projection(envelope), to: [player], reliably: true)
             } catch {
@@ -345,6 +351,14 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
             try transport.send(.hostError(error), to: [player], reliably: true)
         } catch {
             errorText = error.localizedDescription
+        }
+    }
+
+    private func appendRecentEvents(_ events: [PreferansEvent]) {
+        guard !events.isEmpty else { return }
+        recentEvents.append(contentsOf: events)
+        if recentEvents.count > 120 {
+            recentEvents.removeFirst(recentEvents.count - 120)
         }
     }
 

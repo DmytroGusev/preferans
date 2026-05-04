@@ -1,43 +1,69 @@
 # CloudKit Multiplayer Setup
 
-The app uses the public database in container `iCloud.com.mixandmatch.preferans`.
+The app uses the private database in container `iCloud.com.mixandmatch.preferans`.
+
+## Event-Sourced Persistence Model
+
+The authoritative game history is the append-only `PreferansValidatedAction`
+stream. Each record stores the validated command, idempotency nonce, sequence,
+and structured `PreferansEvent` payloads emitted by the engine. Host snapshots
+and completed-deal records are read/cache projections only; they must be
+rebuildable from the validated action stream.
 
 ## Record Types
 
 Create/deploy these record types in CloudKit Dashboard:
 
-- `GameRoom`
-- `GameSnapshot`
-- `GameEvent`
+- `PreferansTableSummary`
+- `PreferansValidatedAction`
+- `PreferansCompletedDeal`
+- `PreferansHostSnapshot`
 
 ## Required Fields
 
-`GameRoom`:
+`PreferansTableSummary`:
 
-- `code` String, queryable
+- `tableID` String, queryable
+- `schemaVersion` Int64
+- `status` String
 - `hostPlayerID` String
-- `playerCount` Int64
-- `ruleSet` String
-- `participantsJSON` String
-- `roomState` String
-- `updatedAt` Date
-
-`GameSnapshot`:
-
-- `roomID` String, queryable
-- `revision` Int64
-- `updatedByPlayerID` String
-- `updatedAt` Date
-- `snapshotJSON` String
-
-`GameEvent`:
-
-- `roomID` String, queryable
-- `revision` Int64, queryable and sortable
-- `actorPlayerID` String
+- `seatsData` Bytes
+- `rulesData` Bytes
+- `lastSequence` Int64
 - `createdAt` Date
-- `actionJSON` String
-- `resultingStateJSON` String
+- `updatedAt` Date
+- `publicProjectionData` Bytes
+
+`PreferansValidatedAction`:
+
+- `tableID` String, queryable
+- `schemaVersion` Int64
+- `sequence` Int64, queryable and sortable
+- `actor` String
+- `actionData` Bytes
+- `clientNonce` String, queryable
+- `baseHostSequence` Int64
+- `createdAt` Date
+- `eventsData` Bytes
+- `eventSummariesData` Bytes
+- `parentTable` Reference
+
+`PreferansCompletedDeal`:
+
+- `tableID` String, queryable
+- `schemaVersion` Int64
+- `sequence` Int64, queryable and sortable
+- `resultData` Bytes
+- `scoreData` Bytes
+- `completedAt` Date
+- `parentTable` Reference
+
+`PreferansHostSnapshot`:
+
+- `tableID` String, queryable
+- `schemaVersion` Int64
+- `sequence` Int64
+- `snapshotData` Bytes or encrypted Bytes
 
 ## Two-Device Smoke Test
 
@@ -50,4 +76,4 @@ Create/deploy these record types in CloudKit Dashboard:
 7. Start a hand from the host and make one bid/action on each device.
 8. Confirm the other device receives each action without overwriting local state.
 
-If events do not sync, check that `GameEvent.roomID` is queryable and `GameEvent.revision` is sortable in the deployed production schema.
+If events do not sync, check that `PreferansValidatedAction.tableID` is queryable and `PreferansValidatedAction.sequence` is sortable in the deployed production schema.

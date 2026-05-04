@@ -19,6 +19,13 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         let eastProjection = try XCTUnwrap(fixture.coordinators["east"]?.projection)
         XCTAssertEqual(eastProjection.viewer, "east")
         XCTAssertEqual(eastProjection.tableID, fixture.coordinators["north"]?.tableID)
+        XCTAssertTrue(
+            fixture.coordinators["east"]?.recentEvents.contains { event in
+                if case .dealStarted = event { return true }
+                return false
+            } == true,
+            "Online projection updates should carry the structured event stream, not only text summaries."
+        )
 
         let eastSeat = try XCTUnwrap(eastProjection.seats.first { $0.player == "east" })
         XCTAssertEqual(eastSeat.hand.compactMap(\.knownCard).count, 10)

@@ -30,6 +30,10 @@ public struct ValidatedActionRecord: Codable, Sendable, Equatable, Identifiable 
     public var clientNonce: UUID
     public var baseHostSequence: Int
     public var createdAt: Date
+    /// Structured domain events emitted by applying `action`. This is the
+    /// append-only source for audit/replay; `eventSummaries` is a lossy UI
+    /// projection kept for older records and simple logs.
+    public var events: [PreferansEvent]
     public var eventSummaries: [String]
 
     public init(
@@ -40,7 +44,8 @@ public struct ValidatedActionRecord: Codable, Sendable, Equatable, Identifiable 
         clientNonce: UUID,
         baseHostSequence: Int,
         createdAt: Date,
-        eventSummaries: [String]
+        events: [PreferansEvent],
+        eventSummaries: [String]? = nil
     ) {
         self.tableID = tableID
         self.sequence = sequence
@@ -49,7 +54,38 @@ public struct ValidatedActionRecord: Codable, Sendable, Equatable, Identifiable 
         self.clientNonce = clientNonce
         self.baseHostSequence = baseHostSequence
         self.createdAt = createdAt
-        self.eventSummaries = eventSummaries
+        self.events = events
+        self.eventSummaries = eventSummaries ?? Self.summaries(for: events)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.tableID = try container.decode(UUID.self, forKey: .tableID)
+        self.sequence = try container.decode(Int.self, forKey: .sequence)
+        self.actor = try container.decode(PlayerID.self, forKey: .actor)
+        self.action = try container.decode(PreferansAction.self, forKey: .action)
+        self.clientNonce = try container.decode(UUID.self, forKey: .clientNonce)
+        self.baseHostSequence = try container.decode(Int.self, forKey: .baseHostSequence)
+        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.events = try container.decodeIfPresent([PreferansEvent].self, forKey: .events) ?? []
+        self.eventSummaries = try container.decodeIfPresent([String].self, forKey: .eventSummaries)
+            ?? Self.summaries(for: events)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case tableID
+        case sequence
+        case actor
+        case action
+        case clientNonce
+        case baseHostSequence
+        case createdAt
+        case events
+        case eventSummaries
+    }
+
+    public static func summaries(for events: [PreferansEvent]) -> [String] {
+        events.map { String(describing: $0) }
     }
 }
 
@@ -57,6 +93,7 @@ public struct HostUpdate: Sendable {
     public var tableID: UUID
     public var sequence: Int
     public var projections: [PlayerID: PlayerGameProjection]
+    public var events: [PreferansEvent]
     public var eventSummaries: [String]
     public var validatedAction: ValidatedActionRecord?
     public var snapshot: AppEngineSnapshot
@@ -129,7 +166,7 @@ public actor HostGameActor {
         sequence += 1
         appliedNonces.insert(envelope.clientNonce)
 
-        let eventSummaries = events.map { String(describing: $0) }
+        let eventSummaries = ValidatedActionRecord.summaries(for: events)
         let record = ValidatedActionRecord(
             tableID: tableID,
             sequence: sequence,
@@ -138,10 +175,11 @@ public actor HostGameActor {
             clientNonce: envelope.clientNonce,
             baseHostSequence: envelope.baseHostSequence,
             createdAt: Date(),
+            events: events,
             eventSummaries: eventSummaries
         )
         actionLog.append(record)
-        return makeUpdate(events: eventSummaries, validatedAction: record)
+        return makeUpdate(events: events, validatedAction: record)
     }
 
     public func projection(for viewer: PlayerID) throws -> PlayerGameProjection {
@@ -165,11 +203,12 @@ public actor HostGameActor {
             sequence: sequence,
             viewer: viewer,
             projection: projection,
-            eventSummaries: []
+            eventSummaries: [],
+            events: []
         )
     }
 
-    private func makeUpdate(events: [String], validatedAction: ValidatedActionRecord?) -> HostUpdate {
+    private func makeUpdate(events: [PreferansEvent], validatedAction: ValidatedActionRecord?) -> HostUpdate {
         let projections = Dictionary(uniqueKeysWithValues: engine.players.map { player in
             (
                 player,
@@ -187,7 +226,8 @@ public actor HostGameActor {
             tableID: tableID,
             sequence: sequence,
             projections: projections,
-            eventSummaries: events,
+            events: events,
+            eventSummaries: ValidatedActionRecord.summaries(for: events),
             validatedAction: validatedAction,
             snapshot: AppEngineSnapshot(engine: engine),
             status: currentStatus
