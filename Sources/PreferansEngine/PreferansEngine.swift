@@ -1054,7 +1054,7 @@ public struct PreferansEngine: Sendable {
     /// ``validateInvariants(_:)``.
     private func assertInvariants(file: StaticString = #file, line: UInt = #line) {
         do {
-            try Self.validateInvariants(state)
+            try Self.validateInvariants(snapshot)
         } catch let violation as InvariantViolation {
             preconditionFailure(violation.message, file: file, line: line)
         } catch {
@@ -1069,34 +1069,17 @@ public struct PreferansEngine: Sendable {
     /// invariant tests (which assert the throw).
     static func validateInvariants(_ state: DealState) throws {
         switch state {
-        case .waitingForDeal, .gameOver:
+        case .waitingForDeal:
             return
         case let .dealFinished(result):
-            try checkActiveSeats(result.activePlayers)
-            try require(
-                Set(result.trickCounts.keys) == Set(result.activePlayers),
-                "dealFinished trickCounts keys \(sorted(result.trickCounts.keys)) ≠ activePlayers \(sorted(result.activePlayers))"
-            )
-            if let settlement = result.settlement {
-                try checkSettlement(
-                    settlement,
-                    activePlayers: result.activePlayers,
-                    minimumTrickCounts: result.completedTricks.reduce(result.activePlayers.dictionary(filledWith: 0)) { counts, trick in
-                        var updated = counts
-                        updated[trick.winner, default: 0] += 1
-                        return updated
-                    },
-                    context: "dealFinished"
-                )
-                try require(
-                    settlement.finalTrickCounts == result.trickCounts,
-                    "dealFinished settlement counts must match result trickCounts"
-                )
-            }
+            try checkResult(result, context: "dealFinished")
+        case let .gameOver(summary):
+            try checkResult(summary.lastDeal, context: "gameOver lastDeal")
         case let .bidding(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
             try require(s.talon.count == 2, "bidding talon must be 2 cards, got \(s.talon.count)")
+            try checkFullDeck(cardsInHands(s.hands) + s.talon, context: "bidding cards")
             try require(
                 s.activePlayers.contains(s.currentPlayer),
                 "bidding currentPlayer \(s.currentPlayer) ∉ activePlayers"
@@ -1109,6 +1092,7 @@ public struct PreferansEngine: Sendable {
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
             try require(s.talon.count == 2, "awaitingDiscard talon must be 2 cards, got \(s.talon.count)")
+            try checkFullDeck(cardsInHands(s.hands) + s.talon, context: "awaitingDiscard cards")
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingDiscard declarer \(s.declarer) ∉ activePlayers"
@@ -1116,7 +1100,9 @@ public struct PreferansEngine: Sendable {
         case let .awaitingContract(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.talon.count == 2, "awaitingContract talon must be 2 cards, got \(s.talon.count)")
             try require(s.discard.count == 2, "awaitingContract discard must be 2 cards, got \(s.discard.count)")
+            try checkFullDeck(cardsInHands(s.hands) + s.discard, context: "awaitingContract cards")
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingContract declarer \(s.declarer) ∉ activePlayers"
@@ -1124,7 +1110,9 @@ public struct PreferansEngine: Sendable {
         case let .awaitingWhist(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.talon.count == 2, "awaitingWhist talon must be 2 cards, got \(s.talon.count)")
             try require(s.discard.count == 2, "awaitingWhist discard must be 2 cards, got \(s.discard.count)")
+            try checkFullDeck(cardsInHands(s.hands) + s.discard, context: "awaitingWhist cards")
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingWhist declarer \(s.declarer) ∉ activePlayers"
@@ -1141,7 +1129,9 @@ public struct PreferansEngine: Sendable {
         case let .awaitingDefenderMode(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
+            try require(s.talon.count == 2, "awaitingDefenderMode talon must be 2 cards, got \(s.talon.count)")
             try require(s.discard.count == 2, "awaitingDefenderMode discard must be 2 cards, got \(s.discard.count)")
+            try checkFullDeck(cardsInHands(s.hands) + s.discard, context: "awaitingDefenderMode cards")
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingDefenderMode declarer \(s.declarer) ∉ activePlayers"
@@ -1152,6 +1142,7 @@ public struct PreferansEngine: Sendable {
             )
         case let .playing(s):
             try checkActiveSeats(s.activePlayers)
+            try require(s.talon.count == 2, "playing talon must be 2 cards, got \(s.talon.count)")
             try require(
                 Set(s.hands.keys) == Set(s.activePlayers),
                 "playing hand keys \(sorted(s.hands.keys)) ≠ activePlayers \(sorted(s.activePlayers))"
@@ -1182,6 +1173,15 @@ public struct PreferansEngine: Sendable {
                 trickSum == s.completedTricks.count,
                 "trickCounts sum \(trickSum) ≠ completedTricks \(s.completedTricks.count)"
             )
+            let playedCards = s.completedTricks.flatMap { $0.plays.map(\.card) } + s.currentTrick.map(\.card)
+            switch s.kind {
+            case .game, .misere:
+                try require(s.discard.count == 2, "playing discard must be 2 cards, got \(s.discard.count)")
+                try checkFullDeck(cardsInHands(s.hands) + playedCards + s.discard, context: "playing cards")
+            case .allPass:
+                try require(s.discard.isEmpty, "all-pass playing discard must be empty, got \(s.discard.count)")
+                try checkFullDeck(cardsInHands(s.hands) + playedCards + s.talon, context: "all-pass playing cards")
+            }
             if let proposal = s.pendingSettlement {
                 try require(s.currentTrick.isEmpty, "pending settlement requires an empty current trick")
                 try require(
@@ -1206,6 +1206,26 @@ public struct PreferansEngine: Sendable {
         }
     }
 
+    static func validateInvariants(_ snapshot: PreferansSnapshot) throws {
+        try validateInvariants(snapshot.state)
+        try require(snapshot.players.contains(snapshot.nextDealer), "nextDealer \(snapshot.nextDealer) is not in players")
+        try snapshot.score.validate(players: snapshot.players)
+        try checkPlayerReferences(snapshot.state, players: snapshot.players)
+        switch snapshot.state {
+        case let .dealFinished(result):
+            try result.scoreDelta.validate(players: snapshot.players)
+        case let .gameOver(summary):
+            try checkGameOverSummary(
+                summary,
+                players: snapshot.players,
+                score: snapshot.score,
+                dealsPlayed: snapshot.dealsPlayed
+            )
+        default:
+            break
+        }
+    }
+
     private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {
         if !condition {
             throw InvariantViolation(message: message())
@@ -1220,18 +1240,56 @@ public struct PreferansEngine: Sendable {
     private static func checkHands(
         _ hands: [PlayerID: [Card]],
         seats: [PlayerID],
-        expected: Int
+        expected: Int,
+        context: String = "hand"
     ) throws {
         try require(
             Set(hands.keys) == Set(seats),
-            "hand keys \(sorted(hands.keys)) ≠ seats \(sorted(seats))"
+            "\(context) keys \(sorted(hands.keys)) ≠ seats \(sorted(seats))"
         )
         for (player, hand) in hands {
             try require(
                 hand.count == expected,
-                "\(player) has \(hand.count) cards, expected \(expected)"
+                "\(context) for \(player) has \(hand.count) cards, expected \(expected)"
             )
             try require(Set(hand).count == hand.count, "\(player) holds duplicate cards")
+        }
+    }
+
+    private static func cardsInHands(_ hands: [PlayerID: [Card]]) -> [Card] {
+        hands.values.flatMap { $0 }
+    }
+
+    private static func checkFullDeck(_ cards: [Card], context: String) throws {
+        try require(cards.count == Deck.standard32.count, "\(context) has \(cards.count) cards, expected \(Deck.standard32.count)")
+        try require(Set(cards).count == cards.count, "\(context) contains duplicate cards")
+        try require(Set(cards) == Set(Deck.standard32), "\(context) must contain the standard Preferans deck")
+    }
+
+    private static func checkResult(_ result: DealResult, context: String) throws {
+        try checkActiveSeats(result.activePlayers)
+        try require(
+            Set(result.trickCounts.keys) == Set(result.activePlayers),
+            "\(context) trickCounts keys \(sorted(result.trickCounts.keys)) ≠ activePlayers \(sorted(result.activePlayers))"
+        )
+        if let initialHands = result.initialHands {
+            try checkHands(initialHands, seats: result.activePlayers, expected: 10, context: "\(context) initialHands")
+        }
+        if let settlement = result.settlement {
+            try checkSettlement(
+                settlement,
+                activePlayers: result.activePlayers,
+                minimumTrickCounts: result.completedTricks.reduce(result.activePlayers.dictionary(filledWith: 0)) { counts, trick in
+                    var updated = counts
+                    updated[trick.winner, default: 0] += 1
+                    return updated
+                },
+                context: context
+            )
+            try require(
+                settlement.finalTrickCounts == result.trickCounts,
+                "\(context) settlement counts must match result trickCounts"
+            )
         }
     }
 
@@ -1262,6 +1320,78 @@ public struct PreferansEngine: Sendable {
                 final >= minimum,
                 "\(context) final tricks for \(player) \(final) < already won \(minimum)"
             )
+        }
+    }
+
+    private static func checkPlayerReferences(_ state: DealState, players: [PlayerID]) throws {
+        let playerSet = Set(players)
+        func check(_ player: PlayerID, context: String) throws {
+            try require(playerSet.contains(player), "\(context) \(player) is not in players")
+        }
+        func checkAll(_ ids: [PlayerID], context: String) throws {
+            try require(Set(ids).isSubset(of: playerSet), "\(context) \(sorted(ids.filter { !playerSet.contains($0) })) contains unknown players")
+        }
+
+        switch state {
+        case .waitingForDeal:
+            return
+        case let .bidding(s):
+            try check(s.dealer, context: "bidding dealer")
+            try checkAll(s.activePlayers, context: "bidding activePlayers")
+            try checkAll(Array(s.passed), context: "bidding passed")
+        case let .awaitingDiscard(s):
+            try check(s.dealer, context: "awaitingDiscard dealer")
+            try checkAll(s.activePlayers, context: "awaitingDiscard activePlayers")
+            try check(s.declarer, context: "awaitingDiscard declarer")
+        case let .awaitingContract(s):
+            try check(s.dealer, context: "awaitingContract dealer")
+            try checkAll(s.activePlayers, context: "awaitingContract activePlayers")
+            try check(s.declarer, context: "awaitingContract declarer")
+        case let .awaitingWhist(s):
+            try check(s.dealer, context: "awaitingWhist dealer")
+            try checkAll(s.activePlayers, context: "awaitingWhist activePlayers")
+            try check(s.declarer, context: "awaitingWhist declarer")
+            try checkAll(s.defenders, context: "awaitingWhist defenders")
+            try check(s.currentPlayer, context: "awaitingWhist currentPlayer")
+        case let .awaitingDefenderMode(s):
+            try check(s.dealer, context: "awaitingDefenderMode dealer")
+            try checkAll(s.activePlayers, context: "awaitingDefenderMode activePlayers")
+            try check(s.declarer, context: "awaitingDefenderMode declarer")
+            try checkAll(s.defenders, context: "awaitingDefenderMode defenders")
+            try check(s.whister, context: "awaitingDefenderMode whister")
+        case let .playing(s):
+            try check(s.dealer, context: "playing dealer")
+            try checkAll(s.activePlayers, context: "playing activePlayers")
+            try check(s.leader, context: "playing leader")
+            try check(s.currentPlayer, context: "playing currentPlayer")
+        case let .dealFinished(result):
+            try checkAll(result.activePlayers, context: "dealFinished activePlayers")
+        case let .gameOver(summary):
+            try checkAll(summary.lastDeal.activePlayers, context: "gameOver activePlayers")
+            try checkAll(summary.standings.map(\.player), context: "gameOver standings")
+        }
+    }
+
+    private static func checkGameOverSummary(
+        _ summary: MatchSummary,
+        players: [PlayerID],
+        score: ScoreSheet,
+        dealsPlayed: Int
+    ) throws {
+        try require(summary.finalScore == score, "gameOver finalScore must match engine score")
+        try require(summary.dealsPlayed == dealsPlayed, "gameOver dealsPlayed must match engine dealsPlayed")
+        try checkResult(summary.lastDeal, context: "gameOver lastDeal")
+        try summary.lastDeal.scoreDelta.validate(players: players)
+
+        let standingsPlayers = summary.standings.map(\.player)
+        try require(Set(standingsPlayers) == Set(players), "gameOver standings players must match players")
+        try require(Set(standingsPlayers).count == standingsPlayers.count, "gameOver standings players must be unique")
+        let balances = score.normalizedBalances()
+        for standing in summary.standings {
+            try require(standing.pool == (score.pool[standing.player] ?? 0), "gameOver standing pool must match score")
+            try require(standing.mountain == (score.mountain[standing.player] ?? 0), "gameOver standing mountain must match score")
+            let expectedBalance = balances[standing.player] ?? 0
+            try require(abs(standing.balance - expectedBalance) < 0.000_001, "gameOver standing balance must match score")
         }
     }
 

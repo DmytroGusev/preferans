@@ -190,7 +190,7 @@ struct PreferansScoring {
         return rules.whistRequirement(for: contract)
     }
 
-    private func openingHands(from whist: WhistState) -> [PlayerID: [Card]] {
+    private func openingHands(from whist: WhistState) -> [PlayerID: [Card]]? {
         var hands = whist.hands
         restoreDeclarerOpeningHand(
             declarer: whist.declarer,
@@ -198,10 +198,10 @@ struct PreferansScoring {
             discard: whist.discard,
             hands: &hands
         )
-        return sortedHands(hands, activePlayers: whist.activePlayers)
+        return validOpeningHands(hands, activePlayers: whist.activePlayers)
     }
 
-    private func openingHands(from playing: PlayingState) -> [PlayerID: [Card]] {
+    private func openingHands(from playing: PlayingState) -> [PlayerID: [Card]]? {
         var hands = playing.activePlayers.dictionary(filledWith: [Card]())
         for trick in playing.completedTricks {
             for play in trick.plays {
@@ -234,7 +234,7 @@ struct PreferansScoring {
             break
         }
 
-        return sortedHands(hands, activePlayers: playing.activePlayers)
+        return validOpeningHands(hands, activePlayers: playing.activePlayers)
     }
 
     private func restoreDeclarerOpeningHand(
@@ -255,6 +255,15 @@ struct PreferansScoring {
         Dictionary(uniqueKeysWithValues: activePlayers.map { player in
             (player, (hands[player] ?? []).sorted())
         })
+    }
+
+    private func validOpeningHands(_ hands: [PlayerID: [Card]], activePlayers: [PlayerID]) -> [PlayerID: [Card]]? {
+        guard Set(hands.keys) == Set(activePlayers) else { return nil }
+        for player in activePlayers {
+            let hand = hands[player] ?? []
+            guard hand.count == 10, Set(hand).count == hand.count else { return nil }
+        }
+        return sortedHands(hands, activePlayers: activePlayers)
     }
 
     private func tricks(_ player: PlayerID, in trickCounts: [PlayerID: Int]) -> Int {

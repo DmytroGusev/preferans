@@ -95,6 +95,48 @@ final class InvariantValidatorTests: XCTestCase {
         }
     }
 
+    private func assertViolation(
+        _ snapshot: PreferansSnapshot,
+        contains needle: String,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        do {
+            try PreferansEngine.validateInvariants(snapshot)
+            XCTFail("expected invariant violation containing '\(needle)' but validator accepted snapshot", file: file, line: line)
+        } catch let violation as InvariantViolation {
+            XCTAssertTrue(
+                violation.message.contains(needle),
+                "violation '\(violation.message)' did not contain '\(needle)'",
+                file: file,
+                line: line
+            )
+        } catch {
+            XCTFail("expected InvariantViolation, got \(error)", file: file, line: line)
+        }
+    }
+
+    private func assertViolation(
+        _ operation: @autoclosure () throws -> Void,
+        contains needle: String,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) {
+        do {
+            try operation()
+            XCTFail("expected invariant violation containing '\(needle)' but operation succeeded", file: file, line: line)
+        } catch let violation as InvariantViolation {
+            XCTAssertTrue(
+                violation.message.contains(needle),
+                "violation '\(violation.message)' did not contain '\(needle)'",
+                file: file,
+                line: line
+            )
+        } catch {
+            XCTFail("expected InvariantViolation, got \(error)", file: file, line: line)
+        }
+    }
+
     private func assertAccepts(_ state: DealState, file: StaticString = #file, line: UInt = #line) {
         XCTAssertNoThrow(try PreferansEngine.validateInvariants(state), file: file, line: line)
     }
@@ -262,5 +304,86 @@ final class InvariantValidatorTests: XCTestCase {
             scoreDelta: ScoreDelta(players: seats)
         )
         assertViolation(.dealFinished(result), contains: "trickCounts keys")
+    }
+
+    func testValidatorRejectsDealFinishedWithBadInitialHandsKeys() {
+        let (hands, _) = dealHands()
+        let result = DealResult(
+            kind: .allPass,
+            activePlayers: seats,
+            trickCounts: seats.dictionary(filledWith: 0),
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: seats),
+            initialHands: hands.filter { $0.key != south }
+        )
+        assertViolation(.dealFinished(result), contains: "initialHands keys")
+    }
+
+    // MARK: - Score invariants
+
+    func testScoreSheetValidationRejectsUnknownPoolPlayer() {
+        let ghost: PlayerID = "ghost"
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: [north: 0, east: 0, south: 0, ghost: 1],
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+        assertViolation(try score.validate(players: seats), contains: "score pool keys")
+    }
+
+    func testScoreDeltaValidationRejectsUnknownWhistTarget() {
+        let ghost: PlayerID = "ghost"
+        let delta = ScoreDelta(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 0),
+            mountain: seats.dictionary(filledWith: 0),
+            whists: [
+                north: [ghost: 1],
+                east: [:],
+                south: [:],
+            ]
+        )
+        assertViolation(try delta.validate(players: seats), contains: "unknown players")
+    }
+
+    func testSnapshotValidatorRejectsScorePlayerMismatch() {
+        let score = ScoreSheet(
+            uncheckedPlayers: [north, east],
+            pool: [north: 0, east: 0],
+            mountain: [north: 0, east: 0],
+            whists: [north: [:], east: [:]]
+        )
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .waitingForDeal,
+            score: score,
+            nextDealer: north
+        )
+        assertViolation(snapshot, contains: "score players")
+    }
+
+    func testSnapshotValidatorRejectsGameOverSummaryMismatch() {
+        let (hands, _) = dealHands()
+        let score = ScoreSheet(players: seats)
+        let result = DealResult(
+            kind: .allPass,
+            activePlayers: seats,
+            trickCounts: seats.dictionary(filledWith: 0),
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: seats),
+            initialHands: hands
+        )
+        let summary = MatchSummary(finalScore: score, dealsPlayed: 2, lastDeal: result, standings: [])
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .gameOver(summary),
+            score: score,
+            nextDealer: north,
+            dealsPlayed: 1
+        )
+        assertViolation(snapshot, contains: "gameOver dealsPlayed")
     }
 }
