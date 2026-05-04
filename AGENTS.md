@@ -1,5 +1,10 @@
 # Working notes for AI agents
 
+## Response language
+
+Always respond to the user in English, regardless of the language used in the
+user's message, unless the user explicitly requests another language.
+
 ## Tight feedback loops during testing
 
 **A 10-minute test timeout is a smell, not a workaround.** If a UI test or
