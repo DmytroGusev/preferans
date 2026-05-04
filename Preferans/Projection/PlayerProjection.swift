@@ -345,7 +345,7 @@ public enum PlayerProjectionBuilder {
                 roleMap[context.declarer] = .declarer
                 let defenders = activePlayers.filter { $0 != context.declarer }
                 for defender in defenders { roleMap[defender] = .whister }
-                revealOpenHandOwners.formUnion(defenders)
+                revealOpenHandOwners.formUnion(activePlayers)
             case .allPass:
                 projectedKind = .allPass
             }

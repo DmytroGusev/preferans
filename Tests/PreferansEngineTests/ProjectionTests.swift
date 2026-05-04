@@ -81,7 +81,7 @@ final class ProjectionTests: XCTestCase {
         try assertPublicTalon(in: engine, viewers: players, label: "second talon-led trick")
     }
 
-    func testMisereProjectionRevealsDefenderHandsToDeclarer() throws {
+    func testMisereProjectionRevealsEveryActiveHandToEveryViewer() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
         let deck = HandRecipe.cleanMisere(declarer: "north")
@@ -95,23 +95,29 @@ final class ProjectionTests: XCTestCase {
             return XCTFail("Expected playing.misere; got \(engine.state.description)")
         }
 
-        let projection = PlayerProjectionBuilder.projection(
-            for: "north",
-            tableID: UUID(),
-            sequence: 0,
-            engine: engine,
-            policy: .online
-        )
-
-        for defender in ["east", "south"] as [PlayerID] {
-            let seat = try XCTUnwrap(projection.seats.first { $0.player == defender })
-            XCTAssertEqual(seat.role, .whister)
-            XCTAssertEqual(seat.hand.count, 10)
-            XCTAssertEqual(
-                seat.hand.compactMap(\.knownCard).count,
-                10,
-                "Misère should reveal defender hands to the declarer."
+        for viewer in players {
+            let projection = PlayerProjectionBuilder.projection(
+                for: viewer,
+                tableID: UUID(),
+                sequence: 0,
+                engine: engine,
+                policy: .online
             )
+
+            for player in players {
+                let seat = try XCTUnwrap(projection.seats.first { $0.player == player })
+                XCTAssertEqual(seat.hand.count, 10)
+                XCTAssertEqual(
+                    seat.hand.compactMap(\.knownCard).count,
+                    10,
+                    "Misère should reveal \(player)'s hand to \(viewer)."
+                )
+            }
+
+            for defender in ["east", "south"] as [PlayerID] {
+                let seat = try XCTUnwrap(projection.seats.first { $0.player == defender })
+                XCTAssertEqual(seat.role, .whister)
+            }
         }
     }
 
@@ -209,7 +215,7 @@ final class ProjectionTests: XCTestCase {
         )
         assertPlayingHandVisibility(
             in: misere,
-            openedPlayers: ["east", "south"],
+            openedPlayers: Set(misere.players),
             label: "misere"
         )
 
