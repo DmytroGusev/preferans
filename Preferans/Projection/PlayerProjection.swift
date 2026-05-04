@@ -214,208 +214,23 @@ public enum PlayerProjectionBuilder {
         policy: ProjectionPolicy = .online
     ) -> PlayerGameProjection {
         let identityMap = Dictionary(uniqueKeysWithValues: identities.map { ($0.playerID, $0.displayName) })
-
-        var dealer: PlayerID? = nil
-        var activePlayers: [PlayerID] = []
-        var hands: [PlayerID: [Card]] = [:]
-        var talonCards: [Card] = []
-        var discardCards: [Card] = []
-        var auction: [AuctionCall] = []
-        var whistCalls: [WhistCallRecord] = []
-        var currentTrick: [CardPlay] = []
-        var completedTrickCount = 0
-        var trickCounts: [PlayerID: Int] = [:]
-        var currentActor: PlayerID? = nil
-        var roleMap: [PlayerID: SeatRole] = [:]
-        var phase: ProjectedPhase
-        var legal = LegalActionProjection()
-        var status: ProjectedStatus
-        var revealOpenHandOwners = Set<PlayerID>()
-
-        switch engine.state {
-        case .waitingForDeal:
-            phase = .waitingForDeal(nextDealer: engine.nextDealer)
-            legal.canStartDeal = true
-            status = .readyToDeal
-
-        case let .bidding(state):
-            dealer = state.dealer
-            activePlayers = state.activePlayers
-            hands = state.hands
-            talonCards = state.talon
-            auction = state.calls
-            currentActor = state.currentPlayer
-            phase = .bidding(currentPlayer: state.currentPlayer, highestBid: state.highestBid)
-            legal.bidCalls = engine.legalBidCalls(for: viewer)
-            status = .bidding(currentPlayer: state.currentPlayer)
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .awaitingDiscard(state):
-            dealer = state.dealer
-            activePlayers = state.activePlayers
-            hands = state.hands
-            talonCards = state.talon
-            auction = state.auction
-            currentActor = state.declarer
-            roleMap[state.declarer] = .declarer
-            phase = .awaitingDiscard(declarer: state.declarer, finalBid: state.finalBid)
-            legal.canDiscard = viewer == state.declarer
-            status = .takingPrikup(declarer: state.declarer)
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .awaitingContract(state):
-            dealer = state.dealer
-            activePlayers = state.activePlayers
-            hands = state.hands
-            talonCards = state.talon
-            discardCards = state.discard
-            auction = state.auction
-            currentActor = state.declarer
-            roleMap[state.declarer] = .declarer
-            phase = .awaitingContract(declarer: state.declarer, finalBid: state.finalBid)
-            // Use the engine's totus-aware list so dedicated-totus declarations
-            // are constrained to 10-trick contracts (one per strain).
-            legal.contractOptions = viewer == state.declarer ? engine.legalContractDeclarations(for: viewer) : []
-            status = .namingContract(declarer: state.declarer, pickingTotusStrain: state.finalBid == .totus)
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .awaitingWhist(state):
-            dealer = state.dealer
-            activePlayers = state.activePlayers
-            hands = state.hands
-            talonCards = state.talon
-            discardCards = state.discard
-            whistCalls = state.calls
-            currentActor = state.currentPlayer
-            roleMap[state.declarer] = .declarer
-            for defender in state.defenders { roleMap[defender] = .defender }
-            phase = .awaitingWhist(currentPlayer: state.currentPlayer, declarer: state.declarer, contract: state.contract)
-            legal.whistCalls = engine.legalWhistCalls(for: viewer)
-            status = .callingWhist(currentPlayer: state.currentPlayer)
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .awaitingDefenderMode(state):
-            dealer = state.dealer
-            activePlayers = state.activePlayers
-            hands = state.hands
-            talonCards = state.talon
-            discardCards = state.discard
-            whistCalls = state.whistCalls
-            currentActor = state.whister
-            roleMap[state.declarer] = .declarer
-            for defender in state.defenders { roleMap[defender] = defender == state.whister ? .whister : .defender }
-            phase = .awaitingDefenderMode(whister: state.whister, contract: state.contract)
-            legal.defenderModes = viewer == state.whister ? [.closed, .open] : []
-            status = .choosingDefenderMode(whister: state.whister)
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .playing(state):
-            dealer = state.dealer
-            activePlayers = state.activePlayers
-            hands = state.hands
-            talonCards = state.talon
-            discardCards = state.discard
-            currentActor = engine.state.currentActor
-            currentTrick = state.currentTrick
-            completedTrickCount = state.completedTricks.count
-            trickCounts = state.trickCounts
-            legal.playableCards = engine.legalCards(for: viewer)
-            legal.settlementOptions = engine.legalSettlements(for: viewer)
-            legal.pendingSettlement = state.pendingSettlement
-            legal.canAcceptSettlement = engine.canAcceptSettlement(player: viewer)
-            legal.canRejectSettlement = engine.canRejectSettlement(player: viewer)
-            let projectedKind: ProjectedPlayKind
-            switch state.kind {
-            case let .game(context):
-                projectedKind = .game(
-                    declarer: context.declarer,
-                    contract: context.contract,
-                    defenders: context.defenders,
-                    whisters: context.whisters,
-                    defenderPlayMode: context.defenderPlayMode
-                )
-                roleMap[context.declarer] = .declarer
-                for defender in context.defenders { roleMap[defender] = context.whisters.contains(defender) ? .whister : .defender }
-                if context.defenderPlayMode == .open && policy.revealOpenDefenderHandsToAll {
-                    revealOpenHandOwners.formUnion(context.defenders)
-                }
-                whistCalls = context.whistCalls
-            case let .misere(context):
-                projectedKind = .misere(declarer: context.declarer)
-                roleMap[context.declarer] = .declarer
-                let defenders = activePlayers.filter { $0 != context.declarer }
-                for defender in defenders { roleMap[defender] = .whister }
-                revealOpenHandOwners.formUnion(activePlayers)
-            case .allPass:
-                projectedKind = .allPass
-            }
-            phase = .playing(currentPlayer: state.currentPlayer, leader: state.leader, kind: projectedKind)
-            if let proposal = state.pendingSettlement {
-                status = .settling(
-                    proposer: proposal.proposer,
-                    target: proposal.settlement.target,
-                    targetTricks: proposal.settlement.targetTricks,
-                    currentPlayer: engine.state.currentActor
-                )
-            } else {
-                status = .playingTrick(
-                    currentPlayer: state.currentPlayer,
-                    trickNumber: state.completedTricks.count + 1
-                )
-            }
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .dealFinished(result):
-            activePlayers = result.activePlayers
-            completedTrickCount = result.completedTricks.count
-            trickCounts = result.trickCounts
-            phase = .dealFinished(result: result)
-            legal.canStartDeal = true
-            status = .dealScored
-            markActiveRoles(activePlayers, into: &roleMap)
-
-        case let .gameOver(summary):
-            activePlayers = summary.lastDeal.activePlayers
-            completedTrickCount = summary.lastDeal.completedTricks.count
-            trickCounts = summary.lastDeal.trickCounts
-            phase = .gameOver(summary: summary)
-            legal.canStartDeal = false
-            status = .matchOver(winner: summary.standings.first?.player)
-            markActiveRoles(activePlayers, into: &roleMap)
-        }
-
-        let seats = engine.players.map { player in
-            let cards = hands[player] ?? []
-            let projectedHand: [ProjectedCard]
-            if policy.revealAllHands || player == viewer || revealOpenHandOwners.contains(player) {
-                projectedHand = cards.sorted().map(ProjectedCard.known)
-            } else {
-                projectedHand = Array(repeating: .hidden, count: cards.count)
-            }
-
-            let isActive = activePlayers.isEmpty ? true : activePlayers.contains(player)
-            let isDealer = dealer == player
-            let role: SeatRole = roleMap[player] ?? (isActive ? .active : .sittingOut)
-            return SeatProjection(
-                player: player,
-                displayName: identityMap[player] ?? player.rawValue,
-                isActive: isActive,
-                isDealer: isDealer,
-                isCurrentActor: currentActor == player,
-                role: role,
-                hand: projectedHand,
-                trickCount: trickCounts[player] ?? 0
-            )
-        }
+        let frame = phaseFrame(for: viewer, engine: engine, policy: policy)
+        let seats = seatProjections(
+            for: engine.players,
+            viewer: viewer,
+            identityMap: identityMap,
+            frame: frame,
+            policy: policy
+        )
 
         let projectedTalon = projectTalon(
-            talonCards,
+            frame.talonCards,
             state: engine.state,
             viewer: viewer,
             revealAll: policy.revealAllHands
         )
         let projectedDiscard = projectDiscard(
-            discardCards,
+            frame.discardCards,
             state: engine.state,
             viewer: viewer,
             revealAll: policy.revealAllHands,
@@ -430,64 +245,17 @@ public enum PlayerProjectionBuilder {
             identities: identities,
             rules: engine.rules,
             score: engine.score,
-            phase: phase,
+            phase: frame.phase,
             seats: seats,
-            auction: auction,
-            whistCalls: whistCalls,
-            currentTrick: currentTrick,
-            completedTrickCount: completedTrickCount,
-            trickCounts: trickCounts,
+            auction: frame.auction,
+            whistCalls: frame.whistCalls,
+            currentTrick: frame.currentTrick,
+            completedTrickCount: frame.completedTrickCount,
+            trickCounts: frame.trickCounts,
             talon: projectedTalon,
             discard: projectedDiscard,
-            legal: legal,
-            status: status
+            legal: frame.legal,
+            status: frame.status
         )
-    }
-
-    private static func markActiveRoles(_ players: [PlayerID], into roleMap: inout [PlayerID: SeatRole]) {
-        for player in players where roleMap[player] == nil {
-            roleMap[player] = .active
-        }
-    }
-
-    private static func projectTalon(_ talon: [Card], state: DealState, viewer: PlayerID, revealAll: Bool) -> [ProjectedCard] {
-        // The prikup is opened publicly during the talon exchange. In
-        // lead-suit all-pass play the talon also remains public because it
-        // determines the suit everyone must follow on the first two tricks.
-        return reveal(talon, when: revealAll || state.hasPublicTalon)
-    }
-
-    private static func projectDiscard(
-        _ discard: [Card],
-        state: DealState,
-        viewer: PlayerID,
-        revealAll: Bool,
-        revealDeclarerDiscardToDeclarer: Bool
-    ) -> [ProjectedCard] {
-        guard !discard.isEmpty else { return [] }
-        let isDeclarerViewer = revealDeclarerDiscardToDeclarer && state.declarer == viewer
-        return reveal(discard, when: revealAll || isDeclarerViewer)
-    }
-
-    private static func reveal(_ cards: [Card], when shouldReveal: Bool) -> [ProjectedCard] {
-        if shouldReveal { return cards.sorted().map(ProjectedCard.known) }
-        return Array(repeating: .hidden, count: cards.count)
-    }
-}
-
-private extension DealState {
-    var hasPublicTalon: Bool {
-        switch self {
-        case .awaitingDiscard:
-            return true
-        case let .playing(state):
-            guard case let .allPass(context) = state.kind,
-                  context.talonPolicy == .leadSuitOnly else {
-                return false
-            }
-            return state.completedTricks.count < 2
-        default:
-            return false
-        }
     }
 }
