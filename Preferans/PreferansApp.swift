@@ -8,7 +8,7 @@ import UIKit
 struct PreferansApp: App {
     #if canImport(GameKit) && canImport(UIKit)
     @StateObject private var gameCenter = GameCenterService()
-    @StateObject private var online = HostedOnlineGameCoordinator()
+    @StateObject private var online = HostedOnlineGameCoordinator(cloudStore: defaultCloudStore())
     #endif
 
     private let animationsDisabled: Bool
