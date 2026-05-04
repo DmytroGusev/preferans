@@ -141,8 +141,9 @@ final class HandRecipeTests: XCTestCase {
         _ = try engine.apply(.bid(player: "south", call: .pass))
 
         try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
-        _ = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
-        try EngineTestDriver.forceWhist(engine: &engine)
+        let events = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
+        XCTAssertTrue(events.contains { if case .playStarted = $0 { return true } else { return false } },
+                      "Totus should skip whist/pass and start play immediately.")
         try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
 
         guard case let .dealFinished(result) = engine.state, case .game = result.kind else {

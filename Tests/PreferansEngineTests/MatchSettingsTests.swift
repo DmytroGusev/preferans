@@ -173,14 +173,60 @@ final class MatchSettingsTests: XCTestCase {
         }
     }
 
-    func testDedicatedTotusFlowCreditsBonusPoolOnPassedOutWin() throws {
+    func testTenTrickGameStartsPlayWithoutWhist() throws {
+        var engine = try makeEngine(
+            match: MatchSettings(poolTarget: .max, totus: .asTenTrickGame(requireWhist: false))
+        )
+        let deck = HandRecipe
+            .totusMakes(declarer: "north", strain: .suit(.spades))
+            .deck(for: ["north", "east", "south"])
+        try engine.startDeal(deck: deck)
+
+        let contract = GameContract(10, .suit(.spades))
+        _ = try engine.apply(.bid(player: "north", call: .bid(.game(contract))))
+        _ = try engine.apply(.bid(player: "east", call: .pass))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("10-trick auction win should open the discard window.")
+        }
+        _ = try engine.apply(.discard(player: "north", cards: exchange.talon))
+
+        let events = try engine.apply(.declareContract(player: "north", contract: contract))
+
+        XCTAssertTrue(events.contains { if case .playStarted = $0 { return true } else { return false } },
+                      "10-trick contracts must skip whist/pass and start play immediately.")
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Expected 10-trick contract to enter card play.")
+        }
+        XCTAssertEqual(context.contract, contract)
+        XCTAssertEqual(context.whisters, [])
+        XCTAssertTrue(engine.legalWhistCalls(for: "east").isEmpty)
+
+        try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
+
+        guard case let .dealFinished(result) = engine.state,
+              case let .game(declarer, finishedContract, whisters) = result.kind else {
+            return XCTFail("Expected played 10-trick game result.")
+        }
+        XCTAssertEqual(declarer, "north")
+        XCTAssertEqual(finishedContract, contract)
+        XCTAssertEqual(whisters, [])
+        XCTAssertEqual(engine.score.pool["north"], 10)
+    }
+
+    func testDedicatedTotusFlowCreditsBonusPoolAfterPlayedWin() throws {
         var engine = try makeEngine(
             match: MatchSettings(
                 poolTarget: .max,
                 totus: .dedicatedContract(requireWhist: true, bonusPool: 5)
             )
         )
-        try engine.startDeal(deck: Self.northSpadesSixDeck)
+        let deck = HandRecipe
+            .totusMakes(declarer: "north", strain: .suit(.spades))
+            .deck(for: ["north", "east", "south"])
+        try engine.startDeal(deck: deck)
 
         _ = try engine.apply(.bid(player: "north", call: .bid(.totus)))
         _ = try engine.apply(.bid(player: "east", call: .pass))
@@ -203,16 +249,26 @@ final class MatchSettingsTests: XCTestCase {
         XCTAssertTrue(options.allSatisfy { $0.tricks == 10 },
                       "Totus declaration is constrained to 10-trick contracts.")
 
-        _ = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
-        _ = try engine.apply(.whist(player: "east", call: .pass))
-        _ = try engine.apply(.whist(player: "south", call: .pass))
+        let declareEvents = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
 
-        guard case let .dealFinished(result) = engine.state, case .passedOut = result.kind else {
-            return XCTFail("Both defenders passing should close as passedOut.")
+        XCTAssertTrue(declareEvents.contains { if case .playStarted = $0 { return true } else { return false } },
+                      "Dedicated totus must skip whist/pass and start play immediately.")
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Totus declaration should enter card play.")
+        }
+        XCTAssertEqual(context.whisters, [])
+        XCTAssertTrue(engine.legalWhistCalls(for: "east").isEmpty)
+
+        try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
+
+        guard case let .dealFinished(result) = engine.state,
+              case .game = result.kind else {
+            return XCTFail("Totus should finish only after card play.")
         }
         // Contract value (10-5)*2 = 10; bonus = 5; total = 15.
         XCTAssertEqual(engine.score.pool["north"], 15,
-                       "Declarer must receive contract value plus totus bonus on a passed-out win.")
+                       "Declarer must receive contract value plus totus bonus on a played win.")
     }
 
     func testTotusOrderingPlacesItDirectlyAboveMisere() {

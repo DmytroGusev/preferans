@@ -379,6 +379,32 @@ public struct PreferansEngine: Sendable {
         }
 
         let defenders = defenders(after: player, activePlayers: declaration.activePlayers)
+        if contract.tricks == 10 {
+            let playing = makePlayingState(
+                dealer: declaration.dealer,
+                activePlayers: declaration.activePlayers,
+                hands: declaration.hands,
+                talon: declaration.talon,
+                discard: declaration.discard,
+                kind: .game(
+                    GamePlayContext(
+                        declarer: player,
+                        contract: contract,
+                        defenders: defenders,
+                        whisters: [],
+                        defenderPlayMode: .closed,
+                        whistCalls: [],
+                        bonusPoolOnSuccess: bonusPool
+                    )
+                )
+            )
+            state = .playing(playing)
+            return [
+                .contractDeclared(declarer: player, contract: contract),
+                .playStarted(playing.kind)
+            ]
+        }
+
         let whist = WhistState(
             dealer: declaration.dealer,
             activePlayers: declaration.activePlayers,

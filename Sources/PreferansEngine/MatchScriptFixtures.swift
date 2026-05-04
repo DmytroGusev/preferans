@@ -39,7 +39,7 @@ public enum MatchScriptFixtures {
     /// Pool-sum after each deal: 2 → 2 → 12 → 12 → 13 → 23.
     /// Pool target 20 fires on deal 6.
     /// Mix: 6♠ made, 7♣ failed, misère clean, 8♥ failed, raspasy clean,
-    /// 10♠ totus (asTenTrickGame, defenders pass-out → declarer +10).
+    /// 10♠ totus (asTenTrickGame, always played → declarer +10).
     public static let game1ClassicSochi: MatchScript = {
         let players = MatchScriptFixtures.players
         let firstDealer: PlayerID = "north"
@@ -72,9 +72,9 @@ public enum MatchScriptFixtures {
             // Deal 5 — dealer north, active [east, south, west]; raspasy, east clean.
             .makeRaspasy(cleaner: "east", talonLeadSuit: nil),
             // Deal 6 — dealer east, active [south, west, north]; south makes 10♠.
-            // Under asTenTrickGame(requireWhist: false), defenders may pass and
-            // the deal short-circuits as passed-out (declarer credited 10 pool).
-            .makePassedOutTenTrickGame(declarer: "south", strain: .suit(.spades))
+            // Under asTenTrickGame, whist/pass is skipped and the deal must
+            // be played out.
+            .makeTenTrickGame(declarer: "south", strain: .suit(.spades))
         ]
         return MatchScript(
             players: players,
@@ -237,22 +237,21 @@ private extension DealScript {
         )
     }
 
-    /// 10-trick game contract under `.asTenTrickGame(requireWhist: false)`:
-    /// defenders pass on whist and the deal short-circuits as passedOut.
-    static func makePassedOutTenTrickGame(declarer: PlayerID, strain: Strain) -> DealScript {
+    /// 10-trick game contract under `.asTenTrickGame`: whist/pass is skipped
+    /// and the hand must be played.
+    static func makeTenTrickGame(declarer: PlayerID, strain: Strain) -> DealScript {
         let contract = GameContract(10, strain)
         return DealScript(
             recipe: .totusMakes(declarer: declarer, strain: strain),
             auction: [.bid(.game(contract)), .pass, .pass],
             discardChoice: .talon,
             contractDeclaration: contract,
-            whists: [.pass, .pass],
-            cardPlay: .none
+            cardPlay: .greedyForDeclarer(declarer: declarer)
         )
     }
 
-    /// Dedicated totus bid → discard → strain pick → both defenders whist →
-    /// played out greedily by declarer. Bonus pool is credited by the engine
+    /// Dedicated totus bid → discard → strain pick → immediate play. Bonus
+    /// pool is credited by the engine
     /// when the play succeeds.
     static func makeDedicatedTotus(declarer: PlayerID, strain: Strain) -> DealScript {
         let contract = GameContract(10, strain)
@@ -261,7 +260,6 @@ private extension DealScript {
             auction: [.bid(.totus), .pass, .pass],
             discardChoice: .talon,
             contractDeclaration: contract,
-            whists: [.whist, .whist],
             cardPlay: .greedyForDeclarer(declarer: declarer)
         )
     }
