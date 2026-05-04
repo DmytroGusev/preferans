@@ -59,6 +59,28 @@ final class ProjectionTests: XCTestCase {
         }
     }
 
+    func testLeadSuitAllPassProjectionKeepsTalonPublicToTable() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        let recipe = HandRecipe.raspasyCleanExit(cleaner: "north", talonLeadSuit: .clubs)
+        var engine = try PreferansEngine(
+            players: players,
+            rules: .sochiWithTalonLedAllPass,
+            firstDealer: "south"
+        )
+        _ = try engine.apply(.startDeal(dealer: "south", deck: recipe.deck(for: players)))
+        try EngineTestDriver.passOutAuction(engine: &engine)
+
+        try assertPublicTalon(in: engine, viewers: players, label: "opening all-pass")
+
+        while case let .playing(state) = engine.state, state.completedTricks.count < 1 {
+            let actor = state.currentPlayer
+            let card = try XCTUnwrap(engine.legalCards(for: actor).min())
+            _ = try engine.apply(.playCard(player: actor, card: card))
+        }
+
+        try assertPublicTalon(in: engine, viewers: players, label: "second talon-led trick")
+    }
+
     func testMisereProjectionRevealsDefenderHandsToDeclarer() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
@@ -312,6 +334,37 @@ final class ProjectionTests: XCTestCase {
                     XCTAssertEqual(knownCount, 0, "\(label): \(viewer) should not see \(seat.player)'s hand.", file: file, line: line)
                 }
             }
+        }
+    }
+
+    private func assertPublicTalon(
+        in engine: PreferansEngine,
+        viewers: [PlayerID],
+        label: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        let expectedTalon: [Card]
+        guard case let .playing(state) = engine.state else {
+            throw EngineTestError("Expected playing state.")
+        }
+        expectedTalon = state.talon.sorted()
+
+        for viewer in viewers {
+            let projection = PlayerProjectionBuilder.projection(
+                for: viewer,
+                tableID: UUID(),
+                sequence: 0,
+                engine: engine,
+                policy: .online
+            )
+            XCTAssertEqual(
+                projection.talon.compactMap(\.knownCard),
+                expectedTalon,
+                "\(label): \(viewer) should see the public talon on the table.",
+                file: file,
+                line: line
+            )
         }
     }
 }

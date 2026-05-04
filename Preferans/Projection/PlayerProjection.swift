@@ -424,17 +424,10 @@ public enum PlayerProjectionBuilder {
     }
 
     private static func projectTalon(_ talon: [Card], state: DealState, viewer: PlayerID, revealAll: Bool) -> [ProjectedCard] {
-        // The prikup is opened publicly during the talon exchange — every
-        // player sees the two cards the declarer just took. Once the
-        // declarer discards the state advances past .awaitingDiscard and
-        // the talon is set aside (hidden again).
-        let isExchangePhase: Bool
-        if case .awaitingDiscard = state {
-            isExchangePhase = true
-        } else {
-            isExchangePhase = false
-        }
-        return reveal(talon, when: revealAll || isExchangePhase)
+        // The prikup is opened publicly during the talon exchange. In
+        // lead-suit all-pass play the talon also remains public because it
+        // determines the suit everyone must follow on the first two tricks.
+        return reveal(talon, when: revealAll || state.hasPublicTalon)
     }
 
     private static func projectDiscard(
@@ -452,5 +445,22 @@ public enum PlayerProjectionBuilder {
     private static func reveal(_ cards: [Card], when shouldReveal: Bool) -> [ProjectedCard] {
         if shouldReveal { return cards.sorted().map(ProjectedCard.known) }
         return Array(repeating: .hidden, count: cards.count)
+    }
+}
+
+private extension DealState {
+    var hasPublicTalon: Bool {
+        switch self {
+        case .awaitingDiscard:
+            return true
+        case let .playing(state):
+            guard case let .allPass(context) = state.kind,
+                  context.talonPolicy == .leadSuitOnly else {
+                return false
+            }
+            return state.completedTricks.count < 2
+        default:
+            return false
+        }
     }
 }

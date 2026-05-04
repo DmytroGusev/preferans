@@ -276,10 +276,8 @@ public struct TableView: View {
 
     /// The center of the felt where the current trick sits. The felt is the
     /// screen background; this view only places the trick / phase-message
-    /// content into the open middle. The prikup is intentionally rendered
-    /// only inside the viewer's hand fan during discard (each card carrying a
-    /// "P" badge), so the center felt stays a single source of truth instead
-    /// of a duplicated picker.
+    /// content into the open middle. Public talon cards live on the center
+    /// felt so every seat sees the same table information.
     @ViewBuilder
     private func playArea(opponentSeats: [PlayerID]) -> some View {
         if case let .gameOver(summary) = projection.phase {
@@ -302,6 +300,10 @@ public struct TableView: View {
                     phaseContext()
                 } else {
                     trickPlays(opponentSeats: opponentSeats)
+                    if shouldShowPublicTalon {
+                        talonContext(title: "Talon", size: .compact)
+                            .offset(y: -96)
+                    }
                 }
             }
             .accessibilityElement(children: .contain)
@@ -319,6 +321,8 @@ public struct TableView: View {
         switch projection.phase {
         case .awaitingDiscard:
             talonContext()
+        case .playing(_, _, kind: .allPass) where shouldShowPublicTalon:
+            talonContext(title: "Talon")
         case .bidding, .awaitingContract:
             biddingContext()
         default:
@@ -432,16 +436,30 @@ public struct TableView: View {
     /// felt so the declarer (and observers) see what the declarer just
     /// took. The hand fan also shows the same cards with a "P" badge for
     /// the discard interaction; this center view is purely informational.
-    private func talonContext() -> some View {
+    private var shouldShowPublicTalon: Bool {
+        let hasKnownCards = projection.talon.contains { $0.knownCard != nil }
+        switch projection.phase {
+        case .awaitingDiscard:
+            return hasKnownCards
+        case .playing(_, _, kind: .allPass):
+            return hasKnownCards
+                && projection.rules.allPassTalonPolicy == .leadSuitOnly
+                && projection.completedTrickCount < 2
+        default:
+            return false
+        }
+    }
+
+    private func talonContext(title: LocalizedStringKey = "Prikup", size: CardView.Size = .standard) -> some View {
         VStack(spacing: 8) {
-            Text("Prikup")
+            Text(title)
                 .font(.caption.weight(.bold))
                 .tracking(1.2)
                 .textCase(.uppercase)
                 .foregroundStyle(TableTheme.goldBright)
             HStack(spacing: 6) {
                 ForEach(Array(projection.talon.enumerated()), id: \.offset) { _, card in
-                    CardView(card: card, size: .standard)
+                    CardView(card: card, size: size, region: .talon)
                 }
             }
         }
