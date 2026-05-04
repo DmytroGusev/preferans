@@ -71,6 +71,7 @@
 		C0000000000000000000A05A /* HeuristicStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04A /* HeuristicStrategy.swift */; };
 		C0000000000000000000A05B /* DealDeckLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04B /* DealDeckLayout.swift */; };
 		C0000000000000000000A05C /* BotPacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04C /* BotPacing.swift */; };
+		C0000000000000000000A05D /* ScoringEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04D /* ScoringEngine.swift */; };
 		B0000000000000000000001A /* TestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000004A /* TestHarness.swift */; };
 		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -190,6 +191,7 @@
 		C0000000000000000000A04A /* HeuristicStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/HeuristicStrategy.swift; sourceTree = "<group>"; };
 		C0000000000000000000A04B /* DealDeckLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealDeckLayout.swift; sourceTree = "<group>"; };
 		C0000000000000000000A04C /* BotPacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotPacing.swift; sourceTree = "<group>"; };
+		C0000000000000000000A04D /* ScoringEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoringEngine.swift; sourceTree = "<group>"; };
 		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/TestHarness.swift"; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
@@ -324,6 +326,7 @@
 				C0000000000000000000A04A /* HeuristicStrategy.swift */,
 				C0000000000000000000A04B /* DealDeckLayout.swift */,
 				C0000000000000000000A04C /* BotPacing.swift */,
+				C0000000000000000000A04D /* ScoringEngine.swift */,
 			);
 			path = Sources/PreferansEngine;
 			sourceTree = "<group>";
@@ -525,6 +528,7 @@
 				C0000000000000000000A05A /* HeuristicStrategy.swift in Sources */,
 				C0000000000000000000A05B /* DealDeckLayout.swift in Sources */,
 				C0000000000000000000A05C /* BotPacing.swift in Sources */,
+				C0000000000000000000A05D /* ScoringEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

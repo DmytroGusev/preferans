@@ -91,6 +91,27 @@ public actor CloudKitGameArchiveStore {
         return try records.map(decodeValidatedAction)
     }
 
+    public func restoreHostGame(
+        tableID: UUID,
+        hostPlayerID: PlayerID? = nil,
+        projectionPolicy: ProjectionPolicy = .online,
+        dealSource: DealSource = RandomDealSource()
+    ) async throws -> HostGameActor {
+        let summary = try await loadTableSummary(tableID: tableID)
+        let records = try await loadValidatedActions(tableID: tableID)
+        let firstDealer = summary.seats.first?.playerID
+        return try HostGameActor(
+            tableID: tableID,
+            hostPlayerID: hostPlayerID ?? summary.hostPlayerID,
+            seats: summary.seats,
+            rules: summary.rules,
+            firstDealer: firstDealer,
+            validatedActionLog: records,
+            projectionPolicy: projectionPolicy,
+            dealSource: dealSource
+        )
+    }
+
     public func saveHostSnapshot(_ snapshot: AppEngineSnapshot, tableID: UUID, sequence: Int) async throws {
         try await ensureZone()
         let recordID = CKRecord.ID(recordName: "host-snapshot-\(tableID.uuidString)", zoneID: zoneID)

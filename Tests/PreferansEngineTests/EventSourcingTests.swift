@@ -70,6 +70,67 @@ final class EventSourcingTests: XCTestCase {
         }
     }
 
+    func testHostCanResumeFromValidatedActionLogAndContinueSequence() async throws {
+        let original = try makeHost(firstDealer: "south")
+        let firstUpdate = try await original.applyClientAction(
+            ClientActionEnvelope(
+                tableID: original.tableID,
+                actor: "north",
+                action: .startDeal(dealer: nil, deck: nil),
+                baseHostSequence: 0
+            ),
+            sender: "north"
+        )
+        let firstRecord = try XCTUnwrap(firstUpdate.validatedAction)
+        let records = await original.validatedActionLog
+
+        let restored = try HostGameActor(
+            tableID: original.tableID,
+            hostPlayerID: "north",
+            seats: seats(),
+            rules: .sochi,
+            firstDealer: "south",
+            validatedActionLog: records,
+            dealSource: ScriptedDealSource(decks: [Deck.standard32])
+        )
+
+        let restoredSequence = await restored.currentSequence
+        let restoredSnapshot = await restored.currentSnapshot
+        let originalSnapshot = await original.currentSnapshot
+        XCTAssertEqual(restoredSequence, 1)
+        XCTAssertEqual(restoredSnapshot, originalSnapshot)
+
+        let duplicate = ClientActionEnvelope(
+            tableID: original.tableID,
+            actor: "north",
+            action: firstRecord.action,
+            clientNonce: firstRecord.clientNonce,
+            baseHostSequence: 0
+        )
+        do {
+            _ = try await restored.applyClientAction(duplicate, sender: "north")
+            XCTFail("Restored host should retain applied nonces.")
+        } catch HostGameError.duplicateClientNonce(firstRecord.clientNonce) {
+            // Expected.
+        } catch {
+            XCTFail("Expected duplicate nonce, got \(error).")
+        }
+
+        let bidder: PlayerID = "north"
+        let secondUpdate = try await restored.applyClientAction(
+            ClientActionEnvelope(
+                tableID: original.tableID,
+                actor: bidder,
+                action: .bid(player: bidder, call: .pass),
+                baseHostSequence: 1
+            ),
+            sender: bidder
+        )
+        let finalSequence = await restored.currentSequence
+        XCTAssertEqual(secondUpdate.sequence, 2)
+        XCTAssertEqual(finalSequence, 2)
+    }
+
     func testValidatedActionRecordDecodesLegacySummariesWithoutStructuredEvents() throws {
         let record = ValidatedActionRecord(
             tableID: UUID(),
@@ -119,15 +180,18 @@ final class EventSourcingTests: XCTestCase {
     }
 
     private func makeHost(firstDealer: PlayerID) throws -> HostGameActor {
-        let seats = players.map {
-            PlayerIdentity(playerID: $0, gamePlayerID: $0.rawValue, displayName: $0.rawValue)
-        }
-        return try HostGameActor(
+        try HostGameActor(
             hostPlayerID: "north",
-            seats: seats,
+            seats: seats(),
             rules: .sochi,
             firstDealer: firstDealer,
             dealSource: ScriptedDealSource(decks: [Deck.standard32])
         )
+    }
+
+    private func seats() -> [PlayerIdentity] {
+        players.map {
+            PlayerIdentity(playerID: $0, gamePlayerID: $0.rawValue, displayName: $0.rawValue)
+        }
     }
 }

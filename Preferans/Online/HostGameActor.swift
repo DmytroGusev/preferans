@@ -132,6 +132,36 @@ public actor HostGameActor {
         self.dealSource = dealSource
     }
 
+    public init(
+        tableID: UUID,
+        hostPlayerID: PlayerID,
+        seats: [PlayerIdentity],
+        rules: PreferansRules = .sochi,
+        firstDealer: PlayerID? = nil,
+        validatedActionLog records: [ValidatedActionRecord],
+        projectionPolicy: ProjectionPolicy = .online,
+        dealSource: DealSource = RandomDealSource()
+    ) throws {
+        let players = seats.map(\.playerID)
+        if let wrongTable = records.first(where: { $0.tableID != tableID }) {
+            throw HostGameError.wrongTable(expected: tableID, actual: wrongTable.tableID)
+        }
+        self.tableID = tableID
+        self.hostPlayerID = hostPlayerID
+        self.engine = try GameLogReplayer.replay(
+            players: players,
+            rules: rules,
+            firstDealer: firstDealer ?? players.first,
+            records: records
+        )
+        self.sequence = records.map(\.sequence).max() ?? 0
+        self.seats = seats
+        self.appliedNonces = Set(records.map(\.clientNonce))
+        self.actionLog = records.sorted { $0.sequence < $1.sequence }
+        self.projectionPolicy = projectionPolicy
+        self.dealSource = dealSource
+    }
+
     public var players: [PlayerID] { engine.players }
     public var currentSequence: Int { sequence }
     public var currentSnapshot: AppEngineSnapshot { AppEngineSnapshot(engine: engine) }
