@@ -549,6 +549,9 @@ public struct PreferansEngine: Sendable {
         guard whist.defenders.contains(player), whist.currentPlayer == player else {
             return []
         }
+        if isStalingradContract(whist.contract) {
+            return [.whist]
+        }
 
         switch whist.flow {
         case .firstDefenderSecondChance:
@@ -564,6 +567,10 @@ public struct PreferansEngine: Sendable {
             }
             return [.pass, .whist]
         }
+    }
+
+    private func isStalingradContract(_ contract: GameContract) -> Bool {
+        contract == GameContract(6, .suit(.spades))
     }
 
     /// Active rotation for a deal with the given dealer. In 3-player matches

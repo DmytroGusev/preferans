@@ -46,7 +46,7 @@ final class PreferansEngineTests: XCTestCase {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)
 
-        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.spades))))))
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.clubs))))))
         _ = try engine.apply(.bid(player: "south", call: .pass))
         _ = try engine.apply(.bid(player: "north", call: .pass))
 
@@ -55,7 +55,7 @@ final class PreferansEngineTests: XCTestCase {
         }
         let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
         _ = try engine.apply(.discard(player: "east", cards: discard))
-        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(6, .suit(.spades))))
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(6, .suit(.clubs))))
 
         _ = try engine.apply(.whist(player: "south", call: .pass))
         _ = try engine.apply(.whist(player: "north", call: .halfWhist))
@@ -71,11 +71,43 @@ final class PreferansEngineTests: XCTestCase {
             return XCTFail("Expected half-whist result.")
         }
         XCTAssertEqual(declarer, "east")
-        XCTAssertEqual(contract, GameContract(6, .suit(.spades)))
+        XCTAssertEqual(contract, GameContract(6, .suit(.clubs)))
         XCTAssertEqual(halfWhister, "north")
         XCTAssertTrue(events.contains { if case .dealScored = $0 { return true }; return false })
         XCTAssertEqual(engine.score.pool["east"], 2)
         XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 4)
+    }
+
+    func testStalingradSixSpadesForcesClosedWhistFromBothDefenders() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.spades))))))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("Expected discard.")
+        }
+        let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
+        _ = try engine.apply(.discard(player: "east", cards: discard))
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(6, .suit(.spades))))
+
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
+        XCTAssertThrowsError(try engine.apply(.whist(player: "south", call: .pass)))
+
+        _ = try engine.apply(.whist(player: "south", call: .whist))
+        XCTAssertEqual(engine.legalWhistCalls(for: "north"), [.whist])
+        let events = try engine.apply(.whist(player: "north", call: .whist))
+
+        XCTAssertTrue(events.contains { if case .playStarted = $0 { return true }; return false })
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Expected closed game play.")
+        }
+        XCTAssertEqual(context.contract, GameContract(6, .suit(.spades)))
+        XCTAssertEqual(context.whisters, ["south", "north"])
+        XCTAssertEqual(context.defenderPlayMode, .closed)
     }
 
     func testSnapshotAndActionsAreCodable() throws {

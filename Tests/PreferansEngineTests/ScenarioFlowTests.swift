@@ -47,6 +47,7 @@ final class ScenarioFlowTests: XCTestCase {
     }
 
     private static let sixSpades = ContractBid.game(GameContract(6, .suit(.spades)))
+    private static let sixClubs = ContractBid.game(GameContract(6, .suit(.clubs)))
 
     /// Drives the auction prelude: north opens 6♠, east and south pass.
     /// Returns the resulting `awaitingDiscard` state, or fails the test.
@@ -151,10 +152,18 @@ final class ScenarioFlowTests: XCTestCase {
     func testBothDefendersPassClosesTheDealAtContractValue() throws {
         let model = try makeModel(scenario: .northBidsSpadesSix)
         model.startDeal()
-        guard let exchange = winSixSpadesAuction(model) else { return }
+
+        model.send(.bid(player: "north", call: .bid(Self.sixClubs)))
+        model.send(.bid(player: "east", call: .pass))
+        model.send(.bid(player: "south", call: .pass))
+
+        XCTAssertNil(model.lastError)
+        guard let exchange = discardState(model) else {
+            return XCTFail("Expected awaitingDiscard after auction; got \(model.engine.state.description)")
+        }
 
         model.send(.discard(player: "north", cards: exchange.talon))
-        model.send(.declareContract(player: "north", contract: GameContract(6, .suit(.spades))))
+        model.send(.declareContract(player: "north", contract: GameContract(6, .suit(.clubs))))
         model.send(.whist(player: "east", call: .pass))
         model.send(.whist(player: "south", call: .pass))
 
@@ -163,7 +172,7 @@ final class ScenarioFlowTests: XCTestCase {
             return XCTFail("Expected passed-out result; got \(model.engine.state.description)")
         }
         XCTAssertEqual(model.engine.score.pool["north"], 2,
-                       "GameContract.value = (tricks - 5) * 2; 6♠ scores 2 to pool")
+                       "GameContract.value = (tricks - 5) * 2; 6♣ scores 2 to pool")
         XCTAssertEqual(model.engine.score.pool["east"] ?? 0, 0)
         XCTAssertEqual(model.engine.score.pool["south"] ?? 0, 0)
     }

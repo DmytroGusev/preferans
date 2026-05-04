@@ -325,6 +325,9 @@ public enum PlayerProjectionBuilder {
             case let .misere(context):
                 projectedKind = .misere(declarer: context.declarer)
                 roleMap[context.declarer] = .declarer
+                let defenders = activePlayers.filter { $0 != context.declarer }
+                for defender in defenders { roleMap[defender] = .whister }
+                revealOpenHandOwners.formUnion(defenders)
             case .allPass:
                 projectedKind = .allPass
             }

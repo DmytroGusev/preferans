@@ -48,15 +48,15 @@ final class MatchSettingsTests: XCTestCase {
         try engine.startDeal(deck: deck ?? Self.northSpadesSixDeck)
     }
 
-    private static let sixSpades = ContractBid.game(GameContract(6, .suit(.spades)))
+    private static let sixClubs = ContractBid.game(GameContract(6, .suit(.clubs)))
 
-    // Drives auction up to passed-out. North wins 6♠, both defenders pass on
+    // Drives auction up to passed-out. North wins 6♣, both defenders pass on
     // whist, declarer is credited contract value (2 pool) and the deal closes
     // without playing tricks. Returns events from the final whist call.
     @discardableResult
-    private func runPassedOutSixSpades(_ engine: inout PreferansEngine) throws -> [PreferansEvent] {
+    private func runPassedOutSixClubs(_ engine: inout PreferansEngine) throws -> [PreferansEvent] {
         try engine.startDeal(deck: Self.northSpadesSixDeck)
-        _ = try engine.apply(.bid(player: "north", call: .bid(Self.sixSpades)))
+        _ = try engine.apply(.bid(player: "north", call: .bid(Self.sixClubs)))
         _ = try engine.apply(.bid(player: "east", call: .pass))
         _ = try engine.apply(.bid(player: "south", call: .pass))
         guard case let .awaitingDiscard(exchange) = engine.state else {
@@ -64,7 +64,7 @@ final class MatchSettingsTests: XCTestCase {
             return []
         }
         _ = try engine.apply(.discard(player: "north", cards: exchange.talon))
-        _ = try engine.apply(.declareContract(player: "north", contract: GameContract(6, .suit(.spades))))
+        _ = try engine.apply(.declareContract(player: "north", contract: GameContract(6, .suit(.clubs))))
         _ = try engine.apply(.whist(player: "east", call: .pass))
         return try engine.apply(.whist(player: "south", call: .pass))
     }
@@ -73,7 +73,7 @@ final class MatchSettingsTests: XCTestCase {
 
     func testUnboundedMatchNeverFiresGameOver() throws {
         var engine = try makeEngine()
-        let events = try runPassedOutSixSpades(&engine)
+        let events = try runPassedOutSixClubs(&engine)
 
         XCTAssertFalse(events.contains { if case .matchEnded = $0 { return true } else { return false } })
         guard case .dealFinished = engine.state else {
@@ -85,7 +85,7 @@ final class MatchSettingsTests: XCTestCase {
 
     func testGameOverFiresWhenPoolSumCrossesTargetExactly() throws {
         var engine = try makeEngine(match: MatchSettings(poolTarget: 2))
-        let events = try runPassedOutSixSpades(&engine)
+        let events = try runPassedOutSixClubs(&engine)
 
         XCTAssertTrue(events.contains { if case .matchEnded = $0 { return true } else { return false } },
                       "matchEnded event must accompany the deal that crosses the target")
@@ -100,7 +100,7 @@ final class MatchSettingsTests: XCTestCase {
 
     func testGameOverDoesNotFireWhenPoolStaysBelowTarget() throws {
         var engine = try makeEngine(match: MatchSettings(poolTarget: 10))
-        _ = try runPassedOutSixSpades(&engine)
+        _ = try runPassedOutSixClubs(&engine)
 
         guard case .dealFinished = engine.state else {
             return XCTFail("Pool sum 2 < target 10 should keep the engine open.")
@@ -110,7 +110,7 @@ final class MatchSettingsTests: XCTestCase {
 
     func testStartDealFromGameOverThrows() throws {
         var engine = try makeEngine(match: MatchSettings(poolTarget: 2))
-        _ = try runPassedOutSixSpades(&engine)
+        _ = try runPassedOutSixClubs(&engine)
         guard case .gameOver = engine.state else {
             return XCTFail("Setup did not reach gameOver.")
         }
@@ -125,7 +125,7 @@ final class MatchSettingsTests: XCTestCase {
 
     func testMatchSummaryStandingsAreSortedByBalanceWithDeterministicTiebreak() throws {
         var engine = try makeEngine(match: MatchSettings(poolTarget: 2))
-        _ = try runPassedOutSixSpades(&engine)
+        _ = try runPassedOutSixClubs(&engine)
 
         guard case let .gameOver(summary) = engine.state else {
             return XCTFail("Expected gameOver.")

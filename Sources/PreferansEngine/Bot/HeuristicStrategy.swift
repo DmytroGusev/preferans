@@ -215,6 +215,6 @@ public struct HeuristicStrategy: PlayerStrategy {
         let share = max(1.0, Double(requirement) / 2.0)
         if legal.contains(.whist), estimate >= share { return .whist }
         if legal.contains(.halfWhist), estimate >= share - 0.75 { return .halfWhist }
-        return .pass
+        return legal.contains(.pass) ? .pass : legal[0]
     }
 }
