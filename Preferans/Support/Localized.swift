@@ -175,6 +175,11 @@ public enum Localized {
             return Text("\(displayName(whister)) — open or closed?")
         case let .playingTrick(currentPlayer, trickNumber):
             return Text("Trick \(trickNumber): \(displayName(currentPlayer))")
+        case let .settling(proposer, target, targetTricks, currentPlayer):
+            if let currentPlayer {
+                return Text("\(displayName(proposer)) offers: \(displayName(target)) takes \(targetTricks). \(displayName(currentPlayer)) to answer")
+            }
+            return Text("\(displayName(proposer)) offers: \(displayName(target)) takes \(targetTricks)")
         case .dealScored:
             return Text("Deal scored")
         case let .matchOver(winner):

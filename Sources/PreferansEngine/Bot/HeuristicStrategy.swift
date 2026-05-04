@@ -36,7 +36,17 @@ public struct HeuristicStrategy: PlayerStrategy {
             guard s.whister == viewer else { return nil }
             return .chooseDefenderMode(player: viewer, mode: .closed)
         case let .playing(s):
+            if let proposal = s.pendingSettlement {
+                guard snapshot.state.currentActor == viewer else { return nil }
+                return shouldAcceptSettlement(state: s, proposal: proposal)
+                    ? .acceptSettlement(player: viewer)
+                    : .rejectSettlement(player: viewer)
+            }
             guard s.currentPlayer == viewer else { return nil }
+            if let settlement = deterministicLastTrickSettlement(state: s),
+               (try? PreferansEngine(snapshot: snapshot).legalSettlements(for: viewer).contains(settlement)) == true {
+                return .proposeSettlement(player: viewer, settlement: settlement)
+            }
             let card = planner.choose(snapshot: snapshot, viewer: viewer)
                 ?? (try? PreferansEngine(snapshot: snapshot).legalCards(for: viewer))?.first
             guard let card else { return nil }
@@ -216,5 +226,45 @@ public struct HeuristicStrategy: PlayerStrategy {
         if legal.contains(.whist), estimate >= share { return .whist }
         if legal.contains(.halfWhist), estimate >= share - 0.75 { return .halfWhist }
         return legal.contains(.pass) ? .pass : legal[0]
+    }
+
+    // MARK: Settlement
+
+    private func shouldAcceptSettlement(
+        state: PlayingState,
+        proposal: TrickSettlementProposal
+    ) -> Bool {
+        deterministicLastTrickSettlement(state: state) == proposal.settlement
+    }
+
+    private func deterministicLastTrickSettlement(state: PlayingState) -> TrickSettlement? {
+        guard state.currentTrick.isEmpty,
+              state.completedTricks.count == 9 else {
+            return nil
+        }
+
+        var plays: [CardPlay] = []
+        var player = state.currentPlayer
+        repeat {
+            guard let hand = state.hands[player], hand.count == 1, let card = hand.first else {
+                return nil
+            }
+            plays.append(CardPlay(player: player, card: card))
+            player = state.activePlayers.cyclicNext(after: player)
+        } while player != state.currentPlayer
+
+        guard let leadSuit = plays.first?.card.suit else { return nil }
+        let winner = PreferansEngine.trickWinner(
+            for: plays,
+            leadSuit: leadSuit,
+            trump: state.kind.trumpSuit
+        ).player
+        var finalCounts = state.trickCounts
+        finalCounts[winner, default: 0] += 1
+        return TrickSettlement(
+            target: winner,
+            targetTricks: finalCounts[winner] ?? 0,
+            finalTrickCounts: finalCounts
+        )
     }
 }

@@ -211,22 +211,90 @@ public struct ActionBarView: View {
         }
     }
 
+    @ViewBuilder
     private var statusRow: some View {
-        HStack(spacing: 8) {
-            if let actor = currentActorName {
-                Image(systemName: "hourglass")
-                    .font(.caption)
+        if let proposal = projection.legal.pendingSettlement {
+            settlementResponseRow(proposal)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
+        } else {
+            HStack(spacing: 8) {
+                if let actor = currentActorName {
+                    Image(systemName: "hourglass")
+                        .font(.caption)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                    Text("\(actor)'s turn")
+                        .font(.subheadline)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                } else {
+                    Localized.statusText(projection)
+                        .font(.subheadline)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .lineLimit(2)
+                }
+                Spacer()
+                settlementOfferMenu
+            }
+        }
+    }
+
+    private func settlementResponseRow(_ proposal: TrickSettlementProposal) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(settlementHeadline(proposal.settlement, proposer: proposal.proposer))
+                    .font(.subheadline.bold())
+                    .foregroundStyle(TableTheme.inkCream)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(settlementCountsSummary(proposal.settlement))
+                    .font(.caption2)
                     .foregroundStyle(TableTheme.inkCreamSoft)
-                Text("\(actor)'s turn")
-                    .font(.subheadline)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-            } else {
-                Localized.statusText(projection)
-                    .font(.subheadline)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
             Spacer()
+            if projection.legal.canRejectSettlement {
+                Button {
+                    onSend(.rejectSettlement(player: projection.viewer))
+                } label: {
+                    Text("Reject")
+                        .fontWeight(.semibold)
+                }
+                .buttonStyle(.feltDim)
+                .accessibilityIdentifier(UIIdentifiers.buttonRejectSettlement)
+            }
+            if projection.legal.canAcceptSettlement {
+                Button {
+                    onSend(.acceptSettlement(player: projection.viewer))
+                } label: {
+                    Text("Accept")
+                        .fontWeight(.semibold)
+                }
+                .buttonStyle(.feltPrimary)
+                .accessibilityIdentifier(UIIdentifiers.buttonAcceptSettlement)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var settlementOfferMenu: some View {
+        if !projection.legal.settlementOptions.isEmpty {
+            Menu {
+                ForEach(settlementTargets, id: \.rawValue) { target in
+                    let options = settlementOptions(for: target)
+                    Section(projection.displayName(for: target)) {
+                        ForEach(Array(options.enumerated()), id: \.offset) { _, settlement in
+                            Button(settlementMenuLabel(settlement)) {
+                                onSend(.proposeSettlement(player: projection.viewer, settlement: settlement))
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label("Settle", systemImage: "checkmark.seal")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.feltSecondary)
+            .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
         }
     }
 
@@ -282,5 +350,45 @@ public struct ActionBarView: View {
 
     private var currentActorName: String? {
         projection.seats.first { $0.isCurrentActor && $0.player != projection.viewer }?.displayName
+    }
+
+    private var settlementTargets: [PlayerID] {
+        projection.players.filter { target in
+            projection.legal.settlementOptions.contains { $0.target == target }
+        }
+    }
+
+    private func settlementOptions(for target: PlayerID) -> [TrickSettlement] {
+        projection.legal.settlementOptions
+            .filter { $0.target == target }
+            .sorted { lhs, rhs in
+                if lhs.targetTricks != rhs.targetTricks {
+                    return lhs.targetTricks < rhs.targetTricks
+                }
+                return settlementCountsSummary(lhs) < settlementCountsSummary(rhs)
+            }
+    }
+
+    private func settlementHeadline(_ settlement: TrickSettlement, proposer: PlayerID) -> String {
+        let proposerName = projection.displayName(for: proposer)
+        let targetName = projection.displayName(for: settlement.target)
+        return "\(proposerName) offers: \(targetName) takes \(settlement.targetTricks)"
+    }
+
+    private func settlementMenuLabel(_ settlement: TrickSettlement) -> String {
+        "\(projection.displayName(for: settlement.target)): \(settlement.targetTricks) \(trickWord(settlement.targetTricks))"
+    }
+
+    private func settlementCountsSummary(_ settlement: TrickSettlement) -> String {
+        projection.players
+            .filter { settlement.finalTrickCounts[$0] != nil }
+            .map { player in
+                "\(projection.displayName(for: player)) \(settlement.finalTrickCounts[player] ?? 0)"
+            }
+            .joined(separator: " · ")
+    }
+
+    private func trickWord(_ count: Int) -> String {
+        count == 1 ? "trick" : "tricks"
     }
 }

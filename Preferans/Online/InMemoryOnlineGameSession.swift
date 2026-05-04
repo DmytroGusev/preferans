@@ -172,6 +172,12 @@ public final class InMemoryOnlineGameSession: ObservableObject {
             return .chooseDefenderMode(player: viewer, mode: mode)
 
         case let .playing(currentPlayer, _, _):
+            if projection.legal.canAcceptSettlement {
+                return .acceptSettlement(player: viewer)
+            }
+            if projection.legal.canRejectSettlement {
+                return .rejectSettlement(player: viewer)
+            }
             guard currentPlayer == viewer, let card = projection.legal.playableCards.first else { return nil }
             return .playCard(player: viewer, card: card)
 

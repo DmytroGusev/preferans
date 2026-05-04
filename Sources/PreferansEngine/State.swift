@@ -38,7 +38,11 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
         case let .awaitingContract(s):     return s.declarer
         case let .awaitingWhist(s):        return s.currentPlayer
         case let .awaitingDefenderMode(s): return s.whister
-        case let .playing(s):              return s.currentPlayer
+        case let .playing(s):
+            if let proposal = s.pendingSettlement {
+                return s.activePlayers.first { !proposal.acceptedBy.contains($0) }
+            }
+            return s.currentPlayer
         case .waitingForDeal, .dealFinished, .gameOver:
             return nil
         }
@@ -311,6 +315,38 @@ public enum PlayKind: Equatable, Codable, Sendable {
     }
 }
 
+public struct TrickSettlement: Equatable, Codable, Sendable {
+    public let target: PlayerID
+    public let targetTricks: Int
+    public let finalTrickCounts: [PlayerID: Int]
+
+    public init(
+        target: PlayerID,
+        targetTricks: Int,
+        finalTrickCounts: [PlayerID: Int]
+    ) {
+        self.target = target
+        self.targetTricks = targetTricks
+        self.finalTrickCounts = finalTrickCounts
+    }
+}
+
+public struct TrickSettlementProposal: Equatable, Codable, Sendable {
+    public let proposer: PlayerID
+    public let settlement: TrickSettlement
+    public var acceptedBy: Set<PlayerID>
+
+    public init(
+        proposer: PlayerID,
+        settlement: TrickSettlement,
+        acceptedBy: Set<PlayerID> = []
+    ) {
+        self.proposer = proposer
+        self.settlement = settlement
+        self.acceptedBy = acceptedBy
+    }
+}
+
 public struct PlayingState: Equatable, Codable, Sendable {
     public let dealer: PlayerID
     public let activePlayers: [PlayerID]
@@ -323,6 +359,7 @@ public struct PlayingState: Equatable, Codable, Sendable {
     public var completedTricks: [Trick]
     public var trickCounts: [PlayerID: Int]
     public let kind: PlayKind
+    public var pendingSettlement: TrickSettlementProposal?
 
     public init(
         dealer: PlayerID,
@@ -335,7 +372,8 @@ public struct PlayingState: Equatable, Codable, Sendable {
         currentTrick: [CardPlay] = [],
         completedTricks: [Trick] = [],
         trickCounts: [PlayerID: Int]? = nil,
-        kind: PlayKind
+        kind: PlayKind,
+        pendingSettlement: TrickSettlementProposal? = nil
     ) {
         self.dealer = dealer
         self.activePlayers = activePlayers
@@ -348,6 +386,7 @@ public struct PlayingState: Equatable, Codable, Sendable {
         self.completedTricks = completedTricks
         self.trickCounts = trickCounts ?? activePlayers.dictionary(filledWith: 0)
         self.kind = kind
+        self.pendingSettlement = pendingSettlement
     }
 
     public var isComplete: Bool {
@@ -373,6 +412,10 @@ public struct DealResult: Equatable, Codable, Sendable {
     /// exchange, discard, or trick play. Older archived results may omit
     /// this payload, so consumers should treat `nil` as unavailable.
     public let initialHands: [PlayerID: [Card]]?
+    /// Agreement that ended play before all ten tricks were physically
+    /// played. `completedTricks` remains the real played history, while
+    /// `trickCounts` carries the accepted final counts used for scoring.
+    public let settlement: TrickSettlement?
 
     public init(
         kind: DealResultKind,
@@ -380,7 +423,8 @@ public struct DealResult: Equatable, Codable, Sendable {
         trickCounts: [PlayerID: Int],
         completedTricks: [Trick],
         scoreDelta: ScoreDelta,
-        initialHands: [PlayerID: [Card]]? = nil
+        initialHands: [PlayerID: [Card]]? = nil,
+        settlement: TrickSettlement? = nil
     ) {
         self.kind = kind
         self.activePlayers = activePlayers
@@ -388,6 +432,7 @@ public struct DealResult: Equatable, Codable, Sendable {
         self.completedTricks = completedTricks
         self.scoreDelta = scoreDelta
         self.initialHands = initialHands
+        self.settlement = settlement
     }
 
     /// Result for a deal that ended before any card was played — `passedOut`
@@ -422,6 +467,10 @@ public enum PreferansEvent: Equatable, Codable, Sendable {
     case playStarted(PlayKind)
     case cardPlayed(CardPlay)
     case trickCompleted(Trick)
+    case settlementProposed(TrickSettlementProposal)
+    case settlementAccepted(player: PlayerID)
+    case settlementRejected(player: PlayerID)
+    case playSettled(TrickSettlement)
     case dealScored(DealResult)
     case matchEnded(MatchSummary)
 }
@@ -434,6 +483,9 @@ public enum PreferansAction: Equatable, Codable, Sendable {
     case whist(player: PlayerID, call: WhistCall)
     case chooseDefenderMode(player: PlayerID, mode: DefenderPlayMode)
     case playCard(player: PlayerID, card: Card)
+    case proposeSettlement(player: PlayerID, settlement: TrickSettlement)
+    case acceptSettlement(player: PlayerID)
+    case rejectSettlement(player: PlayerID)
 
     /// Player whose seat the action speaks for, or `nil` for `startDeal`
     /// (which is dealer-driven and can be requested by any seat). Used by
@@ -448,7 +500,10 @@ public enum PreferansAction: Equatable, Codable, Sendable {
              let .declareContract(player, _),
              let .whist(player, _),
              let .chooseDefenderMode(player, _),
-             let .playCard(player, _):
+             let .playCard(player, _),
+             let .proposeSettlement(player, _),
+             let .acceptSettlement(player),
+             let .rejectSettlement(player):
             return player
         }
     }

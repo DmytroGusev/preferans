@@ -250,6 +250,9 @@ public final class GameViewModel: ObservableObject {
         // a trick) can't tap a card and skip past the freeze. The first
         // tap acknowledges the beat; the second tap makes the move.
         p.legal.playableCards = []
+        p.legal.settlementOptions = []
+        p.legal.canAcceptSettlement = false
+        p.legal.canRejectSettlement = false
         p.legal.canStartDeal = false
         return p
     }
@@ -382,7 +385,8 @@ extension GameViewModel {
         init(_ error: PreferansError) {
             switch error {
             case .illegalCardPlay, .cardNotInHand, .duplicateCards,
-                 .illegalBid, .illegalWhist, .invalidContract, .notPlayersTurn:
+                 .illegalBid, .illegalWhist, .illegalSettlement,
+                 .invalidContract, .notPlayersTurn:
                 self = .uiValidatable
             case .invalidPlayer, .invalidPlayers, .invalidDeck, .invalidState:
                 self = .system

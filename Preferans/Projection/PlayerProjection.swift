@@ -104,6 +104,8 @@ public enum ProjectedStatus: Codable, Sendable, Equatable {
     /// Trick-play — `currentPlayer` is the next to play. `trickNumber` is
     /// 1-indexed; rendered as "Trick 4: Anna" (etc.).
     case playingTrick(currentPlayer: PlayerID, trickNumber: Int)
+    /// A settlement proposal is waiting on player responses.
+    case settling(proposer: PlayerID, target: PlayerID, targetTricks: Int, currentPlayer: PlayerID?)
     /// Deal scored; the result sheet is presenting outcomes.
     case dealScored
     /// Match over. `winner` is the standings leader (nil if no standings).
@@ -118,6 +120,10 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
     public var contractOptions: [GameContract]
     public var defenderModes: [DefenderPlayMode]
     public var canDiscard: Bool
+    public var settlementOptions: [TrickSettlement]
+    public var pendingSettlement: TrickSettlementProposal?
+    public var canAcceptSettlement: Bool
+    public var canRejectSettlement: Bool
 
     public init(
         canStartDeal: Bool = false,
@@ -126,7 +132,11 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
         playableCards: [Card] = [],
         contractOptions: [GameContract] = [],
         defenderModes: [DefenderPlayMode] = [],
-        canDiscard: Bool = false
+        canDiscard: Bool = false,
+        settlementOptions: [TrickSettlement] = [],
+        pendingSettlement: TrickSettlementProposal? = nil,
+        canAcceptSettlement: Bool = false,
+        canRejectSettlement: Bool = false
     ) {
         self.canStartDeal = canStartDeal
         self.bidCalls = bidCalls
@@ -135,6 +145,10 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
         self.contractOptions = contractOptions
         self.defenderModes = defenderModes
         self.canDiscard = canDiscard
+        self.settlementOptions = settlementOptions
+        self.pendingSettlement = pendingSettlement
+        self.canAcceptSettlement = canAcceptSettlement
+        self.canRejectSettlement = canRejectSettlement
     }
 }
 
@@ -301,11 +315,15 @@ public enum PlayerProjectionBuilder {
             hands = state.hands
             talonCards = state.talon
             discardCards = state.discard
-            currentActor = state.currentPlayer
+            currentActor = engine.state.currentActor
             currentTrick = state.currentTrick
             completedTrickCount = state.completedTricks.count
             trickCounts = state.trickCounts
             legal.playableCards = engine.legalCards(for: viewer)
+            legal.settlementOptions = engine.legalSettlements(for: viewer)
+            legal.pendingSettlement = state.pendingSettlement
+            legal.canAcceptSettlement = engine.canAcceptSettlement(player: viewer)
+            legal.canRejectSettlement = engine.canRejectSettlement(player: viewer)
             let projectedKind: ProjectedPlayKind
             switch state.kind {
             case let .game(context):
@@ -332,10 +350,19 @@ public enum PlayerProjectionBuilder {
                 projectedKind = .allPass
             }
             phase = .playing(currentPlayer: state.currentPlayer, leader: state.leader, kind: projectedKind)
-            status = .playingTrick(
-                currentPlayer: state.currentPlayer,
-                trickNumber: state.completedTricks.count + 1
-            )
+            if let proposal = state.pendingSettlement {
+                status = .settling(
+                    proposer: proposal.proposer,
+                    target: proposal.settlement.target,
+                    targetTricks: proposal.settlement.targetTricks,
+                    currentPlayer: engine.state.currentActor
+                )
+            } else {
+                status = .playingTrick(
+                    currentPlayer: state.currentPlayer,
+                    trickNumber: state.completedTricks.count + 1
+                )
+            }
             markActiveRoles(activePlayers, into: &roleMap)
 
         case let .dealFinished(result):

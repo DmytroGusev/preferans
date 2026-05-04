@@ -9,6 +9,7 @@ public enum PreferansError: Error, Equatable, LocalizedError, Sendable {
     case notPlayersTurn(expected: PlayerID, actual: PlayerID)
     case illegalBid(String)
     case illegalWhist(String)
+    case illegalSettlement(String)
     case illegalCardPlay(String)
     case cardNotInHand(player: PlayerID, card: Card)
     case duplicateCards([Card])
@@ -18,7 +19,8 @@ public enum PreferansError: Error, Equatable, LocalizedError, Sendable {
         case let .invalidPlayer(player):
             return "Invalid player: \(player)."
         case let .invalidPlayers(message), let .invalidDeck(message), let .invalidContract(message),
-             let .illegalBid(message), let .illegalWhist(message), let .illegalCardPlay(message):
+             let .illegalBid(message), let .illegalWhist(message), let .illegalSettlement(message),
+             let .illegalCardPlay(message):
             return message
         case let .invalidState(expected, actual):
             return "Invalid state. Expected \(expected), got \(actual)."

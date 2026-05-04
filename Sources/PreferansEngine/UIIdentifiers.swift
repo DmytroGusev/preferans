@@ -164,6 +164,7 @@ public enum UIIdentifiers {
         case contract        = "panel.contract"
         case whist           = "panel.whist"
         case defenderMode    = "panel.defenderMode"
+        case settlement      = "panel.settlement"
         case playing         = "panel.playing"
         case dealFinished    = "panel.dealFinished"
         case gameOver        = "panel.gameOver"
@@ -184,6 +185,9 @@ public enum UIIdentifiers {
     public static let buttonLeaveTable         = "button.leaveTable"
     public static let buttonRematch            = "button.rematch"
     public static let buttonBackToLobby        = "button.backToLobby"
+    public static let buttonOfferSettlement    = "button.offerSettlement"
+    public static let buttonAcceptSettlement   = "button.acceptSettlement"
+    public static let buttonRejectSettlement   = "button.rejectSettlement"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }
     public static func contractButton(_ c: GameContract) -> String { "contract.\(encode(c))" }

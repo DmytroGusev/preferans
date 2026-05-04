@@ -83,6 +83,12 @@ public struct PreferansEngine: Sendable {
             return try applyChooseDefenderMode(player: player, mode: mode)
         case let .playCard(player, card):
             return try applyPlayCard(player: player, card: card)
+        case let .proposeSettlement(player, settlement):
+            return try applyProposeSettlement(player: player, settlement: settlement)
+        case let .acceptSettlement(player):
+            return try applyAcceptSettlement(player: player)
+        case let .rejectSettlement(player):
+            return try applyRejectSettlement(player: player)
         }
     }
 
@@ -106,10 +112,50 @@ public struct PreferansEngine: Sendable {
     }
 
     public func legalCards(for player: PlayerID) -> [Card] {
-        guard case let .playing(playing) = state, playing.currentPlayer == player else {
+        guard case let .playing(playing) = state,
+              playing.pendingSettlement == nil,
+              playing.currentPlayer == player else {
             return []
         }
         return (playing.hands[player] ?? []).filter { isLegal(card: $0, by: player, in: playing) }
+    }
+
+    public func legalSettlements(for player: PlayerID) -> [TrickSettlement] {
+        guard case let .playing(playing) = state,
+              playing.pendingSettlement == nil,
+              playing.currentTrick.isEmpty,
+              playing.activePlayers.contains(player) else {
+            return []
+        }
+
+        var settlements: [TrickSettlement] = []
+        for target in playing.activePlayers {
+            let current = Self.tricks(target, in: playing.trickCounts)
+            let remaining = 10 - playing.completedTricks.count
+            for targetTricks in current...(current + remaining) {
+                if let settlement = makeSettlement(target: target, targetTricks: targetTricks, in: playing) {
+                    settlements.append(settlement)
+                }
+            }
+        }
+        return settlements
+    }
+
+    public func canAcceptSettlement(player: PlayerID) -> Bool {
+        guard case let .playing(playing) = state,
+              let proposal = playing.pendingSettlement,
+              playing.activePlayers.contains(player) else {
+            return false
+        }
+        return !proposal.acceptedBy.contains(player)
+    }
+
+    public func canRejectSettlement(player: PlayerID) -> Bool {
+        guard case let .playing(playing) = state,
+              playing.pendingSettlement != nil else {
+            return false
+        }
+        return playing.activePlayers.contains(player)
     }
 
     /// Contracts the declarer may legally declare in ``DealState/awaitingContract``.
@@ -449,6 +495,9 @@ public struct PreferansEngine: Sendable {
         guard case var .playing(playing) = state else {
             throw PreferansError.invalidState(expected: "playing", actual: state.description)
         }
+        guard playing.pendingSettlement == nil else {
+            throw PreferansError.illegalSettlement("A settlement proposal is awaiting responses.")
+        }
         try validateCurrent(player, expected: playing.currentPlayer)
         guard let cardIndex = playing.hands[player]?.firstIndex(of: card) else {
             throw PreferansError.cardNotInHand(player: player, card: card)
@@ -491,6 +540,79 @@ public struct PreferansEngine: Sendable {
 
         state = .playing(playing)
         return events
+    }
+
+    private mutating func applyProposeSettlement(
+        player: PlayerID,
+        settlement: TrickSettlement
+    ) throws -> [PreferansEvent] {
+        guard case var .playing(playing) = state else {
+            throw PreferansError.invalidState(expected: "playing", actual: state.description)
+        }
+        guard playing.pendingSettlement == nil else {
+            throw PreferansError.illegalSettlement("A settlement proposal is already pending.")
+        }
+        guard playing.currentTrick.isEmpty else {
+            throw PreferansError.illegalSettlement("Settlements can only be offered between tricks.")
+        }
+        guard playing.activePlayers.contains(player) else {
+            throw PreferansError.invalidPlayer(player)
+        }
+        try validateSettlement(settlement, in: playing)
+
+        let proposal = TrickSettlementProposal(
+            proposer: player,
+            settlement: settlement,
+            acceptedBy: [player]
+        )
+        playing.pendingSettlement = proposal
+        state = .playing(playing)
+        return [.settlementProposed(proposal)]
+    }
+
+    private mutating func applyAcceptSettlement(player: PlayerID) throws -> [PreferansEvent] {
+        guard case var .playing(playing) = state else {
+            throw PreferansError.invalidState(expected: "playing", actual: state.description)
+        }
+        guard var proposal = playing.pendingSettlement else {
+            throw PreferansError.illegalSettlement("There is no settlement proposal to accept.")
+        }
+        guard playing.activePlayers.contains(player) else {
+            throw PreferansError.invalidPlayer(player)
+        }
+        guard !proposal.acceptedBy.contains(player) else {
+            throw PreferansError.illegalSettlement("\(player) already accepted this settlement.")
+        }
+
+        proposal.acceptedBy.insert(player)
+        var events: [PreferansEvent] = [.settlementAccepted(player: player)]
+        if proposal.acceptedBy.isSuperset(of: Set(playing.activePlayers)) {
+            playing.pendingSettlement = nil
+            let result = try scoreSettlement(proposal.settlement, in: playing)
+            events.append(.playSettled(proposal.settlement))
+            events.append(contentsOf: finalize(result))
+            return events
+        }
+
+        playing.pendingSettlement = proposal
+        state = .playing(playing)
+        return events
+    }
+
+    private mutating func applyRejectSettlement(player: PlayerID) throws -> [PreferansEvent] {
+        guard case var .playing(playing) = state else {
+            throw PreferansError.invalidState(expected: "playing", actual: state.description)
+        }
+        guard playing.pendingSettlement != nil else {
+            throw PreferansError.illegalSettlement("There is no settlement proposal to reject.")
+        }
+        guard playing.activePlayers.contains(player) else {
+            throw PreferansError.invalidPlayer(player)
+        }
+
+        playing.pendingSettlement = nil
+        state = .playing(playing)
+        return [.settlementRejected(player: player)]
     }
 
     private func validateCurrent(_ actual: PlayerID, expected: PlayerID) throws {
@@ -684,6 +806,63 @@ public struct PreferansEngine: Sendable {
         )
     }
 
+    private func makeSettlement(
+        target: PlayerID,
+        targetTricks: Int,
+        in playing: PlayingState
+    ) -> TrickSettlement? {
+        guard playing.activePlayers.contains(target),
+              targetTricks >= Self.tricks(target, in: playing.trickCounts) else {
+            return nil
+        }
+
+        var counts = playing.trickCounts
+        counts[target] = targetTricks
+        var remaining = 10 - counts.values.reduce(0, +)
+        guard remaining >= 0 else { return nil }
+
+        // The action itself accepts any valid complete trick-count map.
+        // This helper is only for compact UI/bot-generated "X takes N"
+        // offers, so it fills the non-target remainder deterministically.
+        for player in playing.activePlayers where player != target && remaining > 0 {
+            let capacity = 10 - (counts[player] ?? 0)
+            let assigned = min(capacity, remaining)
+            counts[player, default: 0] += assigned
+            remaining -= assigned
+        }
+        guard remaining == 0 else { return nil }
+
+        return TrickSettlement(
+            target: target,
+            targetTricks: targetTricks,
+            finalTrickCounts: counts
+        )
+    }
+
+    private func validateSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws {
+        let active = Set(playing.activePlayers)
+        guard active.contains(settlement.target) else {
+            throw PreferansError.illegalSettlement("Settlement target is not active in this deal.")
+        }
+        guard Set(settlement.finalTrickCounts.keys) == active else {
+            throw PreferansError.illegalSettlement("Settlement must include final trick counts for every active player.")
+        }
+        guard settlement.finalTrickCounts[settlement.target] == settlement.targetTricks else {
+            throw PreferansError.illegalSettlement("Settlement target count does not match final trick counts.")
+        }
+        let total = settlement.finalTrickCounts.values.reduce(0, +)
+        guard total == 10 else {
+            throw PreferansError.illegalSettlement("Settlement final trick counts must total 10.")
+        }
+        for player in playing.activePlayers {
+            let current = Self.tricks(player, in: playing.trickCounts)
+            guard let final = settlement.finalTrickCounts[player],
+                  (current...10).contains(final) else {
+                throw PreferansError.illegalSettlement("Settlement cannot remove tricks already won.")
+            }
+        }
+    }
+
     @discardableResult
     private mutating func startGamePlay(
         from whist: WhistState,
@@ -850,18 +1029,31 @@ public struct PreferansEngine: Sendable {
         return .orderedSame
     }
 
-    private func scoreCompletedPlay(_ playing: PlayingState) -> DealResult {
+    private func scoreSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws -> DealResult {
+        try validateSettlement(settlement, in: playing)
+        var settled = playing
+        settled.trickCounts = settlement.finalTrickCounts
+        settled.currentTrick = []
+        settled.pendingSettlement = nil
+        return scoreCompletedPlay(settled, settlement: settlement)
+    }
+
+    private func scoreCompletedPlay(_ playing: PlayingState, settlement: TrickSettlement? = nil) -> DealResult {
         switch playing.kind {
         case let .game(context):
-            return scoreGame(playing, context: context)
+            return scoreGame(playing, context: context, settlement: settlement)
         case let .misere(context):
-            return scoreMisere(playing, context: context)
+            return scoreMisere(playing, context: context, settlement: settlement)
         case .allPass:
-            return scoreAllPass(playing)
+            return scoreAllPass(playing, settlement: settlement)
         }
     }
 
-    private func scoreGame(_ playing: PlayingState, context: GamePlayContext) -> DealResult {
+    private func scoreGame(
+        _ playing: PlayingState,
+        context: GamePlayContext,
+        settlement: TrickSettlement? = nil
+    ) -> DealResult {
         var delta = ScoreDelta(players: players)
         let declarerTricks = Self.tricks(context.declarer, in: playing.trickCounts)
         let defenderTricks = context.defenders.reduce(0) { $0 + Self.tricks($1, in: playing.trickCounts) }
@@ -908,7 +1100,8 @@ public struct PreferansEngine: Sendable {
             trickCounts: playing.trickCounts,
             completedTricks: playing.completedTricks,
             scoreDelta: delta,
-            initialHands: openingHands(from: playing)
+            initialHands: openingHands(from: playing),
+            settlement: settlement
         )
     }
 
@@ -945,7 +1138,11 @@ public struct PreferansEngine: Sendable {
         }
     }
 
-    private func scoreMisere(_ playing: PlayingState, context: MiserePlayContext) -> DealResult {
+    private func scoreMisere(
+        _ playing: PlayingState,
+        context: MiserePlayContext,
+        settlement: TrickSettlement? = nil
+    ) -> DealResult {
         var delta = ScoreDelta(players: players)
         let tricks = Self.tricks(context.declarer, in: playing.trickCounts)
         if tricks == 0 {
@@ -959,7 +1156,8 @@ public struct PreferansEngine: Sendable {
             trickCounts: playing.trickCounts,
             completedTricks: playing.completedTricks,
             scoreDelta: delta,
-            initialHands: openingHands(from: playing)
+            initialHands: openingHands(from: playing),
+            settlement: settlement
         )
     }
 
@@ -995,6 +1193,22 @@ public struct PreferansEngine: Sendable {
                 Set(result.trickCounts.keys) == Set(result.activePlayers),
                 "dealFinished trickCounts keys \(sorted(result.trickCounts.keys)) ≠ activePlayers \(sorted(result.activePlayers))"
             )
+            if let settlement = result.settlement {
+                try checkSettlement(
+                    settlement,
+                    activePlayers: result.activePlayers,
+                    minimumTrickCounts: result.completedTricks.reduce(result.activePlayers.dictionary(filledWith: 0)) { counts, trick in
+                        var updated = counts
+                        updated[trick.winner, default: 0] += 1
+                        return updated
+                    },
+                    context: "dealFinished"
+                )
+                try require(
+                    settlement.finalTrickCounts == result.trickCounts,
+                    "dealFinished settlement counts must match result trickCounts"
+                )
+            }
         case let .bidding(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
@@ -1084,6 +1298,27 @@ public struct PreferansEngine: Sendable {
                 trickSum == s.completedTricks.count,
                 "trickCounts sum \(trickSum) ≠ completedTricks \(s.completedTricks.count)"
             )
+            if let proposal = s.pendingSettlement {
+                try require(s.currentTrick.isEmpty, "pending settlement requires an empty current trick")
+                try require(
+                    s.activePlayers.contains(proposal.proposer),
+                    "settlement proposer \(proposal.proposer) ∉ activePlayers"
+                )
+                try require(
+                    proposal.acceptedBy.isSubset(of: Set(s.activePlayers)),
+                    "settlement acceptedBy \(sorted(proposal.acceptedBy)) ⊄ activePlayers"
+                )
+                try require(
+                    proposal.acceptedBy.contains(proposal.proposer),
+                    "settlement proposer must auto-accept"
+                )
+                try checkSettlement(
+                    proposal.settlement,
+                    activePlayers: s.activePlayers,
+                    minimumTrickCounts: s.trickCounts,
+                    context: "pending settlement"
+                )
+            }
         }
     }
 
@@ -1116,6 +1351,36 @@ public struct PreferansEngine: Sendable {
         }
     }
 
+    private static func checkSettlement(
+        _ settlement: TrickSettlement,
+        activePlayers: [PlayerID],
+        minimumTrickCounts: [PlayerID: Int],
+        context: String
+    ) throws {
+        try require(
+            activePlayers.contains(settlement.target),
+            "\(context) target \(settlement.target) ∉ activePlayers"
+        )
+        try require(
+            Set(settlement.finalTrickCounts.keys) == Set(activePlayers),
+            "\(context) final trick-count keys \(sorted(settlement.finalTrickCounts.keys)) ≠ activePlayers \(sorted(activePlayers))"
+        )
+        try require(
+            settlement.finalTrickCounts[settlement.target] == settlement.targetTricks,
+            "\(context) targetTricks does not match final trick counts"
+        )
+        let total = settlement.finalTrickCounts.values.reduce(0, +)
+        try require(total == 10, "\(context) final trick counts total \(total), expected 10")
+        for player in activePlayers {
+            let minimum = minimumTrickCounts[player] ?? 0
+            let final = settlement.finalTrickCounts[player] ?? 0
+            try require(
+                final >= minimum,
+                "\(context) final tricks for \(player) \(final) < already won \(minimum)"
+            )
+        }
+    }
+
     private static func sorted<S: Sequence>(_ ids: S) -> [String] where S.Element == PlayerID {
         ids.map(\.rawValue).sorted()
     }
@@ -1131,7 +1396,7 @@ public struct PreferansEngine: Sendable {
         return count
     }
 
-    private func scoreAllPass(_ playing: PlayingState) -> DealResult {
+    private func scoreAllPass(_ playing: PlayingState, settlement: TrickSettlement? = nil) -> DealResult {
         var delta = ScoreDelta(players: players)
         let multiplier: Int
         let amnesty: Bool
@@ -1155,7 +1420,8 @@ public struct PreferansEngine: Sendable {
             trickCounts: playing.trickCounts,
             completedTricks: playing.completedTricks,
             scoreDelta: delta,
-            initialHands: openingHands(from: playing)
+            initialHands: openingHands(from: playing),
+            settlement: settlement
         )
     }
 

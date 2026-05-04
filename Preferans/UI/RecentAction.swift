@@ -111,6 +111,10 @@ public enum RecentActionFeed {
              .allPassed,
              .playStarted,
              .trickCompleted,
+             .settlementProposed,
+             .settlementAccepted,
+             .settlementRejected,
+             .playSettled,
              .dealScored,
              .matchEnded:
             return nil

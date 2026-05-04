@@ -11,7 +11,7 @@ public enum AppIdentifiers {
     public static let inviteBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
 
     public static let cloudSchemaVersion = 1
-    public static let gameWireSchemaVersion = 1
+    public static let gameWireSchemaVersion = 2
 }
 
 /// UserDefaults keys for settings persisted across launches. Centralised
