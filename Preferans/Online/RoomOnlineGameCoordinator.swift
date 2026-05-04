@@ -49,8 +49,8 @@ public protocol RoomRealtimeTransport: AnyObject {
 
     func chooseHost() async -> OnlinePeer?
     func messages() -> AsyncStream<ReceivedRoomMessage>
-    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) throws
-    func sendToAll(_ message: GameWireMessage, reliably: Bool) throws
+    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws
+    func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws
     func disconnect()
 }
 
@@ -117,7 +117,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             await becomeHost(host: host, seats: seats, rules: rules)
         } else {
             self.state = .connectedAsClient
-            sendHello()
+            await sendHello()
         }
     }
 
@@ -158,24 +158,29 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 errorText = "No host connection."
                 return
             }
-            do {
-                try transport.send(.clientAction(envelope), to: [hostPeer], reliably: true)
-            } catch {
-                errorText = error.localizedDescription
+            Task { [weak self, hostPeer, transport] in
+                do {
+                    try await transport.send(.clientAction(envelope), to: [hostPeer], reliably: true)
+                } catch {
+                    self?.errorText = error.localizedDescription
+                }
             }
         }
     }
 
     public func requestResync() {
         guard let tableID, let localSeat, let hostPeer, let transport else { return }
-        do {
-            try transport.send(
-                .resyncRequest(ResyncRequestEnvelope(tableID: tableID, requester: localSeat, lastSeenSequence: projection?.sequence ?? 0)),
-                to: [hostPeer],
-                reliably: true
-            )
-        } catch {
-            errorText = error.localizedDescription
+        let lastSeenSequence = projection?.sequence ?? 0
+        Task { [weak self, tableID, localSeat, hostPeer, transport, lastSeenSequence] in
+            do {
+                try await transport.send(
+                    .resyncRequest(ResyncRequestEnvelope(tableID: tableID, requester: localSeat, lastSeenSequence: lastSeenSequence)),
+                    to: [hostPeer],
+                    reliably: true
+                )
+            } catch {
+                self?.errorText = error.localizedDescription
+            }
         }
     }
 
@@ -195,7 +200,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             self.state = .connectedAsHost
 
             let assignment = SeatAssignmentEnvelope(tableID: tableID, hostPlayerID: hostID, seats: seats, rules: rules)
-            try transport?.sendToAll(.seatAssignment(assignment), reliably: true)
+            try await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
 
             let update = await actor.initialUpdate()
             await publish(update)
@@ -206,10 +211,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func sendHello() {
+    private func sendHello() async {
         guard let localSeat, let identity = seats.first(where: { $0.playerID == localSeat }) else { return }
         do {
-            try transport?.sendToAll(.hello(HelloEnvelope(tableID: tableID, player: identity, lastSeenSequence: projection?.sequence ?? 0)), reliably: true)
+            try await transport?.sendToAll(.hello(HelloEnvelope(tableID: tableID, player: identity, lastSeenSequence: projection?.sequence ?? 0)), reliably: true)
         } catch {
             errorText = error.localizedDescription
         }
@@ -242,16 +247,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             if let hostActor, let peer = peersBySeat[hello.player.playerID] {
                 do {
                     let envelope = try await hostActor.fullResync(for: hello.player.playerID)
-                    try transport?.send(.projection(envelope), to: [peer], reliably: true)
+                    try await transport?.send(.projection(envelope), to: [peer], reliably: true)
                 } catch {
-                    sendHostError(to: peer, recipient: hello.player.playerID, nonce: nil, message: error.localizedDescription)
+                    await sendHostError(to: peer, recipient: hello.player.playerID, nonce: nil, message: error.localizedDescription)
                 }
             }
 
         case let .clientAction(envelope):
             guard isHost else { return }
             await applyClientAction(envelope, sender: received.sender.playerID) { error in
-                sendHostError(
+                await sendHostError(
                     to: received.sender,
                     recipient: received.sender.playerID,
                     nonce: envelope.clientNonce,
@@ -281,7 +286,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 if request.requester == localSeat {
                     projection = envelope.projection
                 } else if let peer = peersBySeat[request.requester] {
-                    try transport?.send(.projection(envelope), to: [peer], reliably: true)
+                    try await transport?.send(.projection(envelope), to: [peer], reliably: true)
                 }
             } catch {
                 errorText = error.localizedDescription
@@ -295,7 +300,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func applyClientAction(
         _ envelope: ClientActionEnvelope,
         sender: PlayerID?,
-        onError: (Error) -> Void
+        onError: (Error) async -> Void
     ) async {
         guard let hostActor else { return }
         do {
@@ -303,7 +308,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             await publish(update)
             await persistAfter(update)
         } catch {
-            onError(error)
+            await onError(error)
         }
     }
 
@@ -327,7 +332,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     eventSummaries: update.eventSummaries,
                     events: update.events
                 )
-                try transport.send(.projection(envelope), to: [peer], reliably: true)
+                try await transport.send(.projection(envelope), to: [peer], reliably: true)
             } catch {
                 errorText = error.localizedDescription
             }
@@ -386,7 +391,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func sendHostError(to peer: OnlinePeer, recipient: PlayerID?, nonce: UUID?, message: String) {
+    private func sendHostError(to peer: OnlinePeer, recipient: PlayerID?, nonce: UUID?, message: String) async {
         guard let tableID, let transport else { return }
         let error = HostErrorEnvelope(
             tableID: tableID,
@@ -396,7 +401,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             message: message
         )
         do {
-            try transport.send(.hostError(error), to: [peer], reliably: true)
+            try await transport.send(.hostError(error), to: [peer], reliably: true)
         } catch {
             errorText = error.localizedDescription
         }
@@ -498,12 +503,12 @@ public final class InMemoryRoomTransport: RoomRealtimeTransport {
         }
     }
 
-    public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) throws {
+    public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) async throws {
         guard !isDisconnected else { return }
         room.deliver(message, from: localPeer, to: peers)
     }
 
-    public func sendToAll(_ message: GameWireMessage, reliably: Bool = true) throws {
+    public func sendToAll(_ message: GameWireMessage, reliably: Bool = true) async throws {
         guard !isDisconnected else { return }
         room.deliver(message, from: localPeer, to: room.peers)
     }

@@ -50,11 +50,11 @@ public final class GameKitRoomTransport: RoomRealtimeTransport {
         }
     }
 
-    public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) throws {
+    public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws {
         try gameKit.send(message, to: peers.compactMap(player(for:)), reliably: reliably)
     }
 
-    public func sendToAll(_ message: GameWireMessage, reliably: Bool) throws {
+    public func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {
         try gameKit.sendToAll(message, reliably: reliably)
     }
 

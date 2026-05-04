@@ -110,12 +110,12 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         }
     }
 
-    public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) throws {
-        try send(ClientSocketEnvelope(type: .wire, recipients: peers.map(\.playerID), reliable: reliably, message: message))
+    public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) async throws {
+        try await send(ClientSocketEnvelope(type: .wire, recipients: peers.map(\.playerID), reliable: reliably, message: message))
     }
 
-    public func sendToAll(_ message: GameWireMessage, reliably: Bool = true) throws {
-        try send(ClientSocketEnvelope(type: .wire, recipients: nil, reliable: reliably, message: message))
+    public func sendToAll(_ message: GameWireMessage, reliably: Bool = true) async throws {
+        try await send(ClientSocketEnvelope(type: .wire, recipients: nil, reliable: reliably, message: message))
     }
 
     public func disconnect() {
@@ -153,7 +153,8 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         }
     }
 
-    private func send(_ envelope: ClientSocketEnvelope) throws {
+    private func send(_ envelope: ClientSocketEnvelope) async throws {
+        connectIfNeeded()
         guard let socketTask else {
             throw CloudflareRoomTransportError.socketNotConnected
         }
@@ -161,15 +162,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         guard let text = String(data: data, encoding: .utf8) else {
             throw CloudflareRoomTransportError.invalidSocketMessage
         }
-        Task { [weak self, weak socketTask] in
-            do {
-                try await socketTask?.send(.string(text))
-            } catch {
-                await MainActor.run {
-                    self?.lastError = error.localizedDescription
-                }
-            }
-        }
+        try await socketTask.send(.string(text))
     }
 
     private func handleSocketMessage(_ message: URLSessionWebSocketTask.Message) throws {

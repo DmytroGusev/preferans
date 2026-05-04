@@ -88,11 +88,11 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
             baseHostSequence: sequence
         )
 
-        try fixture.transports[bidder]?.send(.clientAction(envelope), to: [fixture.hostPeer], reliably: true)
+        try await fixture.transports[bidder]?.send(.clientAction(envelope), to: [fixture.hostPeer], reliably: true)
         sequence += 1
         await pump(until: { fixture.allProjectionsAre(at: sequence) })
 
-        try fixture.transports[bidder]?.send(.clientAction(envelope), to: [fixture.hostPeer], reliably: true)
+        try await fixture.transports[bidder]?.send(.clientAction(envelope), to: [fixture.hostPeer], reliably: true)
         await pump(until: {
             fixture.coordinators[bidder]?.errorText?.contains("Duplicate action nonce") == true
         })
