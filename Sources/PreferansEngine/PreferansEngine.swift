@@ -68,27 +68,33 @@ public struct PreferansEngine: Sendable {
     }
 
     private mutating func dispatch(_ action: PreferansAction) throws -> [PreferansEvent] {
+        let transition = try reduce(action)
+        state = transition.state
+        return transition.events
+    }
+
+    private mutating func reduce(_ action: PreferansAction) throws -> EngineTransition {
         switch action {
         case let .startDeal(dealer, deck):
-            return try applyStartDeal(dealer: dealer, deck: deck)
+            return try reduceStartDeal(dealer: dealer, deck: deck)
         case let .bid(player, call):
-            return try applyBid(player: player, call: call)
+            return try reduceBid(player: player, call: call)
         case let .discard(player, cards):
-            return try applyDiscard(player: player, cards: cards)
+            return try reduceDiscard(player: player, cards: cards)
         case let .declareContract(player, contract):
-            return try applyDeclareContract(player: player, contract: contract)
+            return try reduceDeclareContract(player: player, contract: contract)
         case let .whist(player, call):
-            return try applyWhist(player: player, call: call)
+            return try reduceWhist(player: player, call: call)
         case let .chooseDefenderMode(player, mode):
-            return try applyChooseDefenderMode(player: player, mode: mode)
+            return try reduceChooseDefenderMode(player: player, mode: mode)
         case let .playCard(player, card):
-            return try applyPlayCard(player: player, card: card)
+            return try reducePlayCard(player: player, card: card)
         case let .proposeSettlement(player, settlement):
-            return try applyProposeSettlement(player: player, settlement: settlement)
+            return try reduceProposeSettlement(player: player, settlement: settlement)
         case let .acceptSettlement(player):
-            return try applyAcceptSettlement(player: player)
+            return try reduceAcceptSettlement(player: player)
         case let .rejectSettlement(player):
-            return try applyRejectSettlement(player: player)
+            return try reduceRejectSettlement(player: player)
         }
     }
 
@@ -190,7 +196,7 @@ public struct PreferansEngine: Sendable {
         }
     }
 
-    private mutating func applyStartDeal(dealer suppliedDealer: PlayerID?, deck suppliedDeck: [Card]?) throws -> [PreferansEvent] {
+    private mutating func reduceStartDeal(dealer suppliedDealer: PlayerID?, deck suppliedDeck: [Card]?) throws -> EngineTransition {
         switch state {
         case .waitingForDeal, .dealFinished:
             break
@@ -210,7 +216,7 @@ public struct PreferansEngine: Sendable {
         let deal = dealHands(deck: deck, activePlayers: activePlayers)
 
         nextDealer = players.cyclicNext(after: dealer)
-        state = .bidding(
+        let nextState = DealState.bidding(
             BiddingState(
                 dealer: dealer,
                 activePlayers: activePlayers,
@@ -220,430 +226,16 @@ public struct PreferansEngine: Sendable {
             )
         )
 
-        return [.dealStarted(dealer: dealer, activePlayers: activePlayers)]
+        return EngineTransition(state: nextState, events: [.dealStarted(dealer: dealer, activePlayers: activePlayers)])
     }
 
-    private mutating func applyBid(player: PlayerID, call: BidCall) throws -> [PreferansEvent] {
-        guard case var .bidding(bidding) = state else {
-            throw PreferansError.invalidState(expected: "bidding", actual: state.description)
-        }
-        try validateCurrent(player, expected: bidding.currentPlayer)
-        guard bidding.activePlayers.contains(player), !bidding.passed.contains(player) else {
-            throw PreferansError.illegalBid("Player is not active in the auction.")
-        }
-
-        let record = AuctionCall(player: player, call: call)
-        var events: [PreferansEvent] = [.bidAccepted(record)]
-        bidding.calls.append(record)
-
-        switch call {
-        case .pass:
-            bidding.passed.insert(player)
-        case let .bid(bid):
-            guard isLegalBid(bid, by: player, in: bidding) else {
-                throw PreferansError.illegalBid("\(bid) is not legal for \(player).")
-            }
-            bidding.highestBid = bid
-            bidding.highestBidder = player
-            bidding.significantBidByPlayer[player] = bid
-        }
-
-        if bidding.highestBid == nil && bidding.passed.count == bidding.activePlayers.count {
-            let playing = makePlayingState(
-                dealer: bidding.dealer,
-                activePlayers: bidding.activePlayers,
-                hands: bidding.hands,
-                talon: bidding.talon,
-                discard: [],
-                kind: .allPass(AllPassPlayContext(talonPolicy: rules.allPassTalonPolicy))
-            )
-            state = .playing(playing)
-            events.append(.allPassed)
-            events.append(.playStarted(playing.kind))
-            return events
-        }
-
-        let remaining = bidding.activePlayers.filter { !bidding.passed.contains($0) }
-        if let highestBid = bidding.highestBid,
-           let declarer = bidding.highestBidder,
-           remaining.count == 1 {
-            state = .awaitingDiscard(
-                ExchangeState(
-                    dealer: bidding.dealer,
-                    activePlayers: bidding.activePlayers,
-                    hands: bidding.hands,
-                    talon: bidding.talon,
-                    declarer: declarer,
-                    finalBid: highestBid,
-                    auction: bidding.calls
-                )
-            )
-            events.append(.auctionWon(declarer: declarer, bid: highestBid))
-            return events
-        }
-
-        guard let next = nextBidder(after: player, in: bidding) else {
-            throw PreferansError.illegalBid("No next bidder is available.")
-        }
-        bidding.currentPlayer = next
-        state = .bidding(bidding)
-        return events
-    }
-
-    private mutating func applyDiscard(player: PlayerID, cards: [Card]) throws -> [PreferansEvent] {
-        guard case var .awaitingDiscard(exchange) = state else {
-            throw PreferansError.invalidState(expected: "awaitingDiscard", actual: state.description)
-        }
-        try validateCurrent(player, expected: exchange.declarer)
-        guard cards.count == 2 else {
-            throw PreferansError.illegalCardPlay("Discard must contain exactly two cards.")
-        }
-        guard Set(cards).count == cards.count else {
-            throw PreferansError.duplicateCards(cards)
-        }
-
-        let originalHand = exchange.hands[player] ?? []
-        var combined = originalHand + exchange.talon
-        for card in cards {
-            guard let index = combined.firstIndex(of: card) else {
-                throw PreferansError.cardNotInHand(player: player, card: card)
-            }
-            combined.remove(at: index)
-        }
-        guard combined.count == 10 else {
-            throw PreferansError.illegalCardPlay("Declarer must keep ten cards after discard.")
-        }
-        exchange.hands[player] = combined.sorted()
-
-        let exchangeEvent = PreferansEvent.talonExchanged(
-            declarer: player,
-            talon: exchange.talon,
-            discard: cards
-        )
-
-        switch exchange.finalBid {
-        case .misere:
-            let playing = makePlayingState(
-                dealer: exchange.dealer,
-                activePlayers: exchange.activePlayers,
-                hands: exchange.hands,
-                talon: exchange.talon,
-                discard: cards,
-                kind: .misere(MiserePlayContext(declarer: player))
-            )
-            state = .playing(playing)
-            return [exchangeEvent, .playStarted(playing.kind)]
-        case .game, .totus:
-            // Totus uses the same contract-declaration step but the legal
-            // contract list is constrained to 10-trick options; see
-            // ``legalContractDeclarations(for:)``.
-            state = .awaitingContract(
-                ContractDeclarationState(
-                    dealer: exchange.dealer,
-                    activePlayers: exchange.activePlayers,
-                    hands: exchange.hands,
-                    talon: exchange.talon,
-                    discard: cards,
-                    declarer: player,
-                    finalBid: exchange.finalBid,
-                    auction: exchange.auction
-                )
-            )
-            return [exchangeEvent]
-        }
-    }
-
-    private mutating func applyDeclareContract(player: PlayerID, contract: GameContract) throws -> [PreferansEvent] {
-        guard case let .awaitingContract(declaration) = state else {
-            throw PreferansError.invalidState(expected: "awaitingContract", actual: state.description)
-        }
-        try validateCurrent(player, expected: declaration.declarer)
-        let bonusPool: Int
-        switch declaration.finalBid {
-        case let .game(finalGameBid):
-            guard contract >= finalGameBid else {
-                throw PreferansError.invalidContract("Declared contract cannot be below the auction bid.")
-            }
-            bonusPool = 0
-        case .totus:
-            guard contract.tricks == 10 else {
-                throw PreferansError.invalidContract("Totus declaration must be a 10-trick contract.")
-            }
-            bonusPool = match.totus.bonusPool
-        case .misere:
-            throw PreferansError.invalidContract("Misere does not enter contract declaration.")
-        }
-
-        let defenders = defenders(after: player, activePlayers: declaration.activePlayers)
-        if contract.tricks == 10 {
-            let playing = makePlayingState(
-                dealer: declaration.dealer,
-                activePlayers: declaration.activePlayers,
-                hands: declaration.hands,
-                talon: declaration.talon,
-                discard: declaration.discard,
-                kind: .game(
-                    GamePlayContext(
-                        declarer: player,
-                        contract: contract,
-                        defenders: defenders,
-                        whisters: [],
-                        defenderPlayMode: .closed,
-                        whistCalls: [],
-                        bonusPoolOnSuccess: bonusPool
-                    )
-                )
-            )
-            state = .playing(playing)
-            return [
-                .contractDeclared(declarer: player, contract: contract),
-                .playStarted(playing.kind)
-            ]
-        }
-
-        let whist = WhistState(
-            dealer: declaration.dealer,
-            activePlayers: declaration.activePlayers,
-            hands: declaration.hands,
-            talon: declaration.talon,
-            discard: declaration.discard,
-            declarer: player,
-            contract: contract,
-            defenders: defenders,
-            currentPlayer: defenders[0],
-            bonusPoolOnSuccess: bonusPool
-        )
-        state = .awaitingWhist(whist)
-        return [.contractDeclared(declarer: player, contract: contract)]
-    }
-
-    private mutating func applyWhist(player: PlayerID, call: WhistCall) throws -> [PreferansEvent] {
-        guard case var .awaitingWhist(whist) = state else {
-            throw PreferansError.invalidState(expected: "awaitingWhist", actual: state.description)
-        }
-        try validateCurrent(player, expected: whist.currentPlayer)
-        guard legalWhistCalls(in: whist, for: player).contains(call) else {
-            throw PreferansError.illegalWhist("\(call) is not legal for \(player).")
-        }
-
-        let record = WhistCallRecord(player: player, call: call)
-        whist.calls.append(record)
-        var events: [PreferansEvent] = [.whistAccepted(record)]
-
-        let first = whist.defenders[0]
-        let second = whist.defenders[1]
-
-        switch whist.flow {
-        case .normal:
-            if player == first {
-                whist.currentPlayer = second
-                state = .awaitingWhist(whist)
-                return events
-            }
-
-            let firstCall = whist.calls.first { $0.player == first }?.call
-            if firstCall == .pass {
-                switch call {
-                case .pass:
-                    events.append(contentsOf: scorePassedOut(whist))
-                    return events
-                case .whist:
-                    state = .awaitingDefenderMode(makeDefenderModeState(whist: whist, whister: second))
-                    return events
-                case .halfWhist:
-                    whist.currentPlayer = first
-                    whist.flow = .firstDefenderSecondChance(halfWhister: second)
-                    state = .awaitingWhist(whist)
-                    return events
-                }
-            }
-
-            switch call {
-            case .pass:
-                state = .awaitingDefenderMode(makeDefenderModeState(whist: whist, whister: first))
-                return events
-            case .whist:
-                let playing = startGamePlay(from: whist, whisters: [first, second], mode: .closed)
-                events.append(.playStarted(playing.kind))
-                return events
-            case .halfWhist:
-                throw PreferansError.illegalWhist("Half-whist is only legal after first defender passes.")
-            }
-
-        case let .firstDefenderSecondChance(halfWhister):
-            switch call {
-            case .pass:
-                events.append(contentsOf: scoreHalfWhist(whist, halfWhister: halfWhister))
-                return events
-            case .whist:
-                let playing = startGamePlay(from: whist, whisters: [first, halfWhister], mode: .closed)
-                events.append(.playStarted(playing.kind))
-                return events
-            case .halfWhist:
-                throw PreferansError.illegalWhist("Half-whist is not legal on second chance.")
-            }
-        }
-    }
-
-    private mutating func applyChooseDefenderMode(player: PlayerID, mode: DefenderPlayMode) throws -> [PreferansEvent] {
-        guard case let .awaitingDefenderMode(defenderMode) = state else {
-            throw PreferansError.invalidState(expected: "awaitingDefenderMode", actual: state.description)
-        }
-        try validateCurrent(player, expected: defenderMode.whister)
-
-        let playing = makePlayingState(
-            dealer: defenderMode.dealer,
-            activePlayers: defenderMode.activePlayers,
-            hands: defenderMode.hands,
-            talon: defenderMode.talon,
-            discard: defenderMode.discard,
-            kind: .game(
-                GamePlayContext(
-                    declarer: defenderMode.declarer,
-                    contract: defenderMode.contract,
-                    defenders: defenderMode.defenders,
-                    whisters: [defenderMode.whister],
-                    defenderPlayMode: mode,
-                    whistCalls: defenderMode.whistCalls,
-                    bonusPoolOnSuccess: defenderMode.bonusPoolOnSuccess
-                )
-            )
-        )
-        state = .playing(playing)
-        return [.defenderModeChosen(whister: player, mode: mode), .playStarted(playing.kind)]
-    }
-
-    private mutating func applyPlayCard(player: PlayerID, card: Card) throws -> [PreferansEvent] {
-        guard case var .playing(playing) = state else {
-            throw PreferansError.invalidState(expected: "playing", actual: state.description)
-        }
-        guard playing.pendingSettlement == nil else {
-            throw PreferansError.illegalSettlement("A settlement proposal is awaiting responses.")
-        }
-        try validateCurrent(player, expected: playing.currentPlayer)
-        guard let cardIndex = playing.hands[player]?.firstIndex(of: card) else {
-            throw PreferansError.cardNotInHand(player: player, card: card)
-        }
-        guard isLegal(card: card, by: player, in: playing) else {
-            throw PreferansError.illegalCardPlay("\(card) is not legal for \(player).")
-        }
-
-        playing.hands[player]?.remove(at: cardIndex)
-        let play = CardPlay(player: player, card: card)
-        playing.currentTrick.append(play)
-        var events: [PreferansEvent] = [.cardPlayed(play)]
-
-        if playing.currentTrick.count < playing.activePlayers.count {
-            playing.currentPlayer = playing.activePlayers.cyclicNext(after: player)
-            state = .playing(playing)
-            return events
-        }
-
-        let leadSuit = requiredSuit(for: playing) ?? playing.currentTrick[0].card.suit
-        let winner = trickWinner(for: playing.currentTrick, leadSuit: leadSuit, trump: playing.kind.trumpSuit)
-        let trick = Trick(
-            leader: playing.leader,
-            leadSuit: leadSuit,
-            plays: playing.currentTrick,
-            winner: winner
-        )
-        playing.completedTricks.append(trick)
-        playing.trickCounts[winner, default: 0] += 1
-        playing.currentTrick = []
-        playing.leader = winner
-        playing.currentPlayer = winner
-        events.append(.trickCompleted(trick))
-
-        if playing.isComplete {
-            let result = scoreCompletedPlay(playing)
-            events.append(contentsOf: finalize(result))
-            return events
-        }
-
-        state = .playing(playing)
-        return events
-    }
-
-    private mutating func applyProposeSettlement(
-        player: PlayerID,
-        settlement: TrickSettlement
-    ) throws -> [PreferansEvent] {
-        guard case var .playing(playing) = state else {
-            throw PreferansError.invalidState(expected: "playing", actual: state.description)
-        }
-        guard playing.pendingSettlement == nil else {
-            throw PreferansError.illegalSettlement("A settlement proposal is already pending.")
-        }
-        guard playing.currentTrick.isEmpty else {
-            throw PreferansError.illegalSettlement("Settlements can only be offered between tricks.")
-        }
-        guard playing.activePlayers.contains(player) else {
-            throw PreferansError.invalidPlayer(player)
-        }
-        try validateSettlement(settlement, in: playing)
-
-        let proposal = TrickSettlementProposal(
-            proposer: player,
-            settlement: settlement,
-            acceptedBy: [player]
-        )
-        playing.pendingSettlement = proposal
-        state = .playing(playing)
-        return [.settlementProposed(proposal)]
-    }
-
-    private mutating func applyAcceptSettlement(player: PlayerID) throws -> [PreferansEvent] {
-        guard case var .playing(playing) = state else {
-            throw PreferansError.invalidState(expected: "playing", actual: state.description)
-        }
-        guard var proposal = playing.pendingSettlement else {
-            throw PreferansError.illegalSettlement("There is no settlement proposal to accept.")
-        }
-        guard playing.activePlayers.contains(player) else {
-            throw PreferansError.invalidPlayer(player)
-        }
-        guard !proposal.acceptedBy.contains(player) else {
-            throw PreferansError.illegalSettlement("\(player) already accepted this settlement.")
-        }
-
-        proposal.acceptedBy.insert(player)
-        var events: [PreferansEvent] = [.settlementAccepted(player: player)]
-        if proposal.acceptedBy.isSuperset(of: Set(playing.activePlayers)) {
-            playing.pendingSettlement = nil
-            let result = try scoreSettlement(proposal.settlement, in: playing)
-            events.append(.playSettled(proposal.settlement))
-            events.append(contentsOf: finalize(result))
-            return events
-        }
-
-        playing.pendingSettlement = proposal
-        state = .playing(playing)
-        return events
-    }
-
-    private mutating func applyRejectSettlement(player: PlayerID) throws -> [PreferansEvent] {
-        guard case var .playing(playing) = state else {
-            throw PreferansError.invalidState(expected: "playing", actual: state.description)
-        }
-        guard playing.pendingSettlement != nil else {
-            throw PreferansError.illegalSettlement("There is no settlement proposal to reject.")
-        }
-        guard playing.activePlayers.contains(player) else {
-            throw PreferansError.invalidPlayer(player)
-        }
-
-        playing.pendingSettlement = nil
-        state = .playing(playing)
-        return [.settlementRejected(player: player)]
-    }
-
-    private func validateCurrent(_ actual: PlayerID, expected: PlayerID) throws {
+    func validateCurrent(_ actual: PlayerID, expected: PlayerID) throws {
         guard actual == expected else {
             throw PreferansError.notPlayersTurn(expected: expected, actual: actual)
         }
     }
 
-    private func isLegalBid(_ bid: ContractBid, by player: PlayerID, in bidding: BiddingState) -> Bool {
+    func isLegalBid(_ bid: ContractBid, by player: PlayerID, in bidding: BiddingState) -> Bool {
         guard bidding.currentPlayer == player, !bidding.passed.contains(player) else {
             return false
         }
@@ -689,7 +281,7 @@ public struct PreferansEngine: Sendable {
         return isOlderHand(player, than: highestBidder, activePlayers: bidding.activePlayers)
     }
 
-    private func legalWhistCalls(in whist: WhistState, for player: PlayerID) -> [WhistCall] {
+    func legalWhistCalls(in whist: WhistState, for player: PlayerID) -> [WhistCall] {
         guard whist.defenders.contains(player), whist.currentPlayer == player else {
             return []
         }
@@ -730,7 +322,7 @@ public struct PreferansEngine: Sendable {
         return players.count == 3 ? rotated + [dealer] : rotated
     }
 
-    private func nextBidder(after player: PlayerID, in bidding: BiddingState) -> PlayerID? {
+    func nextBidder(after player: PlayerID, in bidding: BiddingState) -> PlayerID? {
         guard let index = bidding.activePlayers.firstIndex(of: player) else { return nil }
         for offset in 1...bidding.activePlayers.count {
             let candidate = bidding.activePlayers[(index + offset) % bidding.activePlayers.count]
@@ -741,7 +333,7 @@ public struct PreferansEngine: Sendable {
         return nil
     }
 
-    private func defenders(after declarer: PlayerID, activePlayers: [PlayerID]) -> [PlayerID] {
+    func defenders(after declarer: PlayerID, activePlayers: [PlayerID]) -> [PlayerID] {
         var defenders: [PlayerID] = []
         var current = activePlayers.cyclicNext(after: declarer)
         while current != declarer {
@@ -792,7 +384,7 @@ public struct PreferansEngine: Sendable {
         return (deal.hands, deal.talon)
     }
 
-    private func makePlayingState(
+    func makePlayingState(
         dealer: PlayerID,
         activePlayers: [PlayerID],
         hands: [PlayerID: [Card]],
@@ -812,7 +404,7 @@ public struct PreferansEngine: Sendable {
         )
     }
 
-    private func makeDefenderModeState(whist: WhistState, whister: PlayerID) -> DefenderModeState {
+    func makeDefenderModeState(whist: WhistState, whister: PlayerID) -> DefenderModeState {
         DefenderModeState(
             dealer: whist.dealer,
             activePlayers: whist.activePlayers,
@@ -861,7 +453,7 @@ public struct PreferansEngine: Sendable {
         )
     }
 
-    private func validateSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws {
+    func validateSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws {
         let active = Set(playing.activePlayers)
         guard active.contains(settlement.target) else {
             throw PreferansError.illegalSettlement("Settlement target is not active in this deal.")
@@ -885,8 +477,7 @@ public struct PreferansEngine: Sendable {
         }
     }
 
-    @discardableResult
-    private mutating func startGamePlay(
+    func startGamePlay(
         from whist: WhistState,
         whisters: [PlayerID],
         mode: DefenderPlayMode
@@ -909,15 +500,14 @@ public struct PreferansEngine: Sendable {
                 )
             )
         )
-        state = .playing(playing)
         return playing
     }
 
-    private mutating func scorePassedOut(_ whist: WhistState) -> [PreferansEvent] {
+    mutating func scorePassedOut(_ whist: WhistState) -> EngineTransition {
         finalize(scoring.passedOut(whist))
     }
 
-    private mutating func scoreHalfWhist(_ whist: WhistState, halfWhister: PlayerID) -> [PreferansEvent] {
+    mutating func scoreHalfWhist(_ whist: WhistState, halfWhister: PlayerID) -> EngineTransition {
         finalize(scoring.halfWhist(whist, halfWhister: halfWhister))
     }
 
@@ -926,19 +516,17 @@ public struct PreferansEngine: Sendable {
     /// match's pool target. Otherwise transitions to ``DealState/dealFinished``.
     /// Returns the events the caller should append (always `dealScored`,
     /// optionally followed by `matchEnded`).
-    private mutating func finalize(_ result: DealResult) -> [PreferansEvent] {
+    mutating func finalize(_ result: DealResult) -> EngineTransition {
         score.apply(result.scoreDelta)
         dealsPlayed += 1
         var events: [PreferansEvent] = [.dealScored(result)]
         let totalPool = score.pool.values.reduce(0, +)
         if totalPool >= match.poolTarget {
             let summary = makeMatchSummary(lastDeal: result)
-            state = .gameOver(summary)
             events.append(.matchEnded(summary))
-        } else {
-            state = .dealFinished(result)
+            return EngineTransition(state: .gameOver(summary), events: events)
         }
-        return events
+        return EngineTransition(state: .dealFinished(result), events: events)
     }
 
     private func makeMatchSummary(lastDeal: DealResult) -> MatchSummary {
@@ -969,7 +557,7 @@ public struct PreferansEngine: Sendable {
         )
     }
 
-    private func requiredSuit(for playing: PlayingState) -> Suit? {
+    func requiredSuit(for playing: PlayingState) -> Suit? {
         if let lead = playing.currentTrick.first?.card.suit {
             return lead
         }
@@ -982,7 +570,7 @@ public struct PreferansEngine: Sendable {
         return playing.talon[playing.completedTricks.count].suit
     }
 
-    private func isLegal(card: Card, by player: PlayerID, in playing: PlayingState) -> Bool {
+    func isLegal(card: Card, by player: PlayerID, in playing: PlayingState) -> Bool {
         guard let hand = playing.hands[player], hand.contains(card) else {
             return false
         }
@@ -1002,7 +590,7 @@ public struct PreferansEngine: Sendable {
         return true
     }
 
-    private func trickWinner(for trick: [CardPlay], leadSuit: Suit, trump: Suit?) -> PlayerID {
+    func trickWinner(for trick: [CardPlay], leadSuit: Suit, trump: Suit?) -> PlayerID {
         Self.trickWinner(for: trick, leadSuit: leadSuit, trump: trump).player
     }
 
@@ -1032,7 +620,7 @@ public struct PreferansEngine: Sendable {
         return .orderedSame
     }
 
-    private func scoreSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws -> DealResult {
+    func scoreSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws -> DealResult {
         try validateSettlement(settlement, in: playing)
         var settled = playing
         settled.trickCounts = settlement.finalTrickCounts
@@ -1041,7 +629,7 @@ public struct PreferansEngine: Sendable {
         return scoring.completedPlay(settled, settlement: settlement)
     }
 
-    private func scoreCompletedPlay(_ playing: PlayingState, settlement: TrickSettlement? = nil) -> DealResult {
+    func scoreCompletedPlay(_ playing: PlayingState, settlement: TrickSettlement? = nil) -> DealResult {
         scoring.completedPlay(playing, settlement: settlement)
     }
 
