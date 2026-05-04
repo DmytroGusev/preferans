@@ -51,30 +51,34 @@ public struct ActionBarView: View {
         .feltBand()
     }
 
-    /// Bidding row redesigned around the four decisions players actually
-    /// make on every turn: pass, take the minimum legal game bid, escalate
-    /// to a special bid (misère/totus), or jump to a higher game bid via a
-    /// menu. Replaces the 30+ chip horizontal scroller with three primary
-    /// chips and a "More" menu so the choice never requires scrolling.
+    /// Bidding row: one clear title plus a horizontal rail of every legal
+    /// bid. The rail keeps high bids discoverable without hiding them
+    /// behind a secondary "More" menu.
     private var bidRow: some View {
-        let split = bidSplit()
-        return HStack(spacing: 8) {
-            if let pass = split.pass {
-                bidChip(call: pass)
+        return VStack(spacing: 10) {
+            actionSectionTitle("Your bid")
+            scrollableRow {
+                HStack(spacing: 8) {
+                    ForEach(projection.legal.bidCalls, id: \.self) { call in
+                        bidChip(call: call)
+                    }
+                }
             }
-            if let min = split.minimumGame {
-                bidChip(call: min)
-            }
-            if let misere = split.misere {
-                bidChip(call: misere)
-            }
-            if let totus = split.totus {
-                bidChip(call: totus)
-            }
-            if !split.higherGames.isEmpty {
-                moreBidsMenu(calls: split.higherGames)
-            }
-            Spacer(minLength: 0)
+        }
+    }
+
+    private func actionSectionTitle(_ title: LocalizedStringKey) -> some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.30))
+                .frame(height: 0.5)
+            Text(title)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(TableTheme.goldBright)
+                .fixedSize()
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.30))
+                .frame(height: 0.5)
         }
     }
 
@@ -95,83 +99,10 @@ public struct ActionBarView: View {
                 Text(label.text)
                     .fontWeight(.semibold)
             }
+            .frame(minWidth: 82, minHeight: 24)
         }
         .buttonStyle(label.style)
         .accessibilityIdentifier(UIIdentifiers.bidButton(call))
-    }
-
-    /// "More" menu listing every legal game bid above the minimum. Each
-    /// entry preserves the per-bid accessibility identifier so UI tests
-    /// can still address a specific contract once the menu is open.
-    private func moreBidsMenu(calls: [BidCall]) -> some View {
-        Menu {
-            ForEach(calls, id: \.self) { call in
-                Button {
-                    onSend(.bid(player: projection.viewer, call: call))
-                } label: {
-                    bidMenuLabel(for: call)
-                }
-                .accessibilityIdentifier(UIIdentifiers.bidButton(call))
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text("More")
-                    .fontWeight(.semibold)
-                Image(systemName: "chevron.up")
-                    .font(.caption)
-            }
-        }
-        .menuStyle(.borderlessButton)
-        .menuOrder(.fixed)
-        .buttonStyle(.feltSecondary)
-        .accessibilityIdentifier(UIIdentifiers.Panel.bidding.rawValue + ".more")
-    }
-
-    @ViewBuilder
-    private func bidMenuLabel(for call: BidCall) -> some View {
-        switch call {
-        case let .bid(.game(contract)):
-            Label {
-                Text("\(contract.tricks) \(Localized.strain(contract.strain))")
-            } icon: {
-                if let suit = contract.strain.suit {
-                    Text(suit.symbol)
-                }
-            }
-        case let .bid(other):
-            Text(verbatim: String(describing: other))
-        case .pass:
-            Text("Pass")
-        }
-    }
-
-    private struct BidSplit {
-        var pass: BidCall?
-        var minimumGame: BidCall?
-        var higherGames: [BidCall]
-        var misere: BidCall?
-        var totus: BidCall?
-    }
-
-    private func bidSplit() -> BidSplit {
-        var split = BidSplit(higherGames: [])
-        for call in projection.legal.bidCalls {
-            switch call {
-            case .pass:
-                split.pass = call
-            case .bid(.game):
-                if split.minimumGame == nil {
-                    split.minimumGame = call
-                } else {
-                    split.higherGames.append(call)
-                }
-            case .bid(.misere):
-                split.misere = call
-            case .bid(.totus):
-                split.totus = call
-            }
-        }
-        return split
     }
 
     private var contractRow: some View {
@@ -322,7 +253,7 @@ public struct ActionBarView: View {
     private func bidLabel(for call: BidCall) -> BidLabel {
         switch call {
         case .pass:
-            return BidLabel(text: "Pass", suit: nil, icon: "xmark", kind: .pass)
+            return BidLabel(text: "Pass", suit: nil, icon: nil, kind: .pass)
         case let .bid(bid):
             switch bid {
             case let .game(contract):

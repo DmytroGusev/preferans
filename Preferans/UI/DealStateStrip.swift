@@ -19,7 +19,7 @@ public struct DealStateStrip: View {
     public var body: some View {
         Group {
             switch projection.phase {
-            case .waitingForDeal, .gameOver, .dealFinished:
+            case .waitingForDeal, .gameOver, .dealFinished, .bidding, .awaitingContract:
                 EmptyView()
             default:
                 rows

@@ -257,12 +257,12 @@ public struct TableView: View {
     private func slotFrameSize(for slot: OpponentSlot, bounds: CGSize) -> CGSize {
         switch slot.kind {
         case .topWide:
-            return CGSize(width: min(bounds.width * 0.78, 320), height: 130)
+            return CGSize(width: min(bounds.width * 0.78, 320), height: 182)
         case .topNarrow:
-            // Wide enough for "Agent Smith" + the trick-count chip without
-            // truncating, and tall enough to clear two rows of compact
-            // card backs.
-            return CGSize(width: min(bounds.width * 0.32, 160), height: 130)
+            // Wide enough for a name chip plus a 5-card standard fan row,
+            // and tall enough to clear two stacked rows plus the quiet
+            // trick counter.
+            return CGSize(width: min(bounds.width * 0.46, 190), height: 182)
         }
     }
 
@@ -334,35 +334,73 @@ public struct TableView: View {
     /// of "where is the auction".
     private func biddingContext() -> some View {
         let active = projection.seats.filter { $0.role != .sittingOut }
-        return VStack(spacing: 8) {
-            Text("Auction")
-                .font(.caption.weight(.bold))
-                .tracking(1.2)
-                .textCase(.uppercase)
-                .foregroundStyle(TableTheme.goldBright)
-            HStack(spacing: 8) {
-                ForEach(active, id: \.player) { seat in
+        return VStack(spacing: 14) {
+            auctionPanelTitle
+            HStack(spacing: 0) {
+                ForEach(Array(active.enumerated()), id: \.element.player) { index, seat in
                     auctionSeatPill(seat: seat)
+                        .frame(maxWidth: .infinity)
+                    if index < active.count - 1 {
+                        Rectangle()
+                            .fill(TableTheme.gold.opacity(0.22))
+                            .frame(width: 0.5, height: 70)
+                            .padding(.horizontal, 8)
+                    }
                 }
             }
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
+                .fill(Color.black.opacity(0.16))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
+                .strokeBorder(TableTheme.gold.opacity(0.34), lineWidth: 0.75)
+        )
         .multilineTextAlignment(.center)
+    }
+
+    private var auctionPanelTitle: some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.38))
+                .frame(height: 0.6)
+            Text("Auction")
+                .font(.caption.weight(.bold))
+                .tracking(1.4)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.goldBright)
+                .fixedSize()
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.38))
+                .frame(height: 0.6)
+        }
     }
 
     private func auctionSeatPill(seat: SeatProjection) -> some View {
         let action = seatActions[seat.player]
         let isCurrent = seat.isCurrentActor
         return VStack(spacing: 4) {
-            Text(seat.displayName)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .lineLimit(1)
+            HStack(spacing: 5) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(seat.player == projection.viewer ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                    .accessibilityHidden(true)
+                Text(seat.player == projection.viewer ? "You" : seat.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(seat.player == projection.viewer ? TableTheme.inkCream : TableTheme.inkCreamSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
             Group {
                 if let action {
                     action.label.glyph(emphasis: .banner)
                         .font(.subheadline.weight(.heavy))
                 } else if isCurrent {
-                    Text("Calling…")
+                    Text("Choosing")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(TableTheme.goldBright)
                 } else {
@@ -371,21 +409,23 @@ public struct TableView: View {
                         .foregroundStyle(TableTheme.inkCreamDim)
                 }
             }
+            .padding(.horizontal, isCurrent ? 10 : 0)
+            .padding(.vertical, isCurrent ? 7 : 0)
+            .background(
+                RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
+                    .fill(isCurrent ? Color.black.opacity(0.36) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
+                    .strokeBorder(isCurrent ? TableTheme.goldBright.opacity(0.85) : Color.clear,
+                                  lineWidth: isCurrent ? 1 : 0)
+            )
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: TableTheme.Radius.sm, style: .continuous)
-                .fill(Color.black.opacity(isCurrent ? 0.55 : 0.32))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: TableTheme.Radius.sm, style: .continuous)
-                .strokeBorder(
-                    isCurrent ? TableTheme.goldBright.opacity(0.85) : TableTheme.gold.opacity(0.18),
-                    lineWidth: isCurrent ? 1.2 : 0.5
-                )
-        )
-        .shadow(color: isCurrent ? TableTheme.goldBright.opacity(0.35) : .clear, radius: isCurrent ? 8 : 0)
+        .frame(minHeight: 84)
+        .shadow(color: isCurrent ? TableTheme.goldBright.opacity(0.35) : .clear,
+                radius: isCurrent ? 8 : 0)
     }
 
     /// Talon exchange: render the two prikup cards face-up centered on the

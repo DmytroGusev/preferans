@@ -47,10 +47,10 @@ public struct OpponentSeatView: View {
         if seat.role == .sittingOut {
             sittingOutChip
         } else {
-            VStack(spacing: 3) {
+            VStack(spacing: 6) {
                 nameChip
-                actionRow
                 fan
+                trickCounter
             }
             .opacity(seat.isActive ? 1 : 0.55)
             .accessibilityElement(children: .contain)
@@ -87,44 +87,23 @@ public struct OpponentSeatView: View {
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
     }
 
-    /// One-line action pill below the seat's name, present only when the
-    /// seat has taken an action in the current deal. Replaces "you have to
-    /// scan the auction trail" with a per-seat label that lingers until
-    /// superseded.
-    @ViewBuilder
-    private var actionRow: some View {
-        if let lastAction {
-            HStack(spacing: 4) {
-                lastAction.label.glyph(emphasis: .seat)
-                    .font(.caption2.weight(.bold))
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(
-                Capsule().fill(TableTheme.gold.opacity(0.20))
-            )
-            .overlay(
-                Capsule().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.5)
-            )
-            .transition(.scale.combined(with: .opacity))
-            .accessibilityIdentifier(UIIdentifiers.seatLastAction(seat.player))
-        }
-    }
-
-    /// One-line player chip: name + dealer/sitting-out/turn pill +
-    /// contract-role pill + trick count. No background box — sits
-    /// directly on the felt with just a gold underline when this seat
-    /// is acting.
+    /// One-line player chip: avatar + name + dealer/role badges. Trick
+    /// counts live below the fan so the name chip has one job: identity.
     private var nameChip: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             if seat.isCurrentActor {
-                Circle()
-                    .fill(TableTheme.goldBright)
-                    .frame(width: 6, height: 6)
+                Text("Acting")
+                    .frame(width: 0, height: 0)
+                    .clipped()
+                    .opacity(0)
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
+            Image(systemName: "person.crop.circle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                .accessibilityHidden(true)
             Text(seat.displayName)
-                .font(.caption.weight(.semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -132,20 +111,26 @@ public struct OpponentSeatView: View {
 
             statusBadge
             rolePill
-
-            Text("\(seat.trickCount)")
-                .font(.caption2.weight(.semibold).monospacedDigit())
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .overlay(
-                    Capsule().strokeBorder(TableTheme.inkCream.opacity(0.18), lineWidth: 0.5)
-                )
-                .accessibilityLabel("\(seat.trickCount) tricks")
-                .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .feltSurface(seat.isCurrentActor ? .seatActive : .seat, radius: TableTheme.Radius.sm)
+        .shadow(color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.25) : .clear,
+                radius: seat.isCurrentActor ? 8 : 0)
+    }
+
+    private var trickCounter: some View {
+        Text("\(seat.trickCount) tricks")
+            .font(.caption.weight(.medium).monospacedDigit())
+            .foregroundStyle(TableTheme.inkCreamSoft)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Color.black.opacity(0.20), in: Capsule())
+            .overlay(
+                Capsule().strokeBorder(TableTheme.inkCream.opacity(0.08), lineWidth: 0.5)
+            )
+            .accessibilityLabel("\(seat.trickCount) tricks")
+            .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
     }
 
     /// Persistent contract-role pill rendered inline next to the seat
@@ -185,12 +170,12 @@ public struct OpponentSeatView: View {
                 .background(TableTheme.inkCreamSoft, in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
         } else if seat.isDealer {
-            Text("badge.dealer")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(TableTheme.inkCream)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(Color.black.opacity(0.30), in: Capsule())
+            Text("Dealer")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(TableTheme.feltDeep)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(TableTheme.goldBright, in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
         }
     }
@@ -203,7 +188,7 @@ public struct OpponentSeatView: View {
     /// reads as a held hand rather than two separate piles.
     private var fan: some View {
         let count = seat.hand.count
-        let dims = CardView.Size.compact.dimensions
+        let dims = CardView.Size.standard.dimensions
         let cardsPerRow = 5
         let rows = splitIntoRows(seat.hand, perRow: cardsPerRow)
         return VStack(spacing: -dims.height * 0.55) {
@@ -225,7 +210,7 @@ public struct OpponentSeatView: View {
             ForEach(Array(cards.enumerated()), id: \.offset) { index, card in
                 CardView(
                     card: card,
-                    size: .compact,
+                    size: .standard,
                     region: .hand(seat: seat.player),
                     indexInRow: index
                 )

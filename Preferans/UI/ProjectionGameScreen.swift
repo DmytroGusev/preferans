@@ -128,15 +128,15 @@ public struct ProjectionGameScreen<Menu: View>: View {
             tableView(seatRoleBadges: seatRoleBadges)
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if shouldShowActionBar {
-                ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
-            }
             if shouldShowHandRail {
                 viewerHandFan
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
                     .padding(.bottom, 4)
                     .layoutPriority(1)
+            }
+            if shouldShowActionBar {
+                ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -247,13 +247,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     .padding(.bottom, 8)
                 tableView()
                     .frame(maxHeight: .infinity)
-                if shouldShowActionBar {
-                    ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
-                }
                 if shouldShowHandRail {
                     viewerHandFan
                         .padding(.horizontal, 8)
                         .padding(.top, 4)
+                }
+                if shouldShowActionBar {
+                    ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -378,7 +378,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         HStack(spacing: 6) {
             Text(Localized.phaseTitle(projection.phase))
                 .font(.caption.weight(.bold))
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(TableTheme.goldBright)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
             if !shouldShowCenterDealCTA {
@@ -455,30 +455,55 @@ public struct ProjectionGameScreen<Menu: View>: View {
             let cards: [ProjectedCard] = isDiscardPhase
                 ? sortedHandFan(seat.hand + projection.talon)
                 : seat.hand
-            VStack(spacing: 4) {
-                CardFanView(
-                    cards: cards,
-                    playableCards: playable,
-                    selectedCards: selected,
-                    talonCards: Set(talonKnown),
-                    seat: seat.player,
-                    size: horizontalSizeClass == .compact ? .standard : .large,
-                    animationNamespace: cardNamespace,
-                    onTap: { card in
-                        if isDiscardPhase {
-                            toggleDiscardSelection(card)
-                        } else if playable.contains(card) {
-                            onSend(.playCard(player: projection.viewer, card: card))
+            VStack(spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    CardFanView(
+                        cards: cards,
+                        playableCards: playable,
+                        selectedCards: selected,
+                        talonCards: Set(talonKnown),
+                        seat: seat.player,
+                        size: horizontalSizeClass == .compact ? .standard : .large,
+                        animationNamespace: cardNamespace,
+                        onTap: { card in
+                            if isDiscardPhase {
+                                toggleDiscardSelection(card)
+                            } else if playable.contains(card) {
+                                onSend(.playCard(player: projection.viewer, card: card))
+                            }
                         }
+                    )
+                    .shadow(color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.35) : .clear,
+                            radius: seat.isCurrentActor ? 12 : 0)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
+
+                    if seat.isCurrentActor {
+                        viewerActorAccessibilityMarker
                     }
-                )
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
-                ownerNamePlate(seat: seat)
+                }
+                viewerAccessibilityLabel(seat: seat)
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 4)
         }
+    }
+
+    private var viewerActorAccessibilityMarker: some View {
+        Text("Acting")
+            .frame(width: 0, height: 0)
+            .clipped()
+            .opacity(0)
+            .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(projection.viewer))
+    }
+
+    private func viewerAccessibilityLabel(seat: SeatProjection) -> some View {
+        Text(AccessibilityStrings.viewerLabelPrefix + seat.displayName)
+            .font(.caption2)
+            .frame(width: 0, height: 0)
+            .clipped()
+            .opacity(0)
+            .accessibilityIdentifier(UIIdentifiers.viewerLabel)
     }
 
     private func sortedHandFan(_ cards: [ProjectedCard]) -> [ProjectedCard] {

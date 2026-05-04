@@ -162,7 +162,7 @@ public enum Localized {
         case .readyToDeal:
             return Text("Tap Deal to start")
         case let .bidding(currentPlayer):
-            return Text("\(displayName(currentPlayer))'s bid")
+            return Text("\(displayName(currentPlayer)) to call")
         case let .takingPrikup(declarer):
             return Text("\(displayName(declarer)) takes the prikup")
         case let .namingContract(declarer, pickingTotusStrain):
@@ -170,7 +170,7 @@ public enum Localized {
                 ? Text("\(displayName(declarer)) picks the totus strain")
                 : Text("\(displayName(declarer)) names the contract")
         case let .callingWhist(currentPlayer):
-            return Text("\(displayName(currentPlayer))'s whist call")
+            return Text("\(displayName(currentPlayer)) to call whist")
         case let .choosingDefenderMode(whister):
             return Text("\(displayName(whister)) — open or closed?")
         case let .playingTrick(currentPlayer, trickNumber):
