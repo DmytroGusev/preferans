@@ -159,7 +159,8 @@ public struct TableView: View {
     /// the table.
     private func tableLayout(active: [SeatProjection], sittingOut: [SeatProjection]) -> some View {
         GeometryReader { geo in
-            let bounds = geo.size
+            let layout = TableLayoutModel(bounds: geo.size)
+            let bounds = layout.bounds
             ZStack(alignment: .topTrailing) {
                 // Center: trick area / phase content. Sized smaller than
                 // the felt so seat fans can sit at the edges without
@@ -170,20 +171,21 @@ public struct TableView: View {
                 // the lower two-thirds and stay optically centered for
                 // every seat configuration.
                 playArea(opponentSeats: active.map(\.player))
-                    .frame(width: max(0, bounds.width * 0.86),
-                           height: max(0, bounds.height * 0.62))
-                    .position(x: bounds.width * 0.5, y: bounds.height * 0.62)
+                    .frame(width: layout.playAreaSize.width,
+                           height: layout.playAreaSize.height)
+                    .position(layout.playAreaPosition)
 
                 // Active opponent seats positioned around the felt edge.
-                ForEach(Array(opponentSlots(opponents: active).enumerated()), id: \.offset) { _, slot in
+                ForEach(Array(layout.opponentSlots(opponents: active).enumerated()), id: \.offset) { _, slot in
+                    let slotSize = layout.slotFrameSize(for: slot)
                     OpponentSeatView(
                         seat: slot.seat,
                         orientation: slot.orientation,
                         lastAction: seatActions[slot.seat.player],
                         roleBadge: seatRoleBadges[slot.seat.player]
                     )
-                    .frame(width: slotFrameSize(for: slot, bounds: bounds).width,
-                           height: slotFrameSize(for: slot, bounds: bounds).height)
+                    .frame(width: slotSize.width,
+                           height: slotSize.height)
                     .position(x: slot.position.x * bounds.width,
                               y: slot.position.y * bounds.height)
                 }
@@ -195,7 +197,7 @@ public struct TableView: View {
                     action: bannerAction,
                     displayName: { projection.displayName(for: $0) }
                 )
-                .position(x: bounds.width * 0.5, y: bounds.height * 0.50)
+                .position(layout.bannerPosition)
 
                 // Sitting-out dealer(s) tucked into the top-right corner
                 // as compact chips so they don't claim a full opponent
@@ -219,60 +221,6 @@ public struct TableView: View {
             .frame(width: bounds.width, height: bounds.height)
         }
         .frame(minHeight: 320)
-    }
-
-    /// One slot per opponent — its position (normalised 0–1 of the felt),
-    /// its orientation hint for the fan, and its frame size category. The
-    /// number of opponents drives where each seat lands:
-    ///   - 1 opponent → top center
-    ///   - 2 opponents → top-left + top-right
-    ///   - 3 opponents → upper-left + top + upper-right (every fan
-    ///     horizontal — no rotated vertical columns)
-    private func opponentSlots(opponents: [SeatProjection]) -> [OpponentSlot] {
-        switch opponents.count {
-        case 1:
-            return [OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.5, y: 0.16), orientation: .top, kind: .topWide)]
-        case 2:
-            return [
-                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.25, y: 0.18), orientation: .top, kind: .topNarrow),
-                OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.75, y: 0.18), orientation: .top, kind: .topNarrow),
-            ]
-        case 3:
-            // Top opponent sits highest; left/right step down so the
-            // three horizontal fans cascade rather than collide
-            // shoulder-to-shoulder. The vertical stagger also makes the
-            // table read as "around" rather than "across".
-            return [
-                OpponentSlot(seat: opponents[0], position: CGPoint(x: 0.18, y: 0.26), orientation: .left, kind: .topNarrow),
-                OpponentSlot(seat: opponents[1], position: CGPoint(x: 0.50, y: 0.10), orientation: .top, kind: .topNarrow),
-                OpponentSlot(seat: opponents[2], position: CGPoint(x: 0.82, y: 0.26), orientation: .right, kind: .topNarrow),
-            ]
-        default:
-            return opponents.enumerated().map { idx, seat in
-                let x = (CGFloat(idx) + 1) / CGFloat(opponents.count + 1)
-                return OpponentSlot(seat: seat, position: CGPoint(x: x, y: 0.18), orientation: .top, kind: .topNarrow)
-            }
-        }
-    }
-
-    private func slotFrameSize(for slot: OpponentSlot, bounds: CGSize) -> CGSize {
-        switch slot.kind {
-        case .topWide:
-            return CGSize(width: min(bounds.width * 0.78, 320), height: 182)
-        case .topNarrow:
-            // Wide enough for a name chip plus a 5-card standard fan row,
-            // and tall enough to clear two stacked rows plus the quiet
-            // trick counter.
-            return CGSize(width: min(bounds.width * 0.46, 190), height: 182)
-        }
-    }
-
-    fileprivate struct OpponentSlot {
-        var seat: SeatProjection
-        var position: CGPoint
-        var orientation: OpponentSeatView.Orientation
-        var kind: Kind
-        enum Kind { case topWide, topNarrow }
     }
 
     /// The center of the felt where the current trick sits. The felt is the
@@ -713,28 +661,7 @@ public struct TableView: View {
     /// the trick-card dimensions so the layout still works if `CardView.Size`
     /// is ever retuned (or if we drop in a `.compact` trick on small phones).
     private func positionForPlay(player: PlayerID, opponents: [PlayerID]) -> CGSize {
-        let dims = CardView.Size.standard.dimensions
-        let w = dims.width
-        let h = dims.height
-        if player == projection.viewer { return CGSize(width: 0, height: h * 0.7) }
-        switch opponents.count {
-        case 1:
-            return CGSize(width: 0, height: -h * 0.7)
-        case 2:
-            let x = w * 1.1
-            let y = -h * 0.45
-            return player == opponents[0] ? CGSize(width: -x, height: y) : CGSize(width: x, height: y)
-        case 3:
-            // Side opponents are now positioned horizontally in the
-            // upper third — pull their played cards both inward and
-            // upward so they hover under the seat fans rather than
-            // floating in the middle row.
-            if player == opponents[0] { return CGSize(width: -w * 1.05, height: -h * 0.55) }
-            if player == opponents[1] { return CGSize(width: 0, height: -h * 0.85) }
-            return CGSize(width: w * 1.05, height: -h * 0.55)
-        default:
-            return .zero
-        }
+        TableLayoutModel.trickOffset(for: player, viewer: projection.viewer, opponents: opponents)
     }
 
     /// Every seat except the viewer's, including the 4-player sitting-out

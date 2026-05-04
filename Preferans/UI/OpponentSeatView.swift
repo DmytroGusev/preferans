@@ -25,7 +25,7 @@ public struct OpponentSeatView: View {
     /// the deal so a glance at any seat answers "who is playing what".
     public var roleBadge: SeatRoleBadge?
 
-    public enum Orientation {
+    public enum Orientation: Equatable {
         case top
         case left
         case right

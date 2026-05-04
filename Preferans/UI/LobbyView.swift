@@ -10,16 +10,7 @@ public struct LobbyView: View {
     @EnvironmentObject private var online: HostedOnlineGameCoordinator
     #endif
 
-    @State private var localModel: GameViewModel?
-    @State private var onlineSession: InMemoryOnlineGameSession?
-    @State private var cloudOnlineSession: CloudflareOnlineGameSession?
-    @State private var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
-    @State private var botSpeed: BotMoveSpeed = .normal
-    @State private var errorText: String?
-    @State private var onlineAccountEmail = "neo@example.test"
-    @State private var onlineSeatIndex = 0
-    @State private var onlineJoinRoomCode = ""
-    @State private var isOnlineRoomLoading = false
+    @StateObject private var viewModel = LobbyViewModel()
     @State private var showingMatchmaker = false
     @State private var hasAttemptedSignIn = false
     @State private var showingSettings = false
@@ -31,24 +22,24 @@ public struct LobbyView: View {
     public var body: some View {
         NavigationStack {
             Group {
-                if let localModel {
+                if let localModel = viewModel.localModel {
                     LocalGameScreen(
                         model: localModel,
-                        onLeaveTable: { self.localModel = nil },
-                        onRematch: { startLocalTable() }
+                        onLeaveTable: { viewModel.localModel = nil },
+                        onRematch: { viewModel.startLocalTable() }
                     )
-                } else if let onlineSession {
+                } else if let onlineSession = viewModel.onlineSession {
                     OnlineRoomGameScreen(
                         coordinator: onlineSession.localCoordinator,
                         roomCode: onlineSession.roomCode,
-                        onLeaveTable: { leaveOnlineRoom() }
+                        onLeaveTable: { viewModel.leaveOnlineRoom() }
                     )
-                } else if let cloudOnlineSession {
+                } else if let cloudOnlineSession = viewModel.cloudOnlineSession {
                     OnlineRoomGameScreen(
                         coordinator: cloudOnlineSession.localCoordinator,
                         roomCode: cloudOnlineSession.roomCode,
                         inviteURL: cloudOnlineSession.inviteURL,
-                        onLeaveTable: { leaveOnlineRoom() }
+                        onLeaveTable: { viewModel.leaveOnlineRoom() }
                     )
                 } else {
                     #if canImport(GameKit) && canImport(UIKit)
@@ -70,7 +61,7 @@ public struct LobbyView: View {
                 }
             }
             .toolbar {
-                if localModel == nil && onlineSession == nil && cloudOnlineSession == nil {
+                if viewModel.localModel == nil && viewModel.onlineSession == nil && viewModel.cloudOnlineSession == nil {
                     ToolbarItem(placement: .automatic) {
                         Button { showingSettings = true } label: {
                             Image(systemName: "gearshape.fill")
@@ -92,14 +83,14 @@ public struct LobbyView: View {
                 isPresented: $showingWatchBotsConfirm,
                 titleVisibility: .visible
             ) {
-                Button("Watch") { watchBots() }
+                Button("Watch") { viewModel.watchBots() }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced.")
             }
         }
         .onOpenURL { url in
-            handleInviteURL(url)
+            viewModel.handleInviteURL(url)
         }
         #if canImport(GameKit) && canImport(UIKit)
         .background(GameCenterAuthenticationPresenter(viewController: gameCenter.authenticationViewController).frame(width: 0, height: 0))
@@ -114,7 +105,7 @@ public struct LobbyView: View {
                 onCancel: { showingMatchmaker = false },
                 onError: { error in
                     showingMatchmaker = false
-                    errorText = error.localizedDescription
+                    viewModel.errorText = error.localizedDescription
                 }
             )
         }
@@ -130,7 +121,7 @@ public struct LobbyView: View {
                 #if canImport(GameKit) && canImport(UIKit)
                 gameCenterOnlineCard
                 #endif
-                if let errorText {
+                if let errorText = viewModel.errorText {
                     Text(errorText)
                         .font(.footnote)
                         .foregroundStyle(.red)
@@ -147,9 +138,6 @@ public struct LobbyView: View {
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             lobbyStartBar
-        }
-        .onChange(of: seats.count) { _, count in
-            onlineSeatIndex = min(onlineSeatIndex, max(0, count - 1))
         }
         .feltBackground()
     }
@@ -248,14 +236,14 @@ public struct LobbyView: View {
                 }
 
                 VStack(spacing: 8) {
-                    ForEach(Array(seats.enumerated()), id: \.element.id) { index, _ in
+                    ForEach(Array(viewModel.seats.enumerated()), id: \.element.id) { index, _ in
                         seatRow(index: index)
                     }
                 }
 
                 botSpeedPicker
 
-                if let validation = seats.validationError {
+                if let validation = viewModel.seats.validationError {
                     Text(validation)
                         .font(.caption)
                         .foregroundStyle(.orange)
@@ -267,7 +255,7 @@ public struct LobbyView: View {
                 // folded into "Sit down" (which already starts a table with
                 // the current roster), but UI tests still tap this identifier
                 // to land on a 1-human + 2-bot table from a clean lobby.
-                Button { quickPlayVsBots() } label: { Color.clear }
+                Button { viewModel.quickPlayVsBots() } label: { Color.clear }
                     .frame(width: 0, height: 0)
                     .opacity(0)
                     .allowsHitTesting(true)
@@ -308,7 +296,7 @@ public struct LobbyView: View {
                 .fill(TableTheme.gold.opacity(0.18))
                 .frame(height: 0.5)
             Button {
-                startLocalTable()
+                viewModel.startLocalTable()
             } label: {
                 HStack {
                     Image(systemName: "play.fill")
@@ -320,7 +308,7 @@ public struct LobbyView: View {
             }
             .buttonStyle(.feltPrimary)
             .controlSize(.large)
-            .disabled(seats.validationError != nil)
+            .disabled(viewModel.seats.validationError != nil)
             .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
             .padding(.horizontal, 18)
             .padding(.top, 12)
@@ -336,7 +324,7 @@ public struct LobbyView: View {
     }
 
     private func seatRow(index: Int) -> some View {
-        let isBot = seats[index].kind == .bot
+        let isBot = viewModel.seats[index].kind == .bot
         let isViewer = index == 0 && !isBot
         return HStack(spacing: 10) {
             Image(systemName: isBot ? "cpu" : "person.crop.circle.fill")
@@ -377,7 +365,7 @@ public struct LobbyView: View {
                 .tracking(1.0)
                 .textCase(.uppercase)
                 .foregroundStyle(TableTheme.gold)
-            Picker("Bot speed", selection: $botSpeed) {
+            Picker("Bot speed", selection: $viewModel.botSpeed) {
                 ForEach(BotMoveSpeed.allCases) { speed in
                     Text(speed.label).tag(speed)
                 }
@@ -391,7 +379,7 @@ public struct LobbyView: View {
     private var onlineRoomCard: some View {
         card(title: "Invite room", icon: "link") {
             VStack(spacing: 12) {
-                TextField("email@example.test", text: $onlineAccountEmail)
+                TextField("email@example.test", text: $viewModel.onlineAccountEmail)
                     .textFieldStyle(.plain)
                     .autocorrectionDisabled()
                     .foregroundStyle(TableTheme.inkCream)
@@ -399,8 +387,8 @@ public struct LobbyView: View {
                     .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
                     .accessibilityIdentifier(UIIdentifiers.onlineAccountEmail)
 
-                Picker("Seat", selection: $onlineSeatIndex) {
-                    ForEach(Array(seats.enumerated()), id: \.element.id) { index, seat in
+                Picker("Seat", selection: $viewModel.onlineSeatIndex) {
+                    ForEach(Array(viewModel.seats.enumerated()), id: \.element.id) { index, seat in
                         Text(seat.trimmedName.isEmpty ? "Seat \(index + 1)" : seat.trimmedName)
                             .tag(index)
                     }
@@ -409,10 +397,10 @@ public struct LobbyView: View {
                 .accessibilityIdentifier(UIIdentifiers.onlineLocalSeatPicker)
 
                 Button {
-                    startCloudflareOnlineRoom()
+                    viewModel.startCloudflareOnlineRoom()
                 } label: {
                     HStack {
-                        if isOnlineRoomLoading {
+                        if viewModel.isOnlineRoomLoading {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
@@ -424,11 +412,11 @@ public struct LobbyView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.feltPrimary)
-                .disabled(seats.validationError != nil || isOnlineRoomLoading)
+                .disabled(viewModel.seats.validationError != nil || viewModel.isOnlineRoomLoading)
                 .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
 
                 HStack(spacing: 8) {
-                    TextField("Room code", text: $onlineJoinRoomCode)
+                    TextField("Room code", text: $viewModel.onlineJoinRoomCode)
                         .textFieldStyle(.plain)
                         .autocorrectionDisabled()
                         .foregroundStyle(TableTheme.inkCream)
@@ -437,7 +425,7 @@ public struct LobbyView: View {
                         .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
 
                     Button {
-                        joinCloudflareOnlineRoom()
+                        viewModel.joinCloudflareOnlineRoom()
                     } label: {
                         Image(systemName: "arrow.right.circle.fill")
                             .font(.title3)
@@ -445,14 +433,17 @@ public struct LobbyView: View {
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(TableTheme.goldBright)
-                    .disabled(isOnlineRoomLoading || PreferansInviteLink.normalizedRoomCode(onlineJoinRoomCode) == nil)
+                    .disabled(
+                        viewModel.isOnlineRoomLoading
+                            || PreferansInviteLink.normalizedRoomCode(viewModel.onlineJoinRoomCode) == nil
+                    )
                     .accessibilityLabel("Join table")
                     .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
                 }
 
                 #if DEBUG
                 Button {
-                    startInMemoryOnlineRoom()
+                    viewModel.startInMemoryOnlineRoom()
                 } label: {
                     HStack {
                         Image(systemName: "testtube.2")
@@ -462,7 +453,7 @@ public struct LobbyView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.feltSecondary)
-                .disabled(seats.validationError != nil || isOnlineRoomLoading)
+                .disabled(viewModel.seats.validationError != nil || viewModel.isOnlineRoomLoading)
                 .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
                 #endif
             }
@@ -551,8 +542,8 @@ public struct LobbyView: View {
 
     @ViewBuilder
     private func seatCountButton(count: Int, id: String) -> some View {
-        let isSelected = seats.count == count
-        Button { setSeatCount(count) } label: {
+        let isSelected = viewModel.seats.count == count
+        Button { viewModel.setSeatCount(count) } label: {
             Text("\(count) players")
                 .fontWeight(.semibold)
                 .frame(maxWidth: .infinity)
@@ -565,376 +556,11 @@ public struct LobbyView: View {
 
     private func nameBinding(for index: Int) -> Binding<String> {
         Binding(
-            get: { seats.indices.contains(index) ? seats[index].name : "" },
+            get: { viewModel.seats.indices.contains(index) ? viewModel.seats[index].name : "" },
             set: { newValue in
-                guard seats.indices.contains(index) else { return }
-                seats[index].name = newValue
+                viewModel.setSeatName(newValue, at: index)
             }
         )
-    }
-
-    private func setSeatCount(_ count: Int) {
-        seats = LobbySeat.resize(seats, to: count)
-    }
-
-    private func quickPlayVsBots() {
-        seats = LobbySeat.quickPlayVsBots()
-        startLocalTable()
-    }
-
-    private func watchBots() {
-        seats = LobbySeat.demoBots(count: 3)
-        startLocalTable(speedOverride: .instant)
-    }
-
-    private func startCloudflareOnlineRoom() {
-        guard seats.validationError == nil, !isOnlineRoomLoading else { return }
-        isOnlineRoomLoading = true
-        errorText = nil
-        let setup = onlineRoomSetup()
-        Task { @MainActor in
-            do {
-                let session = try await CloudflareOnlineGameSession.createRoom(
-                    peers: setup.peers,
-                    localPlayerID: setup.localPlayer,
-                    rules: setup.rules
-                )
-                await session.start()
-                cloudOnlineSession = session
-                onlineJoinRoomCode = session.roomCode
-            } catch {
-                errorText = error.localizedDescription
-            }
-            isOnlineRoomLoading = false
-        }
-    }
-
-    private func joinCloudflareOnlineRoom() {
-        guard !isOnlineRoomLoading,
-              let roomCode = PreferansInviteLink.normalizedRoomCode(onlineJoinRoomCode) else {
-            return
-        }
-        isOnlineRoomLoading = true
-        errorText = nil
-        let setup = onlineRoomSetup()
-        guard let localPeer = setup.peers.first(where: { $0.playerID == setup.localPlayer }) else {
-            errorText = "Selected seat is not available."
-            isOnlineRoomLoading = false
-            return
-        }
-        Task { @MainActor in
-            do {
-                let session = try await CloudflareOnlineGameSession.joinRoom(
-                    roomCode: roomCode,
-                    localPeer: localPeer,
-                    rules: setup.rules
-                )
-                await session.start()
-                cloudOnlineSession = session
-                onlineJoinRoomCode = session.roomCode
-            } catch {
-                errorText = error.localizedDescription
-            }
-            isOnlineRoomLoading = false
-        }
-    }
-
-    private func startInMemoryOnlineRoom() {
-        guard seats.validationError == nil else { return }
-        do {
-            let setup = onlineRoomSetup()
-            let automatedPlayers = Set(setup.peers.map(\.playerID).filter { $0 != setup.localPlayer })
-            let session = try InMemoryOnlineGameSession(
-                roomCode: makeRoomCode(),
-                peers: setup.peers,
-                localPlayerID: setup.localPlayer,
-                hostPlayerID: setup.peers.first?.playerID,
-                automatedPlayerIDs: automatedPlayers,
-                dealSource: setup.dealSource,
-                botDelay: TestHarness.fastBotDelay(in: ProcessInfo.processInfo.arguments) ? BotPacing.testFast : botSpeed.delay
-            )
-            Task { @MainActor in
-                do {
-                    try await session.start(rules: setup.rules)
-                    onlineSession = session
-                    errorText = nil
-                } catch {
-                    session.stop()
-                    errorText = error.localizedDescription
-                }
-            }
-        } catch {
-            errorText = error.localizedDescription
-        }
-    }
-
-    private func leaveOnlineRoom() {
-        onlineSession?.stop()
-        onlineSession = nil
-        cloudOnlineSession?.stop()
-        cloudOnlineSession = nil
-    }
-
-    private func handleInviteURL(_ url: URL) {
-        guard let roomCode = PreferansInviteLink.roomCode(from: url) else { return }
-        onlineJoinRoomCode = roomCode
-        errorText = "Invite \(roomCode) is ready. Choose your seat and join the table."
-    }
-
-    private func onlineRoomSetup() -> (
-        peers: [OnlinePeer],
-        localPlayer: PlayerID,
-        rules: PreferansRules,
-        dealSource: DealSource
-    ) {
-        let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
-        let defaultDealer = lobbyPlayers.last
-        let args = ProcessInfo.processInfo.arguments
-        let configuration = TestHarness.resolveConfiguration(
-            from: args,
-            defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
-        )
-        let players = configuration.players
-        let selectedIndex = min(onlineSeatIndex, max(0, players.count - 1))
-        let localPlayer = players[selectedIndex]
-        let account = normalizedOnlineAccount(for: localPlayer)
-        let peers = players.enumerated().map { index, player in
-            OnlinePeer(
-                playerID: player,
-                accountID: index == selectedIndex ? account.id : "pending:\(player.rawValue)",
-                provider: index == selectedIndex ? account.provider : .dev,
-                displayName: player.rawValue
-            )
-        }
-        return (peers, localPlayer, configuration.rules, configuration.dealSource)
-    }
-
-    private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
-        let trimmed = onlineAccountEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            return (.dev, "dev:\(player.rawValue.lowercased())@example.test")
-        }
-        if trimmed.hasPrefix("dev:") {
-            return (.dev, trimmed)
-        }
-        return (.email, "email:\(trimmed.lowercased())")
-    }
-
-    private func makeRoomCode() -> String {
-        String(UUID().uuidString.prefix(6))
-    }
-
-    /// `speedOverride` lets the watch-bots demo run instantly without
-    /// stomping the lobby's `botSpeed` picker — otherwise the .instant
-    /// setting would leak into the next "Sit down" and silently zero
-    /// the bot delay for normal play.
-    private func startLocalTable(speedOverride: BotMoveSpeed? = nil) {
-        guard seats.validationError == nil else { return }
-        do {
-            let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
-            // First dealer = last seat so the first seat (the human) is
-            // forehand (first to bid) on deal 1. In 4-player this also keeps
-            // the human player active during the very first hand instead of
-            // sitting out.
-            let defaultDealer = lobbyPlayers.last
-            let args = ProcessInfo.processInfo.arguments
-            let configuration = TestHarness.resolveConfiguration(
-                from: args,
-                defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
-            )
-
-            // Viewer policy: always pin. There is no hot-seat mode — every
-            // production roster (1 human + bots, or all-bots watch demo) gets
-            // a fixed perspective so the device never reveals a bot's hand by
-            // rotating the viewer onto its seat. UI tests can still force
-            // `.followsActor` via the launch flag.
-            let viewerPolicy = configuration.viewerPolicyOverride
-                ?? defaultViewerPolicy(for: configuration.players)
-
-            let model = try GameViewModel(
-                players: configuration.players,
-                rules: configuration.rules,
-                match: configuration.match,
-                firstDealer: configuration.firstDealer,
-                viewerPolicy: viewerPolicy,
-                dealSource: configuration.dealSource
-            )
-            // Bot wiring is a property of the lobby's roster — when the
-            // user explicitly toggled a seat to "bot", the engine should
-            // play that seat autonomously. A script-driven UI test that
-            // overrides the roster wholesale (different player IDs and
-            // possibly a different seat count) is asking to drive every
-            // seat itself; we don't impose the lobby's bot toggles on
-            // a roster the user never actually saw.
-            if configuration.players.elementsEqual(lobbyPlayers) {
-                let strategy = HeuristicStrategy()
-                for (index, seat) in configuration.players.enumerated()
-                    where seats.indices.contains(index) && seats[index].kind == .bot {
-                    model.botStrategies[seat] = strategy
-                }
-            }
-            // Bot pacing follows the lobby's Bot speed picker. Automated
-            // UI tests pass `-uiTestFastBotDelay` to short-circuit it
-            // (`BotPacing.testFast`); manual `bin/sim` runs and shipping
-            // builds never see that path. The animations flag deliberately
-            // doesn't zero pacing — an interactive sim run with animations
-            // off should still take turns at human speed.
-            if TestHarness.fastBotDelay(in: args) {
-                model.botMoveDelay = BotPacing.testFast
-            } else {
-                model.botMoveDelay = (speedOverride ?? botSpeed).delay
-            }
-            // No-human runs and UI tests skip the tap-to-advance gate.
-            let hasHumanSeat = seats.contains { $0.kind == .human }
-            if TestHarness.skipTapToAdvance(in: args) || !hasHumanSeat {
-                model.tapToAdvanceEnabled = false
-            }
-            localModel = model
-            errorText = nil
-        } catch {
-            errorText = error.localizedDescription
-        }
-    }
-
-    /// Default viewer policy when a UI test hasn't forced an override.
-    /// Always pinned to the first seat. Local play has the human at seat 0;
-    /// the watch-bots demo has bots in every seat and the user just spectates
-    /// from seat 0's perspective. There is no pass-the-device mode.
-    private func defaultViewerPolicy(for players: [PlayerID]) -> ViewerPolicy {
-        .pinned(players.first ?? PlayerID("player"))
-    }
-}
-
-public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
-    case instant
-    case normal
-    case slow
-
-    public var id: String { rawValue }
-
-    var label: LocalizedStringKey {
-        switch self {
-        case .instant: return "Instant"
-        case .normal:  return "Normal"
-        case .slow:    return "Slow"
-        }
-    }
-
-    public var delay: Duration {
-        switch self {
-        case .instant: return BotPacing.instant
-        case .normal:  return .milliseconds(1200)
-        case .slow:    return .milliseconds(2200)
-        }
-    }
-}
-
-/// Single seat in the lobby's local-table roster. Folds the seat's
-/// human/bot kind into the same struct as its name so the two can never
-/// drift — a previous bug where a bot-seat index pointed at a non-existent
-/// row, or where growing the table silently created a *human* seat, is
-/// not representable in this model.
-public struct LobbySeat: Identifiable, Equatable {
-    public enum Kind: Equatable { case human, bot }
-
-    public let id: UUID
-    public var name: String
-    public var kind: Kind
-
-    public init(id: UUID = UUID(), name: String, kind: Kind) {
-        self.id = id
-        self.name = name
-        self.kind = kind
-    }
-
-    public var trimmedName: String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}
-
-extension LobbySeat {
-    /// Stock seat names used for fresh rosters. Matrix characters — the
-    /// "you" pill on the viewer's seat already marks which one is the human,
-    /// so seat 0 carries a real name (Neo) instead of literally "You".
-    static let defaultNames = ["Neo", "Morpheus", "Trinity", "Agent Smith"]
-
-    /// Default fresh roster for the given seat count. Seat 0 is the local
-    /// human, every other seat starts as a bot — that matches the
-    /// "play vs bots" experience users land on by default.
-    static func defaults(count: Int) -> [LobbySeat] {
-        precondition(count >= 3 && count <= 4, "Preferans only supports 3- or 4-player tables.")
-        return (0..<count).map { index in
-            LobbySeat(
-                name: defaultNames[index],
-                kind: index == 0 ? .human : .bot
-            )
-        }
-    }
-
-    /// Roster used by the Quick-play CTA. Always 3 seats, 1 human + 2 bots.
-    static func quickPlayVsBots() -> [LobbySeat] {
-        defaults(count: 3)
-    }
-
-    /// All-bot roster for a spectator/demo table. The lobby bypasses the
-    /// normal "one human" validation only for this explicit preset.
-    static func demoBots(count: Int) -> [LobbySeat] {
-        defaults(count: count).map { seat in
-            LobbySeat(id: seat.id, name: seat.name, kind: .bot)
-        }
-    }
-
-    /// Resize an existing roster to `count` seats while keeping existing
-    /// rows intact (preserving any user edits to names / bot toggles).
-    /// Newly-added seats default to bot, matching the bot-by-default
-    /// roster used by `defaults`.
-    static func resize(_ existing: [LobbySeat], to count: Int) -> [LobbySeat] {
-        precondition(count >= 3 && count <= 4, "Preferans only supports 3- or 4-player tables.")
-        if existing.count == count { return existing }
-        if count < existing.count {
-            return Array(existing.prefix(count))
-        }
-        var resized = existing
-        for index in existing.count..<count {
-            resized.append(LobbySeat(
-                name: defaultNames[index],
-                kind: .bot
-            ))
-        }
-        return resized
-    }
-}
-
-extension Array where Element == LobbySeat {
-    /// One-line caption for the lobby (e.g. "1 human · 2 bots"). The two
-    /// halves are localized independently (so each language gets its own
-    /// plural rules) and joined with a language-neutral middot separator.
-    var rosterSummary: String {
-        let bots = filter { $0.kind == .bot }.count
-        let humans = count - bots
-        let humanLabel: String = humans == 1
-            ? String(localized: "1 human")
-            : String(localized: "\(humans) humans")
-        let botLabel: String = bots == 1
-            ? String(localized: "1 bot")
-            : String(localized: "\(bots) bots")
-        return "\(humanLabel) · \(botLabel)"
-    }
-
-    /// Why this roster can't start a table, or `nil` when it's ready.
-    /// Drives the inline validation message and disables the Start button.
-    /// The seat kinds are locked by the lobby's factory methods (seat 0 is
-    /// always human for "Sit down", every seat is bot for "Watch bots"), so
-    /// only the user-editable name fields need validating.
-    var validationError: String? {
-        let names = map(\.trimmedName)
-        if names.contains(where: \.isEmpty) {
-            return String(localized: "Every seat needs a name.")
-        }
-        if Set(names).count != names.count {
-            return String(localized: "Names must be unique.")
-        }
-        return nil
     }
 }
 
