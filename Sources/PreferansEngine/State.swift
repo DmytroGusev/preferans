@@ -369,19 +369,25 @@ public struct DealResult: Equatable, Codable, Sendable {
     public let trickCounts: [PlayerID: Int]
     public let completedTricks: [Trick]
     public let scoreDelta: ScoreDelta
+    /// Each active player's original 10-card hand, before any prikup
+    /// exchange, discard, or trick play. Older archived results may omit
+    /// this payload, so consumers should treat `nil` as unavailable.
+    public let initialHands: [PlayerID: [Card]]?
 
     public init(
         kind: DealResultKind,
         activePlayers: [PlayerID],
         trickCounts: [PlayerID: Int],
         completedTricks: [Trick],
-        scoreDelta: ScoreDelta
+        scoreDelta: ScoreDelta,
+        initialHands: [PlayerID: [Card]]? = nil
     ) {
         self.kind = kind
         self.activePlayers = activePlayers
         self.trickCounts = trickCounts
         self.completedTricks = completedTricks
         self.scoreDelta = scoreDelta
+        self.initialHands = initialHands
     }
 
     /// Result for a deal that ended before any card was played — `passedOut`
@@ -390,14 +396,16 @@ public struct DealResult: Equatable, Codable, Sendable {
     static func unplayed(
         kind: DealResultKind,
         activePlayers: [PlayerID],
-        scoreDelta: ScoreDelta
+        scoreDelta: ScoreDelta,
+        initialHands: [PlayerID: [Card]]? = nil
     ) -> DealResult {
         DealResult(
             kind: kind,
             activePlayers: activePlayers,
             trickCounts: activePlayers.dictionary(filledWith: 0),
             completedTricks: [],
-            scoreDelta: scoreDelta
+            scoreDelta: scoreDelta,
+            initialHands: initialHands
         )
     }
 }

@@ -46,6 +46,7 @@ public struct TableView: View {
     public var idleHintActive: Bool
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
+    @State private var showInitialHands = false
 
     public init(
         projection: PlayerGameProjection,
@@ -514,6 +515,9 @@ public struct TableView: View {
                     .accessibilityHidden(true)
             }
             trickTallyGrid(result: result)
+            if let initialHands = result.initialHands, !initialHands.isEmpty {
+                openingHandsDisclosure(hands: initialHands, activePlayers: result.activePlayers)
+            }
             if let onAdvance, projection.legal.canStartDeal {
                 Button {
                     onAdvance()
@@ -534,6 +538,75 @@ public struct TableView: View {
         .background(dealSummaryBackground)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    private func openingHandsDisclosure(
+        hands: [PlayerID: [Card]],
+        activePlayers: [PlayerID]
+    ) -> some View {
+        VStack(spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    showInitialHands.toggle()
+                }
+            } label: {
+                Label(
+                    showInitialHands ? "Hide opening hands" : "Show opening hands",
+                    systemImage: showInitialHands ? "eye.slash.fill" : "eye.fill"
+                )
+                .font(.caption.weight(.semibold))
+                .frame(maxWidth: 220)
+            }
+            .buttonStyle(.feltSecondary)
+            .accessibilityIdentifier("dealResult.initialHands.toggle")
+
+            if showInitialHands {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(activePlayers, id: \.self) { player in
+                            openingHandRow(player: player, cards: hands[player] ?? [])
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                .frame(maxHeight: 250)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private func openingHandRow(player: PlayerID, cards: [Card]) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(projection.displayName(for: player))
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(player == projection.viewer ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(openingHandRows(cards).enumerated()), id: \.offset) { _, row in
+                    HStack(spacing: 4) {
+                        ForEach(row, id: \.self) { card in
+                            CardView(
+                                card: .known(card),
+                                size: .compact,
+                                region: .hand(seat: player)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("dealResult.initialHand.\(player.rawValue)")
+    }
+
+    private func openingHandRows(_ cards: [Card]) -> [[Card]] {
+        let sorted = cards.sorted()
+        guard sorted.count > 5 else { return [sorted] }
+        return [
+            Array(sorted.prefix(5)),
+            Array(sorted.dropFirst(5))
+        ]
     }
 
     private var dealSummaryBackground: some View {

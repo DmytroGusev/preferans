@@ -718,7 +718,8 @@ public struct PreferansEngine: Sendable {
         return finalize(.unplayed(
             kind: .passedOut,
             activePlayers: whist.activePlayers,
-            scoreDelta: delta
+            scoreDelta: delta,
+            initialHands: openingHands(from: whist)
         ))
     }
 
@@ -733,7 +734,8 @@ public struct PreferansEngine: Sendable {
         return finalize(.unplayed(
             kind: .halfWhist(declarer: whist.declarer, contract: whist.contract, halfWhister: halfWhister),
             activePlayers: whist.activePlayers,
-            scoreDelta: delta
+            scoreDelta: delta,
+            initialHands: openingHands(from: whist)
         ))
     }
 
@@ -905,7 +907,8 @@ public struct PreferansEngine: Sendable {
             activePlayers: playing.activePlayers,
             trickCounts: playing.trickCounts,
             completedTricks: playing.completedTricks,
-            scoreDelta: delta
+            scoreDelta: delta,
+            initialHands: openingHands(from: playing)
         )
     }
 
@@ -955,7 +958,8 @@ public struct PreferansEngine: Sendable {
             activePlayers: playing.activePlayers,
             trickCounts: playing.trickCounts,
             completedTricks: playing.completedTricks,
-            scoreDelta: delta
+            scoreDelta: delta,
+            initialHands: openingHands(from: playing)
         )
     }
 
@@ -1150,7 +1154,75 @@ public struct PreferansEngine: Sendable {
             activePlayers: playing.activePlayers,
             trickCounts: playing.trickCounts,
             completedTricks: playing.completedTricks,
-            scoreDelta: delta
+            scoreDelta: delta,
+            initialHands: openingHands(from: playing)
         )
+    }
+
+    private func openingHands(from whist: WhistState) -> [PlayerID: [Card]] {
+        var hands = whist.hands
+        restoreDeclarerOpeningHand(
+            declarer: whist.declarer,
+            talon: whist.talon,
+            discard: whist.discard,
+            hands: &hands
+        )
+        return sortedHands(hands, activePlayers: whist.activePlayers)
+    }
+
+    private func openingHands(from playing: PlayingState) -> [PlayerID: [Card]] {
+        var hands = playing.activePlayers.dictionary(filledWith: [Card]())
+        for trick in playing.completedTricks {
+            for play in trick.plays {
+                hands[play.player, default: []].append(play.card)
+            }
+        }
+        for play in playing.currentTrick {
+            hands[play.player, default: []].append(play.card)
+        }
+        for player in playing.activePlayers {
+            hands[player, default: []].append(contentsOf: playing.hands[player] ?? [])
+        }
+
+        switch playing.kind {
+        case let .game(context):
+            restoreDeclarerOpeningHand(
+                declarer: context.declarer,
+                talon: playing.talon,
+                discard: playing.discard,
+                hands: &hands
+            )
+        case let .misere(context):
+            restoreDeclarerOpeningHand(
+                declarer: context.declarer,
+                talon: playing.talon,
+                discard: playing.discard,
+                hands: &hands
+            )
+        case .allPass:
+            break
+        }
+
+        return sortedHands(hands, activePlayers: playing.activePlayers)
+    }
+
+    private func restoreDeclarerOpeningHand(
+        declarer: PlayerID,
+        talon: [Card],
+        discard: [Card],
+        hands: inout [PlayerID: [Card]]
+    ) {
+        hands[declarer, default: []].append(contentsOf: discard)
+        for card in talon {
+            if let index = hands[declarer]?.firstIndex(of: card) {
+                hands[declarer]?.remove(at: index)
+            }
+        }
+    }
+
+    private func sortedHands(_ hands: [PlayerID: [Card]], activePlayers: [PlayerID]) -> [PlayerID: [Card]] {
+        Dictionary(uniqueKeysWithValues: activePlayers.map { player in
+            (player, (hands[player] ?? []).sorted())
+        })
     }
 }

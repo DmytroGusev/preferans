@@ -45,6 +45,7 @@ final class PreferansEngineTests: XCTestCase {
     func testHalfWhistRequiresFirstDefenderSecondChanceAndScores() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)
+        let initialHands = try initialHands(in: engine)
 
         _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.clubs))))))
         _ = try engine.apply(.bid(player: "south", call: .pass))
@@ -76,6 +77,32 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertTrue(events.contains { if case .dealScored = $0 { return true }; return false })
         XCTAssertEqual(engine.score.pool["east"], 2)
         XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 4)
+        XCTAssertEqual(result.initialHands, initialHands)
+    }
+
+    func testDealResultKeepsOpeningHandsAfterDeclarerKeepsPrikupCards() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+        let initialHands = try initialHands(in: engine)
+
+        try EngineTestDriver.driveAuctionWinning(
+            engine: &engine,
+            declarer: "east",
+            bid: .game(GameContract(6, .suit(.clubs)))
+        )
+        guard case let .awaitingDiscard(exchange) = engine.state,
+              let eastHand = exchange.hands["east"] else {
+            return XCTFail("Expected east to choose discards.")
+        }
+        _ = try engine.apply(.discard(player: "east", cards: Array(eastHand.prefix(2))))
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(6, .suit(.clubs))))
+        try EngineTestDriver.forceWhist(engine: &engine)
+        try EngineTestDriver.playOut(engine: &engine, policy: .lowestLegal)
+
+        guard case let .dealFinished(result) = engine.state else {
+            return XCTFail("Expected scored deal; got \(engine.state.description).")
+        }
+        XCTAssertEqual(result.initialHands, initialHands)
     }
 
     func testStalingradSixSpadesForcesClosedWhistFromBothDefenders() throws {
@@ -123,5 +150,12 @@ final class PreferansEngineTests: XCTestCase {
         let action = PreferansAction.bid(player: "east", call: .pass)
         let encodedAction = try JSONEncoder().encode(action)
         XCTAssertEqual(try JSONDecoder().decode(PreferansAction.self, from: encodedAction), action)
+    }
+
+    private func initialHands(in engine: PreferansEngine) throws -> [PlayerID: [Card]] {
+        guard case let .bidding(bidding) = engine.state else {
+            throw EngineTestError("Expected bidding state; got \(engine.state.description).")
+        }
+        return bidding.hands.mapValues { $0.sorted() }
     }
 }
