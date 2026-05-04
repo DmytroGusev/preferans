@@ -101,6 +101,39 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertEqual(fixture.coordinators[bidder]?.projection?.sequence, sequence)
     }
 
+    func testHostPersistsThroughArchiveStoreProtocol() async throws {
+        let archiveStore = FakeGameArchiveStore()
+        let fixture = try await makeFixture(hostArchiveStore: archiveStore)
+        let hostCoordinator = try XCTUnwrap(fixture.coordinators["north"])
+        let tableID = try XCTUnwrap(hostCoordinator.tableID)
+
+        let initialSummary = await archiveStore.savedSummary(tableID: tableID)
+        XCTAssertEqual(initialSummary?.lastSequence, 0)
+        let initialPublicProjection = await archiveStore.latestPublicProjection(tableID: tableID)
+        XCTAssertNotNil(initialPublicProjection)
+
+        hostCoordinator.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { fixture.allProjectionsAre(at: 1) })
+
+        for _ in 0..<50 {
+            let actions = await archiveStore.savedActions(tableID: tableID)
+            let snapshot = await archiveStore.savedSnapshot(tableID: tableID)
+            if actions.count == 1, snapshot?.sequence == 1 { break }
+            await Task.yield()
+        }
+
+        let actions = await archiveStore.savedActions(tableID: tableID)
+        XCTAssertEqual(actions.map(\.sequence), [1])
+        XCTAssertEqual(actions.first?.actor, "north")
+
+        let savedSnapshot = await archiveStore.savedSnapshot(tableID: tableID)
+        let snapshot = try XCTUnwrap(savedSnapshot)
+        XCTAssertEqual(snapshot.sequence, 1)
+
+        let updatedSummary = await archiveStore.savedSummary(tableID: tableID)
+        XCTAssertEqual(updatedSummary?.lastSequence, 1)
+    }
+
     func testInMemorySessionAutomatesRemotePeersThroughRoomTransport() async throws {
         let session = try InMemoryOnlineGameSession(
             peers: peers,
@@ -132,15 +165,19 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         )
     }
 
-    private func makeFixture() async throws -> RoomFixture {
+    private func makeFixture(hostArchiveStore: (any GameArchiveStore)? = nil) async throws -> RoomFixture {
         let room = InMemoryRoom(peers: peers, hostPlayerID: "north")
         let transports = try Dictionary(uniqueKeysWithValues: peers.map { peer in
             (peer.playerID, try room.transport(for: peer.playerID))
         })
-        let coordinators = Dictionary(uniqueKeysWithValues: peers.map { peer in
-            (
+        let coordinators: [PlayerID: RoomOnlineGameCoordinator] = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            let archiveStore: (any GameArchiveStore)? = peer.playerID == "north" ? hostArchiveStore : nil
+            return (
                 peer.playerID,
-                RoomOnlineGameCoordinator(dealSource: ScriptedDealSource(decks: [Deck.standard32]))
+                RoomOnlineGameCoordinator(
+                    cloudStore: archiveStore,
+                    dealSource: ScriptedDealSource(decks: [Deck.standard32])
+                )
             )
         })
 

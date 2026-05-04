@@ -29,9 +29,9 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
     private var playersBySeat: [PlayerID: GKPlayer] = [:]
     private var seats: [PlayerIdentity] = []
     private var rules: PreferansRules = .sochi
-    private let cloudStore: CloudKitGameArchiveStore?
+    private let cloudStore: (any GameArchiveStore)?
 
-    public init(cloudStore: CloudKitGameArchiveStore? = defaultCloudStore()) {
+    public init(cloudStore: (any GameArchiveStore)? = defaultCloudStore()) {
         self.cloudStore = cloudStore
     }
 
@@ -297,7 +297,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
             lastSequence: update.sequence
         )
         do {
-            _ = try await cloudStore.saveTableSummary(summary, latestPublicProjection: projection)
+            try await cloudStore.upsertTableSummary(summary, latestPublicProjection: projection)
         } catch {
             errorText = String(localized: "CloudKit table save failed: \(error.localizedDescription)")
         }
@@ -320,7 +320,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
                     rules: rules,
                     lastSequence: update.sequence
                 )
-                _ = try await cloudStore.saveTableSummary(summary, latestPublicProjection: localProjection)
+                try await cloudStore.upsertTableSummary(summary, latestPublicProjection: localProjection)
             }
 
             if case let .dealFinished(result) = update.snapshot.state {
@@ -379,7 +379,7 @@ public final class HostedOnlineGameCoordinator: ObservableObject {
     }
 }
 
-public func defaultCloudStore() -> CloudKitGameArchiveStore? {
+public func defaultCloudStore() -> (any GameArchiveStore)? {
     #if canImport(CloudKit)
     guard AppIdentifiers.cloudKitContainer != "iCloud.com.example.preferans" else {
         return nil

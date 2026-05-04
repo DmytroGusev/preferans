@@ -80,11 +80,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var peersBySeat: [PlayerID: OnlinePeer] = [:]
     private var seats: [PlayerIdentity] = []
     private var rules: PreferansRules = .sochi
-    private let cloudStore: CloudKitGameArchiveStore?
+    private let cloudStore: (any GameArchiveStore)?
     private let dealSource: DealSource
 
     public init(
-        cloudStore: CloudKitGameArchiveStore? = nil,
+        cloudStore: (any GameArchiveStore)? = nil,
         dealSource: DealSource = RandomDealSource()
     ) {
         self.cloudStore = cloudStore
@@ -345,7 +345,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             lastSequence: update.sequence
         )
         do {
-            _ = try await cloudStore.saveTableSummary(summary, latestPublicProjection: projection)
+            try await cloudStore.upsertTableSummary(summary, latestPublicProjection: projection)
         } catch {
             errorText = String(localized: "CloudKit table save failed: \(error.localizedDescription)")
         }
@@ -368,7 +368,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     rules: rules,
                     lastSequence: update.sequence
                 )
-                _ = try await cloudStore.saveTableSummary(summary, latestPublicProjection: localProjection)
+                try await cloudStore.upsertTableSummary(summary, latestPublicProjection: localProjection)
             }
 
             if case let .dealFinished(result) = update.snapshot.state {
