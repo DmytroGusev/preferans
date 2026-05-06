@@ -8,6 +8,22 @@ final class RedesignScreenshotTests: XCTestCase {
         continueAfterFailure = true
     }
 
+    /// Resolve the on-disk dump location for a screenshot bucket. Honors
+    /// `PREFERANS_SCREEN_DIR` from the environment when set (bin/screens
+    /// can point this at the repo's `build/` tree); otherwise falls back
+    /// to a temp directory so the test still works on a fresh checkout
+    /// where `/Users/sol/...` doesn't exist.
+    private func screenDir(_ bucket: String) -> URL {
+        let root: URL
+        if let override = ProcessInfo.processInfo.environment["PREFERANS_SCREEN_DIR"], !override.isEmpty {
+            root = URL(fileURLWithPath: override, isDirectory: true)
+        } else {
+            root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                .appendingPathComponent("preferans-screens", isDirectory: true)
+        }
+        return root.appendingPathComponent(bucket, isDirectory: true)
+    }
+
     /// Drives the lobby -> waiting-for-deal -> bidding -> talon-exchange flow,
     /// snapshotting at each state so a human can eyeball the felt redesign.
     func testCaptureRedesignScreens() {
@@ -47,9 +63,10 @@ final class RedesignScreenshotTests: XCTestCase {
 
     /// Drives the lobby's Quick-play CTA, then plays "You" through one full
     /// deal against two bots (pass on bid/whist, play any legal card),
-    /// screenshotting every phase to /Users/sol/projects/preferans/build/screens.
+    /// screenshotting every phase. PNGs land in `$PREFERANS_SCREEN_DIR/screens`
+    /// when set, otherwise under the temp directory.
     func testHumanVsBotsPlaythrough() {
-        let screenDir = URL(fileURLWithPath: "/Users/sol/projects/preferans/build/screens")
+        let screenDir = screenDir("screens")
         func sanitize(_ s: String) -> String {
             String(s.replacingOccurrences(of: " ", with: "_")
                 .replacingOccurrences(of: ":", with: "")
@@ -104,7 +121,7 @@ final class RedesignScreenshotTests: XCTestCase {
     /// enough to verify corner positions, outline closure, and that the
     /// top/bottom cards don't collide at the sidebar/sheet widths.
     func testCaptureFourPlayerPulkaDiagram() {
-        let screenDir = URL(fileURLWithPath: "/Users/sol/projects/preferans/build/screens-pulka")
+        let screenDir = screenDir("screens-pulka")
         try? FileManager.default.removeItem(at: screenDir)
 
         let app = XCUIApplication()
@@ -148,7 +165,7 @@ final class RedesignScreenshotTests: XCTestCase {
     /// Screenshots only on phase transitions + every deal-finished panel,
     /// so the artifact is one page per phase, not one per tick.
     func testHumanVsBotsFullMatchFourPlayersPoolSix() {
-        let screenDir = URL(fileURLWithPath: "/Users/sol/projects/preferans/build/screens-match")
+        let screenDir = screenDir("screens-match")
         try? FileManager.default.removeItem(at: screenDir)
 
         let app = XCUIApplication()

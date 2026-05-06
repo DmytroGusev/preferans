@@ -54,6 +54,11 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
 fi
 
 echo "[screens] running RedesignScreenshotTests on $DEST_NAME"
+# Tell the playthrough tests where to dump their secondary PNG bucket.
+# Without this they fall back to NSTemporaryDirectory, which works but
+# isn't where you'd look. xcodebuild forwards parent env vars to the
+# test runner, so the tests pick this up via ProcessInfo.
+export PREFERANS_SCREEN_DIR="$(pwd)/build"
 set +e
 preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED" \
   -only-testing:PreferansUITests/RedesignScreenshotTests \
