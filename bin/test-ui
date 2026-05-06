@@ -17,6 +17,11 @@
 #
 # Pass-through: any extra args go to xcodebuild verbatim, so you can scope
 # to a single test class or method via `-only-testing:`.
+#
+# `RedesignScreenshotTests` is skipped on the default scope — it captures
+# PNGs for design review and is noisy in CI. Run those via `bin/screens`,
+# or pass `-only-testing:PreferansUITests/RedesignScreenshotTests` here
+# to opt in explicitly.
 
 set -euo pipefail
 
@@ -50,6 +55,12 @@ fi
 
 # `-only-testing:PreferansUITests` is the default scope so plain
 # `bin/test-ui` runs the UI bundle and not the engine target.
+#
+# RedesignScreenshotTests is excluded by default — it captures PNGs for
+# human design review, not regression assertion, and its longer
+# playthroughs would dominate the CI signal. Run via `bin/screens` (or
+# pass `-only-testing:PreferansUITests/RedesignScreenshotTests` to opt
+# in explicitly).
 SCOPE_ARGS=()
 HAS_ONLY_TESTING=0
 if [[ ${#PASSTHRU[@]} -gt 0 ]]; then
@@ -61,7 +72,10 @@ if [[ ${#PASSTHRU[@]} -gt 0 ]]; then
   done
 fi
 if [[ "$HAS_ONLY_TESTING" -eq 0 ]]; then
-  SCOPE_ARGS+=("-only-testing:PreferansUITests")
+  SCOPE_ARGS+=(
+    "-only-testing:PreferansUITests"
+    "-skip-testing:PreferansUITests/RedesignScreenshotTests"
+  )
 fi
 TEST_ARGS=()
 if [[ ${#SCOPE_ARGS[@]} -gt 0 ]]; then
