@@ -3,7 +3,7 @@ import XCTest
 @testable import PreferansEngine
 
 @MainActor
-final class GameViewModelDealSourceTests: XCTestCase {
+final class GameViewModelDealSourceTests: AppTestCase {
     /// Anchors the deal so `activePlayers[0]` is `north` and the deck is the
     /// sorted standard deck. With `firstDealer = "south"` and 3 players, the
     /// rotation produces `activePlayers = [north, east, south]`, so the first

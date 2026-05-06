@@ -1,9 +1,11 @@
+import Clocks
+import Dependencies
 import XCTest
 @testable import PreferansApp
 @testable import PreferansEngine
 
 @MainActor
-final class GameViewModelTapAdvanceTests: XCTestCase {
+final class GameViewModelTapAdvanceTests: AppTestCase {
     private static let sixSpades = ContractBid.game(GameContract(6, .suit(.spades)))
 
     private func makeModel() throws -> GameViewModel {
@@ -118,6 +120,36 @@ final class GameViewModelTapAdvanceTests: XCTestCase {
         XCTAssertNotNil(model.pendingAdvance)
         XCTAssertTrue(model.idleHintActive,
                       "with a zero idle delay the prominent hint should already be up")
+    }
+
+    func testIdleHintFiresAfterDelayElapsesOnTestClock() async throws {
+        // Verifies the time-driven escalation that the zero-delay shortcut
+        // above can't actually exercise. With a `TestClock` we can advance
+        // virtual time deterministically and observe the published flag flip.
+        let testClock = TestClock()
+        let model = try withDependencies {
+            $0.continuousClock = testClock
+        } operation: {
+            let model = try makeModel()
+            model.idleHintDelay = .seconds(4)
+            driveToPlay(model)
+
+            model.send(.playCard(player: "north", card: Card(.spades, .ace)))
+            model.send(.playCard(player: "east", card: Card(.spades, .seven)))
+            model.send(.playCard(player: "south", card: Card(.clubs, .seven)))
+            return model
+        }
+
+        XCTAssertNotNil(model.pendingAdvance, "trick close should freeze the felt")
+        XCTAssertFalse(model.idleHintActive,
+                       "the prominent hint should not fire before the delay elapses")
+
+        await testClock.advance(by: .seconds(4))
+        // Yield once so the hint task's continuation runs to completion.
+        await Task.yield()
+
+        XCTAssertTrue(model.idleHintActive,
+                      "after the delay elapses on the test clock the hint should be up")
     }
 
     func testFreezeSuppressesPlayableCardsForViewer() throws {

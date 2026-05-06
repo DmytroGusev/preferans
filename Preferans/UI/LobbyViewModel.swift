@@ -1,3 +1,4 @@
+import Dependencies
 import SwiftUI
 import PreferansEngine
 
@@ -227,7 +228,8 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     private func makeRoomCode() -> String {
-        String(UUID().uuidString.prefix(6))
+        @Dependency(\.uuid) var uuid
+        return String(uuid().uuidString.prefix(6))
     }
 
     /// Default viewer policy when a UI test hasn't forced an override.

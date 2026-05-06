@@ -1,9 +1,11 @@
 import Combine
+import Dependencies
 import Foundation
 import PreferansEngine
 
 @MainActor
 public final class InMemoryOnlineGameSession: ObservableObject {
+    @Dependency(\.continuousClock) private var clock
     public let room: InMemoryRoom
     public let roomCode: String
     public let localPeer: OnlinePeer
@@ -119,9 +121,9 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         }
         pendingBotTasks[playerID]?.cancel()
         let delay = botDelay
-        pendingBotTasks[playerID] = Task { [weak coordinator] in
+        pendingBotTasks[playerID] = Task { [weak coordinator, clock] in
             if delay > .zero {
-                try? await Task.sleep(for: delay)
+                try? await clock.sleep(for: delay)
             }
             guard !Task.isCancelled else { return }
             await MainActor.run {

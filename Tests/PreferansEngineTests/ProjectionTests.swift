@@ -2,7 +2,7 @@ import XCTest
 @testable import PreferansApp
 import PreferansEngine
 
-final class ProjectionTests: XCTestCase {
+final class ProjectionTests: AppTestCase {
     func testBiddingProjectionDoesNotLeakOtherHandsOrTalon() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")

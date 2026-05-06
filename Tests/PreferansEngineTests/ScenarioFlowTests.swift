@@ -3,7 +3,7 @@ import XCTest
 @testable import PreferansEngine
 
 @MainActor
-final class ScenarioFlowTests: XCTestCase {
+final class ScenarioFlowTests: AppTestCase {
     // MARK: - Helpers
 
     private func makeModel(scenario: DealScenario) throws -> GameViewModel {

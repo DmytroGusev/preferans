@@ -11,6 +11,7 @@
 		57ACCE90BA16F946A4F7AF39 /* PlayerProjectionBuilder+Visibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A20DD5DCD2B0E3F8897CF17 /* PlayerProjectionBuilder+Visibility.swift */; };
 		5E490BED770B1DF621F6B33C /* ProjectionBuildFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */; };
 		629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */; };
+		B00000000000000000000DE1 /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000DE0 /* Dependencies */; };
 		82816EDA29C185CD55470F2D /* PlayerProjectionBuilder+Phase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */; };
 		99464642B7D8B18656ACE012 /* GameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */; };
 		A00000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* Assets.xcassets */; };
@@ -165,6 +166,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */,
+				B00000000000000000000DE1 /* Dependencies in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +301,7 @@
 			name = Preferans;
 			packageProductDependencies = (
 				278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */,
+				B00000000000000000000DE0 /* Dependencies */,
 			);
 			productName = Preferans;
 			productReference = A00000000000000000000010 /* Preferans.app */;
@@ -711,6 +714,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */;
 			productName = PreferansEngine;
+		};
+		B00000000000000000000DE0 /* Dependencies */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */;
+			productName = Dependencies;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,3 +1,4 @@
+import Dependencies
 import SwiftUI
 import PreferansEngine
 
@@ -82,8 +83,9 @@ public struct CenterActionBanner: View {
         current = next
         dismissTask?.cancel()
         let hold = holdDuration
-        dismissTask = Task { @MainActor in
-            try? await Task.sleep(for: hold)
+        @Dependency(\.continuousClock) var clock
+        dismissTask = Task { @MainActor [clock] in
+            try? await clock.sleep(for: hold)
             if Task.isCancelled { return }
             if current?.id == next.id {
                 withAnimation(.easeOut(duration: 0.32)) {

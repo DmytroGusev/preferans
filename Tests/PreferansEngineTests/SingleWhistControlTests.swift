@@ -8,7 +8,7 @@ import XCTest
 /// trick into their own hands even though scoring rolls those tricks into
 /// the whister anyway. The fix introduces a controlling-actor concept the
 /// engine, projection, and bot dispatcher all share.
-final class SingleWhistControlTests: XCTestCase {
+final class SingleWhistControlTests: AppTestCase {
     private let players: [PlayerID] = ["north", "east", "south"]
 
     // MARK: - Engine API

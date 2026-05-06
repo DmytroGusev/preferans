@@ -1,8 +1,11 @@
+import Dependencies
 import Foundation
 import PreferansEngine
 
 @MainActor
 public final class GameViewModel: ObservableObject {
+    @Dependency(\.continuousClock) private var clock
+    @Dependency(\.uuid) private var uuid
     @Published public private(set) var engine: PreferansEngine
     @Published public private(set) var lastError: String?
     /// Category of the most recent error, or `nil` when there was none.
@@ -20,7 +23,7 @@ public final class GameViewModel: ObservableObject {
     @Published public var selectedViewer: PlayerID
     public var viewerPolicy: ViewerPolicy
     public var dealSource: DealSource
-    public let tableID: UUID = UUID()
+    public let tableID: UUID
 
     /// Seats that play autonomously. Human seats are absent from the map.
     public var botStrategies: [PlayerID: PlayerStrategy] = [:]
@@ -63,10 +66,12 @@ public final class GameViewModel: ObservableObject {
         viewerPolicy: ViewerPolicy,
         dealSource: DealSource = RandomDealSource()
     ) throws {
+        @Dependency(\.uuid) var uuid
         self.engine = try PreferansEngine(players: players, rules: rules, match: match, firstDealer: firstDealer)
         self.viewerPolicy = viewerPolicy
         self.selectedViewer = viewerPolicy.initialViewer(among: players)
         self.dealSource = dealSource
+        self.tableID = uuid()
     }
 
     public func send(_ action: PreferansAction) {
@@ -130,8 +135,8 @@ public final class GameViewModel: ObservableObject {
             idleHintActive = true
             return
         }
-        idleHintTask = Task { [weak self] in
-            try? await Task.sleep(for: delay)
+        idleHintTask = Task { [weak self, clock] in
+            try? await clock.sleep(for: delay)
             guard !Task.isCancelled, let self else { return }
             await MainActor.run {
                 guard self.pendingAdvance != nil else { return }
@@ -335,9 +340,9 @@ public final class GameViewModel: ObservableObject {
         }
         let snap = engine.snapshot
         let delay = botMoveDelay
-        pendingBotTask = Task { [weak self] in
+        pendingBotTask = Task { [weak self, clock] in
             if delay > .zero {
-                try? await Task.sleep(for: delay)
+                try? await clock.sleep(for: delay)
             }
             if Task.isCancelled { return }
             guard let action = await strategy.decide(snapshot: snap, viewer: decider),

@@ -26,7 +26,10 @@ let package = Package(
         ),
         .target(
             name: "PreferansApp",
-            dependencies: ["PreferansEngine"],
+            dependencies: [
+                "PreferansEngine",
+                .product(name: "Dependencies", package: "swift-dependencies")
+            ],
             path: "Preferans",
             exclude: [
                 "Assets.xcassets",

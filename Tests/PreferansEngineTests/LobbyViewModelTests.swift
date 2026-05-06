@@ -3,7 +3,7 @@ import XCTest
 import PreferansEngine
 
 @MainActor
-final class LobbyViewModelTests: XCTestCase {
+final class LobbyViewModelTests: AppTestCase {
     func testSeatResizeClampsSelectedOnlineSeat() {
         let model = LobbyViewModel()
 
