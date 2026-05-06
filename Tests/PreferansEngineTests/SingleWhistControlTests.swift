@@ -66,9 +66,8 @@ final class SingleWhistControlTests: AppTestCase {
             return XCTFail("Expected south to be on lead with a card to play; got \(snapshotState.description).")
         }
 
-        let tableID = await host.tableID
         let envelope = ClientActionEnvelope(
-            tableID: tableID,
+            tableID: host.tableID,
             actor: "south",
             action: .playCard(player: "south", card: card),
             baseHostSequence: 0
@@ -88,9 +87,8 @@ final class SingleWhistControlTests: AppTestCase {
             return XCTFail("Expected south to be on lead.")
         }
 
-        let tableID = await host.tableID
         let envelope = ClientActionEnvelope(
-            tableID: tableID,
+            tableID: host.tableID,
             actor: "south",
             action: .playCard(player: "south", card: card),
             baseHostSequence: 0
