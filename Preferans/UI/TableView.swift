@@ -170,10 +170,11 @@ public struct TableView: View {
                 // upper third (y ≤ ~0.30) so the trick area can claim
                 // the lower two-thirds and stay optically centered for
                 // every seat configuration.
+                let playFrame = layout.playArea(for: active)
                 playArea(opponentSeats: active.map(\.player))
-                    .frame(width: layout.playAreaSize.width,
-                           height: layout.playAreaSize.height)
-                    .position(layout.playAreaPosition)
+                    .frame(width: playFrame.size.width,
+                           height: playFrame.size.height)
+                    .position(playFrame.position)
 
                 // Active opponent seats positioned around the felt edge.
                 ForEach(Array(layout.opponentSlots(opponents: active).enumerated()), id: \.offset) { _, slot in

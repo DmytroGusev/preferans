@@ -58,6 +58,14 @@ public struct OpponentSeatView: View {
         }
     }
 
+    /// True when at least one card in the seat's projected hand is
+    /// visible. Drives the "open" rendering mode — bigger cards, sorted
+    /// by suit, wider step — so face-up contracts (misère, open whist)
+    /// are actually readable.
+    private var isOpenHand: Bool {
+        seat.hand.contains { $0.knownCard != nil }
+    }
+
     /// Single-line chip for the 4-player sitting-out dealer. The full seat
     /// tile (name + action pill + face-down fan) wastes a slot's worth of
     /// real estate on a player who isn't dealing in this hand, so the
@@ -180,37 +188,61 @@ public struct OpponentSeatView: View {
         }
     }
 
-    /// Render one card back per card the opponent really holds, wrapping
-    /// to a second row once the hand is wider than `cardsPerRow`. Every
-    /// row is horizontal — even side seats — so cards never rotate
-    /// vertically into the trick area. The first row gets the leading
-    /// half; the second row stacks above it slightly inset so the fan
-    /// reads as a held hand rather than two separate piles.
+    /// Render the opponent's hand. Hidden hands get the compact face-down
+    /// pile (5 per row, tight overlap). Open hands — where the projection
+    /// has revealed at least one card (misère, open whist, etc.) — get a
+    /// bigger card size, suit-grouped rows, and a wider step so each
+    /// rank/pip is fully readable from the viewer's seat.
+    @ViewBuilder
     private var fan: some View {
+        if isOpenHand {
+            openFan
+        } else {
+            hiddenFan
+        }
+    }
+
+    private var hiddenFan: some View {
         let count = seat.hand.count
         let dims = CardView.Size.standard.dimensions
         let cardsPerRow = 5
         let rows = splitIntoRows(seat.hand, perRow: cardsPerRow)
         return VStack(spacing: -dims.height * 0.55) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                fanRow(cards: row, cardSize: dims)
+                fanRow(cards: row, size: .standard, stepFactor: 0.50)
             }
         }
-        .frame(height: count == 0 ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height))
+        .frame(height: count == 0 ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height, overlap: 0.55))
     }
 
-    /// One horizontal row. Cards overlap by ~50% so a 5-card row stays
-    /// narrow enough that three opponent fans fit on the upper third of
-    /// an iPhone width without collisions. Each card renders face-up or
-    /// face-down based on its `ProjectedCard` value, so open-whist hands
-    /// (and any other revealed opponent cards) show their actual faces.
-    private func fanRow(cards: [ProjectedCard], cardSize dims: CGSize) -> some View {
-        let step: CGFloat = -dims.width * 0.50
+    /// Suit-grouped face-up layout used when the projection has revealed
+    /// the hand. Each suit becomes its own row so the eye scans by colour
+    /// rather than by arbitrary 5+5 splits, the card size bumps up so the
+    /// rank font is legible from the viewer's seat, and the step widens
+    /// to ~32% reveal so every rank+pip is fully visible — not just the
+    /// top-left corner.
+    private var openFan: some View {
+        let dims = CardView.Size.large.dimensions
+        let rows = openHandRows(seat.hand)
+        return VStack(spacing: -dims.height * 0.55) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                fanRow(cards: row, size: .large, stepFactor: 0.32)
+            }
+        }
+        .frame(height: rows.isEmpty ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height, overlap: 0.55))
+    }
+
+    /// One horizontal row. `stepFactor` is the fraction of card width the
+    /// next card overlaps the previous — 0.50 keeps a face-down pile
+    /// compact, 0.32 leaves enough of each face card to read rank+pip.
+    private func fanRow(cards: [ProjectedCard], size: CardView.Size, stepFactor: CGFloat) -> some View {
+        let dims = size.dimensions
+        let step: CGFloat = -dims.width * stepFactor
         return HStack(spacing: step) {
             ForEach(Array(cards.enumerated()), id: \.offset) { index, card in
                 CardView(
                     card: card,
-                    size: .standard,
+                    size: size,
                     region: .hand(seat: seat.player),
                     indexInRow: index
                 )
@@ -230,10 +262,42 @@ public struct OpponentSeatView: View {
         return [top, bottom]
     }
 
-    private func rowsHeight(rowCount: Int, cardHeight: CGFloat) -> CGFloat {
+    /// Group revealed cards into rows, one per suit, sorted suit-major
+    /// then by rank ascending. Any unknown cards (rare — open contracts
+    /// usually reveal everything) ride along on a final row so the seat
+    /// still renders all `seat.hand.count` slots. Wide suits (>5 cards,
+    /// shouldn't happen in 32-card Preferans) wrap to keep each row
+    /// readable.
+    private func openHandRows(_ cards: [ProjectedCard]) -> [[ProjectedCard]] {
+        guard !cards.isEmpty else { return [] }
+        let known = cards.compactMap { $0.knownCard }.sorted()
+        let hidden = cards.filter { $0.knownCard == nil }
+        let bySuit = Dictionary(grouping: known, by: \.suit)
+        var rows: [[ProjectedCard]] = []
+        for suit in Suit.allCases {
+            guard let group = bySuit[suit], !group.isEmpty else { continue }
+            let projected = group.map { ProjectedCard.known($0) }
+            // Wrap a single suit row if it would be ridiculously wide.
+            // Standard Preferans deck has at most 8 of any suit, so this
+            // rarely fires — but the open-whist screenshots tests run on
+            // hand-crafted projections that may not respect the deck.
+            if projected.count <= 5 {
+                rows.append(projected)
+            } else {
+                rows.append(Array(projected.prefix(5)))
+                rows.append(Array(projected.suffix(projected.count - 5)))
+            }
+        }
+        if !hidden.isEmpty {
+            rows.append(hidden)
+        }
+        return rows
+    }
+
+    private func rowsHeight(rowCount: Int, cardHeight: CGFloat, overlap: CGFloat) -> CGFloat {
         guard rowCount > 0 else { return 0 }
-        // Each subsequent row contributes only the visible 45% slice
-        // (since the rows overlap by 55%).
-        return cardHeight + CGFloat(rowCount - 1) * cardHeight * 0.45
+        // Each subsequent row contributes only the visible (1 - overlap)
+        // slice on top of the first.
+        return cardHeight + CGFloat(rowCount - 1) * cardHeight * (1 - overlap)
     }
 }

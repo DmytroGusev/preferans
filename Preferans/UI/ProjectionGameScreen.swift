@@ -158,7 +158,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .padding(.bottom, 4)
             HStack(alignment: .top, spacing: 8) {
                 landscapeOpponentColumn
-                    .frame(width: 180)
+                    .frame(width: hasOpenOpponentHand ? 260 : 180)
                 VStack(spacing: 4) {
                     DealStateStrip(projection: projection)
                     landscapeTablePlayArea
@@ -232,6 +232,15 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     private var orderedOpponentSeats: [SeatProjection] {
         projection.seats.filter { $0.player != projection.viewer }
+    }
+
+    /// True when at least one active opponent has a revealed hand —
+    /// drives the wider opponent column in compact landscape so the
+    /// open-hand fan doesn't overflow the column.
+    private var hasOpenOpponentHand: Bool {
+        orderedOpponentSeats.contains { seat in
+            seat.role != .sittingOut && seat.hand.contains { $0.knownCard != nil }
+        }
     }
 
     /// True when the device is in compact landscape (iPhone rotated). Used
