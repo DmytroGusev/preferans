@@ -1,0 +1,446 @@
+{
+  "auction" : [
+    {
+      "call" : {
+        "bid" : {
+          "_0" : {
+            "game" : {
+              "_0" : {
+                "strain" : {
+                  "suit" : {
+                    "_0" : 0
+                  }
+                },
+                "tricks" : 6
+              }
+            }
+          }
+        }
+      },
+      "player" : {
+        "rawValue" : "north"
+      }
+    },
+    {
+      "call" : {
+        "pass" : {
+
+        }
+      },
+      "player" : {
+        "rawValue" : "east"
+      }
+    },
+    {
+      "call" : {
+        "pass" : {
+
+        }
+      },
+      "player" : {
+        "rawValue" : "south"
+      }
+    }
+  ],
+  "completedTrickCount" : 0,
+  "currentTrick" : [
+
+  ],
+  "discard" : [
+
+  ],
+  "identities" : [
+
+  ],
+  "legal" : {
+    "bidCalls" : [
+
+    ],
+    "canAcceptSettlement" : false,
+    "canDiscard" : false,
+    "canRejectSettlement" : false,
+    "canStartDeal" : false,
+    "contractOptions" : [
+
+    ],
+    "defenderModes" : [
+
+    ],
+    "playableCards" : [
+
+    ],
+    "settlementOptions" : [
+
+    ],
+    "whistCalls" : [
+
+    ]
+  },
+  "phase" : {
+    "awaitingDiscard" : {
+      "declarer" : {
+        "rawValue" : "north"
+      },
+      "finalBid" : {
+        "game" : {
+          "_0" : {
+            "strain" : {
+              "suit" : {
+                "_0" : 0
+              }
+            },
+            "tricks" : 6
+          }
+        }
+      }
+    }
+  },
+  "players" : [
+    {
+      "rawValue" : "north"
+    },
+    {
+      "rawValue" : "east"
+    },
+    {
+      "rawValue" : "south"
+    }
+  ],
+  "rules" : {
+    "allowSeniorHandHoldBid" : true,
+    "allPassPenaltyPolicy" : {
+      "perTrick" : {
+        "amnesty" : false,
+        "multiplier" : 1
+      }
+    },
+    "allPassTalonPolicy" : {
+      "ignored" : {
+
+      }
+    },
+    "failedDeclarerConsolation" : "eachDefender",
+    "requireWhistOnTenTrickContracts" : false,
+    "singleWhistScoring" : "greedy",
+    "whistResponsibility" : "responsible",
+    "zeroTricksAllPassPoolBonus" : 1
+  },
+  "score" : {
+    "mountain" : [
+      {
+        "rawValue" : "east"
+      },
+      0,
+      {
+        "rawValue" : "north"
+      },
+      0,
+      {
+        "rawValue" : "south"
+      },
+      0
+    ],
+    "players" : [
+      {
+        "rawValue" : "north"
+      },
+      {
+        "rawValue" : "east"
+      },
+      {
+        "rawValue" : "south"
+      }
+    ],
+    "pool" : [
+      {
+        "rawValue" : "east"
+      },
+      0,
+      {
+        "rawValue" : "north"
+      },
+      0,
+      {
+        "rawValue" : "south"
+      },
+      0
+    ],
+    "whists" : [
+      {
+        "rawValue" : "east"
+      },
+      [
+
+      ],
+      {
+        "rawValue" : "north"
+      },
+      [
+
+      ],
+      {
+        "rawValue" : "south"
+      },
+      [
+
+      ]
+    ]
+  },
+  "seats" : [
+    {
+      "displayName" : "north",
+      "hand" : [
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        }
+      ],
+      "isActive" : true,
+      "isCurrentActor" : true,
+      "isDealer" : false,
+      "player" : {
+        "rawValue" : "north"
+      },
+      "role" : "declarer",
+      "trickCount" : 0
+    },
+    {
+      "displayName" : "east",
+      "hand" : [
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 9,
+              "suit" : 0
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 10,
+              "suit" : 0
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 9,
+              "suit" : 1
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 10,
+              "suit" : 1
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 7,
+              "suit" : 2
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 8,
+              "suit" : 2
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 13,
+              "suit" : 2
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 14,
+              "suit" : 2
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 11,
+              "suit" : 3
+            }
+          }
+        },
+        {
+          "known" : {
+            "_0" : {
+              "rank" : 12,
+              "suit" : 3
+            }
+          }
+        }
+      ],
+      "isActive" : true,
+      "isCurrentActor" : false,
+      "isDealer" : false,
+      "player" : {
+        "rawValue" : "east"
+      },
+      "role" : "active",
+      "trickCount" : 0
+    },
+    {
+      "displayName" : "south",
+      "hand" : [
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        },
+        {
+          "hidden" : {
+
+          }
+        }
+      ],
+      "isActive" : true,
+      "isCurrentActor" : false,
+      "isDealer" : true,
+      "player" : {
+        "rawValue" : "south"
+      },
+      "role" : "active",
+      "trickCount" : 0
+    }
+  ],
+  "sequence" : 0,
+  "status" : {
+    "takingPrikup" : {
+      "declarer" : {
+        "rawValue" : "north"
+      }
+    }
+  },
+  "tableID" : "00000000-0000-0000-0000-000000000000",
+  "talon" : [
+    {
+      "known" : {
+        "_0" : {
+          "rank" : 13,
+          "suit" : 0
+        }
+      }
+    },
+    {
+      "known" : {
+        "_0" : {
+          "rank" : 14,
+          "suit" : 0
+        }
+      }
+    }
+  ],
+  "trickCounts" : [
+
+  ],
+  "viewer" : {
+    "rawValue" : "east"
+  },
+  "whistCalls" : [
+
+  ]
+}
