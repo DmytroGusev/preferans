@@ -124,6 +124,11 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
     public var pendingSettlement: TrickSettlementProposal?
     public var canAcceptSettlement: Bool
     public var canRejectSettlement: Bool
+    /// Seat whose hand `playableCards` belongs to. `nil` means the
+    /// viewer's own seat (the default). Set when the viewer is acting
+    /// on behalf of a controlled seat — today, the lone whister pulling
+    /// the passer's cards in single-whist greedy play.
+    public var playableCardsOwner: PlayerID?
 
     public init(
         canStartDeal: Bool = false,
@@ -136,7 +141,8 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
         settlementOptions: [TrickSettlement] = [],
         pendingSettlement: TrickSettlementProposal? = nil,
         canAcceptSettlement: Bool = false,
-        canRejectSettlement: Bool = false
+        canRejectSettlement: Bool = false,
+        playableCardsOwner: PlayerID? = nil
     ) {
         self.canStartDeal = canStartDeal
         self.bidCalls = bidCalls
@@ -149,6 +155,7 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
         self.pendingSettlement = pendingSettlement
         self.canAcceptSettlement = canAcceptSettlement
         self.canRejectSettlement = canRejectSettlement
+        self.playableCardsOwner = playableCardsOwner
     }
 }
 

@@ -250,6 +250,7 @@ public final class GameViewModel: ObservableObject {
         // a trick) can't tap a card and skip past the freeze. The first
         // tap acknowledges the beat; the second tap makes the move.
         p.legal.playableCards = []
+        p.legal.playableCardsOwner = nil
         p.legal.settlementOptions = []
         p.legal.canAcceptSettlement = false
         p.legal.canRejectSettlement = false
@@ -319,7 +320,16 @@ public final class GameViewModel: ObservableObject {
             pendingBotTask = nil
             return
         }
-        guard let actor = currentActor(), let strategy = botStrategies[actor] else {
+        guard let actor = currentActor() else {
+            pendingBotTask = nil
+            return
+        }
+        // In single-whist greedy play the lone whister speaks for the
+        // passer — so when the passer's turn comes up we look up the
+        // whister's strategy, not the passer's. For every other phase
+        // the controller resolves to the actor itself.
+        let decider = engine.controllingActor(of: actor)
+        guard let strategy = botStrategies[decider] else {
             pendingBotTask = nil
             return
         }
@@ -330,7 +340,7 @@ public final class GameViewModel: ObservableObject {
                 try? await Task.sleep(for: delay)
             }
             if Task.isCancelled { return }
-            guard let action = await strategy.decide(snapshot: snap, viewer: actor),
+            guard let action = await strategy.decide(snapshot: snap, viewer: decider),
                   !Task.isCancelled else { return }
             await MainActor.run {
                 // The snapshot equality re-check catches the case where a

@@ -32,10 +32,27 @@ public struct DealSampler {
         }
 
         let voids = inferredVoids(in: playing)
+        // Hands the viewer can legitimately see: their own and any seat
+        // they're currently controlling (the lone whister can read the
+        // passer's hand). Everything else stays in the hidden pool that
+        // the sampler scrambles.
+        var visibleSeats: Set<PlayerID> = [viewer]
+        for seat in playing.activePlayers where seat != viewer {
+            if playing.controllingActor(of: seat, rules: snapshot.rules) == viewer {
+                visibleSeats.insert(seat)
+            }
+        }
         var results: [PreferansSnapshot] = []
         results.reserveCapacity(count)
         for _ in 0..<count {
-            if let sampled = sampleOnce(snapshot: snapshot, playing: playing, viewer: viewer, voids: voids, rng: &rng) {
+            if let sampled = sampleOnce(
+                snapshot: snapshot,
+                playing: playing,
+                viewer: viewer,
+                visibleSeats: visibleSeats,
+                voids: voids,
+                rng: &rng
+            ) {
                 results.append(sampled)
             }
         }
@@ -72,16 +89,18 @@ public struct DealSampler {
         snapshot: PreferansSnapshot,
         playing: PlayingState,
         viewer: PlayerID,
+        visibleSeats: Set<PlayerID>,
         voids: [PlayerID: Set<Suit>],
         rng: inout RNG
     ) -> PreferansSnapshot? {
-        let viewerHand = playing.hands[viewer] ?? []
         let allPlayed = (playing.completedTricks.flatMap(\.plays) + playing.currentTrick).map(\.card)
 
         // Pool of cards the viewer cannot see. The talon is consumed before
         // play in game/misère; in all-pass it remains visible to everyone.
         var hidden = Self.fullDeck
-        hidden.subtract(viewerHand)
+        for seat in visibleSeats {
+            hidden.subtract(playing.hands[seat] ?? [])
+        }
         hidden.subtract(allPlayed)
         if case .allPass = playing.kind {
             hidden.subtract(playing.talon)
@@ -98,7 +117,7 @@ public struct DealSampler {
         }
 
         var slots: [Slot] = []
-        for seat in playing.activePlayers where seat != viewer {
+        for seat in playing.activePlayers where !visibleSeats.contains(seat) {
             let size = playing.hands[seat]?.count ?? 0
             guard size > 0 else { continue }
             let blocked = voids[seat] ?? []

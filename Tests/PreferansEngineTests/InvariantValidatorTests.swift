@@ -278,6 +278,52 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(state, contains: "leader")
     }
 
+    func testValidatorRejectsPlayingWithDeclarerInDefenders() {
+        let (hands, talon) = dealHands()
+        let contract = GameContract(6, .suit(.spades))
+        let state = DealState.playing(PlayingState(
+            dealer: north,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: Array(talon),
+            leader: north,
+            currentPlayer: north,
+            kind: .game(GamePlayContext(
+                declarer: north,
+                contract: contract,
+                defenders: [north, south],
+                whisters: [],
+                defenderPlayMode: .closed,
+                whistCalls: []
+            ))
+        ))
+        assertViolation(state, contains: "declarer")
+    }
+
+    func testValidatorRejectsPlayingWithWhistersOutsideDefenders() {
+        let (hands, talon) = dealHands()
+        let contract = GameContract(6, .suit(.spades))
+        let state = DealState.playing(PlayingState(
+            dealer: north,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: Array(talon),
+            leader: north,
+            currentPlayer: north,
+            kind: .game(GamePlayContext(
+                declarer: north,
+                contract: contract,
+                defenders: [east, south],
+                whisters: ["ghost"],
+                defenderPlayMode: .closed,
+                whistCalls: []
+            ))
+        ))
+        assertViolation(state, contains: "whisters")
+    }
+
     func testValidatorRejectsPlayingWithHandSizeNotMatchingProgress() {
         // No completed tricks → every hand should hold 10. Drop one card.
         var (hands, _) = dealHands()

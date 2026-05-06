@@ -119,11 +119,36 @@ public struct PreferansEngine: Sendable {
 
     public func legalCards(for player: PlayerID) -> [Card] {
         guard case let .playing(playing) = state,
-              playing.pendingSettlement == nil,
-              playing.currentPlayer == player else {
+              playing.pendingSettlement == nil else {
             return []
         }
-        return (playing.hands[player] ?? []).filter { isLegal(card: $0, by: player, in: playing) }
+        let current = playing.currentPlayer
+        let controller = playing.controllingActor(of: current, rules: rules)
+        guard player == controller else { return [] }
+        return (playing.hands[current] ?? []).filter { isLegal(card: $0, by: current, in: playing) }
+    }
+
+    /// Resolves the seat authorized to send actions for `player`. When a
+    /// passer's turn comes up in a single-whist greedy game, the lone
+    /// whister speaks for them; otherwise the seat speaks for itself.
+    /// Used by the host actor (sender validation), the bot dispatcher
+    /// (deciding when to act for another seat), and the projection (who
+    /// gets the playable-cards affordance).
+    public func controllingActor(of player: PlayerID) -> PlayerID {
+        guard case let .playing(playing) = state else { return player }
+        return playing.controllingActor(of: player, rules: rules)
+    }
+
+    /// Seat being controlled by `player` right now, or `nil` when `player`
+    /// only speaks for themselves. The inverse of ``controllingActor(of:)``
+    /// at the seat that's currently up — useful for UI affordances and
+    /// bot decisions ("am I the controller of the current actor?").
+    public func controlledSeat(by player: PlayerID) -> PlayerID? {
+        guard case let .playing(playing) = state else { return nil }
+        let current = playing.currentPlayer
+        let controller = playing.controllingActor(of: current, rules: rules)
+        guard controller == player, controller != current else { return nil }
+        return current
     }
 
     public func legalSettlements(for player: PlayerID) -> [TrickSettlement] {
@@ -763,7 +788,37 @@ public struct PreferansEngine: Sendable {
             )
             let playedCards = s.completedTricks.flatMap { $0.plays.map(\.card) } + s.currentTrick.map(\.card)
             switch s.kind {
-            case .game, .misere:
+            case let .game(ctx):
+                try require(s.discard.count == 2, "playing discard must be 2 cards, got \(s.discard.count)")
+                try checkFullDeck(cardsInHands(s.hands) + playedCards + s.discard, context: "playing cards")
+                // 10-trick contracts skip the whist phase, so an empty
+                // whisters list is intentional. For shorter contracts
+                // every whister must be a defender and the declarer
+                // is never on the defending side.
+                try require(
+                    Set(ctx.whisters).isSubset(of: Set(ctx.defenders)),
+                    "playing whisters \(sorted(ctx.whisters)) ⊄ defenders \(sorted(ctx.defenders))"
+                )
+                try require(
+                    !ctx.defenders.contains(ctx.declarer),
+                    "playing declarer \(ctx.declarer) ∈ defenders"
+                )
+                // Single-whist greedy scoring is the canonical "whister
+                // pulls the passer's cards" arrangement. The control
+                // resolver requires a unique whister to act on the
+                // passer's behalf — there are exactly two defenders
+                // and exactly one is the whister, so the controller is
+                // unambiguous. This invariant pins that down so a
+                // future bug in the whist reducer can't quietly produce
+                // a single-whister state with no defender to control.
+                if ctx.whisters.count == 1, ctx.defenders.count == 2 {
+                    let whister = ctx.whisters[0]
+                    try require(
+                        ctx.defenders.contains(whister),
+                        "single whister \(whister) ∉ defenders \(sorted(ctx.defenders))"
+                    )
+                }
+            case .misere:
                 try require(s.discard.count == 2, "playing discard must be 2 cards, got \(s.discard.count)")
                 try checkFullDeck(cardsInHands(s.hands) + playedCards + s.discard, context: "playing cards")
             case .allPass:

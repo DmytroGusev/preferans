@@ -131,7 +131,12 @@ enum BotTestDriver {
             guard let actor = engine.state.currentActor else {
                 return BotDriveResult(steps: steps, stalled: false, illegalActionAttempts: 0)
             }
-            guard let action = await strategy.decide(snapshot: engine.snapshot, viewer: actor) else {
+            // The seat authorized to decide may differ from the seat
+            // whose turn it physically is — in single-whist greedy
+            // play the lone whister pulls the passer's cards, so the
+            // strategy is queried for the whister's perspective.
+            let decider = engine.controllingActor(of: actor)
+            guard let action = await strategy.decide(snapshot: engine.snapshot, viewer: decider) else {
                 return BotDriveResult(steps: steps, stalled: true, illegalActionAttempts: 0)
             }
             do {

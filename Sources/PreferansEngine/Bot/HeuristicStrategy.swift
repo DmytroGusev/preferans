@@ -42,7 +42,14 @@ public struct HeuristicStrategy: PlayerStrategy {
                     ? .acceptSettlement(player: viewer)
                     : .rejectSettlement(player: viewer)
             }
-            guard s.currentPlayer == viewer else { return nil }
+            // The lone whister in a single-whist greedy game pulls the
+            // passer's cards. Resolve who's authorized to act for the
+            // current seat — `viewer` only plays when they ARE that
+            // controller, and the resulting action speaks for the seat
+            // whose hand the card comes from (which may be the passer).
+            let controlled = s.currentPlayer
+            let controller = s.controllingActor(of: controlled, rules: snapshot.rules)
+            guard controller == viewer else { return nil }
             if let settlement = deterministicLastTrickSettlement(state: s),
                (try? PreferansEngine(snapshot: snapshot).legalSettlements(for: viewer).contains(settlement)) == true {
                 return .proposeSettlement(player: viewer, settlement: settlement)
@@ -50,7 +57,7 @@ public struct HeuristicStrategy: PlayerStrategy {
             let card = planner.choose(snapshot: snapshot, viewer: viewer)
                 ?? (try? PreferansEngine(snapshot: snapshot).legalCards(for: viewer))?.first
             guard let card else { return nil }
-            return .playCard(player: viewer, card: card)
+            return .playCard(player: controlled, card: card)
         }
     }
 

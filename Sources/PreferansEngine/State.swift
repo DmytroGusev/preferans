@@ -361,6 +361,32 @@ public struct PlayingState: Equatable, Codable, Sendable {
     public let kind: PlayKind
     public var pendingSettlement: TrickSettlementProposal?
 
+    /// In single-whist greedy scoring, the lone whister plays both defender
+    /// hands — the passer becomes a dummy whose cards are pulled by the
+    /// whister. Returns the seat authorized to act on `player`'s behalf,
+    /// which is `player` itself in every other context (multi-whister
+    /// games, misère, all-pass, declarer's own hand). The rules dependency
+    /// is explicit so the engine can pass it through and bot/UI/host code
+    /// share a single resolver.
+    ///
+    /// The control transfer applies only to card play — settlement
+    /// proposals are individual agreements, so a pending settlement
+    /// short-circuits to the player themselves.
+    public func controllingActor(of player: PlayerID, rules: PreferansRules) -> PlayerID {
+        guard pendingSettlement == nil,
+              case let .game(context) = kind,
+              context.whisters.count == 1,
+              context.defenders.count > 1,
+              rules.singleWhistScoring == .greedy,
+              let whister = context.whisters.first,
+              context.defenders.contains(player),
+              player != whister
+        else {
+            return player
+        }
+        return whister
+    }
+
     public init(
         dealer: PlayerID,
         activePlayers: [PlayerID],

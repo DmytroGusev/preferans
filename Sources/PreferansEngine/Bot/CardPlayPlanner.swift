@@ -17,9 +17,14 @@ public struct CardPlayPlanner: Sendable {
     public func choose(snapshot: PreferansSnapshot, viewer: PlayerID) -> Card? {
         guard case .playing = snapshot.state,
               let engine = try? PreferansEngine(snapshot: snapshot),
-              snapshot.state.currentActor == viewer else {
+              let currentActor = snapshot.state.currentActor,
+              engine.controllingActor(of: currentActor) == viewer else {
             return nil
         }
+        // The card legally comes from `currentActor`'s hand — which may be
+        // a passer the viewer is controlling. Roll out plays speak for
+        // the seat that owns the card, not the bot's own seat.
+        let actingFor = currentActor
         let legal = engine.legalCards(for: viewer)
         if legal.count <= 1 { return legal.first }
 
@@ -36,7 +41,7 @@ public struct CardPlayPlanner: Sendable {
         for sample in pool {
             for (i, candidate) in legal.enumerated() {
                 for _ in 0..<rolloutsPerSample {
-                    totals[i] += rollout(from: sample, viewer: viewer, firstMove: candidate)
+                    totals[i] += rollout(from: sample, viewer: viewer, actingFor: actingFor, firstMove: candidate)
                     counts[i] += 1
                 }
             }
@@ -57,11 +62,12 @@ public struct CardPlayPlanner: Sendable {
     private func rollout(
         from snapshot: PreferansSnapshot,
         viewer: PlayerID,
+        actingFor: PlayerID,
         firstMove: Card
     ) -> Double {
         guard var engine = try? PreferansEngine(snapshot: snapshot) else { return 0 }
         do {
-            _ = try engine.apply(.playCard(player: viewer, card: firstMove))
+            _ = try engine.apply(.playCard(player: actingFor, card: firstMove))
         } catch {
             return -1_000 // illegal in this sample — heavily penalize
         }

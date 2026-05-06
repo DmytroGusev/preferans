@@ -183,8 +183,15 @@ public actor HostGameActor {
             if envelope.actor != actionActor {
                 throw HostGameError.spoofedActor(expected: envelope.actor, actual: actionActor)
             }
+            // The action speaks for `actionActor`. The wire sender may be
+            // either that seat itself or — in single-whist greedy play —
+            // the lone whister speaking for a passer they control. Any
+            // other sender is rejected as spoofed.
             if let sender, sender != envelope.actor {
-                throw HostGameError.spoofedActor(expected: sender, actual: envelope.actor)
+                let controller = engine.controllingActor(of: envelope.actor)
+                if sender != controller {
+                    throw HostGameError.spoofedActor(expected: controller, actual: sender)
+                }
             }
         }
         guard !appliedNonces.contains(envelope.clientNonce) else {

@@ -447,15 +447,25 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     @ViewBuilder
     private var viewerHandFan: some View {
-        if let seat = viewerSeat {
+        if let seat = activeHandSeat {
             let isDiscardPhase = projection.legal.canDiscard
+            let isControlledHand = projection.legal.playableCardsOwner != nil
+                && projection.legal.playableCardsOwner != projection.viewer
             let playable: Set<Card> = isDiscardPhase ? [] : Set(projection.legal.playableCards)
             let selected: Set<Card> = isDiscardPhase ? selectedDiscard : []
             let talonKnown: [Card] = isDiscardPhase ? projection.talon.compactMap(\.knownCard) : []
             let cards: [ProjectedCard] = isDiscardPhase
                 ? sortedHandFan(seat.hand + projection.talon)
                 : seat.hand
+            // Whose seat the resulting playCard action should speak for.
+            // Default to the viewer's seat, but when the viewer is acting
+            // on behalf of a controlled passer, the action speaks for
+            // that seat (and the engine plays the card from its hand).
+            let actionPlayer: PlayerID = projection.legal.playableCardsOwner ?? projection.viewer
             VStack(spacing: 0) {
+                if isControlledHand {
+                    controlledHandLabel(seat: seat)
+                }
                 ZStack(alignment: .topLeading) {
                     CardFanView(
                         cards: cards,
@@ -469,7 +479,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                             if isDiscardPhase {
                                 toggleDiscardSelection(card)
                             } else if playable.contains(card) {
-                                onSend(.playCard(player: projection.viewer, card: card))
+                                onSend(.playCard(player: actionPlayer, card: card))
                             }
                         }
                     )
@@ -487,6 +497,22 @@ public struct ProjectionGameScreen<Menu: View>: View {
             .padding(.vertical, 6)
             .padding(.horizontal, 4)
         }
+    }
+
+    /// In single-whist greedy play the whister's bottom fan flips to the
+    /// passer's hand on the passer's turn — without a header it would
+    /// look like the whister suddenly grew different cards. The chip
+    /// names the seat the whister is pulling for so the swap reads as
+    /// intentional.
+    private func controlledHandLabel(seat: SeatProjection) -> some View {
+        Text("Playing for \(seat.displayName)")
+            .font(.caption2.weight(.bold))
+            .tracking(0.3)
+            .foregroundStyle(TableTheme.feltDeep)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(TableTheme.goldBright, in: Capsule())
+            .padding(.bottom, 4)
     }
 
     private var viewerActorAccessibilityMarker: some View {
@@ -690,6 +716,19 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     private var viewerSeat: SeatProjection? {
         projection.seats.first { $0.player == projection.viewer }
+    }
+
+    /// Seat whose hand belongs in the bottom fan right now. Usually the
+    /// viewer's own seat, but flips to the controlled passer when the
+    /// viewer is the lone whister and it's the passer's turn — that's
+    /// the hand the whister needs to tap from.
+    private var activeHandSeat: SeatProjection? {
+        if let owner = projection.legal.playableCardsOwner,
+           owner != projection.viewer,
+           let controlled = projection.seats.first(where: { $0.player == owner }) {
+            return controlled
+        }
+        return viewerSeat
     }
 
     private func toggleDiscardSelection(_ card: Card) {
