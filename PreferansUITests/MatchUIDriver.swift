@@ -80,6 +80,8 @@ struct MatchUIDriver {
             robot.defenderMode(mode)
         case let .playCard(player, card):
             robot.play(card, by: player)
+        case .proposeSettlement, .acceptSettlement, .rejectSettlement:
+            XCTFail("Match script generated a settlement action; UI driver only supports trick-by-trick play.")
         }
     }
 }

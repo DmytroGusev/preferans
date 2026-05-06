@@ -7,7 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		265F5A4613A45F1440C8983C /* TableLayoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */; };
+		57ACCE90BA16F946A4F7AF39 /* PlayerProjectionBuilder+Visibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A20DD5DCD2B0E3F8897CF17 /* PlayerProjectionBuilder+Visibility.swift */; };
+		5E490BED770B1DF621F6B33C /* ProjectionBuildFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */; };
+		629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */; };
+		82816EDA29C185CD55470F2D /* PlayerProjectionBuilder+Phase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */; };
+		99464642B7D8B18656ACE012 /* GameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */; };
 		A00000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* Assets.xcassets */; };
+		ACCD7C5D2DD1E2F5E07E4765 /* FakeGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */; };
 		B00000000000000000000001 /* PreferansApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000031 /* PreferansApp.swift */; };
 		B00000000000000000000002 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000032 /* GameViewModel.swift */; };
 		B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000033 /* CloudKitGameArchiveStore.swift */; };
@@ -20,11 +27,6 @@
 		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
 		B0000000000000000000000C /* HostGameActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003C /* HostGameActor.swift */; };
 		B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */; };
-		B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */; };
-		B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */; };
-		B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B007 /* CloudflareRoomTransport.swift */; };
-		B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */; };
-		B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B00B /* PreferansInviteLink.swift */; };
 		B0000000000000000000000E /* PlayerProjection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003E /* PlayerProjection.swift */; };
 		B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003F /* AppEngineSnapshot.swift */; };
 		B00000000000000000000010 /* AppIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000040 /* AppIdentifiers.swift */; };
@@ -34,7 +36,9 @@
 		B00000000000000000000014 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* CardView.swift */; };
 		B00000000000000000000015 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* LobbyView.swift */; };
 		B00000000000000000000016 /* LocalGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000046 /* LocalGameScreen.swift */; };
-		B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B005 /* OnlineRoomGameScreen.swift */; };
+		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
+		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
+		B0000000000000000000001A /* TestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000004A /* TestHarness.swift */; };
 		B00000000000000000000061 /* CardFanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000071 /* CardFanView.swift */; };
 		B00000000000000000000062 /* OpponentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000072 /* OpponentSeatView.swift */; };
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
@@ -46,65 +50,33 @@
 		B00000000000000000000069 /* DealStateStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000079 /* DealStateStrip.swift */; };
 		B0000000000000000000007A /* RecentAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000008A /* RecentAction.swift */; };
 		B0000000000000000000007B /* CenterActionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000008B /* CenterActionBanner.swift */; };
+		B00000000000000000000090 /* PulkaDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000000000000000000A0 /* PulkaDiagramView.swift */; };
 		B0000000000000000000A080 /* Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A082 /* Localized.swift */; };
 		B0000000000000000000A081 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000A083 /* Localizable.xcstrings */; };
-		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
-		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
-		B00000000000000000000090 /* PulkaDiagramView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B000000000000000000000A0 /* PulkaDiagramView.swift */; };
-		C00000000000000000000020 /* Domain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000011 /* Domain.swift */; };
-		C00000000000000000000021 /* PreferansEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000012 /* PreferansEngine.swift */; };
-		C00000000000000000000022 /* PreferansError.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000013 /* PreferansError.swift */; };
-		C00000000000000000000023 /* Rules.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000014 /* Rules.swift */; };
-		C00000000000000000000024 /* Score.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000015 /* Score.swift */; };
-		C00000000000000000000025 /* State.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000016 /* State.swift */; };
-		C00000000000000000000026 /* DealSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00000000000000000000017 /* DealSource.swift */; };
-		C0000000000000000000A050 /* MatchSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A040 /* MatchSettings.swift */; };
-		C0000000000000000000A051 /* HandRecipe.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A041 /* HandRecipe.swift */; };
-		C0000000000000000000A052 /* MatchScript.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A042 /* MatchScript.swift */; };
-		C0000000000000000000A053 /* EngineMatchDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A043 /* EngineMatchDriver.swift */; };
-		C0000000000000000000A054 /* MatchScriptFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A044 /* MatchScriptFixtures.swift */; };
-		C0000000000000000000A055 /* UIIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A045 /* UIIdentifiers.swift */; };
-		C0000000000000000000A056 /* PlayerStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A046 /* PlayerStrategy.swift */; };
-		C0000000000000000000A057 /* HandEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A047 /* HandEvaluator.swift */; };
-		C0000000000000000000A058 /* DealSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A048 /* DealSampler.swift */; };
-		C0000000000000000000A059 /* CardPlayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A049 /* CardPlayPlanner.swift */; };
-		C0000000000000000000A05A /* HeuristicStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04A /* HeuristicStrategy.swift */; };
-		C0000000000000000000A05B /* DealDeckLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04B /* DealDeckLayout.swift */; };
-		C0000000000000000000A05C /* BotPacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04C /* BotPacing.swift */; };
-		C0000000000000000000A05D /* ScoringEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0000000000000000000A04D /* ScoringEngine.swift */; };
-		B0000000000000000000001A /* TestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000004A /* TestHarness.swift */; };
-		C0000000000000000000002F /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
-		D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */; };
+		B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */; };
+		B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B005 /* OnlineRoomGameScreen.swift */; };
+		B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B007 /* CloudflareRoomTransport.swift */; };
+		B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */; };
+		B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B00B /* PreferansInviteLink.swift */; };
+		B182FEDEF8F1C8AC3A81F85C /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = DA899D375EB0CF2E0EE45608 /* PreferansEngine */; };
+		BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
-		E0000000000000000000A030 /* PreferansEngine.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C00000000000000000000010 /* PreferansEngine.framework */; };
 		E0000000000000000000A041 /* MatchUIRobot.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A040 /* MatchUIRobot.swift */; };
 		E0000000000000000000A043 /* MatchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A042 /* MatchUITests.swift */; };
 		E0000000000000000000A045 /* MatchUIDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A044 /* MatchUIDriver.swift */; };
 		E0000000000000000000A047 /* FullGameUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A046 /* FullGameUITests.swift */; };
 		E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A048 /* RedesignScreenshotTests.swift */; };
+		F1095F4DB121A8D07CF6695F /* GameKitRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		C00000000000000000000060 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A00000000000000000000033 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C00000000000000000000050;
-			remoteInfo = PreferansEngine;
-		};
 		E00000000000000000000030 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A00000000000000000000033 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = A00000000000000000000030;
 			remoteInfo = Preferans;
-		};
-		E0000000000000000000A031 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A00000000000000000000033 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C00000000000000000000050;
-			remoteInfo = PreferansEngine;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -115,7 +87,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				D00000000000000000000001 /* PreferansEngine.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -123,76 +94,61 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2A20DD5DCD2B0E3F8897CF17 /* PlayerProjectionBuilder+Visibility.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "PlayerProjectionBuilder+Visibility.swift"; path = "Preferans/Projection/PlayerProjectionBuilder+Visibility.swift"; sourceTree = "<group>"; };
+		4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "PlayerProjectionBuilder+Phase.swift"; path = "Preferans/Projection/PlayerProjectionBuilder+Phase.swift"; sourceTree = "<group>"; };
+		53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LobbyViewModel.swift; path = Preferans/UI/LobbyViewModel.swift; sourceTree = "<group>"; };
+		591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProjectionBuildFrame.swift; path = Preferans/Projection/ProjectionBuildFrame.swift; sourceTree = "<group>"; };
+		7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GameArchiveStore.swift; path = Preferans/Support/GameArchiveStore.swift; sourceTree = "<group>"; };
+		9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TableLayoutModel.swift; path = Preferans/UI/TableLayoutModel.swift; sourceTree = "<group>"; };
 		A00000000000000000000010 /* Preferans.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Preferans.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A00000000000000000000019 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A00000000000000000000024 /* AppStore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppStore; sourceTree = "<group>"; };
+		A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GameKitRoomTransport.swift; path = Preferans/GameKit/GameKitRoomTransport.swift; sourceTree = "<group>"; };
 		B00000000000000000000031 /* PreferansApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansApp.swift; sourceTree = "<group>"; };
 		B00000000000000000000032 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
-		B00000000000000000000033 /* CloudKitGameArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKit/CloudKitGameArchiveStore.swift"; sourceTree = "<group>"; };
-		B00000000000000000000034 /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKit/CloudKitModels.swift"; sourceTree = "<group>"; };
-		B00000000000000000000035 /* CloudKitRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CloudKit/CloudKitRecords.swift"; sourceTree = "<group>"; };
-		B00000000000000000000036 /* GameCenterMatchmakerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameCenterMatchmakerView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000037 /* GameCenterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameCenterService.swift"; sourceTree = "<group>"; };
-		B00000000000000000000038 /* GameKitRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameKitRealtimeTransport.swift"; sourceTree = "<group>"; };
-		B00000000000000000000039 /* GameWireMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GameKit/GameWireMessage.swift"; sourceTree = "<group>"; };
-		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/GameLogReplayer.swift"; sourceTree = "<group>"; };
-		B0000000000000000000003C /* HostGameActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostGameActor.swift"; sourceTree = "<group>"; };
-		B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/HostedOnlineGameCoordinator.swift"; sourceTree = "<group>"; };
-		B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/RoomOnlineGameCoordinator.swift"; sourceTree = "<group>"; };
-		B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/InMemoryOnlineGameSession.swift"; sourceTree = "<group>"; };
-		B0000000000000000000B007 /* CloudflareRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/CloudflareRoomTransport.swift"; sourceTree = "<group>"; };
-		B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/CloudflareOnlineGameSession.swift"; sourceTree = "<group>"; };
-		B0000000000000000000B00B /* PreferansInviteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Online/PreferansInviteLink.swift"; sourceTree = "<group>"; };
-		B0000000000000000000003E /* PlayerProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Projection/PlayerProjection.swift"; sourceTree = "<group>"; };
-		B0000000000000000000003F /* AppEngineSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/AppEngineSnapshot.swift"; sourceTree = "<group>"; };
-		B00000000000000000000040 /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/AppIdentifiers.swift"; sourceTree = "<group>"; };
-		B00000000000000000000041 /* PlayerIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PlayerIdentity.swift"; sourceTree = "<group>"; };
+		B00000000000000000000033 /* CloudKitGameArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitGameArchiveStore.swift; sourceTree = "<group>"; };
+		B00000000000000000000034 /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitModels.swift; sourceTree = "<group>"; };
+		B00000000000000000000035 /* CloudKitRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitRecords.swift; sourceTree = "<group>"; };
+		B00000000000000000000036 /* GameCenterMatchmakerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameCenterMatchmakerView.swift; sourceTree = "<group>"; };
+		B00000000000000000000037 /* GameCenterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameCenterService.swift; sourceTree = "<group>"; };
+		B00000000000000000000038 /* GameKitRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameKitRealtimeTransport.swift; sourceTree = "<group>"; };
+		B00000000000000000000039 /* GameWireMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameWireMessage.swift; sourceTree = "<group>"; };
+		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/GameLogReplayer.swift; sourceTree = "<group>"; };
+		B0000000000000000000003C /* HostGameActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/HostGameActor.swift; sourceTree = "<group>"; };
+		B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/HostedOnlineGameCoordinator.swift; sourceTree = "<group>"; };
+		B0000000000000000000003E /* PlayerProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Projection/PlayerProjection.swift; sourceTree = "<group>"; };
+		B0000000000000000000003F /* AppEngineSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppEngineSnapshot.swift; sourceTree = "<group>"; };
+		B00000000000000000000040 /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppIdentifiers.swift; sourceTree = "<group>"; };
+		B00000000000000000000041 /* PlayerIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/PlayerIdentity.swift; sourceTree = "<group>"; };
 		B00000000000000000000042 /* PreferansEngine+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PreferansEngine+UI.swift"; sourceTree = "<group>"; };
-		B00000000000000000000043 /* PreferansGameStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PreferansGameStatus.swift"; sourceTree = "<group>"; };
-		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LobbyView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000046 /* LocalGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/LocalGameScreen.swift"; sourceTree = "<group>"; };
-		B0000000000000000000B005 /* OnlineRoomGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/OnlineRoomGameScreen.swift"; sourceTree = "<group>"; };
-		B00000000000000000000071 /* CardFanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CardFanView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/OpponentSeatView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ActionBarView.swift"; sourceTree = "<group>"; };
-		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/TableTheme.swift"; sourceTree = "<group>"; };
-		B00000000000000000000076 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/SettingsScreen.swift"; sourceTree = "<group>"; };
-		B00000000000000000000077 /* ScoreFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreFormatting.swift"; sourceTree = "<group>"; };
-		B00000000000000000000078 /* GameOverCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/GameOverCard.swift"; sourceTree = "<group>"; };
-		B00000000000000000000079 /* DealStateStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/DealStateStrip.swift"; sourceTree = "<group>"; };
-		B0000000000000000000008A /* RecentAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/RecentAction.swift"; sourceTree = "<group>"; };
-		B0000000000000000000008B /* CenterActionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/CenterActionBanner.swift"; sourceTree = "<group>"; };
-		B0000000000000000000A082 /* Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/Localized.swift"; sourceTree = "<group>"; };
-		B0000000000000000000A083 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
-		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ProjectionGameScreen.swift"; sourceTree = "<group>"; };
-		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/ScoreBoardView.swift"; sourceTree = "<group>"; };
-		B000000000000000000000A0 /* PulkaDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UI/PulkaDiagramView.swift"; sourceTree = "<group>"; };
-		C00000000000000000000010 /* PreferansEngine.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = PreferansEngine.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		C00000000000000000000011 /* Domain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Domain.swift; sourceTree = "<group>"; };
-		C00000000000000000000012 /* PreferansEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansEngine.swift; sourceTree = "<group>"; };
-		C00000000000000000000013 /* PreferansError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansError.swift; sourceTree = "<group>"; };
-		C00000000000000000000014 /* Rules.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rules.swift; sourceTree = "<group>"; };
-		C00000000000000000000015 /* Score.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Score.swift; sourceTree = "<group>"; };
-		C00000000000000000000016 /* State.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State.swift; sourceTree = "<group>"; };
-		C00000000000000000000017 /* DealSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealSource.swift; sourceTree = "<group>"; };
-		C0000000000000000000A040 /* MatchSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchSettings.swift; sourceTree = "<group>"; };
-		C0000000000000000000A041 /* HandRecipe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandRecipe.swift; sourceTree = "<group>"; };
-		C0000000000000000000A042 /* MatchScript.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchScript.swift; sourceTree = "<group>"; };
-		C0000000000000000000A043 /* EngineMatchDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineMatchDriver.swift; sourceTree = "<group>"; };
-		C0000000000000000000A044 /* MatchScriptFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchScriptFixtures.swift; sourceTree = "<group>"; };
-		C0000000000000000000A045 /* UIIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIIdentifiers.swift; sourceTree = "<group>"; };
-		C0000000000000000000A046 /* PlayerStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/PlayerStrategy.swift; sourceTree = "<group>"; };
-		C0000000000000000000A047 /* HandEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/HandEvaluator.swift; sourceTree = "<group>"; };
-		C0000000000000000000A048 /* DealSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/DealSampler.swift; sourceTree = "<group>"; };
-		C0000000000000000000A049 /* CardPlayPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/CardPlayPlanner.swift; sourceTree = "<group>"; };
-		C0000000000000000000A04A /* HeuristicStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bot/HeuristicStrategy.swift; sourceTree = "<group>"; };
-		C0000000000000000000A04B /* DealDeckLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DealDeckLayout.swift; sourceTree = "<group>"; };
-		C0000000000000000000A04C /* BotPacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BotPacing.swift; sourceTree = "<group>"; };
-		C0000000000000000000A04D /* ScoringEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoringEngine.swift; sourceTree = "<group>"; };
-		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/TestHarness.swift"; sourceTree = "<group>"; };
+		B00000000000000000000043 /* PreferansGameStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/PreferansGameStatus.swift; sourceTree = "<group>"; };
+		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CardView.swift; sourceTree = "<group>"; };
+		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyView.swift; sourceTree = "<group>"; };
+		B00000000000000000000046 /* LocalGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LocalGameScreen.swift; sourceTree = "<group>"; };
+		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ProjectionGameScreen.swift; sourceTree = "<group>"; };
+		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ScoreBoardView.swift; sourceTree = "<group>"; };
+		B0000000000000000000004A /* TestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/TestHarness.swift; sourceTree = "<group>"; };
+		B00000000000000000000071 /* CardFanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CardFanView.swift; sourceTree = "<group>"; };
+		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OpponentSeatView.swift; sourceTree = "<group>"; };
+		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableView.swift; sourceTree = "<group>"; };
+		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ActionBarView.swift; sourceTree = "<group>"; };
+		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableTheme.swift; sourceTree = "<group>"; };
+		B00000000000000000000076 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SettingsScreen.swift; sourceTree = "<group>"; };
+		B00000000000000000000077 /* ScoreFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ScoreFormatting.swift; sourceTree = "<group>"; };
+		B00000000000000000000078 /* GameOverCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/GameOverCard.swift; sourceTree = "<group>"; };
+		B00000000000000000000079 /* DealStateStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/DealStateStrip.swift; sourceTree = "<group>"; };
+		B0000000000000000000008A /* RecentAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/RecentAction.swift; sourceTree = "<group>"; };
+		B0000000000000000000008B /* CenterActionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CenterActionBanner.swift; sourceTree = "<group>"; };
+		B000000000000000000000A0 /* PulkaDiagramView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/PulkaDiagramView.swift; sourceTree = "<group>"; };
+		B0000000000000000000A082 /* Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/Localized.swift; sourceTree = "<group>"; };
+		B0000000000000000000A083 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Resources/Localizable.xcstrings; sourceTree = "<group>"; };
+		B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomOnlineGameCoordinator.swift; sourceTree = "<group>"; };
+		B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/InMemoryOnlineGameSession.swift; sourceTree = "<group>"; };
+		B0000000000000000000B005 /* OnlineRoomGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OnlineRoomGameScreen.swift; sourceTree = "<group>"; };
+		B0000000000000000000B007 /* CloudflareRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/CloudflareRoomTransport.swift; sourceTree = "<group>"; };
+		B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/CloudflareOnlineGameSession.swift; sourceTree = "<group>"; };
+		B0000000000000000000B00B /* PreferansInviteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/PreferansInviteLink.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -200,6 +156,7 @@
 		E0000000000000000000A044 /* MatchUIDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIDriver.swift; sourceTree = "<group>"; };
 		E0000000000000000000A046 /* FullGameUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullGameUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A048 /* RedesignScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedesignScreenshotTests.swift; sourceTree = "<group>"; };
+		EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FakeGameArchiveStore.swift; path = Preferans/Support/FakeGameArchiveStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -207,14 +164,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C0000000000000000000002F /* PreferansEngine.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C00000000000000000000041 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
+				629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,7 +172,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E0000000000000000000A030 /* PreferansEngine.framework in Frameworks */,
+				B182FEDEF8F1C8AC3A81F85C /* PreferansEngine in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -237,6 +187,14 @@
 				E00000000000000000000060 /* PreferansUITests */,
 				A00000000000000000000024 /* AppStore */,
 				A00000000000000000000023 /* Products */,
+				A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */,
+				4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */,
+				2A20DD5DCD2B0E3F8897CF17 /* PlayerProjectionBuilder+Visibility.swift */,
+				591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */,
+				EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */,
+				7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */,
+				53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */,
+				9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -297,7 +255,6 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000010 /* Preferans.app */,
-				C00000000000000000000010 /* PreferansEngine.framework */,
 				E00000000000000000000001 /* PreferansUITests.xctest */,
 			);
 			name = Products;
@@ -306,27 +263,6 @@
 		C00000000000000000000030 /* PreferansEngine */ = {
 			isa = PBXGroup;
 			children = (
-				C00000000000000000000011 /* Domain.swift */,
-				C00000000000000000000012 /* PreferansEngine.swift */,
-				C00000000000000000000013 /* PreferansError.swift */,
-				C00000000000000000000014 /* Rules.swift */,
-				C00000000000000000000015 /* Score.swift */,
-				C00000000000000000000016 /* State.swift */,
-				C00000000000000000000017 /* DealSource.swift */,
-				C0000000000000000000A040 /* MatchSettings.swift */,
-				C0000000000000000000A041 /* HandRecipe.swift */,
-				C0000000000000000000A042 /* MatchScript.swift */,
-				C0000000000000000000A043 /* EngineMatchDriver.swift */,
-				C0000000000000000000A044 /* MatchScriptFixtures.swift */,
-				C0000000000000000000A045 /* UIIdentifiers.swift */,
-				C0000000000000000000A046 /* PlayerStrategy.swift */,
-				C0000000000000000000A047 /* HandEvaluator.swift */,
-				C0000000000000000000A048 /* DealSampler.swift */,
-				C0000000000000000000A049 /* CardPlayPlanner.swift */,
-				C0000000000000000000A04A /* HeuristicStrategy.swift */,
-				C0000000000000000000A04B /* DealDeckLayout.swift */,
-				C0000000000000000000A04C /* BotPacing.swift */,
-				C0000000000000000000A04D /* ScoringEngine.swift */,
 			);
 			path = Sources/PreferansEngine;
 			sourceTree = "<group>";
@@ -359,28 +295,14 @@
 			buildRules = (
 			);
 			dependencies = (
-				C00000000000000000000061 /* PBXTargetDependency */,
 			);
 			name = Preferans;
+			packageProductDependencies = (
+				278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */,
+			);
 			productName = Preferans;
 			productReference = A00000000000000000000010 /* Preferans.app */;
 			productType = "com.apple.product-type.application";
-		};
-		C00000000000000000000050 /* PreferansEngine */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = C00000000000000000000072 /* Build configuration list for PBXNativeTarget "PreferansEngine" */;
-			buildPhases = (
-				C00000000000000000000040 /* Sources */,
-				C00000000000000000000041 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = PreferansEngine;
-			productName = PreferansEngine;
-			productReference = C00000000000000000000010 /* PreferansEngine.framework */;
-			productType = "com.apple.product-type.framework";
 		};
 		E00000000000000000000010 /* PreferansUITests */ = {
 			isa = PBXNativeTarget;
@@ -393,9 +315,11 @@
 			);
 			dependencies = (
 				E00000000000000000000031 /* PBXTargetDependency */,
-				E0000000000000000000A032 /* PBXTargetDependency */,
 			);
 			name = PreferansUITests;
+			packageProductDependencies = (
+				DA899D375EB0CF2E0EE45608 /* PreferansEngine */,
+			);
 			productName = PreferansUITests;
 			productReference = E00000000000000000000001 /* PreferansUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -430,12 +354,14 @@
 				Base,
 			);
 			mainGroup = A00000000000000000000021;
+			packageReferences = (
+				62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */,
+			);
 			productRefGroup = A00000000000000000000023 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				A00000000000000000000030 /* Preferans */,
-				C00000000000000000000050 /* PreferansEngine */,
 				E00000000000000000000010 /* PreferansUITests */,
 			);
 		};
@@ -501,34 +427,14 @@
 				B0000000000000000000007A /* RecentAction.swift in Sources */,
 				B0000000000000000000007B /* CenterActionBanner.swift in Sources */,
 				B0000000000000000000A080 /* Localized.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C00000000000000000000040 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				C00000000000000000000020 /* Domain.swift in Sources */,
-				C00000000000000000000021 /* PreferansEngine.swift in Sources */,
-				C00000000000000000000022 /* PreferansError.swift in Sources */,
-				C00000000000000000000023 /* Rules.swift in Sources */,
-				C00000000000000000000024 /* Score.swift in Sources */,
-				C00000000000000000000025 /* State.swift in Sources */,
-				C00000000000000000000026 /* DealSource.swift in Sources */,
-				C0000000000000000000A050 /* MatchSettings.swift in Sources */,
-				C0000000000000000000A051 /* HandRecipe.swift in Sources */,
-				C0000000000000000000A052 /* MatchScript.swift in Sources */,
-				C0000000000000000000A053 /* EngineMatchDriver.swift in Sources */,
-				C0000000000000000000A054 /* MatchScriptFixtures.swift in Sources */,
-				C0000000000000000000A055 /* UIIdentifiers.swift in Sources */,
-				C0000000000000000000A056 /* PlayerStrategy.swift in Sources */,
-				C0000000000000000000A057 /* HandEvaluator.swift in Sources */,
-				C0000000000000000000A058 /* DealSampler.swift in Sources */,
-				C0000000000000000000A059 /* CardPlayPlanner.swift in Sources */,
-				C0000000000000000000A05A /* HeuristicStrategy.swift in Sources */,
-				C0000000000000000000A05B /* DealDeckLayout.swift in Sources */,
-				C0000000000000000000A05C /* BotPacing.swift in Sources */,
-				C0000000000000000000A05D /* ScoringEngine.swift in Sources */,
+				F1095F4DB121A8D07CF6695F /* GameKitRoomTransport.swift in Sources */,
+				82816EDA29C185CD55470F2D /* PlayerProjectionBuilder+Phase.swift in Sources */,
+				57ACCE90BA16F946A4F7AF39 /* PlayerProjectionBuilder+Visibility.swift in Sources */,
+				5E490BED770B1DF621F6B33C /* ProjectionBuildFrame.swift in Sources */,
+				ACCD7C5D2DD1E2F5E07E4765 /* FakeGameArchiveStore.swift in Sources */,
+				99464642B7D8B18656ACE012 /* GameArchiveStore.swift in Sources */,
+				BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */,
+				265F5A4613A45F1440C8983C /* TableLayoutModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -548,20 +454,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		C00000000000000000000061 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C00000000000000000000050 /* PreferansEngine */;
-			targetProxy = C00000000000000000000060 /* PBXContainerItemProxy */;
-		};
 		E00000000000000000000031 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = A00000000000000000000030 /* Preferans */;
 			targetProxy = E00000000000000000000030 /* PBXContainerItemProxy */;
-		};
-		E0000000000000000000A032 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C00000000000000000000050 /* PreferansEngine */;
-			targetProxy = E0000000000000000000A031 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -726,54 +622,6 @@
 			};
 			name = Release;
 		};
-		C00000000000000000000070 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 3WSQ6X9CDT;
-				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
-				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mixandmatch.preferans.engine;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MACCATALYST = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		C00000000000000000000071 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 3WSQ6X9CDT;
-				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
-				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mixandmatch.preferans.engine;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SUPPORTS_MACCATALYST = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
 		E00000000000000000000040 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -835,15 +683,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		C00000000000000000000072 /* Build configuration list for PBXNativeTarget "PreferansEngine" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C00000000000000000000070 /* Debug */,
-				C00000000000000000000071 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		E00000000000000000000050 /* Build configuration list for PBXNativeTarget "PreferansUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -854,6 +693,26 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */;
+			productName = PreferansEngine;
+		};
+		DA899D375EB0CF2E0EE45608 /* PreferansEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */;
+			productName = PreferansEngine;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A00000000000000000000033 /* Project object */;
 }
