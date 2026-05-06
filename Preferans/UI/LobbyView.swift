@@ -255,9 +255,12 @@ public struct LobbyView: View {
                 // folded into "Sit down" (which already starts a table with
                 // the current roster), but UI tests still tap this identifier
                 // to land on a 1-human + 2-bot table from a clean lobby.
+                // SwiftUI elides zero-frame / fully-transparent views from the
+                // accessibility tree, which is why this uses a 1×1 frame and
+                // a near-zero (but non-zero) opacity.
                 Button { viewModel.quickPlayVsBots() } label: { Color.clear }
-                    .frame(width: 0, height: 0)
-                    .opacity(0)
+                    .frame(width: 1, height: 1)
+                    .opacity(0.001)
                     .allowsHitTesting(true)
                     .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
 

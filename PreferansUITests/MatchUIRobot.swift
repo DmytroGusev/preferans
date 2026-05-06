@@ -348,10 +348,8 @@ final class MatchUIRobot {
         let scorePanel = app.otherElements[UIIdentifiers.Panel.score.rawValue]
         guard !scorePanel.exists else { return body() }
 
-        // The Scoresheet entry now lives inside the overflow menu in the
-        // header strip. Open the menu first; the menu items only become
-        // tappable once it's expanded.
-        openOverflowMenu()
+        // The Scoresheet entry now lives directly in the header strip, so
+        // it can be tapped without opening the overflow menu first.
         let scoreButton = app.buttons[UIIdentifiers.buttonScoreSheet]
         assertExists(scoreButton, "Scoresheet button never appeared.")
         scoreButton.tap()

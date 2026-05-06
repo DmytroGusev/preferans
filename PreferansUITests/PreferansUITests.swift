@@ -89,7 +89,7 @@ final class PreferansUITests: XCTestCase {
 
         robot.waitForPhase("Bidding")
         XCTAssertEqual(robot.currentViewer(), "north")
-        XCTAssertEqual(robot.phaseMessage(), "north's bid")
+        XCTAssertEqual(robot.phaseMessage(), "north to call")
     }
 
     func testNorthSpadesSixScenarioDrivesEngineToDiscardWindow() {
