@@ -32,7 +32,7 @@ public enum SettingsKeys {
 /// raw value is the BCP-47 code that lands in `AppleLanguages`; the
 /// `displayName` is rendered in the same language so a user who lands on
 /// the wrong default still recognizes their own language.
-public enum AppLanguage: String, CaseIterable, Identifiable {
+public enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case uk
     case ru
     case en

@@ -20,10 +20,7 @@ let package = Package(
         .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.5.0")
     ],
     targets: [
-        .target(
-            name: "PreferansEngine",
-            swiftSettings: [.swiftLanguageMode(.v5)]
-        ),
+        .target(name: "PreferansEngine"),
         .target(
             name: "PreferansApp",
             dependencies: [
@@ -39,8 +36,7 @@ let package = Package(
             ],
             resources: [
                 .process("Resources/Localizable.xcstrings")
-            ],
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            ]
         ),
         .testTarget(
             name: "PreferansEngineTests",
@@ -50,8 +46,7 @@ let package = Package(
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
                 .product(name: "Dependencies", package: "swift-dependencies"),
                 .product(name: "DependenciesTestSupport", package: "swift-dependencies")
-            ],
-            swiftSettings: [.swiftLanguageMode(.v5)]
+            ]
         )
     ]
 )

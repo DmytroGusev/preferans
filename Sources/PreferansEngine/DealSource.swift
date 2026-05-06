@@ -44,18 +44,24 @@ public extension Deck {
 /// Source of the next deck a deal should consume. Lets callers swap in
 /// scripted or seeded deals for tests while keeping production behaviour
 /// (system-random) by default.
-public protocol DealSource: AnyObject {
+///
+/// Sendable because deal sources cross actor boundaries on their way to
+/// `HostGameActor` / online coordinators. Each instance is owned by a
+/// single component and accessed serially; concrete implementations are
+/// `@unchecked Sendable` since their internal RNG / index state isn't
+/// guarded by a lock.
+public protocol DealSource: AnyObject, Sendable {
     func nextDeck() -> [Card]
 }
 
-public final class RandomDealSource: DealSource {
+public final class RandomDealSource: DealSource, @unchecked Sendable {
     public init() {}
     public func nextDeck() -> [Card] {
         Deck.standard32.shuffled()
     }
 }
 
-public final class SeededDealSource: DealSource {
+public final class SeededDealSource: DealSource, @unchecked Sendable {
     private var rng: SeededRandomNumberGenerator
 
     public init(seed: UInt64) {
@@ -67,7 +73,7 @@ public final class SeededDealSource: DealSource {
     }
 }
 
-public final class ScriptedDealSource: DealSource {
+public final class ScriptedDealSource: DealSource, @unchecked Sendable {
     private let decks: [[Card]]
     private var index = 0
 

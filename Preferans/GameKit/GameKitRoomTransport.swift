@@ -20,12 +20,21 @@ public final class GameKitRoomTransport: RoomRealtimeTransport {
     }
 
     public func chooseHost() async -> OnlinePeer? {
-        let host = await withCheckedContinuation { continuation in
+        // GKPlayer can't cross the continuation boundary — extract the
+        // sendable identity inside the GameKit callback and carry it
+        // back as a peer.
+        await withCheckedContinuation { continuation in
             gameKit.match.chooseBestHostingPlayer { player in
-                continuation.resume(returning: player)
+                continuation.resume(returning: player.map { p in
+                    OnlinePeer(
+                        playerID: PlayerID(p.gamePlayerID),
+                        accountID: p.gamePlayerID,
+                        provider: .gameCenter,
+                        displayName: p.displayName
+                    )
+                })
             }
         }
-        return host.map(peer(for:))
     }
 
     public func messages() -> AsyncStream<ReceivedRoomMessage> {
@@ -40,7 +49,12 @@ public final class GameKitRoomTransport: RoomRealtimeTransport {
                     continuation.yield(
                         ReceivedRoomMessage(
                             message: received.message,
-                            sender: self.peer(for: received.sender)
+                            sender: OnlinePeer(
+                                playerID: PlayerID(received.senderGamePlayerID),
+                                accountID: received.senderGamePlayerID,
+                                provider: .gameCenter,
+                                displayName: received.senderDisplayName
+                            )
                         )
                     )
                 }

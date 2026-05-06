@@ -208,11 +208,16 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// and `seatRoleBadges` vary.
     private func tableView(renderOpponentsAtTop: Bool = true,
                            seatRoleBadges: [PlayerID: SeatRoleBadge] = [:]) -> TableView {
-        TableView(
+        // The method reference `advanceToNextDeal` trips a Swift 6
+        // type-checker bug here ("failed to produce diagnostic for
+        // expression"); wrapping in an explicit closure sidesteps it
+        // and is equivalent at the call site.
+        let advance: () -> Void = { advanceToNextDeal() }
+        return TableView(
             projection: projection,
             animationNamespace: cardNamespace,
-            onAdvance: advanceToNextDeal,
-            onStartDeal: shouldShowCenterDealCTA ? advanceToNextDeal : nil,
+            onAdvance: advance,
+            onStartDeal: shouldShowCenterDealCTA ? advance : nil,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch,
             renderOpponentsAtTop: renderOpponentsAtTop,

@@ -2,9 +2,16 @@
 import Foundation
 import GameKit
 
-public struct ReceivedGameKitMessage {
+/// Sendable carrier for an incoming GameKit message. We deliberately do
+/// NOT hold the underlying `GKPlayer` — `GKPlayer` is non-Sendable, and
+/// crossing the GameKit-thread → MainActor hop with a reference would
+/// race. The two strings here are everything the room layer needs to
+/// reconstruct an `OnlinePeer` (gamePlayerID is the stable identifier;
+/// displayName is shown in the UI).
+public struct ReceivedGameKitMessage: Sendable {
     public var message: GameWireMessage
-    public var sender: GKPlayer
+    public var senderGamePlayerID: String
+    public var senderDisplayName: String
 }
 
 @MainActor
@@ -55,27 +62,37 @@ public final class GameKitRealtimeTransport: NSObject, ObservableObject, GKMatch
     }
 
     nonisolated public func match(_ match: GKMatch, didReceive data: Data, fromRemotePlayer player: GKPlayer) {
+        // Capture sendable identity here on the GameKit callback thread —
+        // GKPlayer can't cross the MainActor hop, but its gamePlayerID
+        // and displayName are both immutable strings we can carry over.
+        let senderID = player.gamePlayerID
+        let senderName = player.displayName
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let message = try self.decoder.decode(GameWireMessage.self, from: data)
                 for continuation in self.continuations.values {
-                    continuation.yield(ReceivedGameKitMessage(message: message, sender: player))
+                    continuation.yield(ReceivedGameKitMessage(
+                        message: message,
+                        senderGamePlayerID: senderID,
+                        senderDisplayName: senderName
+                    ))
                 }
             } catch {
-                self.lastError = "Could not decode GameKit message from \(player.displayName): \(error.localizedDescription)"
+                self.lastError = "Could not decode GameKit message from \(senderName): \(error.localizedDescription)"
             }
         }
     }
 
     nonisolated public func match(_ match: GKMatch, player: GKPlayer, didChange state: GKPlayerConnectionState) {
+        let id = player.gamePlayerID
         Task { @MainActor [weak self] in
             guard let self else { return }
             switch state {
             case .connected:
-                self.connectedPlayerIDs.insert(player.gamePlayerID)
+                self.connectedPlayerIDs.insert(id)
             case .disconnected:
-                self.connectedPlayerIDs.remove(player.gamePlayerID)
+                self.connectedPlayerIDs.remove(id)
             case .unknown:
                 break
             @unknown default:
