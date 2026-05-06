@@ -1,31 +1,48 @@
-import XCTest
+import Foundation
+import Testing
 @testable import PreferansEngine
 
-final class EngineGenerativeTests: XCTestCase {
-    func testSeededLegalActionWalksMaintainInvariantsAndCodableSnapshots() throws {
-        let cases: [(players: [PlayerID], firstDealer: PlayerID, rules: PreferansRules)] = [
-            (["north", "east", "south"], "south", .sochi),
-            (["north", "east", "south", "west"], "west", .sochiWithTalonLedAllPass)
-        ]
+@Suite("Engine generative walks")
+struct EngineGenerativeTests {
+    struct Config: CustomTestStringConvertible {
+        let players: [PlayerID]
+        let firstDealer: PlayerID
+        let rules: PreferansRules
+        let label: String
 
-        for testCase in cases {
-            for seed in UInt64(1)...UInt64(18) {
-                var rng = SeededRandomNumberGenerator(seed: seed)
-                var engine = try PreferansEngine(
-                    players: testCase.players,
-                    rules: testCase.rules,
-                    firstDealer: testCase.firstDealer
-                )
+        var testDescription: String { label }
+    }
 
-                for step in 0..<180 {
-                    try assertSnapshotIsValidAndCodable(engine.snapshot, seed: seed, step: step)
-                    guard let action = try nextLegalAction(engine: engine, rng: &rng) else { break }
-                    _ = try engine.apply(action)
-                }
+    static let configs: [Config] = [
+        Config(players: ["north", "east", "south"], firstDealer: "south", rules: .sochi, label: "sochi-3p"),
+        Config(
+            players: ["north", "east", "south", "west"],
+            firstDealer: "west",
+            rules: .sochiWithTalonLedAllPass,
+            label: "sochi4p-talonLed"
+        )
+    ]
 
-                try assertSnapshotIsValidAndCodable(engine.snapshot, seed: seed, step: 180)
-            }
+    static let arguments: [(Config, UInt64)] = configs.flatMap { config in
+        (UInt64(1)...UInt64(18)).map { (config, $0) }
+    }
+
+    @Test("Seeded legal-action walk preserves invariants and codable round-trip", arguments: arguments)
+    func walkPreservesInvariants(config: Config, seed: UInt64) throws {
+        var rng = SeededRandomNumberGenerator(seed: seed)
+        var engine = try PreferansEngine(
+            players: config.players,
+            rules: config.rules,
+            firstDealer: config.firstDealer
+        )
+
+        for step in 0..<180 {
+            try assertSnapshotIsValidAndCodable(engine.snapshot, seed: seed, step: step)
+            guard let action = try nextLegalAction(engine: engine, rng: &rng) else { break }
+            _ = try engine.apply(action)
         }
+
+        try assertSnapshotIsValidAndCodable(engine.snapshot, seed: seed, step: 180)
     }
 
     private func nextLegalAction(
@@ -83,19 +100,17 @@ final class EngineGenerativeTests: XCTestCase {
         _ snapshot: PreferansSnapshot,
         seed: UInt64,
         step: Int,
-        file: StaticString = #filePath,
-        line: UInt = #line
+        sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
-        do {
-            try PreferansEngine.validateInvariants(snapshot)
-            let data = try JSONEncoder().encode(snapshot)
-            let decoded = try JSONDecoder().decode(PreferansSnapshot.self, from: data)
-            let restored = try PreferansEngine(snapshot: decoded)
-            XCTAssertEqual(restored.snapshot, snapshot, "seed \(seed), step \(step)", file: file, line: line)
-        } catch {
-            XCTFail("seed \(seed), step \(step): \(error)", file: file, line: line)
-            throw error
-        }
+        try PreferansEngine.validateInvariants(snapshot)
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(PreferansSnapshot.self, from: data)
+        let restored = try PreferansEngine(snapshot: decoded)
+        #expect(
+            restored.snapshot == snapshot,
+            "seed \(seed), step \(step)",
+            sourceLocation: sourceLocation
+        )
     }
 
     private func choose<T>(

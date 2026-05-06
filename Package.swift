@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 
 import PackageDescription
 
@@ -15,8 +15,15 @@ let package = Package(
         .library(name: "PreferansEngine", targets: ["PreferansEngine"]),
         .library(name: "PreferansApp", targets: ["PreferansApp"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.5.0")
+    ],
     targets: [
-        .target(name: "PreferansEngine"),
+        .target(
+            name: "PreferansEngine",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .target(
             name: "PreferansApp",
             dependencies: ["PreferansEngine"],
@@ -29,11 +36,19 @@ let package = Package(
             ],
             resources: [
                 .process("Resources/Localizable.xcstrings")
-            ]
+            ],
+            swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .testTarget(
             name: "PreferansEngineTests",
-            dependencies: ["PreferansEngine", "PreferansApp"]
+            dependencies: [
+                "PreferansEngine",
+                "PreferansApp",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+                .product(name: "Dependencies", package: "swift-dependencies"),
+                .product(name: "DependenciesTestSupport", package: "swift-dependencies")
+            ],
+            swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
 )

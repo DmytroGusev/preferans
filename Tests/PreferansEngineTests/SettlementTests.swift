@@ -1,11 +1,14 @@
-import XCTest
+import Foundation
+import Testing
 @testable import PreferansApp
 @testable import PreferansEngine
 
-final class SettlementTests: XCTestCase {
+@Suite("Trick settlement")
+struct SettlementTests {
     private let players: [PlayerID] = ["north", "east", "south"]
 
-    func testUnanimousSettlementScoresDealWithoutFabricatingTricks() throws {
+    @Test("Unanimous settlement scores the deal without fabricating tricks")
+    func unanimousSettlementScoresDeal() throws {
         var engine = try makeGamePlayingEngine()
         let settlement = TrickSettlement(
             target: "east",
@@ -14,32 +17,36 @@ final class SettlementTests: XCTestCase {
         )
 
         let proposed = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
-        XCTAssertEqual(proposed, [
+        #expect(proposed == [
             .settlementProposed(TrickSettlementProposal(
                 proposer: "east",
                 settlement: settlement,
                 acceptedBy: ["east"]
             ))
         ])
-        XCTAssertEqual(engine.state.currentActor, "south")
-        XCTAssertThrowsError(try engine.apply(.playCard(player: "east", card: Deck.standard32[0])))
+        #expect(engine.state.currentActor == "south")
+        #expect(throws: (any Error).self) {
+            try engine.apply(.playCard(player: "east", card: Deck.standard32[0]))
+        }
 
         _ = try engine.apply(.acceptSettlement(player: "south"))
         let finalEvents = try engine.apply(.acceptSettlement(player: "north"))
 
-        XCTAssertTrue(finalEvents.contains(.playSettled(settlement)))
+        #expect(finalEvents.contains(.playSettled(settlement)))
         guard case let .dealFinished(result) = engine.state else {
-            return XCTFail("Expected the settlement to score the deal.")
+            Issue.record("Expected the settlement to score the deal.")
+            return
         }
-        XCTAssertEqual(result.settlement, settlement)
-        XCTAssertEqual(result.trickCounts, settlement.finalTrickCounts)
-        XCTAssertEqual(result.completedTricks, [])
-        XCTAssertEqual(engine.score.pool["east"], 2)
-        XCTAssertEqual(engine.score.whistsWritten(by: "south", on: "east"), 4)
-        XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 4)
+        #expect(result.settlement == settlement)
+        #expect(result.trickCounts == settlement.finalTrickCounts)
+        #expect(result.completedTricks == [])
+        #expect(engine.score.pool["east"] == 2)
+        #expect(engine.score.whistsWritten(by: "south", on: "east") == 4)
+        #expect(engine.score.whistsWritten(by: "north", on: "east") == 4)
     }
 
-    func testRejectingSettlementResumesCardPlay() throws {
+    @Test("Rejecting settlement resumes card play")
+    func rejectingSettlementResumesCardPlay() throws {
         var engine = try makeGamePlayingEngine()
         let settlement = TrickSettlement(
             target: "east",
@@ -50,15 +57,17 @@ final class SettlementTests: XCTestCase {
         _ = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
         let events = try engine.apply(.rejectSettlement(player: "south"))
 
-        XCTAssertEqual(events, [.settlementRejected(player: "south")])
+        #expect(events == [.settlementRejected(player: "south")])
         guard case let .playing(playing) = engine.state else {
-            return XCTFail("Expected card play to resume.")
+            Issue.record("Expected card play to resume.")
+            return
         }
-        XCTAssertNil(playing.pendingSettlement)
-        XCTAssertEqual(engine.legalCards(for: playing.currentPlayer).count, 10)
+        #expect(playing.pendingSettlement == nil)
+        #expect(engine.legalCards(for: playing.currentPlayer).count == 10)
     }
 
-    func testSettlementRejectsImpossibleFinalCounts() throws {
+    @Test("Settlement rejects impossible final counts")
+    func settlementRejectsImpossibleFinalCounts() throws {
         var engine = try makeGamePlayingEngine()
         let invalid = TrickSettlement(
             target: "east",
@@ -66,15 +75,15 @@ final class SettlementTests: XCTestCase {
             finalTrickCounts: ["east": 6, "south": 2, "north": 1]
         )
 
-        XCTAssertThrowsError(try engine.apply(.proposeSettlement(player: "east", settlement: invalid))) { error in
-            XCTAssertEqual(
-                error as? PreferansError,
-                .illegalSettlement("Settlement final trick counts must total 10.")
-            )
+        #expect {
+            try engine.apply(.proposeSettlement(player: "east", settlement: invalid))
+        } throws: { error in
+            (error as? PreferansError) == .illegalSettlement("Settlement final trick counts must total 10.")
         }
     }
 
-    func testSettlementActionRoundTripsThroughJSON() throws {
+    @Test("Settlement action round-trips through JSON")
+    func settlementActionRoundTripsThroughJSON() throws {
         let settlement = TrickSettlement(
             target: "east",
             targetTricks: 6,
@@ -85,12 +94,13 @@ final class SettlementTests: XCTestCase {
         let encoded = try JSONEncoder().encode(action)
         let decoded = try JSONDecoder().decode(PreferansAction.self, from: encoded)
 
-        XCTAssertEqual(decoded, action)
+        #expect(decoded == action)
     }
 
-    func testProjectionExposesSettlementActionsToViewers() throws {
+    @Test("Projection exposes settlement actions to viewers")
+    func projectionExposesSettlementActions() throws {
         var engine = try makeGamePlayingEngine()
-        let settlement = try XCTUnwrap(engine.legalSettlements(for: "east").first {
+        let settlement = try #require(engine.legalSettlements(for: "east").first {
             $0.target == "east" && $0.targetTricks == 6
         })
         _ = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
@@ -102,9 +112,9 @@ final class SettlementTests: XCTestCase {
             engine: engine,
             policy: .online
         )
-        XCTAssertEqual(southProjection.legal.pendingSettlement?.settlement, settlement)
-        XCTAssertTrue(southProjection.legal.canAcceptSettlement)
-        XCTAssertTrue(southProjection.legal.canRejectSettlement)
+        #expect(southProjection.legal.pendingSettlement?.settlement == settlement)
+        #expect(southProjection.legal.canAcceptSettlement)
+        #expect(southProjection.legal.canRejectSettlement)
 
         let eastProjection = PlayerProjectionBuilder.projection(
             for: "east",
@@ -113,23 +123,25 @@ final class SettlementTests: XCTestCase {
             engine: engine,
             policy: .online
         )
-        XCTAssertFalse(eastProjection.legal.canAcceptSettlement)
-        XCTAssertTrue(eastProjection.legal.canRejectSettlement)
+        #expect(!eastProjection.legal.canAcceptSettlement)
+        #expect(eastProjection.legal.canRejectSettlement)
     }
 
-    func testBotProposesAndAcceptsDeterministicLastTrickSettlement() async throws {
+    @Test("Bot proposes and accepts deterministic last-trick settlement")
+    func botSettlesDeterministicLastTrick() async throws {
         let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
         var engine = try makeLastTrickEngine()
 
         let drive = try await BotTestDriver.drive(engine: &engine, strategy: strategy, stepLimit: 4)
 
-        XCTAssertFalse(drive.stalled, "Bots should settle the deterministic last trick.")
-        XCTAssertLessThanOrEqual(drive.steps, 3)
+        #expect(!drive.stalled, "Bots should settle the deterministic last trick.")
+        #expect(drive.steps <= 3)
         guard case let .dealFinished(result) = engine.state else {
-            return XCTFail("Expected settlement to finish the deal.")
+            Issue.record("Expected settlement to finish the deal.")
+            return
         }
-        XCTAssertNotNil(result.settlement)
-        XCTAssertEqual(result.trickCounts.values.reduce(0, +), 10)
+        #expect(result.settlement != nil)
+        #expect(result.trickCounts.values.reduce(0, +) == 10)
     }
 
     private func makeGamePlayingEngine() throws -> PreferansEngine {
@@ -148,7 +160,7 @@ final class SettlementTests: XCTestCase {
         var engine = try makeGamePlayingEngine()
         while case let .playing(playing) = engine.state, playing.completedTricks.count < 9 {
             let actor = playing.currentPlayer
-            let card = try XCTUnwrap(engine.legalCards(for: actor).min())
+            let card = try #require(engine.legalCards(for: actor).min())
             _ = try engine.apply(.playCard(player: actor, card: card))
         }
         guard case .playing = engine.state else {
