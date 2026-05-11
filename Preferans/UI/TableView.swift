@@ -183,10 +183,14 @@ public struct TableView: View {
                 // Active opponent seats positioned around the felt edge.
                 ForEach(Array(layout.opponentSlots(opponents: active).enumerated()), id: \.offset) { _, slot in
                     let slotSize = layout.slotFrameSize(for: slot)
+                    let isDeemphasized = active.contains { $0.player != slot.seat.player && isOpenHand($0) }
+                        && !isOpenHand(slot.seat)
                     OpponentSeatView(
                         seat: slot.seat,
                         orientation: slot.orientation,
                         cardSuitOrder: cardSuitOrder,
+                        contractBid: projection.activeContractBid(for: slot.seat.player),
+                        isDeemphasized: isDeemphasized,
                         lastAction: seatActions[slot.seat.player],
                         roleBadge: seatRoleBadges[slot.seat.player]
                     )
@@ -216,6 +220,7 @@ public struct TableView: View {
                                 seat: seat,
                                 orientation: .top,
                                 cardSuitOrder: cardSuitOrder,
+                                contractBid: projection.activeContractBid(for: seat.player),
                                 lastAction: nil,
                                 roleBadge: nil
                             )
@@ -679,5 +684,9 @@ public struct TableView: View {
     /// table during the deal they're sitting out.
     private func orderedOpponents() -> [SeatProjection] {
         projection.seats.filter { $0.player != projection.viewer }
+    }
+
+    private func isOpenHand(_ seat: SeatProjection) -> Bool {
+        seat.hand.contains { $0.knownCard != nil }
     }
 }

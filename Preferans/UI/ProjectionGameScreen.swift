@@ -193,6 +193,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     seat: seat,
                     orientation: .top,
                     cardSuitOrder: cardSuitDisplayOrder,
+                    contractBid: projection.activeContractBid(for: seat.player),
+                    isDeemphasized: hasOpenOpponentHand && !isOpenHand(seat),
                     lastAction: seatActions[seat.player],
                     roleBadge: seatRoleBadges[seat.player]
                 )
@@ -248,6 +250,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
         orderedOpponentSeats.contains { seat in
             seat.role != .sittingOut && seat.hand.contains { $0.knownCard != nil }
         }
+    }
+
+    private func isOpenHand(_ seat: SeatProjection) -> Bool {
+        seat.hand.contains { $0.knownCard != nil }
     }
 
     /// True when the device is in compact landscape (iPhone rotated). Used
@@ -513,7 +519,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                         viewerActorAccessibilityMarker
                     }
                 }
-                viewerAccessibilityLabel(seat: seat)
+                ownerNamePlate(seat: seat)
             }
             .padding(.vertical, 6)
             .padding(.horizontal, 4)

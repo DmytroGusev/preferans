@@ -249,6 +249,45 @@ public enum SeatRoleBadge: Equatable {
 }
 
 public extension PlayerGameProjection {
+    /// Active contract, when the deal has moved beyond pure bidding. Kept
+    /// in one place so the strip, table layout, and seat labels describe
+    /// the same contract without each walking the projection differently.
+    func activeContractSummary() -> (declarer: PlayerID, bid: ContractBid)? {
+        switch phase {
+        case let .awaitingDiscard(declarer, finalBid),
+             let .awaitingContract(declarer, finalBid):
+            return (declarer, finalBid)
+        case let .awaitingWhist(_, declarer, contract):
+            return (declarer, .game(contract))
+        case let .awaitingDefenderMode(whister, _):
+            for call in auction.reversed() {
+                if case let .bid(bid) = call.call, call.player != whister {
+                    return (call.player, bid)
+                }
+            }
+            return nil
+        case let .playing(_, _, kind):
+            switch kind {
+            case let .game(declarer, contract, _, _, _):
+                return (declarer, .game(contract))
+            case let .misere(declarer):
+                return (declarer, .misere)
+            case .allPass:
+                return nil
+            }
+        default:
+            return nil
+        }
+    }
+
+    func activeContractBid(for player: PlayerID) -> ContractBid? {
+        guard let summary = activeContractSummary(),
+              summary.declarer == player else {
+            return nil
+        }
+        return summary.bid
+    }
+
     /// Resolve the seat-role pill the screen renders inline on the name
     /// chip. Returns `nil` while the auction is still running and after
     /// the deal/match concludes — the badge is only meaningful from the

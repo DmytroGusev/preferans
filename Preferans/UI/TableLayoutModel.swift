@@ -12,6 +12,7 @@ public struct TableLayoutModel: Equatable {
     public enum SlotKind: Equatable {
         case topWide
         case topNarrow
+        case compactHidden
     }
 
     public var bounds: CGSize
@@ -69,22 +70,46 @@ public struct TableLayoutModel: Equatable {
                     seat: opponents[0],
                     position: CGPoint(x: 0.5, y: openY(opponents[0], base: 0.16)),
                     orientation: .top,
-                    kind: .topWide
+                    kind: slotKind(for: opponents[0], among: opponents, default: .topWide)
                 )
             ]
         case 2:
+            let firstOpen = Self.isOpen(opponents[0])
+            let secondOpen = Self.isOpen(opponents[1])
+            if firstOpen != secondOpen {
+                return [
+                    OpponentSlot(
+                        seat: opponents[0],
+                        position: CGPoint(
+                            x: firstOpen ? 0.38 : 0.20,
+                            y: firstOpen ? 0.30 : 0.18
+                        ),
+                        orientation: .top,
+                        kind: slotKind(for: opponents[0], among: opponents, default: .topNarrow)
+                    ),
+                    OpponentSlot(
+                        seat: opponents[1],
+                        position: CGPoint(
+                            x: secondOpen ? 0.62 : 0.80,
+                            y: secondOpen ? 0.30 : 0.18
+                        ),
+                        orientation: .top,
+                        kind: slotKind(for: opponents[1], among: opponents, default: .topNarrow)
+                    ),
+                ]
+            }
             return [
                 OpponentSlot(
                     seat: opponents[0],
                     position: CGPoint(x: 0.25, y: openY(opponents[0], base: 0.18)),
                     orientation: .top,
-                    kind: .topNarrow
+                    kind: slotKind(for: opponents[0], among: opponents, default: .topNarrow)
                 ),
                 OpponentSlot(
                     seat: opponents[1],
                     position: CGPoint(x: 0.75, y: openY(opponents[1], base: 0.18)),
                     orientation: .top,
-                    kind: .topNarrow
+                    kind: slotKind(for: opponents[1], among: opponents, default: .topNarrow)
                 ),
             ]
         case 3:
@@ -93,25 +118,30 @@ public struct TableLayoutModel: Equatable {
                     seat: opponents[0],
                     position: CGPoint(x: 0.18, y: openY(opponents[0], base: 0.26)),
                     orientation: .left,
-                    kind: .topNarrow
+                    kind: slotKind(for: opponents[0], among: opponents, default: .topNarrow)
                 ),
                 OpponentSlot(
                     seat: opponents[1],
                     position: CGPoint(x: 0.50, y: openY(opponents[1], base: 0.10)),
                     orientation: .top,
-                    kind: .topNarrow
+                    kind: slotKind(for: opponents[1], among: opponents, default: .topNarrow)
                 ),
                 OpponentSlot(
                     seat: opponents[2],
                     position: CGPoint(x: 0.82, y: openY(opponents[2], base: 0.26)),
                     orientation: .right,
-                    kind: .topNarrow
+                    kind: slotKind(for: opponents[2], among: opponents, default: .topNarrow)
                 ),
             ]
         default:
             return opponents.enumerated().map { index, seat in
                 let x = (CGFloat(index) + 1) / CGFloat(opponents.count + 1)
-                return OpponentSlot(seat: seat, position: CGPoint(x: x, y: openY(seat, base: 0.18)), orientation: .top, kind: .topNarrow)
+                return OpponentSlot(
+                    seat: seat,
+                    position: CGPoint(x: x, y: openY(seat, base: 0.18)),
+                    orientation: .top,
+                    kind: slotKind(for: seat, among: opponents, default: .topNarrow)
+                )
             }
         }
     }
@@ -122,17 +152,34 @@ public struct TableLayoutModel: Equatable {
         case .topWide:
             return CGSize(
                 width: min(bounds.width * 0.78, 320),
-                height: isOpen ? 280 : 182
+                height: isOpen ? 230 : 182
             )
         case .topNarrow:
             if isOpen {
                 return CGSize(
-                    width: min(bounds.width * 0.62, 280),
-                    height: 280
+                    width: min(bounds.width * 0.60, 250),
+                    height: 230
                 )
             }
             return CGSize(width: min(bounds.width * 0.46, 190), height: 182)
+        case .compactHidden:
+            return CGSize(
+                width: min(bounds.width * 0.30, 124),
+                height: 132
+            )
         }
+    }
+
+    private func slotKind(
+        for seat: SeatProjection,
+        among opponents: [SeatProjection],
+        default defaultKind: SlotKind
+    ) -> SlotKind {
+        let hasOpenPeer = opponents.contains { $0.player != seat.player && Self.isOpen($0) }
+        if hasOpenPeer && !Self.isOpen(seat) {
+            return .compactHidden
+        }
+        return defaultKind
     }
 
     /// Push an open seat down a touch so its taller fan clears the top

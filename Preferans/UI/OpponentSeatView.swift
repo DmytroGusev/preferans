@@ -16,6 +16,13 @@ public struct OpponentSeatView: View {
     public var orientation: Orientation
     /// Presentation-only suit order used for face-up hands.
     public var cardSuitOrder: CardSuitDisplayOrder
+    /// Contract carried by this seat when it is the declarer. Lets the
+    /// label say "Declarer 6♥" instead of a context-free role chip.
+    public var contractBid: ContractBid?
+    /// True when another opponent has an open hand and this closed hand
+    /// should yield space. Keeps hidden piles from visually competing
+    /// with revealed cards.
+    public var isDeemphasized: Bool
     /// Latest auction-trail action this seat took during the current deal.
     /// When non-nil the seat's name chip carries an inline pill ("Pass",
     /// "6♠", "Whist") so the user can see at a glance what the seat just
@@ -37,12 +44,16 @@ public struct OpponentSeatView: View {
         seat: SeatProjection,
         orientation: Orientation = .top,
         cardSuitOrder: CardSuitDisplayOrder = .default,
+        contractBid: ContractBid? = nil,
+        isDeemphasized: Bool = false,
         lastAction: RecentAction? = nil,
         roleBadge: SeatRoleBadge? = nil
     ) {
         self.seat = seat
         self.orientation = orientation
         self.cardSuitOrder = cardSuitOrder
+        self.contractBid = contractBid
+        self.isDeemphasized = isDeemphasized
         self.lastAction = lastAction
         self.roleBadge = roleBadge
     }
@@ -51,12 +62,14 @@ public struct OpponentSeatView: View {
         if seat.role == .sittingOut {
             sittingOutChip
         } else {
-            VStack(spacing: 6) {
+            VStack(spacing: isDeemphasized ? 4 : 6) {
                 nameChip
                 fan
-                trickCounter
+                if !isDeemphasized {
+                    trickCounter
+                }
             }
-            .opacity(seat.isActive ? 1 : 0.55)
+            .opacity(seat.isActive ? (isDeemphasized ? 0.82 : 1) : 0.55)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
         }
@@ -99,10 +112,11 @@ public struct OpponentSeatView: View {
         .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
     }
 
-    /// One-line player chip: avatar + name + dealer/role badges. Trick
-    /// counts live below the fan so the name chip has one job: identity.
+    /// Player plate with one readable subtitle. This replaces stacked
+    /// micro-pills so role and open-hand state read as words instead of
+    /// clipped abbreviations.
     private var nameChip: some View {
-        HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 2) {
             if seat.isCurrentActor {
                 Text("Acting")
                     .frame(width: 0, height: 0)
@@ -110,25 +124,101 @@ public struct OpponentSeatView: View {
                     .opacity(0)
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
-            Image(systemName: "person.crop.circle.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCreamSoft)
-                .accessibilityHidden(true)
-            Text(seat.displayName)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
-
-            statusBadge
-            rolePill
+            HStack(spacing: 6) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
+                    .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                    .accessibilityHidden(true)
+                Text(seat.displayName)
+                    .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
+                    .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.64)
+                    .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
+            }
+            if let subtitle = seatSubtitle {
+                Text(subtitle)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright.opacity(0.90) : TableTheme.inkCreamSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+                    .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(seat.player))
+            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, isDeemphasized ? 8 : 10)
+        .padding(.vertical, isDeemphasized ? 5 : 7)
         .feltSurface(seat.isCurrentActor ? .seatActive : .seat, radius: TableTheme.Radius.sm)
         .shadow(color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.25) : .clear,
                 radius: seat.isCurrentActor ? 8 : 0)
+    }
+
+    private var seatSubtitle: String? {
+        var parts: [String] = []
+        if isOpenHand {
+            parts.append(String(localized: "Open hand"))
+        }
+        if let role = roleDescription {
+            parts.append(role)
+        } else if seat.isDealer {
+            parts.append(String(localized: "Dealer"))
+        } else if let action = lastActionDescription {
+            parts.append(action)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private var roleDescription: String? {
+        guard let roleBadge else { return nil }
+        switch roleBadge {
+        case .declarer:
+            if let contractBid {
+                return "\(String(localized: "Declarer")) \(renderedBid(contractBid))"
+            }
+            return String(localized: "Declarer")
+        case .whist:
+            return String(localized: "Whist")
+        case .halfWhist:
+            return String(localized: "Half-whist")
+        case .pass:
+            return String(localized: "Passed")
+        }
+    }
+
+    private var lastActionDescription: String? {
+        guard let lastAction else { return nil }
+        switch lastAction.label {
+        case let .bid(bid):
+            return renderedBid(bid)
+        case .pass, .whistPass:
+            return String(localized: "Passed")
+        case .whist:
+            return String(localized: "Whist")
+        case .halfWhist:
+            return String(localized: "Half-whist")
+        case let .declared(contract):
+            return "\(String(localized: "Declared")) \(Localized.renderedGameContract(contract))"
+        case .discarded:
+            return String(localized: "Discarded")
+        case let .defenderMode(mode):
+            switch mode {
+            case .open:
+                return String(localized: "Open")
+            case .closed:
+                return String(localized: "Closed")
+            }
+        }
+    }
+
+    private func renderedBid(_ bid: ContractBid) -> String {
+        switch bid {
+        case let .game(contract):
+            return Localized.renderedGameContract(contract)
+        case .misere:
+            return String(localized: "Misère")
+        case .totus:
+            return String(localized: "Totus")
+        }
     }
 
     private var trickCounter: some View {
@@ -208,23 +298,21 @@ public struct OpponentSeatView: View {
 
     private var hiddenFan: some View {
         let count = seat.hand.count
-        let dims = CardView.Size.standard.dimensions
+        let size: CardView.Size = isDeemphasized ? .compact : .standard
+        let dims = size.dimensions
         let cardsPerRow = 5
         let rows = splitIntoRows(seat.hand, perRow: cardsPerRow)
         return VStack(spacing: -dims.height * 0.55) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                fanRow(cards: row, size: .standard, stepFactor: 0.50)
+                fanRow(cards: row, size: size, stepFactor: isDeemphasized ? 0.62 : 0.50)
             }
         }
         .frame(height: count == 0 ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height, overlap: 0.55))
     }
 
-    /// Suit-grouped face-up layout used when the projection has revealed
-    /// the hand. Each suit becomes its own row so the eye scans by colour
-    /// rather than by arbitrary 5+5 splits, the card size bumps up so the
-    /// rank font is legible from the viewer's seat, and the step widens
-    /// to ~32% reveal so every rank+pip is fully visible — not just the
-    /// top-left corner.
+    /// Face-up layout used when the projection has revealed the hand. Open
+    /// hands get two readable rows, bigger cards, and a wider step so every
+    /// rank+pip remains visible without claiming four rows of vertical space.
     private var openFan: some View {
         let dims = CardView.Size.large.dimensions
         let rows = openHandRows(seat.hand)
@@ -266,36 +354,17 @@ public struct OpponentSeatView: View {
         return [top, bottom]
     }
 
-    /// Group revealed cards into rows, one per suit, using the configured
-    /// table display order and rank ascending within the row. Any unknown
-    /// cards (rare — open contracts usually reveal everything) ride along
-    /// on a final row so the seat still renders all `seat.hand.count`
-    /// slots. Wide suits (>5 cards, shouldn't happen in 32-card Preferans)
-    /// wrap to keep each row readable.
+    /// Sort revealed cards for table display, then split into readable rows
+    /// of five. Unknown cards ride along at the end so the seat still
+    /// renders all `seat.hand.count` slots.
     private func openHandRows(_ cards: [ProjectedCard]) -> [[ProjectedCard]] {
         guard !cards.isEmpty else { return [] }
         let known = cards.compactMap { $0.knownCard }
         let hidden = cards.filter { $0.knownCard == nil }
-        let bySuit = Dictionary(grouping: known, by: \.suit)
-        var rows: [[ProjectedCard]] = []
-        for suit in cardSuitOrder.suits {
-            guard let group = bySuit[suit], !group.isEmpty else { continue }
-            let projected = group.sortedForTableDisplay(order: cardSuitOrder).map { ProjectedCard.known($0) }
-            // Wrap a single suit row if it would be ridiculously wide.
-            // Standard Preferans deck has at most 8 of any suit, so this
-            // rarely fires — but the open-whist screenshots tests run on
-            // hand-crafted projections that may not respect the deck.
-            if projected.count <= 5 {
-                rows.append(projected)
-            } else {
-                rows.append(Array(projected.prefix(5)))
-                rows.append(Array(projected.suffix(projected.count - 5)))
-            }
-        }
-        if !hidden.isEmpty {
-            rows.append(hidden)
-        }
-        return rows
+        let sorted = known
+            .sortedForTableDisplay(order: cardSuitOrder)
+            .map { ProjectedCard.known($0) } + hidden
+        return splitIntoRows(sorted, perRow: 5)
     }
 
     private func rowsHeight(rowCount: Int, cardHeight: CGFloat, overlap: CGFloat) -> CGFloat {

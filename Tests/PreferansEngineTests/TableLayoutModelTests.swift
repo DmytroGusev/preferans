@@ -34,16 +34,31 @@ final class TableLayoutModelTests: XCTestCase {
         XCTAssertEqual(slots[0].position.y, 0.26, accuracy: 0.001)
         XCTAssertEqual(slots[2].position.y, 0.26, accuracy: 0.001)
 
-        // Open slot frame grows to fit the bigger card size and the
-        // ≤4 suit-row stack; hidden slots stay compact.
-        assertEqual(layout.slotFrameSize(for: slots[1]), CGSize(width: 280, height: 280))
-        assertEqual(layout.slotFrameSize(for: slots[0]), CGSize(width: 190, height: 182))
+        // Open slot frame grows to fit the bigger two-row face-up hand;
+        // hidden peers compact so they do not compete for the same space.
+        assertEqual(layout.slotFrameSize(for: slots[1]), CGSize(width: 250, height: 230))
+        assertEqual(layout.slotFrameSize(for: slots[0]), CGSize(width: 124, height: 132))
 
         // Play area shrinks vertically and drifts down to give the open
         // seat headroom above the trick.
         let play = layout.playArea(for: opponents)
         assertEqual(play.size, CGSize(width: 860, height: 350))
         assertEqual(play.position, CGPoint(x: 500, y: 476))
+    }
+
+    func testSingleOpenOpponentInTwoSeatLayoutGetsPrimarySpace() {
+        let layout = TableLayoutModel(bounds: CGSize(width: 1_000, height: 700))
+        let closed = seat("east")
+        let open = seat("south", hand: [.known(Card(.spades, .ace)), .known(Card(.hearts, .king))])
+        let slots = layout.opponentSlots(opponents: [closed, open])
+
+        XCTAssertEqual(slots.map(\.kind), [.compactHidden, .topNarrow])
+        XCTAssertEqual(slots[0].position.x, 0.20, accuracy: 0.001)
+        XCTAssertEqual(slots[0].position.y, 0.18, accuracy: 0.001)
+        XCTAssertEqual(slots[1].position.x, 0.62, accuracy: 0.001)
+        XCTAssertEqual(slots[1].position.y, 0.30, accuracy: 0.001)
+        assertEqual(layout.slotFrameSize(for: slots[0]), CGSize(width: 124, height: 132))
+        assertEqual(layout.slotFrameSize(for: slots[1]), CGSize(width: 250, height: 230))
     }
 
     func testTrickOffsetsTrackViewerAndOpponentCount() {
