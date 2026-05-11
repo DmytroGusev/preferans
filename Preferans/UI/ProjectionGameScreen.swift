@@ -39,6 +39,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     @State private var selectedDiscard: Set<Card> = []
     @State private var activeSheet: Sheet?
     @State private var showLeaveConfirm = false
+    @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Namespace private var cardNamespace
@@ -86,6 +87,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
             }
         }
         return result
+    }
+
+    private var cardSuitDisplayOrder: CardSuitDisplayOrder {
+        CardSuitDisplayOrder(rawValue: cardSuitDisplayOrderRaw) ?? .default
     }
 
     public var body: some View {
@@ -187,6 +192,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 OpponentSeatView(
                     seat: seat,
                     orientation: .top,
+                    cardSuitOrder: cardSuitDisplayOrder,
                     lastAction: seatActions[seat.player],
                     roleBadge: seatRoleBadges[seat.player]
                 )
@@ -226,6 +232,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
             bannerAction: bannerAction,
             pendingAdvance: pendingAdvance,
             idleHintActive: idleHintActive,
+            cardSuitOrder: cardSuitDisplayOrder,
             onTapToAdvance: onTapToAdvance
         )
     }
@@ -470,7 +477,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
             let talonKnown: [Card] = isDiscardPhase ? projection.talon.compactMap(\.knownCard) : []
             let cards: [ProjectedCard] = isDiscardPhase
                 ? sortedHandFan(seat.hand + projection.talon)
-                : seat.hand
+                : sortedHandFan(seat.hand)
             // Whose seat the resulting playCard action should speak for.
             // Default to the viewer's seat, but when the viewer is acting
             // on behalf of a controlled passer, the action speaks for
@@ -547,13 +554,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     }
 
     private func sortedHandFan(_ cards: [ProjectedCard]) -> [ProjectedCard] {
-        cards.sorted { lhs, rhs in
-            switch (lhs.knownCard, rhs.knownCard) {
-            case let (l?, r?): return l < r
-            case (_, nil):     return true
-            case (nil, _):     return false
-            }
-        }
+        cards.sortedForTableDisplay(order: cardSuitDisplayOrder)
     }
 
     /// Single-row name plate for the viewer's seat. One signal per piece of

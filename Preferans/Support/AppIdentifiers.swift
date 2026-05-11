@@ -26,6 +26,11 @@ public enum SettingsKeys {
     /// `AppleLanguages` at app start so Foundation/SwiftUI pick the matching
     /// strings catalog. Defaults to `uk` per product requirement.
     public static let appLanguage = "settings.appLanguage"
+
+    /// Preferred visual suit order for face-up hands on the card table.
+    /// This is intentionally presentation-only; engine card comparison
+    /// remains tied to game/bid order.
+    public static let cardSuitDisplayOrder = "settings.cardSuitDisplayOrder"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

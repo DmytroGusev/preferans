@@ -14,6 +14,8 @@ public struct OpponentSeatView: View {
     /// the viewer's POV so cards never rotate vertically and clip the
     /// trick area).
     public var orientation: Orientation
+    /// Presentation-only suit order used for face-up hands.
+    public var cardSuitOrder: CardSuitDisplayOrder
     /// Latest auction-trail action this seat took during the current deal.
     /// When non-nil the seat's name chip carries an inline pill ("Pass",
     /// "6♠", "Whist") so the user can see at a glance what the seat just
@@ -34,11 +36,13 @@ public struct OpponentSeatView: View {
     public init(
         seat: SeatProjection,
         orientation: Orientation = .top,
+        cardSuitOrder: CardSuitDisplayOrder = .default,
         lastAction: RecentAction? = nil,
         roleBadge: SeatRoleBadge? = nil
     ) {
         self.seat = seat
         self.orientation = orientation
+        self.cardSuitOrder = cardSuitOrder
         self.lastAction = lastAction
         self.roleBadge = roleBadge
     }
@@ -262,21 +266,21 @@ public struct OpponentSeatView: View {
         return [top, bottom]
     }
 
-    /// Group revealed cards into rows, one per suit, sorted suit-major
-    /// then by rank ascending. Any unknown cards (rare — open contracts
-    /// usually reveal everything) ride along on a final row so the seat
-    /// still renders all `seat.hand.count` slots. Wide suits (>5 cards,
-    /// shouldn't happen in 32-card Preferans) wrap to keep each row
-    /// readable.
+    /// Group revealed cards into rows, one per suit, using the configured
+    /// table display order and rank ascending within the row. Any unknown
+    /// cards (rare — open contracts usually reveal everything) ride along
+    /// on a final row so the seat still renders all `seat.hand.count`
+    /// slots. Wide suits (>5 cards, shouldn't happen in 32-card Preferans)
+    /// wrap to keep each row readable.
     private func openHandRows(_ cards: [ProjectedCard]) -> [[ProjectedCard]] {
         guard !cards.isEmpty else { return [] }
-        let known = cards.compactMap { $0.knownCard }.sorted()
+        let known = cards.compactMap { $0.knownCard }
         let hidden = cards.filter { $0.knownCard == nil }
         let bySuit = Dictionary(grouping: known, by: \.suit)
         var rows: [[ProjectedCard]] = []
-        for suit in Suit.allCases {
+        for suit in cardSuitOrder.suits {
             guard let group = bySuit[suit], !group.isEmpty else { continue }
-            let projected = group.map { ProjectedCard.known($0) }
+            let projected = group.sortedForTableDisplay(order: cardSuitOrder).map { ProjectedCard.known($0) }
             // Wrap a single suit row if it would be ridiculously wide.
             // Standard Preferans deck has at most 8 of any suit, so this
             // rarely fires — but the open-whist screenshots tests run on

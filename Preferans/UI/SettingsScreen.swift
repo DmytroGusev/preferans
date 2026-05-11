@@ -6,6 +6,7 @@ import SwiftUI
 public struct SettingsScreen: View {
     @AppStorage(SettingsKeys.revealAllHands) private var revealAllHands = false
     @AppStorage(SettingsKeys.appLanguage) private var appLanguageRaw: String = AppLanguage.default.rawValue
+    @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
     @Environment(\.dismiss) private var dismiss
 
     @State private var pendingLanguage: AppLanguage?
@@ -17,6 +18,7 @@ public struct SettingsScreen: View {
         NavigationStack {
             Form {
                 languageSection
+                tableSection
                 #if DEBUG
                 Section {
                     Toggle("Reveal all hands", isOn: $revealAllHands)
@@ -52,6 +54,21 @@ public struct SettingsScreen: View {
             } message: {
                 Text("Language will switch on next launch.")
             }
+        }
+    }
+
+    private var tableSection: some View {
+        Section {
+            Picker("Suit order", selection: $cardSuitDisplayOrderRaw) {
+                ForEach(CardSuitDisplayOrder.allCases) { order in
+                    Text(order.displayName).tag(order.rawValue)
+                }
+            }
+        } header: {
+            Text("Table")
+        } footer: {
+            Text("Controls the visual order of face-up cards in hands.")
+                .font(.footnote)
         }
     }
 

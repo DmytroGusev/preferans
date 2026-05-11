@@ -1,6 +1,74 @@
 import SwiftUI
 import PreferansEngine
 
+public enum CardSuitDisplayOrder: String, CaseIterable, Identifiable, Sendable {
+    case spadesDiamondsClubsHearts
+    case clubsDiamondsSpadesHearts
+    case diamondsClubsHeartsSpades
+    case spadesClubsDiamondsHearts
+
+    public var id: String { rawValue }
+
+    public static let `default`: CardSuitDisplayOrder = .spadesDiamondsClubsHearts
+
+    public var suits: [Suit] {
+        switch self {
+        case .spadesDiamondsClubsHearts:
+            return [.spades, .diamonds, .clubs, .hearts]
+        case .clubsDiamondsSpadesHearts:
+            return [.clubs, .diamonds, .spades, .hearts]
+        case .diamondsClubsHeartsSpades:
+            return [.diamonds, .clubs, .hearts, .spades]
+        case .spadesClubsDiamondsHearts:
+            return [.spades, .clubs, .diamonds, .hearts]
+        }
+    }
+
+    public var displayName: String {
+        suits.map(\.symbol).joined(separator: " ")
+    }
+
+    func index(of suit: Suit) -> Int {
+        suits.firstIndex(of: suit) ?? suit.rawValue
+    }
+}
+
+extension Card {
+    static func tableDisplayLessThan(
+        _ lhs: Card,
+        _ rhs: Card,
+        order: CardSuitDisplayOrder = .default
+    ) -> Bool {
+        if lhs.suit != rhs.suit {
+            return order.index(of: lhs.suit) < order.index(of: rhs.suit)
+        }
+        return lhs.rank < rhs.rank
+    }
+}
+
+extension Array where Element == Card {
+    func sortedForTableDisplay(order: CardSuitDisplayOrder = .default) -> [Card] {
+        sorted { Card.tableDisplayLessThan($0, $1, order: order) }
+    }
+}
+
+extension Array where Element == ProjectedCard {
+    func sortedForTableDisplay(order: CardSuitDisplayOrder = .default) -> [ProjectedCard] {
+        sorted { lhs, rhs in
+            switch (lhs.knownCard, rhs.knownCard) {
+            case let (left?, right?):
+                return Card.tableDisplayLessThan(left, right, order: order)
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            case (nil, nil):
+                return false
+            }
+        }
+    }
+}
+
 public struct CardView: View {
     public enum Size {
         case standard

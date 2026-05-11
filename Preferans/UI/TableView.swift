@@ -44,6 +44,8 @@ public struct TableView: View {
     /// True once the pause has been up long enough that the table should
     /// escalate the hint into a more prominent "Waiting for you" pulse.
     public var idleHintActive: Bool
+    /// Presentation-only suit order for face-up table hands.
+    public var cardSuitOrder: CardSuitDisplayOrder
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
     @State private var showInitialHands = false
@@ -61,6 +63,7 @@ public struct TableView: View {
         bannerAction: RecentAction? = nil,
         pendingAdvance: PendingAdvance? = nil,
         idleHintActive: Bool = false,
+        cardSuitOrder: CardSuitDisplayOrder = .default,
         onTapToAdvance: (() -> Void)? = nil
     ) {
         self.projection = projection
@@ -75,6 +78,7 @@ public struct TableView: View {
         self.bannerAction = bannerAction
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = idleHintActive
+        self.cardSuitOrder = cardSuitOrder
         self.onTapToAdvance = onTapToAdvance
     }
 
@@ -182,6 +186,7 @@ public struct TableView: View {
                     OpponentSeatView(
                         seat: slot.seat,
                         orientation: slot.orientation,
+                        cardSuitOrder: cardSuitOrder,
                         lastAction: seatActions[slot.seat.player],
                         roleBadge: seatRoleBadges[slot.seat.player]
                     )
@@ -210,6 +215,7 @@ public struct TableView: View {
                             OpponentSeatView(
                                 seat: seat,
                                 orientation: .top,
+                                cardSuitOrder: cardSuitOrder,
                                 lastAction: nil,
                                 roleBadge: nil
                             )
@@ -550,7 +556,7 @@ public struct TableView: View {
     }
 
     private func openingHandRows(_ cards: [Card]) -> [[Card]] {
-        let sorted = cards.sorted()
+        let sorted = cards.sortedForTableDisplay(order: cardSuitOrder)
         guard sorted.count > 5 else { return [sorted] }
         return [
             Array(sorted.prefix(5)),
