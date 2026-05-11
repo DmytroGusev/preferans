@@ -22,28 +22,31 @@ public struct OnlineRoomGameScreen: View {
     public var body: some View {
         Group {
             if let projection = coordinator.projection {
-                ProjectionGameScreen(
-                    projection: projection,
-                    eventLog: coordinator.eventLog,
-                    recentEvents: coordinator.recentEvents,
-                    onSend: coordinator.send,
-                    onLeaveTable: onLeaveTable,
-                    extraMenu: {
-                        Section("Room") {
-                            Text(roomCode)
-                            if let inviteURL {
-                                ShareLink(
-                                    item: inviteURL,
-                                    subject: Text("Join my Preferans table"),
-                                    message: Text("Join my Preferans table \(roomCode)")
-                                ) {
-                                    Label("Share invite", systemImage: "square.and.arrow.up")
+                ZStack {
+                    ProjectionGameScreen(
+                        projection: projection,
+                        eventLog: coordinator.eventLog,
+                        recentEvents: coordinator.recentEvents,
+                        onSend: coordinator.send,
+                        onLeaveTable: onLeaveTable,
+                        extraMenu: {
+                            Section("Room") {
+                                Text(roomCode)
+                                if let inviteURL {
+                                    ShareLink(
+                                        item: inviteURL,
+                                        subject: Text("Join my Preferans table"),
+                                        message: Text("Join my Preferans table \(roomCode)")
+                                    ) {
+                                        Label("Share invite", systemImage: "square.and.arrow.up")
+                                    }
+                                    .accessibilityIdentifier(UIIdentifiers.onlineShareInvite)
                                 }
-                                .accessibilityIdentifier(UIIdentifiers.onlineShareInvite)
                             }
                         }
-                    }
-                )
+                    )
+                    onlineFlowState(projection: projection)
+                }
             } else {
                 VStack(spacing: 12) {
                     ProgressView()
@@ -62,6 +65,8 @@ public struct OnlineRoomGameScreen: View {
                 .feltBackground()
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.screenOnlineRoom)
         .overlay(alignment: .top) {
             if let error = coordinator.errorText {
                 Text(error)
@@ -72,6 +77,39 @@ public struct OnlineRoomGameScreen: View {
                     .padding(.top, 8)
                     .accessibilityIdentifier(UIIdentifiers.errorBanner)
             }
+        }
+    }
+
+    private func onlineFlowState(projection: PlayerGameProjection) -> some View {
+        Text("room=\(roomCode) viewer=\(projection.viewer.rawValue) sequence=\(projection.sequence) phase=\(phaseToken(projection.phase))")
+            .font(.caption2)
+            .frame(width: 1, height: 1)
+            .opacity(0.01)
+            .accessibilityIdentifier(UIIdentifiers.onlineFlowState)
+            .accessibilityLabel("Online flow state")
+            .accessibilityValue("room \(roomCode), viewer \(projection.viewer.rawValue), sequence \(projection.sequence), phase \(phaseToken(projection.phase))")
+    }
+
+    private func phaseToken(_ phase: ProjectedPhase) -> String {
+        switch phase {
+        case .waitingForDeal:
+            return "waitingForDeal"
+        case .bidding:
+            return "bidding"
+        case .awaitingDiscard:
+            return "awaitingDiscard"
+        case .awaitingContract:
+            return "awaitingContract"
+        case .awaitingWhist:
+            return "awaitingWhist"
+        case .awaitingDefenderMode:
+            return "awaitingDefenderMode"
+        case .playing:
+            return "playing"
+        case .dealFinished:
+            return "dealFinished"
+        case .gameOver:
+            return "gameOver"
         }
     }
 }

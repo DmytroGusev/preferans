@@ -18,57 +18,86 @@ interface RoomResponse {
 }
 
 const baseURL = new URL(process.env.PREFERANS_ROOM_WORKER_URL ?? "https://preferans-room-worker.ontofractal.workers.dev");
-const peers: OnlinePeer[] = [
-  peer("north", "North", "email:north@example.test", "email"),
-  peer("east", "East", "dev:east", "dev"),
-  peer("south", "South", "dev:south", "dev")
-];
+const seatOrder = ["north", "east", "south", "west"] as const;
 
-const created = await postJSON<RoomResponse>("/rooms", {
-  localPeer: peers[0],
-  seats: peers,
-  maxPlayers: 3
-});
-assert.match(created.roomCode, /^[A-Z0-9]{4,12}$/);
-assert.equal(created.peers.length, 3);
-assert.match(created.websocketURL, /^wss:\/\//);
+const results = [];
+for (const playerCount of [3, 4] as const) {
+  results.push(await smokeRoom(playerCount));
+}
 
-const joined = await postJSON<RoomResponse>(`/rooms/${created.roomCode}/join`, {
-  localPeer: { ...peers[1], displayName: "East Live Smoke" }
-});
-assert.equal(joined.roomCode, created.roomCode);
-assert.equal(joined.peers.length, 3);
+console.log(JSON.stringify({
+  ok: true,
+  rooms: results
+}, null, 2));
 
-const northSocket = await openSocket(created.websocketURL);
-const eastSocket = await openSocket(joined.websocketURL);
+async function smokeRoom(playerCount: 3 | 4) {
+  const peers = seatOrder
+    .slice(0, playerCount)
+    .map((seat, index) => peer(
+      seat,
+      titleCase(seat),
+      index === 0 ? `email:${seat}@example.test` : `dev:${seat}`,
+      index === 0 ? "email" : "dev"
+    ));
 
-try {
-  const relayedMessage = waitForMessage(eastSocket, (message) => message.type === "wire");
-  northSocket.send(JSON.stringify({
-    type: "wire",
-    recipients: [peers[1].playerID],
-    reliable: true,
-    message: {
-      ping: {
-        tableID: null,
-        sentAt: new Date().toISOString()
-      }
+  const created = await postJSON<RoomResponse>("/rooms", {
+    localPeer: peers[0],
+    seats: peers,
+    maxPlayers: playerCount
+  });
+  assert.match(created.roomCode, /^[A-Z0-9]{4,12}$/);
+  assert.equal(created.peers.length, playerCount);
+  assert.match(created.websocketURL, /^wss:\/\//);
+
+  const joinedRooms: RoomResponse[] = [];
+  for (const peer of peers.slice(1)) {
+    const joined = await postJSON<RoomResponse>(`/rooms/${created.roomCode}/join`, {
+      localPeer: { ...peer, displayName: `${peer.displayName} Live Smoke` }
+    });
+    assert.equal(joined.roomCode, created.roomCode);
+    assert.equal(joined.peers.length, playerCount);
+    joinedRooms.push(joined);
+  }
+
+  const sockets = [
+    await openSocket(created.websocketURL),
+    ...await Promise.all(joinedRooms.map((room) => openSocket(room.websocketURL)))
+  ];
+
+  try {
+    const relays = sockets.slice(1).map((socket) => waitForMessage(socket, (message) => message.type === "wire"));
+    peers.slice(1).forEach((recipient) => {
+      sockets[0].send(JSON.stringify({
+        type: "wire",
+        recipients: [recipient.playerID],
+        reliable: true,
+        message: {
+          ping: {
+            tableID: null,
+            sentAt: new Date().toISOString()
+          }
+        }
+      }));
+    });
+
+    const relayedMessages = await Promise.all(relays);
+    for (const relayed of relayedMessages) {
+      assert.deepEqual(relayed.sender?.playerID, peers[0].playerID);
+      assert.equal(relayed.message?.ping?.tableID, null);
     }
-  }));
 
-  const relayed = await relayedMessage;
-  assert.deepEqual(relayed.sender?.playerID, peers[0].playerID);
-  assert.equal(relayed.message?.ping?.tableID, null);
-
-  console.log(JSON.stringify({
-    ok: true,
-    roomCode: created.roomCode,
-    relayType: relayed.type,
-    serverSequence: relayed.serverSequence
-  }, null, 2));
-} finally {
-  northSocket.close();
-  eastSocket.close();
+    return {
+      playerCount,
+      roomCode: created.roomCode,
+      relayType: relayedMessages[0]?.type,
+      relayedMessages: relayedMessages.length,
+      lastServerSequence: relayedMessages.at(-1)?.serverSequence
+    };
+  } finally {
+    for (const socket of sockets) {
+      socket.close();
+    }
+  }
 }
 
 function peer(
@@ -83,6 +112,10 @@ function peer(
     provider,
     displayName
   };
+}
+
+function titleCase(value: string): string {
+  return value.slice(0, 1).toUpperCase() + value.slice(1);
 }
 
 async function postJSON<T>(path: string, body: unknown): Promise<T> {

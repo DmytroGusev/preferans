@@ -103,6 +103,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 regularBody
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.screenGame)
         .navigationTitle("")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)

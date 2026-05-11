@@ -68,6 +68,7 @@
 		E0000000000000000000A045 /* MatchUIDriver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A044 /* MatchUIDriver.swift */; };
 		E0000000000000000000A047 /* FullGameUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A046 /* FullGameUITests.swift */; };
 		E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A048 /* RedesignScreenshotTests.swift */; };
+		E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A04A /* AccessibilityContractTests.swift */; };
 		F1095F4DB121A8D07CF6695F /* GameKitRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */; };
 /* End PBXBuildFile section */
 
@@ -157,6 +158,7 @@
 		E0000000000000000000A044 /* MatchUIDriver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIDriver.swift; sourceTree = "<group>"; };
 		E0000000000000000000A046 /* FullGameUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullGameUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A048 /* RedesignScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedesignScreenshotTests.swift; sourceTree = "<group>"; };
+		E0000000000000000000A04A /* AccessibilityContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityContractTests.swift; sourceTree = "<group>"; };
 		EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FakeGameArchiveStore.swift; path = Preferans/Support/FakeGameArchiveStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -278,6 +280,7 @@
 				E0000000000000000000A042 /* MatchUITests.swift */,
 				E0000000000000000000A046 /* FullGameUITests.swift */,
 				E0000000000000000000A048 /* RedesignScreenshotTests.swift */,
+				E0000000000000000000A04A /* AccessibilityContractTests.swift */,
 			);
 			path = PreferansUITests;
 			sourceTree = "<group>";
@@ -451,6 +454,7 @@
 				E0000000000000000000A043 /* MatchUITests.swift in Sources */,
 				E0000000000000000000A047 /* FullGameUITests.swift in Sources */,
 				E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */,
+				E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

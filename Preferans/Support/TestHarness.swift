@@ -41,6 +41,18 @@ public enum TestHarness {
         arguments.contains(Flag.skipTapToAdvance)
     }
 
+    public static func autoCreateOnlineRoom(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.autoCreateOnlineRoom)
+    }
+
+    public static func autoJoinOnlineRoomCode(from arguments: [String]) -> String? {
+        value(after: Flag.autoJoinOnlineRoom, in: arguments)
+    }
+
+    public static func autoStartOnlineDealOnJoin(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.autoStartOnlineDealOnJoin)
+    }
+
     /// A fully resolved table configuration the lobby can use to build a
     /// `GameViewModel`. All fields are populated from launch arguments,
     /// canonical fixtures, or sensible production defaults.

@@ -9,6 +9,7 @@ public struct LobbyView: View {
     @State private var showingSettings = false
     @State private var showingWatchBotsConfirm = false
     @State private var showingConventionLegend = false
+    @State private var didRunOnlineHarness = false
 
     public init() {}
 
@@ -67,8 +68,26 @@ public struct LobbyView: View {
                 Text("All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced.")
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.appRoot)
+        .onAppear {
+            runOnlineHarnessIfNeeded()
+        }
         .onOpenURL { url in
             viewModel.handleInviteURL(url)
+        }
+    }
+
+    private func runOnlineHarnessIfNeeded() {
+        guard !didRunOnlineHarness else { return }
+        let args = ProcessInfo.processInfo.arguments
+        if TestHarness.autoCreateOnlineRoom(in: args) {
+            didRunOnlineHarness = true
+            viewModel.startCloudflareOnlineRoom()
+        } else if let roomCode = TestHarness.autoJoinOnlineRoomCode(from: args) {
+            didRunOnlineHarness = true
+            viewModel.onlineJoinRoomCode = roomCode
+            viewModel.joinCloudflareOnlineRoom()
         }
     }
 
@@ -94,6 +113,8 @@ public struct LobbyView: View {
         }
         .scrollIndicators(.hidden)
         .feltBackground()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.screenLobby)
     }
 
     /// Hero on the felt: gold suit glyph, large cream title, gold subtitle

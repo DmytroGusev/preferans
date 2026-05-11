@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 3 || $# -gt 4 ]]; then
+  cat >&2 <<'USAGE'
+Usage: bin/verify-online-invite-flow HOST_SIM_UDID CLIENT_SIM_UDID CLIENT_SIM_UDID [CLIENT_SIM_UDID]
+
+Builds the app once, installs it on three or four booted simulators, then
+verifies the deployed Cloudflare invite flow without coordinates or screenshots:
+  1. host auto-creates a worker-backed invite room for every expected seat
+  2. each remaining simulator auto-joins that exact room as its own player
+  3. host auto-starts the first deal only after every expected player joins
+  4. every simulator reports sequence=1 phase=bidding for its own viewer
+
+Pass exactly 3 UDIDs for a 3-player table, or exactly 4 UDIDs for a 4-player table.
+USAGE
+  exit 64
+fi
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DERIVED_DATA="${PREFERANS_DERIVED_DATA:-/tmp/preferans-derived-data}"
+BUNDLE_ID="com.mixandmatch.preferans"
+APP_PATH="$DERIVED_DATA/Build/Products/Debug-iphonesimulator/Preferans.app"
+RUN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/preferans-online-flow.XXXXXX")"
+SEAT_POOL=(north east south west)
+SIM_UDIDS=("$@")
+PLAYER_COUNT="${#SIM_UDIDS[@]}"
+SEATS=("${SEAT_POOL[@]:0:$PLAYER_COUNT}")
+LOG_PIDS=()
+LOG_FILES=()
+ERROR_FILES=()
+
+join_by_comma() {
+  local joined=""
+  local item
+  for item in "$@"; do
+    if [[ -z "$joined" ]]; then
+      joined="$item"
+    else
+      joined="$joined,$item"
+    fi
+  done
+  echo "$joined"
+}
+
+players_for_local_seat() {
+  local local_seat="$1"
+  local ordered=("$local_seat")
+  local seat
+  for seat in "${SEATS[@]}"; do
+    if [[ "$seat" != "$local_seat" ]]; then
+      ordered+=("$seat")
+    fi
+  done
+  join_by_comma "${ordered[@]}"
+}
+
+cleanup() {
+  local pid
+  for pid in "${LOG_PIDS[@]:-}"; do
+    kill "$pid" >/dev/null 2>&1 || true
+  done
+  local udid
+  for udid in "${SIM_UDIDS[@]}"; do
+    xcrun simctl terminate "$udid" "$BUNDLE_ID" >/dev/null 2>&1 || true
+  done
+}
+trap cleanup EXIT
+
+start_online_log() {
+  local index="$1"
+  local udid="${SIM_UDIDS[$index]}"
+  local seat="${SEATS[$index]}"
+  local output="$RUN_DIR/$seat.stdout.log"
+  local error_output="$RUN_DIR/$seat.stderr.log"
+  : > "$output"
+  : > "$error_output"
+  xcrun simctl spawn "$udid" log stream \
+    --style compact \
+    --predicate 'subsystem == "com.mixandmatch.preferans" AND category == "online-flow"' \
+    > "$output" \
+    2> "$error_output" &
+  LOG_PIDS+=("$!")
+  LOG_FILES+=("$output")
+  ERROR_FILES+=("$error_output")
+}
+
+wait_for_log() {
+  local file="$1"
+  local pattern="$2"
+  local label="$3"
+  local timeout="${4:-30}"
+  local deadline=$((SECONDS + timeout))
+  while (( SECONDS < deadline )); do
+    if [[ -f "$file" ]] && rg -q "$pattern" "$file"; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  echo "Timed out waiting for $label" >&2
+  echo "--- $file ---" >&2
+  [[ -f "$file" ]] && tail -n 120 "$file" >&2
+  return 1
+}
+
+cd "$ROOT_DIR"
+
+xcodebuild \
+  -project Preferans.xcodeproj \
+  -scheme Preferans \
+  -configuration Debug \
+  -destination "platform=iOS Simulator,id=${SIM_UDIDS[0]}" \
+  -derivedDataPath "$DERIVED_DATA" \
+  build
+
+for udid in "${SIM_UDIDS[@]}"; do
+  xcrun simctl install "$udid" "$APP_PATH"
+done
+
+for index in "${!SIM_UDIDS[@]}"; do
+  start_online_log "$index"
+done
+sleep 0.5
+
+HOST_PLAYERS="$(join_by_comma "${SEATS[@]}")"
+xcrun simctl launch \
+  --terminate-running-process \
+  "${SIM_UDIDS[0]}" \
+  "$BUNDLE_ID" \
+  -uiTestDisableAnimations \
+  -uiTestPinLanguageEn \
+  -uiTestOnlineFlowLogging \
+  -uiTestAutoCreateOnlineRoom \
+  -uiTestAutoStartOnlineDealOnJoin \
+  -uiTestPlayers "$HOST_PLAYERS" >/dev/null
+
+HOST_LOG="${LOG_FILES[0]}"
+wait_for_log "$HOST_LOG" "ONLINE_FLOW event=create roomCode=" "host room creation"
+ROOM_CODE="$(sed -nE 's/.*ONLINE_FLOW event=create roomCode=([A-Z0-9]+).*/\1/p' "$HOST_LOG" | tail -n 1)"
+if [[ -z "$ROOM_CODE" ]]; then
+  echo "Could not parse host room code from $HOST_LOG" >&2
+  exit 1
+fi
+
+for index in $(seq 1 $((PLAYER_COUNT - 1))); do
+  seat="${SEATS[$index]}"
+  xcrun simctl launch \
+    --terminate-running-process \
+    "${SIM_UDIDS[$index]}" \
+    "$BUNDLE_ID" \
+    -uiTestDisableAnimations \
+    -uiTestPinLanguageEn \
+    -uiTestOnlineFlowLogging \
+    -uiTestAutoJoinOnlineRoom "$ROOM_CODE" \
+    -uiTestPlayers "$(players_for_local_seat "$seat")" >/dev/null
+done
+
+for index in $(seq 1 $((PLAYER_COUNT - 1))); do
+  seat="${SEATS[$index]}"
+  wait_for_log "${LOG_FILES[$index]}" "ONLINE_FLOW event=join roomCode=$ROOM_CODE local=$seat" "$seat client join"
+done
+
+wait_for_log "$HOST_LOG" "ONLINE_FLOW event=projection source=publishLocal local=north viewer=north sequence=1 phase=bidding" "host bidding projection"
+
+for index in $(seq 1 $((PLAYER_COUNT - 1))); do
+  seat="${SEATS[$index]}"
+  wait_for_log "$HOST_LOG" "ONLINE_FLOW event=sendProjection recipient=$seat sequence=1 phase=bidding" "host sending bidding projection to $seat"
+  wait_for_log "${LOG_FILES[$index]}" "ONLINE_FLOW event=projection source=receive local=$seat viewer=$seat sequence=1 phase=bidding" "$seat receiving bidding projection"
+done
+
+cat <<REPORT
+Verified deployed invite flow.
+Players: $(join_by_comma "${SEATS[@]}")
+Room: $ROOM_CODE
+Logs:
+REPORT
+
+for index in "${!SEATS[@]}"; do
+  echo "  ${SEATS[$index]}: ${LOG_FILES[$index]}"
+done

@@ -78,6 +78,14 @@ public enum UIIdentifiers {
         }
     }
 
+    // MARK: - Screen roots
+
+    public static let appRoot                  = "app.root"
+    public static let screenLobby              = "screen.lobby"
+    public static let screenGame               = "screen.game"
+    public static let screenOnlineRoom         = "screen.onlineRoom"
+    public static let onlineFlowState          = "online.flowState"
+
     public static func encode(_ mode: DefenderPlayMode) -> String {
         switch mode {
         case .closed: return "closed"
@@ -316,6 +324,18 @@ public enum UITestFlags {
     /// simulators whose preferred language is neither English nor the
     /// app's `AppLanguage.default`.
     public static let pinLanguageEn      = "-uiTestPinLanguageEn"
+    /// Emit concise room/projection progress lines for multi-simulator
+    /// invite-flow verification. Manual simulator runs leave this off.
+    public static let onlineFlowLogging  = "-uiTestOnlineFlowLogging"
+    /// Create a worker-backed invite room automatically after the lobby
+    /// appears. Used for multi-simulator invite verification.
+    public static let autoCreateOnlineRoom = "-uiTestAutoCreateOnlineRoom"
+    /// Join a worker-backed invite room automatically after the lobby
+    /// appears. The room code must be the following launch argument.
+    public static let autoJoinOnlineRoom = "-uiTestAutoJoinOnlineRoom"
+    /// Host-only invite-flow harness: start the first deal when a real
+    /// remote client joins and completes hello/resync.
+    public static let autoStartOnlineDealOnJoin = "-uiTestAutoStartOnlineDealOnJoin"
 }
 
 /// Strings rendered by the app and parsed back by UI tests. Keeping

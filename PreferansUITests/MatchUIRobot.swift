@@ -160,6 +160,28 @@ final class MatchUIRobot {
         return element.label
     }
 
+    /// Structured online validation probe exposed only as an accessibility
+    /// value. It lets tests assert room/viewer/sequence/phase without
+    /// relying on pixels or localized visible copy.
+    func onlineFlowState() -> String {
+        let element = app.staticTexts[UIIdentifiers.onlineFlowState]
+        assertExists(element, "Online flow state probe never appeared.")
+        return element.value as? String ?? element.label
+    }
+
+    func waitForOnlineFlowState(containing expected: String, timeout: TimeInterval? = nil) {
+        let element = app.staticTexts[UIIdentifiers.onlineFlowState]
+        let predicate = NSPredicate { _, _ in
+            guard element.exists else { return false }
+            let value = element.value as? String ?? element.label
+            return value.contains(expected)
+        }
+        let waitTime = timeout ?? defaultTimeout
+        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: nil)], timeout: waitTime)
+        XCTAssertEqual(result, .completed,
+                       "Online flow state never contained \"\(expected)\" within \(waitTime)s. Current: \"\(onlineFlowState())\".")
+    }
+
     /// Current phase message (the secondary line under the title).
     func phaseMessage() -> String {
         let element = app.staticTexts[UIIdentifiers.phaseMessage]

@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import PreferansEngine
+
+private let onlineFlowLogger = Logger(subsystem: "com.mixandmatch.preferans", category: "online-flow")
 
 public enum OnlineAccountProvider: String, Codable, Sendable, Equatable {
     case gameCenter
@@ -82,6 +85,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var rules: PreferansRules = .sochi
     private let cloudStore: (any GameArchiveStore)?
     private let dealSource: DealSource
+    private var didAutoStartOnlineDeal = false
 
     public init(
         cloudStore: (any GameArchiveStore)? = nil,
@@ -99,6 +103,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.rules = rules
         self.errorText = nil
         self.state = .selectingHost
+        self.didAutoStartOnlineDeal = false
         self.transport = transport
         self.listenTask?.cancel()
         self.listenTask = listen(to: transport)
@@ -133,6 +138,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         isHost = false
         localSeat = nil
         tableID = nil
+        didAutoStartOnlineDeal = false
         state = .disconnected
     }
 
@@ -141,6 +147,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             errorText = "No active online table."
             return
         }
+        refreshPeersFromTransport()
         // The envelope's `actor` is the seat the action speaks for. For
         // most actions this equals the local seat, but in single-whist
         // greedy play the lone whister sends play actions on behalf of
@@ -175,6 +182,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     public func requestResync() {
+        refreshPeersFromTransport()
         guard let tableID, let localSeat, let hostPeer, let transport else { return }
         let lastSeenSequence = projection?.sequence ?? 0
         Task { [weak self, tableID, localSeat, hostPeer, transport, lastSeenSequence] in
@@ -219,8 +227,19 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func sendHello() async {
         guard let localSeat, let identity = seats.first(where: { $0.playerID == localSeat }) else { return }
+        let hello = GameWireMessage.hello(
+            HelloEnvelope(
+                tableID: tableID,
+                player: identity,
+                lastSeenSequence: projection?.sequence ?? 0
+            )
+        )
         do {
-            try await transport?.sendToAll(.hello(HelloEnvelope(tableID: tableID, player: identity, lastSeenSequence: projection?.sequence ?? 0)), reliably: true)
+            if let hostPeer {
+                try await transport?.send(hello, to: [hostPeer], reliably: true)
+            } else {
+                try await transport?.sendToAll(hello, reliably: true)
+            }
         } catch {
             errorText = error.localizedDescription
         }
@@ -250,10 +269,21 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         case let .hello(hello):
             guard isHost else { return }
             if tableID == nil { tableID = hello.tableID }
+            refreshPeerMapping(peer: received.sender, identity: hello.player)
             if let hostActor, let peer = peersBySeat[hello.player.playerID] {
                 do {
+                    if let tableID, let localSeat {
+                        let assignment = SeatAssignmentEnvelope(
+                            tableID: tableID,
+                            hostPlayerID: localSeat,
+                            seats: seats,
+                            rules: rules
+                        )
+                        try await transport?.send(.seatAssignment(assignment), to: [peer], reliably: true)
+                    }
                     let envelope = try await hostActor.fullResync(for: hello.player.playerID)
                     try await transport?.send(.projection(envelope), to: [peer], reliably: true)
+                    await autoStartOnlineDealIfNeeded(afterJoin: hello.player.playerID)
                 } catch {
                     await sendHostError(to: peer, recipient: hello.player.playerID, nonce: nil, message: error.localizedDescription)
                 }
@@ -275,6 +305,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard envelope.viewer == localSeat else { return }
             tableID = envelope.tableID
             projection = envelope.projection
+            logOnlineFlowProjection(envelope.projection, source: "receive")
             eventLog.append(contentsOf: envelope.eventSummaries)
             appendRecentEvents(envelope.events)
             state = .connectedAsClient
@@ -320,8 +351,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func publish(_ update: HostUpdate) async {
         tableID = update.tableID
+        refreshPeersFromTransport()
         if let localSeat, let localProjection = update.projections[localSeat] {
             projection = localProjection
+            logOnlineFlowProjection(localProjection, source: "publishLocal")
         }
         eventLog.append(contentsOf: update.eventSummaries)
         appendRecentEvents(update.events)
@@ -339,6 +372,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     events: update.events
                 )
                 try await transport.send(.projection(envelope), to: [peer], reliably: true)
+                logOnlineFlow("event=sendProjection recipient=\(viewer.rawValue) sequence=\(projection.sequence) phase=\(phaseToken(projection.phase))")
             } catch {
                 errorText = error.localizedDescription
             }
@@ -423,6 +457,102 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func orderedParticipants(from peers: [OnlinePeer]) -> [OnlinePeer] {
         peers.sorted { $0.playerID.rawValue < $1.playerID.rawValue }
+    }
+
+    private func refreshPeersFromTransport() {
+        guard let transport else { return }
+        for peer in transport.participants {
+            let existing = peersBySeat[peer.playerID]
+            if shouldReplacePeer(existing, with: peer) {
+                peersBySeat[peer.playerID] = peer
+            }
+        }
+    }
+
+    private func refreshPeerMapping(peer: OnlinePeer, identity: PlayerIdentity) {
+        peersBySeat[peer.playerID] = peer
+        peersBySeat[identity.playerID] = peer
+        if let index = seats.firstIndex(where: { $0.playerID == identity.playerID }) {
+            seats[index] = identity
+        }
+    }
+
+    private func shouldReplacePeer(_ existing: OnlinePeer?, with candidate: OnlinePeer) -> Bool {
+        guard let existing else { return true }
+        if existing.accountID.hasPrefix("pending:") {
+            return true
+        }
+        if candidate.accountID.hasPrefix("pending:") {
+            return false
+        }
+        return true
+    }
+
+    private func autoStartOnlineDealIfNeeded(afterJoin joinedPlayer: PlayerID) async {
+        guard ProcessInfo.processInfo.arguments.contains(UITestFlags.autoStartOnlineDealOnJoin),
+              isHost,
+              !didAutoStartOnlineDeal,
+              joinedPlayer != localSeat,
+              allExpectedOnlinePlayersConnected(),
+              let tableID,
+              let localSeat,
+              projection?.legal.canStartDeal == true else {
+            return
+        }
+        didAutoStartOnlineDeal = true
+        let envelope = ClientActionEnvelope(
+            tableID: tableID,
+            actor: localSeat,
+            action: .startDeal(dealer: nil, deck: nil),
+            baseHostSequence: projection?.sequence ?? 0
+        )
+        await applyClientAction(envelope, sender: localSeat) { error in
+            self.errorText = error.localizedDescription
+        }
+    }
+
+    private func allExpectedOnlinePlayersConnected() -> Bool {
+        seats.allSatisfy { identity in
+            guard let peer = peersBySeat[identity.playerID] else { return false }
+            return !peer.accountID.hasPrefix("pending:")
+        }
+    }
+
+    private func logOnlineFlowProjection(_ projection: PlayerGameProjection, source: String) {
+        logOnlineFlow(
+            "event=projection source=\(source) local=\(localSeat?.rawValue ?? "unknown") viewer=\(projection.viewer.rawValue) sequence=\(projection.sequence) phase=\(phaseToken(projection.phase)) tableID=\(projection.tableID.uuidString)"
+        )
+    }
+
+    private func logOnlineFlow(_ message: String) {
+        if ProcessInfo.processInfo.arguments.contains(UITestFlags.onlineFlowLogging) {
+            let line = "ONLINE_FLOW \(message)"
+            print(line)
+            onlineFlowLogger.notice("\(line, privacy: .public)")
+        }
+    }
+
+    private func phaseToken(_ phase: ProjectedPhase) -> String {
+        switch phase {
+        case .waitingForDeal:
+            return "waitingForDeal"
+        case .bidding:
+            return "bidding"
+        case .awaitingDiscard:
+            return "awaitingDiscard"
+        case .awaitingContract:
+            return "awaitingContract"
+        case .awaitingWhist:
+            return "awaitingWhist"
+        case .awaitingDefenderMode:
+            return "awaitingDefenderMode"
+        case .playing:
+            return "playing"
+        case .dealFinished:
+            return "dealFinished"
+        case .gameOver:
+            return "gameOver"
+        }
     }
 }
 

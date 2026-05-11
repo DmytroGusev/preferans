@@ -1,5 +1,8 @@
 import Foundation
+import OSLog
 import PreferansEngine
+
+private let onlineFlowLogger = Logger(subsystem: "com.mixandmatch.preferans", category: "online-flow")
 
 @MainActor
 public final class CloudflareOnlineGameSession: ObservableObject {
@@ -41,6 +44,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             seats: peers,
             maxPlayers: min(max(peers.count, 3), 4)
         )
+        logOnlineFlow("event=create roomCode=\(transport.roomCode) local=\(localPeer.playerID.rawValue)")
         return CloudflareOnlineGameSession(
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
@@ -63,6 +67,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             roomCode: normalizedCode,
             localPeer: localPeer
         )
+        logOnlineFlow("event=join roomCode=\(transport.roomCode) local=\(localPeer.playerID.rawValue)")
         return CloudflareOnlineGameSession(
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
@@ -77,5 +82,13 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     public func stop() {
         localCoordinator.detach()
         transport.disconnect()
+    }
+}
+
+private func logOnlineFlow(_ message: String) {
+    if ProcessInfo.processInfo.arguments.contains(UITestFlags.onlineFlowLogging) {
+        let line = "ONLINE_FLOW \(message)"
+        print(line)
+        onlineFlowLogger.notice("\(line, privacy: .public)")
     }
 }

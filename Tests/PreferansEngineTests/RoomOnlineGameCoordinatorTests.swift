@@ -35,6 +35,54 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertTrue(northSeat.hand.allSatisfy { $0.knownCard == nil })
     }
 
+    func testLateCloudflareJoinRefreshesPeerRouteBeforeHostPublishes() async throws {
+        let hostPeer = peers[0]
+        let pendingEast = OnlinePeer(
+            playerID: "east",
+            accountID: "pending:east",
+            provider: .dev,
+            displayName: "East"
+        )
+        let actualEast = OnlinePeer(
+            playerID: "east",
+            accountID: "anonymous:east:joined",
+            provider: .dev,
+            displayName: "East"
+        )
+        let pendingSouth = OnlinePeer(
+            playerID: "south",
+            accountID: "pending:south",
+            provider: .dev,
+            displayName: "South"
+        )
+        let room = AccountAddressedRoom(hostPlayerID: "north")
+        let hostTransport = room.transport(
+            localPeer: hostPeer,
+            participants: [hostPeer, pendingEast, pendingSouth]
+        )
+        let hostCoordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32])
+        )
+
+        await hostCoordinator.attach(transport: hostTransport)
+        await pump(until: { hostCoordinator.projection?.sequence == 0 })
+
+        let eastTransport = room.transport(
+            localPeer: actualEast,
+            participants: [hostPeer, actualEast, pendingSouth]
+        )
+        let eastCoordinator = RoomOnlineGameCoordinator()
+
+        await eastCoordinator.attach(transport: eastTransport)
+        await pump(until: { eastCoordinator.projection?.sequence == 0 })
+
+        hostCoordinator.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { eastCoordinator.projection?.sequence == 1 })
+
+        XCTAssertEqual(eastCoordinator.projection?.viewer, "east")
+        XCTAssertEqual(eastCoordinator.projection?.tableID, hostCoordinator.tableID)
+    }
+
     func testClientActionFlowsThroughHostAndSpoofedActorIsRejected() async throws {
         let fixture = try await makeFixture()
 
@@ -237,10 +285,13 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
 
     private func pump(
         until condition: @MainActor () -> Bool,
+        timeout: Duration = .milliseconds(750),
         file: StaticString = #filePath,
         line: UInt = #line
     ) async {
-        for _ in 0..<50 {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while clock.now < deadline {
             if condition() { return }
             await Task.yield()
         }
@@ -324,5 +375,105 @@ private struct RoomFixture {
 
     func allProjectionsAre(at sequence: Int) -> Bool {
         coordinators.values.allSatisfy { $0.projection?.sequence == sequence }
+    }
+}
+
+@MainActor
+private final class AccountAddressedRoom {
+    private let hostPlayerID: PlayerID
+    private var transports: [String: AccountAddressedTransport] = [:]
+
+    init(hostPlayerID: PlayerID) {
+        self.hostPlayerID = hostPlayerID
+    }
+
+    func transport(localPeer: OnlinePeer, participants: [OnlinePeer]) -> AccountAddressedTransport {
+        let transport = AccountAddressedTransport(
+            room: self,
+            localPeer: localPeer,
+            participants: participants,
+            hostPlayerID: hostPlayerID
+        )
+        transports[localPeer.accountID] = transport
+        return transport
+    }
+
+    fileprivate func deliver(_ message: GameWireMessage, from sender: OnlinePeer, to recipients: [OnlinePeer]) {
+        for recipient in recipients where recipient.accountID != sender.accountID {
+            transports[recipient.accountID]?.receive(ReceivedRoomMessage(message: message, sender: sender))
+        }
+    }
+
+    fileprivate func broadcast(_ message: GameWireMessage, from sender: OnlinePeer) {
+        for transport in transports.values where transport.localPeer.accountID != sender.accountID {
+            transport.receive(ReceivedRoomMessage(message: message, sender: sender))
+        }
+    }
+}
+
+@MainActor
+private final class AccountAddressedTransport: RoomRealtimeTransport {
+    public let localPeer: OnlinePeer
+    public let participants: [OnlinePeer]
+
+    private let room: AccountAddressedRoom
+    private let hostPlayerID: PlayerID
+    private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
+    private var backlog: [ReceivedRoomMessage] = []
+
+    init(
+        room: AccountAddressedRoom,
+        localPeer: OnlinePeer,
+        participants: [OnlinePeer],
+        hostPlayerID: PlayerID
+    ) {
+        self.room = room
+        self.localPeer = localPeer
+        self.participants = participants
+        self.hostPlayerID = hostPlayerID
+    }
+
+    func chooseHost() async -> OnlinePeer? {
+        participants.first { $0.playerID == hostPlayerID }
+    }
+
+    func messages() -> AsyncStream<ReceivedRoomMessage> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            continuations[id] = continuation
+            for message in backlog {
+                continuation.yield(message)
+            }
+            backlog.removeAll()
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.continuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
+    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws {
+        room.deliver(message, from: localPeer, to: peers)
+    }
+
+    func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {
+        room.broadcast(message, from: localPeer)
+    }
+
+    func disconnect() {
+        for continuation in continuations.values {
+            continuation.finish()
+        }
+        continuations.removeAll()
+        backlog.removeAll()
+    }
+
+    fileprivate func receive(_ message: ReceivedRoomMessage) {
+        if continuations.isEmpty {
+            backlog.append(message)
+        } else {
+            for continuation in continuations.values {
+                continuation.yield(message)
+            }
+        }
     }
 }
