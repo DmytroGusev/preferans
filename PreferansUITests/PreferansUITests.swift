@@ -23,6 +23,8 @@ final class PreferansUITests: XCTestCase {
         robot.waitForElement(UIIdentifiers.lobbyWatchBots)
         robot.waitForElement(UIIdentifiers.lobbyPlayerCountThree)
         robot.waitForElement(UIIdentifiers.lobbyPlayerCountFour)
+        robot.waitForElement(UIIdentifiers.lobbyAddBot)
+        robot.waitForElement(UIIdentifiers.lobbyRemoveBot)
         robot.waitForElement(UIIdentifiers.lobbyPlayerNameField(index: 0))
         robot.waitForElement(UIIdentifiers.lobbyBotSpeedPicker)
         robot.waitForElement(UIIdentifiers.lobbyStartLocalTable)

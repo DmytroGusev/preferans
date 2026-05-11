@@ -31,6 +31,14 @@ public enum SettingsKeys {
     /// This is intentionally presentation-only; engine card comparison
     /// remains tied to game/bid order.
     public static let cardSuitDisplayOrder = "settings.cardSuitDisplayOrder"
+
+    /// Persisted Sign in with Apple identity used for worker-backed rooms.
+    public static let onlineRegisteredAccount = "settings.onlineRegisteredAccount"
+
+    /// Stable anonymous identity used when joining invite-link rooms without
+    /// registration. The worker still receives it as a development provider
+    /// until the deployed API grows a first-class anonymous provider.
+    public static let onlineAnonymousAccountID = "settings.onlineAnonymousAccountID"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

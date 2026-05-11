@@ -1,18 +1,11 @@
 import SwiftUI
 import PreferansEngine
-#if canImport(GameKit) && canImport(UIKit)
-import GameKit
+#if canImport(AuthenticationServices)
+import AuthenticationServices
 #endif
 
 public struct LobbyView: View {
-    #if canImport(GameKit) && canImport(UIKit)
-    @EnvironmentObject private var gameCenter: GameCenterService
-    @EnvironmentObject private var online: HostedOnlineGameCoordinator
-    #endif
-
     @StateObject private var viewModel = LobbyViewModel()
-    @State private var showingMatchmaker = false
-    @State private var hasAttemptedSignIn = false
     @State private var showingSettings = false
     @State private var showingWatchBotsConfirm = false
     @State private var showingConventionLegend = false
@@ -42,22 +35,7 @@ public struct LobbyView: View {
                         onLeaveTable: { viewModel.leaveOnlineRoom() }
                     )
                 } else {
-                    #if canImport(GameKit) && canImport(UIKit)
-                    if let projection = online.projection {
-                        ProjectionGameScreen(
-                            projection: projection,
-                            eventLog: online.eventLog,
-                            recentEvents: online.recentEvents,
-                            onSend: online.send,
-                            onLeaveTable: { online.detach() },
-                            extraMenu: { EmptyView() }
-                        )
-                    } else {
-                        lobbyContent
-                    }
-                    #else
                     lobbyContent
-                    #endif
                 }
             }
             .toolbar {
@@ -92,35 +70,14 @@ public struct LobbyView: View {
         .onOpenURL { url in
             viewModel.handleInviteURL(url)
         }
-        #if canImport(GameKit) && canImport(UIKit)
-        .background(GameCenterAuthenticationPresenter(viewController: gameCenter.authenticationViewController).frame(width: 0, height: 0))
-        .sheet(isPresented: $showingMatchmaker) {
-            GameCenterMatchmakerView(
-                minPlayers: 3,
-                maxPlayers: 4,
-                onMatch: { match in
-                    showingMatchmaker = false
-                    Task { await online.attach(match: match) }
-                },
-                onCancel: { showingMatchmaker = false },
-                onError: { error in
-                    showingMatchmaker = false
-                    viewModel.errorText = error.localizedDescription
-                }
-            )
-        }
-        #endif
     }
 
     private var lobbyContent: some View {
         ScrollView {
             VStack(spacing: 18) {
                 hero
-                localTableCard
                 onlineRoomCard
-                #if canImport(GameKit) && canImport(UIKit)
-                gameCenterOnlineCard
-                #endif
+                localTableCard
                 if let errorText = viewModel.errorText {
                     Text(errorText)
                         .font(.footnote)
@@ -131,14 +88,11 @@ public struct LobbyView: View {
             }
             .padding(.horizontal, 18)
             .padding(.top, 18)
-            .padding(.bottom, 110)
+            .padding(.bottom, 24)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            lobbyStartBar
-        }
         .feltBackground()
     }
 
@@ -230,16 +184,14 @@ public struct LobbyView: View {
     private var localTableCard: some View {
         card(title: "At this table", icon: "person.3.fill") {
             VStack(spacing: 14) {
-                HStack(spacing: 8) {
-                    seatCountButton(count: 3, id: UIIdentifiers.lobbyPlayerCountThree)
-                    seatCountButton(count: 4, id: UIIdentifiers.lobbyPlayerCountFour)
-                }
+                botCountStepper
 
                 VStack(spacing: 8) {
                     ForEach(Array(viewModel.seats.enumerated()), id: \.element.id) { index, _ in
                         seatRow(index: index)
                     }
                 }
+                legacySeatCountAccessibilityButtons
 
                 botSpeedPicker
 
@@ -250,6 +202,21 @@ public struct LobbyView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
                 }
+
+                Button {
+                    viewModel.startLocalTable()
+                } label: {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("Sit down")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.feltPrimary)
+                .controlSize(.large)
+                .disabled(viewModel.seats.validationError != nil)
+                .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
 
                 // Hidden test-only affordance. The visible quick-play CTA was
                 // folded into "Sit down" (which already starts a table with
@@ -265,10 +232,8 @@ public struct LobbyView: View {
                     .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
 
                 // Spectator-only "watch bots" lives below the roster as a
-                // secondary affordance — the main "Sit down" CTA in the
-                // sticky bottom bar is the primary play path. The old
-                // "Deal me in" button has been folded into Sit Down so the
-                // lobby has one CTA instead of two competing ones.
+                // secondary affordance. The main "Sit down" CTA starts from
+                // the current local roster.
                 Button {
                     showingWatchBotsConfirm = true
                 } label: {
@@ -293,37 +258,58 @@ public struct LobbyView: View {
         }
     }
 
-    private var lobbyStartBar: some View {
-        VStack(spacing: 0) {
-            Rectangle()
-                .fill(TableTheme.gold.opacity(0.18))
-                .frame(height: 0.5)
-            Button {
-                viewModel.startLocalTable()
-            } label: {
-                HStack {
-                    Image(systemName: "play.fill")
-                    Text("Sit down")
-                        .fontWeight(.semibold)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 4)
+    private var botCountStepper: some View {
+        HStack(spacing: 10) {
+            Label {
+                Text("\(viewModel.botCount) bots")
+                    .font(.headline)
+                    .foregroundStyle(TableTheme.inkCream)
+            } icon: {
+                Image(systemName: "cpu")
+                    .foregroundStyle(TableTheme.goldBright)
             }
-            .buttonStyle(.feltPrimary)
-            .controlSize(.large)
-            .disabled(viewModel.seats.validationError != nil)
-            .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
-            .padding(.horizontal, 18)
-            .padding(.top, 12)
-            .padding(.bottom, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                viewModel.removeBot()
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.title3)
+                    .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(viewModel.canRemoveBot ? TableTheme.goldBright : TableTheme.inkCreamDim)
+            .disabled(!viewModel.canRemoveBot)
+            .accessibilityLabel("Remove bot")
+            .accessibilityIdentifier(UIIdentifiers.lobbyRemoveBot)
+
+            Button {
+                viewModel.addBot()
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+                    .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(viewModel.canAddBot ? TableTheme.goldBright : TableTheme.inkCreamDim)
+            .disabled(!viewModel.canAddBot)
+            .accessibilityLabel("Add bot")
+            .accessibilityIdentifier(UIIdentifiers.lobbyAddBot)
         }
-        .background(
-            LinearGradient(
-                colors: [Color.black.opacity(0.32), Color.black.opacity(0.18)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .padding(10)
+        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var legacySeatCountAccessibilityButtons: some View {
+        HStack(spacing: 0) {
+            Button { viewModel.setSeatCount(3) } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountThree)
+            Button { viewModel.setSeatCount(4) } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountFour)
+        }
+        .frame(width: 1, height: 1)
+        .opacity(0.001)
+        .allowsHitTesting(true)
     }
 
     private func seatRow(index: Int) -> some View {
@@ -380,25 +366,8 @@ public struct LobbyView: View {
     }
 
     private var onlineRoomCard: some View {
-        card(title: "Invite room", icon: "link") {
+        card(title: "Invite to game", icon: "link") {
             VStack(spacing: 12) {
-                TextField("email@example.test", text: $viewModel.onlineAccountEmail)
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(TableTheme.inkCream)
-                    .padding(10)
-                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
-                    .accessibilityIdentifier(UIIdentifiers.onlineAccountEmail)
-
-                Picker("Seat", selection: $viewModel.onlineSeatIndex) {
-                    ForEach(Array(viewModel.seats.enumerated()), id: \.element.id) { index, seat in
-                        Text(seat.trimmedName.isEmpty ? "Seat \(index + 1)" : seat.trimmedName)
-                            .tag(index)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier(UIIdentifiers.onlineLocalSeatPicker)
-
                 Button {
                     viewModel.startCloudflareOnlineRoom()
                 } label: {
@@ -409,17 +378,25 @@ public struct LobbyView: View {
                         } else {
                             Image(systemName: "person.3.sequence.fill")
                         }
-                        Text("Create invite room")
+                        Text("Create invite link")
                             .fontWeight(.semibold)
                     }
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.feltPrimary)
-                .disabled(viewModel.seats.validationError != nil || viewModel.isOnlineRoomLoading)
+                .disabled(
+                    viewModel.seats.validationError != nil
+                        || viewModel.isOnlineRoomLoading
+                )
                 .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
 
                 HStack(spacing: 8) {
-                    TextField("Room code", text: $viewModel.onlineJoinRoomCode)
+                    TextField(
+                        "Paste link or code",
+                        text: $viewModel.onlineJoinRoomCode,
+                        prompt: Text("Paste link or code")
+                            .foregroundStyle(TableTheme.inkCreamDim)
+                    )
                         .textFieldStyle(.plain)
                         .autocorrectionDisabled()
                         .foregroundStyle(TableTheme.inkCream)
@@ -438,85 +415,115 @@ public struct LobbyView: View {
                     .foregroundStyle(TableTheme.goldBright)
                     .disabled(
                         viewModel.isOnlineRoomLoading
-                            || PreferansInviteLink.normalizedRoomCode(viewModel.onlineJoinRoomCode) == nil
+                            || viewModel.pendingJoinRoomCode == nil
                     )
                     .accessibilityLabel("Join table")
                     .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
                 }
 
-                #if DEBUG
-                Button {
-                    viewModel.startInMemoryOnlineRoom()
-                } label: {
-                    HStack {
-                        Image(systemName: "testtube.2")
-                        Text("Run local test room")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.feltSecondary)
-                .disabled(viewModel.seats.validationError != nil || viewModel.isOnlineRoomLoading)
-                .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
-                #endif
+                onlineAccountControl
+                hiddenLocalTestRoomButton
             }
         }
     }
 
-    #if canImport(GameKit) && canImport(UIKit)
-    private var gameCenterOnlineCard: some View {
-        card(title: "Game Center", icon: "globe") {
-            VStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(gameCenter.isAuthenticated ? Color.green : Color.orange)
-                        .frame(width: 8, height: 8)
-                    Text(onlineStatusLine)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-
-                Button {
-                    if gameCenter.isAuthenticated {
-                        showingMatchmaker = true
-                    } else {
-                        hasAttemptedSignIn = true
-                        gameCenter.authenticate()
+    @ViewBuilder
+    private var onlineAccountControl: some View {
+        if let registeredOnlineAccount = viewModel.registeredOnlineAccount {
+            identityStatusRow(
+                icon: "person.crop.circle.badge.checkmark",
+                title: String(localized: "Signed in as \(registeredOnlineAccount.displayName)"),
+                trailingAction: {
+                    Button {
+                        viewModel.clearRegisteredOnlineAccount()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
                     }
-                } label: {
-                    HStack {
-                        Image(systemName: gameCenter.isAuthenticated ? "magnifyingglass" : "person.crop.circle.badge.questionmark")
-                        Text(onlineButtonTitle)
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .accessibilityLabel("Use anonymous identity")
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-
-                // Only surface online errors after the user has actively
-                // tried to use the online table — pre-opt-in error states
-                // ("local player not authenticated" before any tap) are
-                // expected and not actionable yet.
-                if hasAttemptedSignIn, let onlineError = online.errorText {
-                    Text(onlineError)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                }
+            )
+        } else {
+            #if canImport(AuthenticationServices)
+            HStack {
+                SignInWithAppleButton(
+                    .signIn,
+                    onRequest: configureAppleSignIn,
+                    onCompletion: handleAppleSignIn
+                )
+                .signInWithAppleButtonStyle(.black)
+                .frame(width: 190, height: 36)
+                .clipShape(Capsule())
+                .accessibilityIdentifier(UIIdentifiers.onlineRegisterWithApple)
+                Spacer()
             }
+            #endif
         }
     }
 
-    private var onlineStatusLine: String {
-        if gameCenter.isAuthenticated || hasAttemptedSignIn {
-            return gameCenter.statusText
-        }
-        return String(localized: "Sign in to find a table")
+    @ViewBuilder
+    private var hiddenLocalTestRoomButton: some View {
+        #if DEBUG
+        Button { viewModel.startInMemoryOnlineRoom() } label: { Color.clear }
+            .frame(width: 1, height: 1)
+            .opacity(0.001)
+            .allowsHitTesting(true)
+            .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
+        #endif
     }
 
-    private var onlineButtonTitle: LocalizedStringKey {
-        gameCenter.isAuthenticated ? "Find a table" : "Sign in to Game Center"
+    private func identityStatusRow<Trailing: View>(
+        icon: String,
+        title: String,
+        @ViewBuilder trailingAction: () -> Trailing
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(TableTheme.goldBright)
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(TableTheme.inkCream)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+            trailingAction()
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func identityStatusRow(icon: String, title: String) -> some View {
+        identityStatusRow(icon: icon, title: title) {
+            EmptyView()
+        }
+    }
+
+    #if canImport(AuthenticationServices)
+    private func configureAppleSignIn(_ request: ASAuthorizationAppleIDRequest) {
+        request.requestedScopes = [.fullName]
+    }
+
+    private func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case let .success(authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+                viewModel.errorText = String(localized: "Apple sign-in did not return an app account.")
+                return
+            }
+            viewModel.completeAppleRegistration(
+                userID: credential.user,
+                fullName: credential.fullName
+            )
+        case let .failure(error):
+            if let authorizationError = error as? ASAuthorizationError,
+               authorizationError.code == .canceled {
+                return
+            }
+            viewModel.errorText = error.localizedDescription
+        }
     }
     #endif
 
@@ -541,20 +548,6 @@ public struct LobbyView: View {
                 .strokeBorder(TableTheme.gold.opacity(0.22), lineWidth: 0.5)
         )
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private func seatCountButton(count: Int, id: String) -> some View {
-        let isSelected = viewModel.seats.count == count
-        Button { viewModel.setSeatCount(count) } label: {
-            Text("\(count) players")
-                .fontWeight(.semibold)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-        }
-        .buttonStyle(FeltButtonStyle(emphasis: isSelected ? .primary : .secondary))
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .accessibilityIdentifier(id)
     }
 
     private func nameBinding(for index: Int) -> Binding<String> {

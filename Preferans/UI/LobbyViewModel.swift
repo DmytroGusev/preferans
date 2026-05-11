@@ -7,20 +7,44 @@ public final class LobbyViewModel: ObservableObject {
     @Published public var localModel: GameViewModel?
     @Published public var onlineSession: InMemoryOnlineGameSession?
     @Published public var cloudOnlineSession: CloudflareOnlineGameSession?
-    @Published public var seats: [LobbySeat] = LobbySeat.defaults(count: 3) {
-        didSet { onlineSeatIndex = min(onlineSeatIndex, max(0, seats.count - 1)) }
-    }
+    @Published public var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
     @Published public var botSpeed: BotMoveSpeed = .normal
     @Published public var errorText: String?
-    @Published public var onlineAccountEmail = "neo@example.test"
-    @Published public var onlineSeatIndex = 0
+    @Published public private(set) var registeredOnlineAccount: RegisteredOnlineAccount?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
 
-    public init() {}
+    public init() {
+        registeredOnlineAccount = Self.loadRegisteredOnlineAccount()
+    }
 
     public func setSeatCount(_ count: Int) {
         seats = LobbySeat.resize(seats, to: count)
+    }
+
+    public var botCount: Int {
+        seats.filter { $0.kind == .bot }.count
+    }
+
+    public var canAddBot: Bool {
+        seats.count < 4
+    }
+
+    public var canRemoveBot: Bool {
+        seats.count > 3 && seats.contains { $0.kind == .bot }
+    }
+
+    public func addBot() {
+        guard canAddBot else { return }
+        seats = LobbySeat.addBot(to: seats)
+    }
+
+    public func removeBot() {
+        guard canRemoveBot,
+              let index = seats.lastIndex(where: { $0.kind == .bot }) else {
+            return
+        }
+        seats.remove(at: index)
     }
 
     public func setSeatName(_ name: String, at index: Int) {
@@ -63,7 +87,7 @@ public final class LobbyViewModel: ObservableObject {
 
     public func joinCloudflareOnlineRoom() {
         guard !isOnlineRoomLoading,
-              let roomCode = PreferansInviteLink.normalizedRoomCode(onlineJoinRoomCode) else {
+              let roomCode = pendingJoinRoomCode else {
             return
         }
         isOnlineRoomLoading = true
@@ -135,6 +159,34 @@ public final class LobbyViewModel: ObservableObject {
         errorText = "Invite \(roomCode) is ready. Choose your seat and join the table."
     }
 
+    public var pendingJoinRoomCode: String? {
+        PreferansInviteLink.roomCode(from: onlineJoinRoomCode)
+    }
+
+    public func completeAppleRegistration(userID: String, fullName: PersonNameComponents?) {
+        let formatter = PersonNameComponentsFormatter()
+        formatter.style = .medium
+        let formattedName = fullName.map { formatter.string(from: $0) }?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = formattedName?.isEmpty == false ? formattedName! : localSeatName
+        let account = RegisteredOnlineAccount(
+            provider: .apple,
+            accountID: "apple:\(userID)",
+            displayName: displayName
+        )
+        registeredOnlineAccount = account
+        if seats.indices.contains(localSeatIndex) {
+            seats[localSeatIndex].name = displayName
+        }
+        Self.saveRegisteredOnlineAccount(account)
+        errorText = nil
+    }
+
+    public func clearRegisteredOnlineAccount() {
+        registeredOnlineAccount = nil
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
+    }
+
     /// `speedOverride` lets the watch-bots demo run instantly without
     /// stomping the lobby's `botSpeed` picker; otherwise `.instant` would
     /// leak into the next "Sit down" flow and zero normal bot pacing.
@@ -202,7 +254,7 @@ public final class LobbyViewModel: ObservableObject {
             defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
         )
         let players = configuration.players
-        let selectedIndex = min(onlineSeatIndex, max(0, players.count - 1))
+        let selectedIndex = min(localSeatIndex, max(0, players.count - 1))
         let localPlayer = players[selectedIndex]
         let account = normalizedOnlineAccount(for: localPlayer)
         let peers = players.enumerated().map { index, player in
@@ -216,15 +268,47 @@ public final class LobbyViewModel: ObservableObject {
         return (peers, localPlayer, configuration.rules, configuration.dealSource)
     }
 
+    private var localSeatIndex: Int {
+        seats.firstIndex { $0.kind == .human } ?? 0
+    }
+
+    private var localSeatName: String {
+        if seats.indices.contains(localSeatIndex) {
+            let trimmedName = seats[localSeatIndex].trimmedName
+            if !trimmedName.isEmpty { return trimmedName }
+        }
+        return String(localized: "Player")
+    }
+
     private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
-        let trimmed = onlineAccountEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            return (.dev, "dev:\(player.rawValue.lowercased())@example.test")
+        if let registeredOnlineAccount {
+            return (registeredOnlineAccount.provider, registeredOnlineAccount.accountID)
         }
-        if trimmed.hasPrefix("dev:") {
-            return (.dev, trimmed)
+
+        return (.dev, anonymousAccountID(for: player))
+    }
+
+    private func anonymousAccountID(for player: PlayerID) -> String {
+        if let stored = UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID),
+           !stored.isEmpty {
+            return stored
         }
-        return (.email, "email:\(trimmed.lowercased())")
+        @Dependency(\.uuid) var uuid
+        let accountID = "anonymous:\(player.rawValue.lowercased()):\(uuid().uuidString.lowercased())"
+        UserDefaults.standard.set(accountID, forKey: SettingsKeys.onlineAnonymousAccountID)
+        return accountID
+    }
+
+    private static func loadRegisteredOnlineAccount() -> RegisteredOnlineAccount? {
+        guard let data = UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount) else {
+            return nil
+        }
+        return try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data)
+    }
+
+    private static func saveRegisteredOnlineAccount(_ account: RegisteredOnlineAccount) {
+        guard let data = try? PreferansJSONCoder.encoder.encode(account) else { return }
+        UserDefaults.standard.set(data, forKey: SettingsKeys.onlineRegisteredAccount)
     }
 
     private func makeRoomCode() -> String {
@@ -260,6 +344,18 @@ public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
         case .normal:  return .milliseconds(1200)
         case .slow:    return .milliseconds(2200)
         }
+    }
+}
+
+public struct RegisteredOnlineAccount: Codable, Equatable {
+    public var provider: OnlineAccountProvider
+    public var accountID: String
+    public var displayName: String
+
+    public init(provider: OnlineAccountProvider, accountID: String, displayName: String) {
+        self.provider = provider
+        self.accountID = accountID
+        self.displayName = displayName
     }
 }
 
@@ -315,13 +411,28 @@ extension LobbySeat {
             return Array(existing.prefix(count))
         }
         var resized = existing
-        for index in existing.count..<count {
-            resized.append(LobbySeat(
-                name: defaultNames[index],
-                kind: .bot
-            ))
+        while resized.count < count {
+            resized = addBot(to: resized)
         }
         return resized
+    }
+
+    static func addBot(to existing: [LobbySeat]) -> [LobbySeat] {
+        var resized = existing
+        resized.append(LobbySeat(name: nextBotName(existing: existing), kind: .bot))
+        return resized
+    }
+
+    private static func nextBotName(existing: [LobbySeat]) -> String {
+        let usedNames = Set(existing.map(\.trimmedName))
+        if let defaultName = defaultNames.dropFirst().first(where: { !usedNames.contains($0) }) {
+            return defaultName
+        }
+        var suffix = existing.count + 1
+        while usedNames.contains("Bot \(suffix)") {
+            suffix += 1
+        }
+        return "Bot \(suffix)"
     }
 }
 

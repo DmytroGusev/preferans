@@ -1442,6 +1442,30 @@
         }
       }
     },
+    "Add bot": {
+      "comment": "Accessibility label for the lobby button that adds a bot seat.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add bot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить бота"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додати бота"
+          }
+        }
+      }
+    },
     "Anonymous": {
       "comment": "Lobby online identity picker option — play without registering.",
       "extractionState": "manual",
@@ -1630,6 +1654,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Запрошення"
+          }
+        }
+      }
+    },
+    "Invite to game": {
+      "comment": "Lobby card title — worker-backed online game invitation with a shareable link.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invite to game"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пригласить в игру"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запросити до гри"
           }
         }
       }
@@ -3652,6 +3700,30 @@
         }
       }
     },
+    "Paste link or code": {
+      "comment": "Lobby online text field placeholder — accepts either a full invite URL or a room code.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste link or code"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставьте ссылку или код"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставте посилання або код"
+          }
+        }
+      }
+    },
     "Player": {
       "comment": "Fallback player name for lobby identity text.",
       "extractionState": "manual",
@@ -3672,6 +3744,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "Гравець"
+          }
+        }
+      }
+    },
+    "Remove bot": {
+      "comment": "Accessibility label for the lobby button that removes a bot seat.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove bot"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убрать бота"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прибрати бота"
           }
         }
       }

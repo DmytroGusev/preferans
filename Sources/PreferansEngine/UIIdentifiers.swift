@@ -111,6 +111,8 @@ public enum UIIdentifiers {
     public static let lobbyStartLocalTable     = "button.startLocalTable"
     public static let lobbyPlayerCountThree    = "button.playerCount.3"
     public static let lobbyPlayerCountFour     = "button.playerCount.4"
+    public static let lobbyAddBot              = "button.addBot"
+    public static let lobbyRemoveBot           = "button.removeBot"
     public static func lobbyPlayerNameField(index: Int) -> String { "lobby.playerName.\(index)" }
     public static let lobbyBotSpeedPicker     = "lobby.botSpeed"
     public static let lobbyError               = "lobby.error"
@@ -120,6 +122,8 @@ public enum UIIdentifiers {
     public static let lobbySettingsButton      = "lobby.settings"
     public static let lobbyHouseConventions    = "lobby.houseConventions"
     public static let conventionLegendSheet    = "lobby.conventionLegend"
+    public static let onlineIdentityMode       = "online.identityMode"
+    public static let onlineRegisterWithApple  = "online.registerWithApple"
     public static let onlineAccountEmail       = "online.accountEmail"
     public static let onlineLocalSeatPicker    = "online.localSeat"
     public static let onlineCreateRoom         = "online.createRoom"

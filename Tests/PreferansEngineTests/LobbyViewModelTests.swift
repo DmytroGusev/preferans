@@ -4,14 +4,28 @@ import PreferansEngine
 
 @MainActor
 final class LobbyViewModelTests: AppTestCase {
-    func testSeatResizeClampsSelectedOnlineSeat() {
+    func testBotStepperAddsAndRemovesFourthBot() {
         let model = LobbyViewModel()
 
-        model.setSeatCount(4)
-        model.onlineSeatIndex = 3
-        model.setSeatCount(3)
+        XCTAssertEqual(model.seats.count, 3)
+        XCTAssertEqual(model.botCount, 2)
+        XCTAssertTrue(model.canAddBot)
+        XCTAssertFalse(model.canRemoveBot)
 
-        XCTAssertEqual(model.onlineSeatIndex, 2)
+        model.addBot()
+
+        XCTAssertEqual(model.seats.count, 4)
+        XCTAssertEqual(model.botCount, 3)
+        XCTAssertEqual(model.seats.last?.name, "Agent Smith")
+        XCTAssertFalse(model.canAddBot)
+        XCTAssertTrue(model.canRemoveBot)
+
+        model.removeBot()
+
+        XCTAssertEqual(model.seats.count, 3)
+        XCTAssertEqual(model.botCount, 2)
+        XCTAssertTrue(model.canAddBot)
+        XCTAssertFalse(model.canRemoveBot)
     }
 
     func testStartLocalTableAssignsBotStrategiesFromRoster() throws {
