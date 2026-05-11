@@ -251,6 +251,35 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
         XCTAssertNil(model.pendingAdvance,
                      "the declarer is about to discard interactively — no extra acknowledgement tap")
     }
+
+    func testLocalAgreementSettlementScoresDealWithoutSeatSwitching() throws {
+        let model = try makeModel()
+        driveToPlay(model)
+
+        let settlement = try XCTUnwrap(
+            model.engine.legalSettlements(for: "north").first {
+                $0.target == "north" && $0.targetTricks == 6
+            }
+        )
+
+        model.settleByLocalAgreement(proposer: "north", settlement: settlement)
+
+        XCTAssertNil(model.lastError)
+        XCTAssertEqual(model.selectedViewer, "north",
+                       "local board settlement should not require rotating the visible seat")
+        XCTAssertTrue(model.recentEvents.contains(.settlementProposed(
+            TrickSettlementProposal(proposer: "north", settlement: settlement, acceptedBy: ["north"])
+        )))
+        XCTAssertTrue(model.recentEvents.contains(.settlementAccepted(player: "east")))
+        XCTAssertTrue(model.recentEvents.contains(.settlementAccepted(player: "south")))
+        XCTAssertTrue(model.recentEvents.contains(.playSettled(settlement)))
+        guard case let .dealFinished(result) = model.engine.state else {
+            return XCTFail("expected the local agreement to score the deal")
+        }
+        XCTAssertEqual(result.settlement, settlement)
+        XCTAssertTrue(result.completedTricks.isEmpty,
+                      "agreement settlement should not fabricate card-play tricks")
+    }
 }
 
 /// No-op strategy so test seats can be marked as bots without the

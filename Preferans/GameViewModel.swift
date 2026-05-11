@@ -281,6 +281,24 @@ public final class GameViewModel: ObservableObject {
         send(.startDeal(dealer: nil, deck: nil))
     }
 
+    /// Local shared-table shortcut for a verbal agreement around the
+    /// device. Online rooms still use explicit per-player accept/reject
+    /// actions from each seat's own projection.
+    public func settleByLocalAgreement(proposer: PlayerID, settlement: TrickSettlement) {
+        send(.proposeSettlement(player: proposer, settlement: settlement))
+        guard case let .playing(playing) = engine.state,
+              let proposal = playing.pendingSettlement,
+              proposal.proposer == proposer,
+              proposal.settlement == settlement else {
+            return
+        }
+
+        for player in playing.activePlayers where engine.canAcceptSettlement(player: player) {
+            send(.acceptSettlement(player: player))
+            guard case .playing = engine.state else { break }
+        }
+    }
+
     public func projection(revealAll: Bool = true) -> PlayerGameProjection {
         PlayerProjectionBuilder.projection(
             for: selectedViewer,

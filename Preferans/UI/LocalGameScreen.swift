@@ -31,7 +31,7 @@ public struct LocalGameScreen: View {
             recentEvents: model.recentEvents,
             pendingAdvance: model.pendingAdvance,
             idleHintActive: model.idleHintActive,
-            onSend: model.send,
+            onSend: sendLocalAction,
             onTapToAdvance: model.advance,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch
@@ -63,6 +63,15 @@ public struct LocalGameScreen: View {
                     .padding(.top, 8)
                     .accessibilityIdentifier(UIIdentifiers.errorBanner)
             }
+        }
+    }
+
+    private func sendLocalAction(_ action: PreferansAction) {
+        switch action {
+        case let .proposeSettlement(player, settlement):
+            model.settleByLocalAgreement(proposer: player, settlement: settlement)
+        default:
+            model.send(action)
         }
     }
 }

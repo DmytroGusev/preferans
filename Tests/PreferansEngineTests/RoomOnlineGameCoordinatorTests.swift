@@ -165,6 +165,44 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         )
     }
 
+    func testPlayerRoomSettlementCollectsAcceptancesAndScoresDeal() async throws {
+        let fixture = try await makeFixture()
+        var sequence = try await driveRoomToPlaying(fixture)
+        let proposalProjection = try XCTUnwrap(fixture.coordinators["north"]?.projection)
+        let activePlayers = proposalProjection.seats.filter(\.isActive).map(\.player)
+        let proposer = try XCTUnwrap(activePlayers.first)
+        let settlement = try XCTUnwrap(
+            fixture.coordinators[proposer]?.projection?.legal.settlementOptions.first
+        )
+
+        try await apply(
+            .proposeSettlement(player: proposer, settlement: settlement),
+            from: proposer,
+            in: fixture,
+            sequence: &sequence
+        )
+
+        for player in activePlayers where player != proposer {
+            let playerProjection = try XCTUnwrap(fixture.coordinators[player]?.projection)
+            XCTAssertEqual(playerProjection.legal.pendingSettlement?.settlement, settlement)
+            XCTAssertTrue(playerProjection.legal.canAcceptSettlement)
+            try await apply(
+                .acceptSettlement(player: player),
+                from: player,
+                in: fixture,
+                sequence: &sequence
+            )
+        }
+
+        for coordinator in fixture.coordinators.values {
+            guard case let .dealFinished(result) = coordinator.projection?.phase else {
+                return XCTFail("expected every player projection to show a scored settlement")
+            }
+            XCTAssertEqual(result.settlement, settlement)
+            XCTAssertTrue(result.completedTricks.isEmpty)
+        }
+    }
+
     private func makeFixture(hostArchiveStore: (any GameArchiveStore)? = nil) async throws -> RoomFixture {
         let room = InMemoryRoom(peers: peers, hostPlayerID: "north")
         let transports = try Dictionary(uniqueKeysWithValues: peers.map { peer in
@@ -214,6 +252,67 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
             throw EngineTestError("Expected bidding projection, got \(projection.phase).")
         }
         return currentPlayer
+    }
+
+    private func driveRoomToPlaying(_ fixture: RoomFixture) async throws -> Int {
+        var sequence = 0
+        try await apply(.startDeal(dealer: nil, deck: nil), from: "north", in: fixture, sequence: &sequence)
+
+        var projection = try XCTUnwrap(fixture.coordinators["north"]?.projection)
+        let openingBidder = try currentBidder(in: projection)
+        try await apply(
+            .bid(player: openingBidder, call: .bid(.game(GameContract(6, .suit(.clubs))))),
+            from: openingBidder,
+            in: fixture,
+            sequence: &sequence
+        )
+
+        for _ in 0..<12 {
+            projection = try XCTUnwrap(fixture.coordinators["north"]?.projection)
+            switch projection.phase {
+            case let .bidding(currentPlayer, _):
+                try await apply(.bid(player: currentPlayer, call: .pass), from: currentPlayer, in: fixture, sequence: &sequence)
+
+            case let .awaitingDiscard(declarer, _):
+                let declarerProjection = try XCTUnwrap(fixture.coordinators[declarer]?.projection)
+                let talon = declarerProjection.talon.compactMap(\.knownCard)
+                try await apply(.discard(player: declarer, cards: talon), from: declarer, in: fixture, sequence: &sequence)
+
+            case let .awaitingContract(declarer, _):
+                let declarerProjection = try XCTUnwrap(fixture.coordinators[declarer]?.projection)
+                let contract = try XCTUnwrap(declarerProjection.legal.contractOptions.first)
+                try await apply(.declareContract(player: declarer, contract: contract), from: declarer, in: fixture, sequence: &sequence)
+
+            case let .awaitingWhist(currentPlayer, _, _):
+                let whistProjection = try XCTUnwrap(fixture.coordinators[currentPlayer]?.projection)
+                let call = whistProjection.legal.whistCalls.contains(.whist)
+                    ? WhistCall.whist
+                    : try XCTUnwrap(whistProjection.legal.whistCalls.first)
+                try await apply(.whist(player: currentPlayer, call: call), from: currentPlayer, in: fixture, sequence: &sequence)
+
+            case let .awaitingDefenderMode(whister, _):
+                try await apply(.chooseDefenderMode(player: whister, mode: .closed), from: whister, in: fixture, sequence: &sequence)
+
+            case .playing:
+                return sequence
+
+            case .waitingForDeal, .dealFinished, .gameOver:
+                throw EngineTestError("Expected to reach playing, got \(projection.phase).")
+            }
+        }
+        throw EngineTestError("Room flow did not reach playing within the bounded setup loop.")
+    }
+
+    private func apply(
+        _ action: PreferansAction,
+        from player: PlayerID,
+        in fixture: RoomFixture,
+        sequence: inout Int
+    ) async throws {
+        let coordinator = try XCTUnwrap(fixture.coordinators[player])
+        coordinator.send(action)
+        sequence += 1
+        await pump(until: { fixture.allProjectionsAre(at: sequence) })
     }
 }
 

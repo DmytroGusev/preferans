@@ -14,13 +14,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "1 бот"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "1 бот"
           }
         }
@@ -38,13 +38,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "1 человек"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "1 людина"
           }
         }
@@ -77,25 +77,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld бот"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld бота"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld ботов"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld ботов"
                 }
               }
@@ -107,25 +107,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld бот"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld боти"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld ботів"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld ботів"
                 }
               }
@@ -161,25 +161,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld человек"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld человека"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld человек"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld человек"
                 }
               }
@@ -191,25 +191,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld людина"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld людини"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld людей"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld людей"
                 }
               }
@@ -230,13 +230,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ сыграл %2$@ — взяток: %3$lld"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ зіграв %2$@ — взяток: %3$lld"
           }
         }
@@ -254,13 +254,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ — без %2$@ (взяток: %3$lld)"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ — без %2$@ (взяток: %3$lld)"
           }
         }
@@ -278,13 +278,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ сыграл %2$@ — взяток: %3$lld. Вист: %4$@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ зіграв %2$@ — взяток: %3$lld. Віст: %4$@"
           }
         }
@@ -302,13 +302,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ — без %2$@ (взяток: %3$lld). Вист: %4$@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ — без %2$@ (взяток: %3$lld). Віст: %4$@"
           }
         }
@@ -326,13 +326,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ сыграл мизер"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ зіграв мізер"
           }
         }
@@ -350,13 +350,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ — без мизера (взято: %2$lld)"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ — без мізера (взято: %2$lld)"
           }
         }
@@ -374,13 +374,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ играет %2$@ — %3$@ полу-вистовал"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%1$@ грає %2$@ — %3$@ пів-вістував"
           }
         }
@@ -470,13 +470,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Разыгрывающий"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Розіграш"
           }
         }
@@ -626,13 +626,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Аукцион"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Аукціон"
           }
         }
@@ -746,13 +746,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Мгновенно"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Миттєво"
           }
         }
@@ -770,13 +770,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Обычная"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Звичайна"
           }
         }
@@ -794,13 +794,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Медленная"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Повільна"
           }
         }
@@ -1118,13 +1118,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Быстрая игра с ботами"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Швидка гра з ботами"
           }
         }
@@ -1142,13 +1142,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Отладка"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Налагодження"
           }
         }
@@ -1190,13 +1190,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Меню разработчика"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Меню розробника"
           }
         }
@@ -1442,6 +1442,102 @@
         }
       }
     },
+    "Anonymous": {
+      "comment": "Lobby online identity picker option — play without registering.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anonymous"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Анонимно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Анонімно"
+          }
+        }
+      }
+    },
+    "Anonymous as %@": {
+      "comment": "Lobby online identity status. %@ is the selected seat/player name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anonymous as %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Анонимно как %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Анонімно як %@"
+          }
+        }
+      }
+    },
+    "Apple registration unavailable": {
+      "comment": "Lobby online identity status when Sign in with Apple is not available on this platform.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple registration unavailable"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход с Apple недоступен"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вхід з Apple недоступний"
+          }
+        }
+      }
+    },
+    "Apple sign-in did not return an app account.": {
+      "comment": "Lobby error shown when Sign in with Apple succeeds without an Apple ID credential.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple sign-in did not return an app account."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вход с Apple не вернул учетную запись приложения."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вхід з Apple не повернув обліковий запис застосунку."
+          }
+        }
+      }
+    },
     "At this table": {
       "comment": "Lobby card title — pass-and-play / vs-bots table.",
       "extractionState": "manual",
@@ -1466,6 +1562,78 @@
         }
       }
     },
+    "Create invite link": {
+      "comment": "Lobby online button — create a Cloudflare-backed room and shareable invite link.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create invite link"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать ссылку"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Створити посилання"
+          }
+        }
+      }
+    },
+    "Invite link or code": {
+      "comment": "Lobby online text field placeholder — accepts either a full invite URL or a room code.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invite link or code"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ссылка или код"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Посилання або код"
+          }
+        }
+      }
+    },
+    "Invite room": {
+      "comment": "Lobby card title — worker-backed online room with shareable invite links.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invite room"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приглашение"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запрошення"
+          }
+        }
+      }
+    },
     "Leave table": {
       "comment": "Toolbar button — leave the online table back to the lobby.",
       "extractionState": "manual",
@@ -1478,13 +1646,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Покинуть стол"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Покинути стіл"
           }
         }
@@ -1646,13 +1814,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "БК"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "БК"
           }
         }
@@ -1694,13 +1862,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "вист на →"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "віст на →"
           }
         }
@@ -1862,13 +2030,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Преферанс"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Преферанс"
           }
         }
@@ -1886,13 +2054,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Прикуп"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Прикуп"
           }
         }
@@ -2702,13 +2870,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Торгует %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Торгує %@"
           }
         }
@@ -2726,13 +2894,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ берёт прикуп"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ бере прикуп"
           }
         }
@@ -2750,13 +2918,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ называет контракт"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ називає контракт"
           }
         }
@@ -2774,13 +2942,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ выбирает масть тотуса"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ обирає масть тотуса"
           }
         }
@@ -2798,13 +2966,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Вист: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Віст: %@"
           }
         }
@@ -2822,13 +2990,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ — светлая или тёмная?"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "%@ — світла чи темна?"
           }
         }
@@ -2918,13 +3086,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Прикуп"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Прикуп"
           }
         }
@@ -2981,25 +3149,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               }
@@ -3011,25 +3179,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "Взяток: %lld"
                 }
               }
@@ -3098,13 +3266,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Ход: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Хід: %@"
           }
         }
@@ -3460,6 +3628,150 @@
         }
       }
     },
+    "Online identity": {
+      "comment": "Lobby picker label — choose anonymous or registered identity for online rooms.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Online identity"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Учетная запись"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обліковий запис"
+          }
+        }
+      }
+    },
+    "Player": {
+      "comment": "Fallback player name for lobby identity text.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Player"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игрок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гравець"
+          }
+        }
+      }
+    },
+    "Registered": {
+      "comment": "Lobby online identity picker option — use a registered app identity.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registered"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С аккаунтом"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "З акаунтом"
+          }
+        }
+      }
+    },
+    "Registered as %@": {
+      "comment": "Lobby online identity status. %@ is the registered display name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registered as %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "С аккаунтом: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "З акаунтом: %@"
+          }
+        }
+      }
+    },
+    "Register with Apple": {
+      "comment": "Lobby online identity status — prompt to use Sign in with Apple.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Register with Apple"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войти с Apple"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увійти з Apple"
+          }
+        }
+      }
+    },
+    "Register with Apple or switch to Anonymous.": {
+      "comment": "Lobby validation error when registered online identity is selected but no Apple account is stored.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Register with Apple or switch to Anonymous."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войдите с Apple или выберите анонимный режим."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увійдіть з Apple або оберіть анонімний режим."
+          }
+        }
+      }
+    },
     "Restart required": {
       "extractionState": "manual",
       "localizations": {
@@ -3640,6 +3952,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "БЕЗ"
+          }
+        }
+      }
+    },
+    "Use anonymous identity": {
+      "comment": "Accessibility label for clearing the registered Apple identity in the online lobby.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use anonymous identity"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Играть анонимно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Грати анонімно"
           }
         }
       }
@@ -4024,13 +4360,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Заявлено"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Заявлено"
           }
         }
@@ -4048,13 +4384,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Ждём %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Чекаємо на %@"
           }
         }
@@ -4072,13 +4408,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Коснитесь, чтобы продолжить"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Торкніться, щоб продовжити"
           }
         }
@@ -4111,25 +4447,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершённая сдача"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершённые сдачи"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершённых сдач"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершённых сдачи"
                 }
               }
@@ -4141,25 +4477,25 @@
             "plural": {
               "one": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершена роздача"
                 }
               },
               "few": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершені роздачі"
                 }
               },
               "many": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершених роздач"
                 }
               },
               "other": {
                 "stringUnit": {
-                  "state": "needs_review",
+                  "state" : "translated",
                   "value": "%lld завершеної роздачі"
                 }
               }
@@ -4180,13 +4516,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Пуля"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Пуля"
           }
         }
@@ -4204,13 +4540,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Гора"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Гора"
           }
         }
@@ -4228,13 +4564,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Висты"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Вісти"
           }
         }
@@ -4252,13 +4588,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Баланс"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Баланс"
           }
         }
@@ -4276,13 +4612,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Очки за сыгранные контракты. Чем больше, тем лучше."
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Очки за зіграні контракти. Чим більше, тим краще."
           }
         }
@@ -4300,13 +4636,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Штрафные очки. Чем меньше, тем лучше."
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Штрафні очки. Чим менше, тим краще."
           }
         }
@@ -4324,13 +4660,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Висты, которые игрок записал на каждого соперника."
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Вісти, які гравець записав на кожного суперника."
           }
         }
@@ -4348,13 +4684,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Итоговый баланс — сумма по столу равна нулю."
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Підсумковий баланс — сума за столом дорівнює нулю."
           }
         }
@@ -4372,13 +4708,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Game Center готов"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Game Center готовий"
           }
         }
@@ -4396,13 +4732,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Game Center: выход выполнен"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Game Center: вихід виконано"
           }
         }
@@ -4420,13 +4756,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Требуется вход в Game Center"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Потрібен вхід у Game Center"
           }
         }
@@ -4444,13 +4780,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Ошибка Game Center: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Помилка Game Center: %@"
           }
         }
@@ -4468,13 +4804,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Вход выполнен: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Вхід виконано: %@"
           }
         }
@@ -4492,13 +4828,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Game Center недоступен"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Game Center недоступний"
           }
         }
@@ -4516,13 +4852,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Не удалось сохранить стол в CloudKit: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Не вдалося зберегти стіл у CloudKit: %@"
           }
         }
@@ -4540,13 +4876,13 @@
         },
         "ru": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Не удалось сохранить архив CloudKit: %@"
           }
         },
         "uk": {
           "stringUnit": {
-            "state": "needs_review",
+            "state" : "translated",
             "value": "Не вдалося зберегти архів CloudKit: %@"
           }
         }
