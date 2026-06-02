@@ -97,6 +97,14 @@ public struct LobbyView: View {
                 hero
                 onlineRoomCard
                 localTableCard
+                if let infoText = viewModel.infoText {
+                    Label(infoText, systemImage: "checkmark.seal.fill")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(TableTheme.goldBright)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityIdentifier(UIIdentifiers.lobbyInfo)
+                }
                 if let errorText = viewModel.errorText {
                     Text(errorText)
                         .font(.footnote)
@@ -386,66 +394,158 @@ public struct LobbyView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Online play, reorganized so the three intents that used to be jumbled
+    /// in one "Invite to game" card now read as distinct, labeled steps:
+    /// who you are (identity) → host a new table → or join an existing one.
     private var onlineRoomCard: some View {
-        card(title: "Invite to game", icon: "link") {
-            VStack(spacing: 12) {
-                Button {
-                    viewModel.startCloudflareOnlineRoom()
-                } label: {
-                    HStack {
-                        if viewModel.isOnlineRoomLoading {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Image(systemName: "person.3.sequence.fill")
-                        }
-                        Text("Create invite link")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.feltPrimary)
-                .disabled(
-                    viewModel.seats.validationError != nil
-                        || viewModel.isOnlineRoomLoading
-                )
-                .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
-
-                HStack(spacing: 8) {
-                    TextField(
-                        "Paste link or code",
-                        text: $viewModel.onlineJoinRoomCode,
-                        prompt: Text("Paste link or code")
-                            .foregroundStyle(TableTheme.inkCreamDim)
-                    )
-                        .textFieldStyle(.plain)
-                        .autocorrectionDisabled()
-                        .foregroundStyle(TableTheme.inkCream)
-                        .padding(10)
-                        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
-                        .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
-
-                    Button {
-                        viewModel.joinCloudflareOnlineRoom()
-                    } label: {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.title3)
-                            .frame(width: 34, height: 34)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TableTheme.goldBright)
-                    .disabled(
-                        viewModel.isOnlineRoomLoading
-                            || viewModel.pendingJoinRoomCode == nil
-                    )
-                    .accessibilityLabel("Join table")
-                    .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
-                }
-
+        card(title: "Play online", icon: "person.2.wave.2.fill") {
+            VStack(spacing: 16) {
                 onlineAccountControl
+
+                VStack(spacing: 8) {
+                    onlineSectionLabel("Host a table")
+                    Button {
+                        viewModel.startCloudflareOnlineRoom()
+                    } label: {
+                        HStack {
+                            if viewModel.isOnlineRoomLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "person.3.sequence.fill")
+                            }
+                            Text("Create invite link")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.feltPrimary)
+                    .controlSize(.large)
+                    .disabled(
+                        viewModel.seats.validationError != nil
+                            || viewModel.isOnlineRoomLoading
+                    )
+                    .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
+
+                    Text("You get a link and code to share — friends join from their own devices.")
+                        .font(.caption2)
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+
+                onlineOrJoinDivider
+
+                VStack(spacing: 8) {
+                    onlineSectionLabel("Join a table")
+                    if let pendingCode = viewModel.pendingJoinRoomCode {
+                        readyToJoinRow(code: pendingCode)
+                    }
+                    HStack(spacing: 8) {
+                        TextField(
+                            "Paste link or code",
+                            text: $viewModel.onlineJoinRoomCode,
+                            prompt: Text("Paste link or code")
+                                .foregroundStyle(TableTheme.inkCreamDim)
+                        )
+                            .textFieldStyle(.plain)
+                            .autocorrectionDisabled()
+                            .foregroundStyle(TableTheme.inkCream)
+                            .padding(10)
+                            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                            .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
+
+                        Button {
+                            viewModel.joinCloudflareOnlineRoom()
+                        } label: {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.title3)
+                                .frame(width: 34, height: 34)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(
+                            viewModel.pendingJoinRoomCode != nil
+                                ? TableTheme.goldBright
+                                : TableTheme.inkCreamDim
+                        )
+                        .disabled(
+                            viewModel.isOnlineRoomLoading
+                                || viewModel.pendingJoinRoomCode == nil
+                        )
+                        .accessibilityLabel("Join table")
+                        .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
+                    }
+                }
+
                 hiddenLocalTestRoomButton
             }
         }
+    }
+
+    private func onlineSectionLabel(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .tracking(1.2)
+            .textCase(.uppercase)
+            .foregroundStyle(TableTheme.gold)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var onlineOrJoinDivider: some View {
+        HStack(spacing: 10) {
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.22))
+                .frame(height: 0.5)
+                .frame(maxWidth: .infinity)
+            Text("or")
+                .font(.caption2.weight(.semibold))
+                .textCase(.uppercase)
+                .tracking(1.0)
+                .foregroundStyle(TableTheme.inkCreamDim)
+                .fixedSize()
+            Rectangle()
+                .fill(TableTheme.gold.opacity(0.22))
+                .frame(height: 0.5)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// Prominent, in-context affordance shown the moment a valid invite code is
+    /// present (pasted or arrived via a `/join/<code>` link) — replacing the old
+    /// behavior where the code silently dropped into the text field with no cue.
+    private func readyToJoinRow(code: String) -> some View {
+        Button {
+            viewModel.joinCloudflareOnlineRoom()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "ticket.fill")
+                    .foregroundStyle(TableTheme.goldBright)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Join table \(code)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCream)
+                    Text("Tap to take a seat")
+                        .font(.caption2)
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                }
+                Spacer(minLength: 0)
+                if viewModel.isOnlineRoomLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.right.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(TableTheme.goldBright)
+                }
+            }
+            .padding(12)
+            .background(TableTheme.gold.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(TableTheme.gold.opacity(0.40), lineWidth: 0.75)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isOnlineRoomLoading)
     }
 
     @ViewBuilder

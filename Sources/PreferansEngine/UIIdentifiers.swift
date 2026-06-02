@@ -85,6 +85,7 @@ public enum UIIdentifiers {
     public static let screenGame               = "screen.game"
     public static let screenOnlineRoom         = "screen.onlineRoom"
     public static let onlineFlowState          = "online.flowState"
+    public static let connectionBanner         = "connection.banner"
 
     public static func encode(_ mode: DefenderPlayMode) -> String {
         switch mode {
@@ -124,6 +125,7 @@ public enum UIIdentifiers {
     public static func lobbyPlayerNameField(index: Int) -> String { "lobby.playerName.\(index)" }
     public static let lobbyBotSpeedPicker     = "lobby.botSpeed"
     public static let lobbyError               = "lobby.error"
+    public static let lobbyInfo                = "lobby.info"
     public static let lobbyValidationError     = "lobby.validationError"
     public static let lobbyQuickPlayVsBots     = "button.quickPlayVsBots"
     public static let lobbyWatchBots           = "button.watchBots"

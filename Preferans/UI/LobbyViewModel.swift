@@ -10,6 +10,10 @@ public final class LobbyViewModel: ObservableObject {
     @Published public var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
     @Published public var botSpeed: BotMoveSpeed = .normal
     @Published public var errorText: String?
+    /// Non-error, informational status (e.g. "invite ready"). Rendered in the
+    /// lobby's accent color, not the red error style — keeping success and
+    /// failure visually distinct.
+    @Published public var infoText: String?
     @Published public private(set) var registeredOnlineAccount: RegisteredOnlineAccount?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
@@ -66,6 +70,7 @@ public final class LobbyViewModel: ObservableObject {
         guard seats.validationError == nil, !isOnlineRoomLoading else { return }
         isOnlineRoomLoading = true
         errorText = nil
+        infoText = nil
         let setup = onlineRoomSetup()
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -92,6 +97,7 @@ public final class LobbyViewModel: ObservableObject {
         }
         isOnlineRoomLoading = true
         errorText = nil
+        infoText = nil
         let setup = onlineRoomSetup()
         guard let localPeer = setup.peers.first(where: { $0.playerID == setup.localPlayer }) else {
             errorText = "Selected seat is not available."
@@ -156,7 +162,8 @@ public final class LobbyViewModel: ObservableObject {
     public func handleInviteURL(_ url: URL) {
         guard let roomCode = PreferansInviteLink.roomCode(from: url) else { return }
         onlineJoinRoomCode = roomCode
-        errorText = "Invite \(roomCode) is ready. Choose your seat and join the table."
+        errorText = nil
+        infoText = String(localized: "Invite \(roomCode) is ready — tap Join to take a seat.")
     }
 
     public var pendingJoinRoomCode: String? {

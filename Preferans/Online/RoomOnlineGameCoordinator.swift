@@ -57,6 +57,37 @@ public protocol RoomRealtimeTransport: AnyObject {
     func disconnect()
 }
 
+/// Whether this client is currently hearing back from the authoritative host.
+/// The host itself is always `.live`; only clients move through these states.
+public enum OnlineLiveness: Equatable, Sendable {
+    /// Attached to the table but no host response observed yet.
+    case connecting
+    /// The host answered within the heartbeat window.
+    case live
+    /// No host response within `HeartbeatConfig.hostTimeout` — the table is stalled.
+    case hostUnreachable
+}
+
+/// Cadence for the client-side host heartbeat. Injectable so unit tests and the
+/// in-memory/demo room — which has no real socket to lose — can run with fast or
+/// disabled timing instead of the production interval.
+public struct HeartbeatConfig: Sendable, Equatable {
+    public var interval: Duration
+    public var hostTimeout: Duration
+    public var isEnabled: Bool
+
+    public init(interval: Duration, hostTimeout: Duration, isEnabled: Bool = true) {
+        self.interval = interval
+        self.hostTimeout = hostTimeout
+        self.isEnabled = isEnabled
+    }
+
+    /// Production cadence: probe the host every 3s, flag it after 10s of silence.
+    public static let `default` = HeartbeatConfig(interval: .seconds(3), hostTimeout: .seconds(10))
+    /// No heartbeat — for the in-process room and tests that don't exercise liveness.
+    public static let disabled = HeartbeatConfig(interval: .seconds(3), hostTimeout: .seconds(10), isEnabled: false)
+}
+
 @MainActor
 public final class RoomOnlineGameCoordinator: ObservableObject {
     public enum ConnectionState: Equatable {
@@ -74,6 +105,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     @Published public private(set) var isHost: Bool = false
     @Published public private(set) var localSeat: PlayerID?
     @Published public private(set) var tableID: UUID?
+    @Published public private(set) var liveness: OnlineLiveness = .connecting
     @Published public var errorText: String?
 
     private var transport: (any RoomRealtimeTransport)?
@@ -87,25 +119,36 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let dealSource: DealSource
     private var didAutoStartOnlineDeal = false
 
+    private let heartbeat: HeartbeatConfig
+    private var heartbeatTask: Task<Void, Never>?
+    private var lastHostContact: ContinuousClock.Instant?
+    private let livenessClock = ContinuousClock()
+
     public init(
         cloudStore: (any GameArchiveStore)? = nil,
-        dealSource: DealSource = RandomDealSource()
+        dealSource: DealSource = RandomDealSource(),
+        heartbeat: HeartbeatConfig = .default
     ) {
         self.cloudStore = cloudStore
         self.dealSource = dealSource
+        self.heartbeat = heartbeat
     }
 
     deinit {
         listenTask?.cancel()
+        heartbeatTask?.cancel()
     }
 
     public func attach(transport: any RoomRealtimeTransport, rules: PreferansRules = .sochi) async {
         self.rules = rules
         self.errorText = nil
         self.state = .selectingHost
+        self.liveness = .connecting
+        self.lastHostContact = nil
         self.didAutoStartOnlineDeal = false
         self.transport = transport
         self.listenTask?.cancel()
+        self.heartbeatTask?.cancel()
         self.listenTask = listen(to: transport)
 
         let participants = orderedParticipants(from: transport.participants)
@@ -123,12 +166,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         } else {
             self.state = .connectedAsClient
             await sendHello()
+            startHeartbeat()
         }
     }
 
     public func detach() {
         listenTask?.cancel()
         listenTask = nil
+        stopHeartbeat()
         transport?.disconnect()
         transport = nil
         hostActor = nil
@@ -138,6 +183,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         isHost = false
         localSeat = nil
         tableID = nil
+        liveness = .connecting
+        lastHostContact = nil
         didAutoStartOnlineDeal = false
         state = .disconnected
     }
@@ -198,6 +245,56 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
+    // MARK: - Host liveness
+
+    /// Clients probe the host on a fixed cadence and flag `.hostUnreachable`
+    /// when no host message (projection, error, or ping echo) has arrived within
+    /// `heartbeat.hostTimeout`. The host never runs this — it is the authority.
+    private func startHeartbeat() {
+        guard heartbeat.isEnabled, !isHost else { return }
+        heartbeatTask?.cancel()
+        lastHostContact = livenessClock.now
+        let interval = heartbeat.interval
+        heartbeatTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard let self, !Task.isCancelled else { break }
+                await self.heartbeatTick()
+            }
+        }
+    }
+
+    private func stopHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+    }
+
+    private func heartbeatTick() async {
+        guard !isHost, let tableID, let hostPeer, let transport else { return }
+        if let last = lastHostContact,
+           last.duration(to: livenessClock.now) > heartbeat.hostTimeout,
+           liveness != .hostUnreachable {
+            liveness = .hostUnreachable
+        }
+        try? await transport.send(.ping(PingEnvelope(tableID: tableID)), to: [hostPeer], reliably: false)
+    }
+
+    /// Record that we just heard from the host and clear any stall flag. When
+    /// this is a *recovery* — we had flagged the host unreachable and contact
+    /// just resumed (a reconnect, or the host coming back) — pull a fresh
+    /// projection so we catch up on anything missed while we were away.
+    private func noteHostContact() {
+        guard !isHost else { return }
+        let wasUnreachable = liveness == .hostUnreachable
+        lastHostContact = livenessClock.now
+        if liveness != .live {
+            liveness = .live
+        }
+        if wasUnreachable {
+            requestResync()
+        }
+    }
+
     private func becomeHost(host: OnlinePeer, seats: [PlayerIdentity], rules: PreferansRules) async {
         let tableID = UUID()
         self.tableID = tableID
@@ -212,6 +309,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             )
             self.hostActor = actor
             self.state = .connectedAsHost
+            self.liveness = .live
 
             let assignment = SeatAssignmentEnvelope(tableID: tableID, hostPlayerID: hostID, seats: seats, rules: rules)
             try await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
@@ -258,6 +356,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         switch received.message {
         case let .seatAssignment(assignment):
             guard !isHost else { return }
+            noteHostContact()
             tableID = assignment.tableID
             rules = assignment.rules
             seats = assignment.seats
@@ -302,6 +401,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         case let .projection(envelope):
             guard !isHost else { return }
+            noteHostContact()
             guard envelope.viewer == localSeat else { return }
             tableID = envelope.tableID
             projection = envelope.projection
@@ -311,6 +411,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             state = .connectedAsClient
 
         case let .hostError(error):
+            noteHostContact()
             if error.recipient == nil || error.recipient == localSeat {
                 errorText = error.message
             }
@@ -329,8 +430,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 errorText = error.localizedDescription
             }
 
-        case .ping:
-            break
+        case let .ping(ping):
+            if isHost {
+                // A client's liveness probe — echo it back so the client knows
+                // the host process is alive even when no projection is pending
+                // (e.g. while waiting on a human player's turn).
+                let table = tableID ?? ping.tableID
+                try? await transport?.send(.ping(PingEnvelope(tableID: table)), to: [received.sender], reliably: false)
+            } else if received.sender.playerID == hostPeer?.playerID {
+                noteHostContact()
+            }
         }
     }
 

@@ -68,16 +68,34 @@ public struct OnlineRoomGameScreen: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenOnlineRoom)
         .overlay(alignment: .top) {
-            if let error = coordinator.errorText {
-                Text(error)
-                    .font(.caption)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.regularMaterial, in: Capsule())
-                    .padding(.top, 8)
-                    .accessibilityIdentifier(UIIdentifiers.errorBanner)
+            VStack(spacing: 6) {
+                if !coordinator.isHost, coordinator.liveness == .hostUnreachable {
+                    connectionBanner
+                }
+                if let error = coordinator.errorText {
+                    Text(error)
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.regularMaterial, in: Capsule())
+                        .accessibilityIdentifier(UIIdentifiers.errorBanner)
+                }
             }
+            .padding(.top, 8)
+            .animation(.default, value: coordinator.liveness)
         }
+    }
+
+    private var connectionBanner: some View {
+        Label("Host not responding…", systemImage: "wifi.exclamationmark")
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.orange)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.regularMaterial, in: Capsule())
+            .accessibilityIdentifier(UIIdentifiers.connectionBanner)
+            .accessibilityLabel("Connection status")
+            .accessibilityValue("Host not responding…")
     }
 
     private func onlineFlowState(projection: PlayerGameProjection) -> some View {

@@ -149,6 +149,87 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertEqual(fixture.coordinators[bidder]?.projection?.sequence, sequence)
     }
 
+    func testClientFlagsHostUnreachableWhenHostGoesSilent() async throws {
+        let room = InMemoryRoom(peers: peers, hostPlayerID: "north")
+        let hostTransport = try room.transport(for: "north")
+        let eastTransport = try room.transport(for: "east")
+        let southTransport = try room.transport(for: "south")
+
+        let host = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        let east = RoomOnlineGameCoordinator(
+            heartbeat: HeartbeatConfig(interval: .milliseconds(10), hostTimeout: .milliseconds(50))
+        )
+        let south = RoomOnlineGameCoordinator(heartbeat: .disabled)
+
+        await host.attach(transport: hostTransport)
+        await east.attach(transport: eastTransport)
+        await south.attach(transport: southTransport)
+
+        // The host's initial seat assignment + projection count as contact.
+        await pump(until: { east.liveness == .live })
+
+        // Host process vanishes — no more projections or ping echoes reach east.
+        hostTransport.disconnect()
+
+        await pump(until: { east.liveness == .hostUnreachable }, timeout: .seconds(1))
+        XCTAssertEqual(east.liveness, .hostUnreachable)
+        XCTAssertEqual(
+            host.liveness,
+            .live,
+            "The host is the authority and must never flag itself unreachable."
+        )
+
+        east.detach()
+        south.detach()
+        host.detach()
+    }
+
+    func testClientResyncsAfterRecoveringFromAStalledSocket() async throws {
+        let room = StallableRoom(peers: peers, hostPlayerID: "north")
+        let hostTransport = room.transport(for: "north")
+        let clientTransport = room.transport(for: "east")
+        let southTransport = room.transport(for: "south")
+
+        let host = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        let client = RoomOnlineGameCoordinator(
+            heartbeat: HeartbeatConfig(interval: .milliseconds(10), hostTimeout: .milliseconds(50))
+        )
+        let south = RoomOnlineGameCoordinator(heartbeat: .disabled)
+
+        await host.attach(transport: hostTransport)
+        await client.attach(transport: clientTransport)
+        await south.attach(transport: southTransport)
+        await pump(until: { client.liveness == .live })
+
+        let resyncsBeforeStall = clientTransport.resyncRequestCount
+
+        // The socket dies: nothing flows in or out.
+        clientTransport.isStalled = true
+        await pump(until: { client.liveness == .hostUnreachable }, timeout: .seconds(1))
+
+        // The socket recovers (auto-reconnect, in production).
+        clientTransport.isStalled = false
+        await pump(until: { client.liveness == .live }, timeout: .seconds(1))
+        await pump(until: { clientTransport.resyncRequestCount > resyncsBeforeStall }, timeout: .seconds(1))
+
+        XCTAssertEqual(client.liveness, .live)
+        XCTAssertGreaterThan(
+            clientTransport.resyncRequestCount,
+            resyncsBeforeStall,
+            "On recovery the client must pull a fresh projection to catch up on anything missed."
+        )
+
+        host.detach()
+        client.detach()
+        south.detach()
+    }
+
     func testHostPersistsThroughArchiveStoreProtocol() async throws {
         let archiveStore = FakeGameArchiveStore()
         let fixture = try await makeFixture(hostArchiveStore: archiveStore)
@@ -375,6 +456,104 @@ private struct RoomFixture {
 
     func allProjectionsAre(at sequence: Int) -> Bool {
         coordinators.values.allSatisfy { $0.projection?.sequence == sequence }
+    }
+}
+
+/// In-memory room whose per-seat transports can be individually "stalled" to
+/// model a dead socket — inbound and outbound traffic are both dropped while
+/// stalled, then resume on recovery. Lets coordinator tests exercise the
+/// reconnect/resync path without a real WebSocket.
+@MainActor
+private final class StallableRoom {
+    let peers: [OnlinePeer]
+    let hostPlayerID: PlayerID
+    private var transports: [PlayerID: StallableTransport] = [:]
+
+    init(peers: [OnlinePeer], hostPlayerID: PlayerID) {
+        self.peers = peers
+        self.hostPlayerID = hostPlayerID
+    }
+
+    func transport(for playerID: PlayerID) -> StallableTransport {
+        let peer = peers.first { $0.playerID == playerID } ?? peers[0]
+        let transport = StallableTransport(room: self, localPeer: peer, hostPlayerID: hostPlayerID)
+        transports[playerID] = transport
+        return transport
+    }
+
+    fileprivate func deliver(_ message: GameWireMessage, from sender: OnlinePeer, to recipients: [OnlinePeer]) {
+        for recipient in recipients where recipient.playerID != sender.playerID {
+            transports[recipient.playerID]?.receive(ReceivedRoomMessage(message: message, sender: sender))
+        }
+    }
+}
+
+@MainActor
+private final class StallableTransport: RoomRealtimeTransport {
+    let localPeer: OnlinePeer
+    let participants: [OnlinePeer]
+    /// While true, the socket is treated as down: sends are recorded but not
+    /// delivered, and inbound messages are dropped.
+    var isStalled = false
+    private(set) var sentMessages: [GameWireMessage] = []
+
+    private let room: StallableRoom
+    private let hostPlayerID: PlayerID
+    private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
+    private var backlog: [ReceivedRoomMessage] = []
+
+    init(room: StallableRoom, localPeer: OnlinePeer, hostPlayerID: PlayerID) {
+        self.room = room
+        self.localPeer = localPeer
+        self.participants = room.peers
+        self.hostPlayerID = hostPlayerID
+    }
+
+    var resyncRequestCount: Int {
+        sentMessages.filter { if case .resyncRequest = $0 { return true } else { return false } }.count
+    }
+
+    func chooseHost() async -> OnlinePeer? {
+        participants.first { $0.playerID == hostPlayerID }
+    }
+
+    func messages() -> AsyncStream<ReceivedRoomMessage> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            continuations[id] = continuation
+            for message in backlog { continuation.yield(message) }
+            backlog.removeAll()
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.continuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
+    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws {
+        sentMessages.append(message)
+        guard !isStalled else { return }
+        room.deliver(message, from: localPeer, to: peers)
+    }
+
+    func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {
+        sentMessages.append(message)
+        guard !isStalled else { return }
+        room.deliver(message, from: localPeer, to: participants)
+    }
+
+    func disconnect() {
+        for continuation in continuations.values { continuation.finish() }
+        continuations.removeAll()
+        backlog.removeAll()
+    }
+
+    fileprivate func receive(_ message: ReceivedRoomMessage) {
+        guard !isStalled else { return }
+        if continuations.isEmpty {
+            backlog.append(message)
+        } else {
+            for continuation in continuations.values { continuation.yield(message) }
+        }
     }
 }
 

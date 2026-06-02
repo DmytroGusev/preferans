@@ -49,7 +49,8 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     private let socketURL: URL
     private let session: URLSession
     private var socketTask: URLSessionWebSocketTask?
-    private var receiveTask: Task<Void, Never>?
+    private var connectionTask: Task<Void, Never>?
+    private var isClosed = false
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
 
     private var encoder: JSONEncoder { PreferansJSONCoder.encoder }
@@ -69,7 +70,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     }
 
     deinit {
-        receiveTask?.cancel()
+        connectionTask?.cancel()
     }
 
     public static func createRoom(
@@ -119,8 +120,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     }
 
     public func disconnect() {
-        receiveTask?.cancel()
-        receiveTask = nil
+        isClosed = true
+        connectionTask?.cancel()
+        connectionTask = nil
         socketTask?.cancel(with: .goingAway, reason: nil)
         socketTask = nil
         for continuation in continuations.values {
@@ -130,27 +132,65 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     }
 
     private func connectIfNeeded() {
-        guard socketTask == nil else { return }
-        let task = session.webSocketTask(with: socketURL)
-        socketTask = task
-        task.resume()
-        receiveTask = Task { [weak self, weak task] in
-            guard let self, let task else { return }
-            await self.receiveLoop(task: task)
+        guard connectionTask == nil, !isClosed else { return }
+        // Open the first socket *synchronously* so an immediately-following
+        // `send` (the hello / seat assignment) sees a live `socketTask` rather
+        // than racing the connection task onto the actor.
+        let initial = openSocket()
+        connectionTask = Task { [weak self] in
+            await self?.maintainConnection(initial: initial)
         }
     }
 
-    private func receiveLoop(task: URLSessionWebSocketTask) async {
-        do {
-            while !Task.isCancelled {
-                let message = try await task.receive()
-                try handleSocketMessage(message)
-            }
-        } catch {
-            if !Task.isCancelled {
+    private func openSocket() -> URLSessionWebSocketTask {
+        let task = session.webSocketTask(with: socketURL)
+        socketTask = task
+        task.resume()
+        return task
+    }
+
+    /// Keeps a live WebSocket to the room relay, reconnecting with capped
+    /// exponential backoff after any drop — instead of the old behavior where
+    /// the first socket error silently killed the connection for good. A
+    /// transient network blip now self-heals: the socket re-opens, the
+    /// coordinator's heartbeat resumes, and host contact is re-established
+    /// without the player having to leave and re-join the table.
+    private func maintainConnection(initial: URLSessionWebSocketTask) async {
+        var task = initial
+        var attempt = 0
+        while !Task.isCancelled, !isClosed {
+            do {
+                var establishedThisSocket = false
+                while !Task.isCancelled {
+                    let message = try await task.receive()
+                    if !establishedThisSocket {
+                        establishedThisSocket = true
+                        attempt = 0            // a delivered frame proves the link is healthy
+                        lastError = nil
+                    }
+                    try handleSocketMessage(message)
+                }
+            } catch {
+                if Task.isCancelled || isClosed { break }
                 lastError = error.localizedDescription
             }
+            socketTask?.cancel()
+            socketTask = nil
+            if Task.isCancelled || isClosed { break }
+            attempt += 1
+            try? await Task.sleep(for: Self.reconnectDelay(attempt: attempt))
+            if Task.isCancelled || isClosed { break }
+            task = openSocket()
         }
+        socketTask = nil
+    }
+
+    /// 0.5s, 1s, 2s, 4s, 8s (capped), each with up to +30% jitter so a fleet of
+    /// clients dropped by the same outage don't reconnect in lockstep.
+    private static func reconnectDelay(attempt: Int) -> Duration {
+        let capped = min(pow(2.0, Double(attempt - 1)) * 0.5, 8.0)
+        let jitter = Double.random(in: 0...0.3) * capped
+        return .milliseconds(Int((capped + jitter) * 1000))
     }
 
     private func send(_ envelope: ClientSocketEnvelope) async throws {
