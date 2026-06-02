@@ -93,7 +93,13 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     ) async throws -> CloudflareRoomTransport {
         let request = JoinRoomRequest(localPeer: localPeer)
         let summary = try await postRoomRequest(request, to: endpoint(baseURL, "rooms", roomCode, "join"), session: session)
-        return try CloudflareRoomTransport(baseURL: baseURL, summary: summary, localPeer: localPeer, session: session)
+        // The server binds joiners to a seat by `accountID`: it honors the seat
+        // we asked for when it's still open, but redirects us to another open
+        // seat if ours was taken. Adopt the seat it actually gave us so
+        // `localPeer`, `localSeat`, and the socket identity in
+        // `summary.websocketURL` all agree.
+        let assignedPeer = summary.peers.first { $0.accountID == localPeer.accountID } ?? localPeer
+        return try CloudflareRoomTransport(baseURL: baseURL, summary: summary, localPeer: assignedPeer, session: session)
     }
 
     public func chooseHost() async -> OnlinePeer? {

@@ -267,7 +267,7 @@ public final class LobbyViewModel: ObservableObject {
         let peers = players.enumerated().map { index, player in
             OnlinePeer(
                 playerID: player,
-                accountID: index == selectedIndex ? account.id : "pending:\(player.rawValue)",
+                accountID: index == selectedIndex ? account.id : "\(OnlinePeer.pendingAccountPrefix)\(player.rawValue)",
                 provider: index == selectedIndex ? account.provider : .dev,
                 displayName: player.rawValue
             )

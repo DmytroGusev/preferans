@@ -2,6 +2,11 @@ export const ROOM_SCHEMA_VERSION = 1;
 export const DEFAULT_MAX_PLAYERS = 4;
 export const MAX_RECENT_MESSAGES = 200;
 
+/// Account-ID prefix the host stamps on a seat it has reserved but nobody has
+/// claimed yet. `joinRoom` binds a joiner to the first such seat. Kept in sync
+/// with the Swift client's `OnlinePeer.pendingAccountPrefix`.
+export const PENDING_ACCOUNT_PREFIX = "pending:";
+
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "dev"]);
 
@@ -181,25 +186,39 @@ export function createInitialRoom({
 
 export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().toISOString()): RoomState {
   const peer = normalizePeer(localPeer);
-  const id = peerID(peer);
-  const existingIndex = room.peers.findIndex((candidate) => peerID(candidate) === id);
   const peers = [...room.peers];
 
-  if (existingIndex >= 0) {
-    peers[existingIndex] = peer;
-  } else {
-    if (peers.length >= room.maxPlayers) {
-      throw new RoomStateError("room_full", "Room is full.", 409);
-    }
-    peers.push(peer);
+  // Identity is the globally-unique account, never the self-declared seat
+  // `playerID`: two fresh installs both default to the same roster name, so
+  // trusting the declared seat let a joiner collide with — and silently
+  // overwrite — an occupied seat (including the host's). Binding on `accountID`
+  // and letting the server own the seat token makes that impossible.
+
+  // Rejoin: this account already holds a seat. Refresh its display fields but
+  // keep the seat it was assigned, so a reconnecting client lands back where it
+  // was instead of consuming a fresh slot.
+  const heldIndex = peers.findIndex((candidate) => candidate.accountID === peer.accountID);
+  if (heldIndex >= 0) {
+    peers[heldIndex] = { ...peer, playerID: peers[heldIndex].playerID };
+    return { ...room, peers, updatedAt: now };
   }
 
-  return {
-    ...room,
-    hostPlayerID: room.hostPlayerID || id,
-    peers,
-    updatedAt: now
-  };
+  // New account: claim an open (reserved-but-unclaimed) seat. Honor the seat the
+  // joiner asked for when it's still open, otherwise fall back to the first open
+  // seat. Only *open* seats are ever claimable, so a joiner can never overwrite
+  // an occupied seat (e.g. the host): two fresh installs that both default to the
+  // same seat name are redirected to different open seats instead of colliding.
+  const isOpenSeat = (candidate: OnlinePeer) => candidate.accountID.startsWith(PENDING_ACCOUNT_PREFIX);
+  const declaredID = peerID(peer);
+  const requestedIndex = peers.findIndex((candidate) => isOpenSeat(candidate) && peerID(candidate) === declaredID);
+  const openIndex = requestedIndex >= 0 ? requestedIndex : peers.findIndex(isOpenSeat);
+  if (openIndex >= 0) {
+    peers[openIndex] = { ...peer, playerID: peers[openIndex].playerID };
+    return { ...room, peers, updatedAt: now };
+  }
+
+  // Every seat is claimed or reserved by another account — the table is full.
+  throw new RoomStateError("room_full", "Room is full.", 409);
 }
 
 export function routeRecipients(room: RoomState, senderPlayerID: unknown, recipients?: unknown[]): string[] {

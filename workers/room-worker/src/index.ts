@@ -308,11 +308,31 @@ async function roomFetch(env: Env, roomCode: string, pathname: string, body?: un
 function withSocketURL(request: Request, room: PublicRoom, localPeer: unknown): RoomWithSocketURL {
   const url = new URL(request.url);
   const protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  const playerID = playerIDValue(peerPlayerID(localPeer));
+  const playerID = assignedSeatID(room, localPeer);
   return {
     ...room,
     websocketURL: `${protocol}//${url.host}/rooms/${room.roomCode}/socket?playerID=${encodeURIComponent(playerID)}`
   };
+}
+
+// The seat the server bound to this caller's account. The socket must attach as
+// the assigned seat, not the `playerID` the client declared in its join body —
+// the server ignores that when assigning seats, so they can differ. Matching on
+// the normalized `accountID` keeps the socket identity in step with `joinRoom`.
+function assignedSeatID(room: PublicRoom, localPeer: unknown): string {
+  let accountID: string | undefined;
+  try {
+    accountID = normalizePeer(localPeer).accountID;
+  } catch {
+    accountID = undefined;
+  }
+  if (accountID) {
+    const seat = room.peers.find((candidate) => candidate.accountID === accountID);
+    if (seat) {
+      return peerID(seat);
+    }
+  }
+  return playerIDValue(peerPlayerID(localPeer));
 }
 
 async function readJSON<T>(request: Request): Promise<T> {

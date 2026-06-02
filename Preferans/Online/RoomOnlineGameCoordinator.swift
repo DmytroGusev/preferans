@@ -35,6 +35,18 @@ public struct OnlinePeer: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
+public extension OnlinePeer {
+    /// Account-ID prefix the host stamps on a seat it has reserved but nobody
+    /// has claimed yet. The room server fills the first such seat on join
+    /// (binding by `accountID`), so this must stay in sync with the worker's
+    /// `PENDING_ACCOUNT_PREFIX`.
+    static let pendingAccountPrefix = "pending:"
+
+    /// A reserved-but-unclaimed seat — a placeholder the host advertised for a
+    /// friend who hasn't taken it yet.
+    var isPendingSeat: Bool { accountID.hasPrefix(Self.pendingAccountPrefix) }
+}
+
 public struct ReceivedRoomMessage: Sendable {
     public var message: GameWireMessage
     public var sender: OnlinePeer
@@ -588,10 +600,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func shouldReplacePeer(_ existing: OnlinePeer?, with candidate: OnlinePeer) -> Bool {
         guard let existing else { return true }
-        if existing.accountID.hasPrefix("pending:") {
+        if existing.isPendingSeat {
             return true
         }
-        if candidate.accountID.hasPrefix("pending:") {
+        if candidate.isPendingSeat {
             return false
         }
         return true
@@ -623,7 +635,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func allExpectedOnlinePlayersConnected() -> Bool {
         seats.allSatisfy { identity in
             guard let peer = peersBySeat[identity.playerID] else { return false }
-            return !peer.accountID.hasPrefix("pending:")
+            return !peer.isPendingSeat
         }
     }
 
