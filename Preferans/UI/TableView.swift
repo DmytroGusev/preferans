@@ -202,7 +202,8 @@ public struct TableView: View {
                         contractBid: projection.activeContractBid(for: slot.seat.player),
                         isDeemphasized: isDeemphasized,
                         lastAction: seatActions[slot.seat.player],
-                        roleBadge: seatRoleBadges[slot.seat.player]
+                        roleBadge: seatRoleBadges[slot.seat.player],
+                        seatOrder: seatOrderNumber(for: slot.seat.player)
                     )
                     .frame(width: slotSize.width,
                            height: slotSize.height)
@@ -232,7 +233,8 @@ public struct TableView: View {
                                 cardSuitOrder: cardSuitOrder,
                                 contractBid: projection.activeContractBid(for: seat.player),
                                 lastAction: nil,
-                                roleBadge: nil
+                                roleBadge: nil,
+                                seatOrder: seatOrderNumber(for: seat.player)
                             )
                         }
                     }
@@ -359,16 +361,20 @@ public struct TableView: View {
         let action = seatActions[seat.player]
         let isCurrent = seat.isCurrentActor
         return VStack(spacing: 4) {
-            HStack(spacing: 5) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(seat.player == projection.viewer ? TableTheme.goldBright : TableTheme.inkCreamSoft)
-                    .accessibilityHidden(true)
+            HStack(spacing: 4) {
+                if let seatOrder = seatOrderNumber(for: seat.player) {
+                    SeatOrderBadge(
+                        number: seatOrder,
+                        player: seat.player,
+                        isCurrentActor: isCurrent,
+                        diameter: 20
+                    )
+                }
                 Text(seat.player == projection.viewer ? "You" : seat.displayName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(seat.player == projection.viewer ? TableTheme.inkCream : TableTheme.inkCreamSoft)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.62)
             }
             Group {
                 if let action {
@@ -673,7 +679,7 @@ public struct TableView: View {
             )
             .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
                     radius: isWinner ? 12 : 0)
-            Text(projection.displayName(for: play.player))
+            Text(trickPlayCaption(for: play.player))
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
                 .padding(.horizontal, 4)
@@ -681,6 +687,13 @@ public struct TableView: View {
                 .background(isWinner ? TableTheme.goldBright : Color.black.opacity(0.45), in: Capsule())
                 .lineLimit(1)
         }
+    }
+
+    private func trickPlayCaption(for player: PlayerID) -> String {
+        if let order = seatOrderNumber(for: player) {
+            return "\(order) \(projection.displayName(for: player))"
+        }
+        return projection.displayName(for: player)
     }
 
     private func placeholder(_ text: LocalizedStringKey) -> some View {
@@ -706,6 +719,10 @@ public struct TableView: View {
     /// table during the deal they're sitting out.
     private func orderedOpponents() -> [SeatProjection] {
         projection.seats.filter { $0.player != projection.viewer }
+    }
+
+    private func seatOrderNumber(for player: PlayerID) -> Int? {
+        projection.players.firstIndex(of: player).map { $0 + 1 }
     }
 
     private func isOpenHand(_ seat: SeatProjection) -> Bool {

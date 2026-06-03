@@ -33,6 +33,9 @@ public struct OpponentSeatView: View {
     /// Visible from the moment a contract is named through the end of
     /// the deal so a glance at any seat answers "who is playing what".
     public var roleBadge: SeatRoleBadge?
+    /// 1-based engine seat order. Displayed as a compact badge so the
+    /// player order is visible even when display names are similar.
+    public var seatOrder: Int?
 
     public enum Orientation: Equatable {
         case top
@@ -47,7 +50,8 @@ public struct OpponentSeatView: View {
         contractBid: ContractBid? = nil,
         isDeemphasized: Bool = false,
         lastAction: RecentAction? = nil,
-        roleBadge: SeatRoleBadge? = nil
+        roleBadge: SeatRoleBadge? = nil,
+        seatOrder: Int? = nil
     ) {
         self.seat = seat
         self.orientation = orientation
@@ -56,6 +60,7 @@ public struct OpponentSeatView: View {
         self.isDeemphasized = isDeemphasized
         self.lastAction = lastAction
         self.roleBadge = roleBadge
+        self.seatOrder = seatOrder
     }
 
     public var body: some View {
@@ -90,6 +95,14 @@ public struct OpponentSeatView: View {
     /// table can tuck into a corner.
     private var sittingOutChip: some View {
         HStack(spacing: 5) {
+            if let seatOrder {
+                SeatOrderBadge(
+                    number: seatOrder,
+                    player: seat.player,
+                    isCurrentActor: seat.isCurrentActor,
+                    diameter: 18
+                )
+            }
             Text(seat.displayName)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(TableTheme.inkCreamSoft)
@@ -125,6 +138,14 @@ public struct OpponentSeatView: View {
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             HStack(spacing: 6) {
+                if let seatOrder {
+                    SeatOrderBadge(
+                        number: seatOrder,
+                        player: seat.player,
+                        isCurrentActor: seat.isCurrentActor,
+                        diameter: isDeemphasized ? 18 : 22
+                    )
+                }
                 Image(systemName: "person.crop.circle.fill")
                     .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
                     .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCreamSoft)
@@ -377,5 +398,44 @@ public struct OpponentSeatView: View {
         // Each subsequent row contributes only the visible (1 - overlap)
         // slice on top of the first.
         return cardHeight + CGFloat(rowCount - 1) * cardHeight * (1 - overlap)
+    }
+}
+
+public struct SeatOrderBadge: View {
+    public var number: Int
+    public var player: PlayerID
+    public var isCurrentActor: Bool
+    public var diameter: CGFloat
+
+    public init(
+        number: Int,
+        player: PlayerID,
+        isCurrentActor: Bool = false,
+        diameter: CGFloat = 22
+    ) {
+        self.number = number
+        self.player = player
+        self.isCurrentActor = isCurrentActor
+        self.diameter = diameter
+    }
+
+    public var body: some View {
+        Text("\(number)")
+            .font(.system(size: max(9, diameter * 0.48), weight: .heavy).monospacedDigit())
+            .foregroundStyle(isCurrentActor ? TableTheme.feltDeep : TableTheme.goldBright)
+            .frame(width: diameter, height: diameter)
+            .background(
+                Circle().fill(isCurrentActor ? TableTheme.goldBright : Color.black.opacity(0.34))
+            )
+            .overlay(
+                Circle().strokeBorder(
+                    TableTheme.goldBright.opacity(isCurrentActor ? 0.95 : 0.68),
+                    lineWidth: isCurrentActor ? 1.2 : 0.8
+                )
+            )
+            .shadow(color: isCurrentActor ? TableTheme.goldBright.opacity(0.35) : .clear,
+                    radius: isCurrentActor ? 6 : 0)
+            .accessibilityLabel(Text("Seat \(number)"))
+            .accessibilityIdentifier(UIIdentifiers.seatOrder(player))
     }
 }

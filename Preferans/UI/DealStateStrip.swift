@@ -105,7 +105,7 @@ public struct DealStateStrip: View {
 
     private var trickCountSummary: String {
         activeSeats
-            .map { "\($0.displayName) \($0.trickCount)" }
+            .map { "\(seatOrderNumber(for: $0.player)) \($0.displayName) \($0.trickCount)" }
             .joined(separator: " · ")
     }
 
@@ -144,6 +144,10 @@ public struct DealStateStrip: View {
 
     private var activeSeats: [SeatProjection] {
         projection.seats.filter { $0.role != .sittingOut }
+    }
+
+    private func seatOrderNumber(for player: PlayerID) -> Int {
+        (projection.players.firstIndex(of: player) ?? 0) + 1
     }
 
     private var isTrickPlay: Bool {

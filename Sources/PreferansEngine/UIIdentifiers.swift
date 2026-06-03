@@ -187,6 +187,11 @@ public enum UIIdentifiers {
     public static func seatLastAction(_ player: PlayerID) -> String {
         "seat.\(player.rawValue).lastAction"
     }
+    /// Compact seat-order marker shown beside every player name. The
+    /// number follows the engine's player order for the table.
+    public static func seatOrder(_ player: PlayerID) -> String {
+        "seat.\(player.rawValue).order"
+    }
     /// The single overflow menu in the game-screen header strip. Holds the
     /// score, log, settings, and (in local-table mode) the View-as picker.
     /// XCUITests open this menu before tapping any nested item.

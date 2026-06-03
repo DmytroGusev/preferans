@@ -198,7 +198,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     contractBid: projection.activeContractBid(for: seat.player),
                     isDeemphasized: hasOpenOpponentHand && !isOpenHand(seat),
                     lastAction: seatActions[seat.player],
-                    roleBadge: seatRoleBadges[seat.player]
+                    roleBadge: seatRoleBadges[seat.player],
+                    seatOrder: seatOrderNumber(for: seat.player)
                 )
             }
             Spacer(minLength: 0)
@@ -583,6 +584,14 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// counter.
     private func ownerNamePlate(seat: SeatProjection) -> some View {
         HStack(spacing: 8) {
+            if let seatOrder = seatOrderNumber(for: seat.player) {
+                SeatOrderBadge(
+                    number: seatOrder,
+                    player: seat.player,
+                    isCurrentActor: seat.isCurrentActor,
+                    diameter: 22
+                )
+            }
             Text(seat.displayName)
                 .font(.caption.bold())
                 .foregroundStyle(TableTheme.inkCream)
@@ -742,6 +751,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     private var viewerSeat: SeatProjection? {
         projection.seats.first { $0.player == projection.viewer }
+    }
+
+    private func seatOrderNumber(for player: PlayerID) -> Int? {
+        projection.players.firstIndex(of: player).map { $0 + 1 }
     }
 
     /// Seat whose hand belongs in the bottom fan right now. Usually the
