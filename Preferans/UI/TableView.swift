@@ -6,6 +6,8 @@ import PreferansEngine
 /// their owner's slot. During talon exchange the talon sits in the
 /// middle of the felt for the declarer to pick from.
 public struct TableView: View {
+    private static let auctionStatusPillHeight: CGFloat = 34
+
     public var projection: PlayerGameProjection
     public var animationNamespace: Namespace.ID
     /// Tap handler for the deal-summary card's "Next deal" button.
@@ -390,8 +392,8 @@ public struct TableView: View {
                         .foregroundStyle(TableTheme.inkCreamDim)
                 }
             }
-            .padding(.horizontal, isCurrent ? 10 : 0)
-            .padding(.vertical, isCurrent ? 7 : 0)
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.auctionStatusPillHeight)
             .background(
                 RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
                     .fill(isCurrent ? Color.black.opacity(0.36) : Color.clear)
