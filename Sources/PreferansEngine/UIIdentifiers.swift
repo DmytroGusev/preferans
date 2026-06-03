@@ -175,6 +175,9 @@ public enum UIIdentifiers {
     /// between card-play beats. Tests can target this to confirm the
     /// gate is up; tapping it resumes the table.
     public static let tapToAdvance             = "table.tapToAdvance"
+    /// Non-blocking online/local trick-result cue shown while the completed
+    /// trick remains visible.
+    public static let trickResultHold          = "table.trickResultHold"
     /// Prominent "Waiting for you" pulse that appears once the gate has
     /// been up for a few seconds. Tests assert on this to verify the
     /// idle escalation.

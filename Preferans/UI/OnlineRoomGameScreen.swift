@@ -25,7 +25,10 @@ public struct OnlineRoomGameScreen: View {
         // (`screenWaitingRoom` / `screenGame`). Each branch carries its own.
         Group {
             if isLiveTable, let projection = coordinator.projection {
-                liveTable(projection: projection)
+                liveTable(
+                    projection: coordinator.displayProjection ?? projection,
+                    authoritativeProjection: projection
+                )
             } else {
                 // Pre-first-deal: the waiting room owns seat occupancy + the
                 // prominent invite share, and (for the host) the Start gate.
@@ -50,12 +53,16 @@ public struct OnlineRoomGameScreen: View {
         return true
     }
 
-    private func liveTable(projection: PlayerGameProjection) -> some View {
+    private func liveTable(
+        projection: PlayerGameProjection,
+        authoritativeProjection: PlayerGameProjection
+    ) -> some View {
         ZStack {
             ProjectionGameScreen(
                 projection: projection,
                 eventLog: coordinator.eventLog,
                 recentEvents: coordinator.recentEvents,
+                pendingAdvance: coordinator.pendingAdvance,
                 onSend: coordinator.send,
                 onLeaveTable: onLeaveTable,
                 extraMenu: {
@@ -74,7 +81,7 @@ public struct OnlineRoomGameScreen: View {
                     }
                 }
             )
-            onlineFlowState(projection: projection)
+            onlineFlowState(projection: authoritativeProjection)
         }
         .overlay(alignment: .top) {
             VStack(spacing: 6) {

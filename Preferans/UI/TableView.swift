@@ -105,50 +105,60 @@ public struct TableView: View {
     /// Felt-wide tap target shown while the table is paused between card-play beats.
     @ViewBuilder
     private var tapToAdvanceOverlay: some View {
-        if let advance = pendingAdvance, let onTap = onTapToAdvance {
+        if let advance = pendingAdvance {
+            let onTap = onTapToAdvance
             ZStack {
-                Color.black.opacity(idleHintActive ? 0.18 : 0.05)
+                Color.black.opacity(onTap == nil ? 0.03 : (idleHintActive ? 0.18 : 0.05))
+                    .allowsHitTesting(onTap != nil)
                     .contentShape(Rectangle())
-                    .onTapGesture { onTap() }
-                tapToAdvanceHint(advance: advance)
+                    .onTapGesture { onTap?() }
+                trickResultHint(advance: advance, canTap: onTap != nil)
+                    .offset(y: advance.trickWinner == nil ? 0 : -74)
             }
             .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(UIIdentifiers.tapToAdvance)
+            .accessibilityIdentifier(onTap == nil ? UIIdentifiers.trickResultHold : UIIdentifiers.tapToAdvance)
             .transition(.opacity)
         }
     }
 
-    private func tapToAdvanceHint(advance: PendingAdvance) -> some View {
+    private func trickResultHint(advance: PendingAdvance, canTap: Bool) -> some View {
         let waitingName = projection.displayName(for: advance.waitingOn)
         return VStack(spacing: 4) {
-            if idleHintActive {
+            if let winner = advance.trickWinner {
+                Text("\(projection.displayName(for: winner)) took the trick")
+                    .font(.headline.bold())
+                    .foregroundStyle(TableTheme.goldBright)
+                    .accessibilityIdentifier(UIIdentifiers.trickResultHold)
+            } else if idleHintActive {
                 Text("Waiting for \(waitingName)")
                     .font(.headline.bold())
                     .foregroundStyle(TableTheme.goldBright)
                     .accessibilityIdentifier(UIIdentifiers.waitingForViewer)
             }
-            HStack(spacing: 6) {
-                Image(systemName: "hand.tap.fill")
-                    .font(.caption)
-                Text("Tap to continue")
-                    .font(.caption.weight(.semibold))
+            if canTap {
+                HStack(spacing: 6) {
+                    Image(systemName: "hand.tap.fill")
+                        .font(.caption)
+                    Text("Tap to continue")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(TableTheme.inkCream)
             }
-            .foregroundStyle(TableTheme.inkCream)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, idleHintActive ? 10 : 7)
+        .padding(.vertical, idleHintActive ? 10 : 8)
         .background(
-            Capsule().fill(Color.black.opacity(idleHintActive ? 0.75 : 0.55))
+            Capsule().fill(Color.black.opacity(idleHintActive ? 0.75 : 0.62))
         )
         .overlay(
             Capsule().strokeBorder(
-                idleHintActive ? TableTheme.goldBright.opacity(0.7) : TableTheme.inkCream.opacity(0.15),
-                lineWidth: idleHintActive ? 1.2 : 0.5
+                advance.trickWinner != nil || idleHintActive ? TableTheme.goldBright.opacity(0.7) : TableTheme.inkCream.opacity(0.15),
+                lineWidth: advance.trickWinner != nil || idleHintActive ? 1.2 : 0.5
             )
         )
         .scaleEffect(idleHintActive ? 1.06 : 1.0)
-        .shadow(color: idleHintActive ? TableTheme.goldBright.opacity(0.45) : .black.opacity(0.25),
-                radius: idleHintActive ? 14 : 4)
+        .shadow(color: advance.trickWinner != nil || idleHintActive ? TableTheme.goldBright.opacity(0.45) : .black.opacity(0.25),
+                radius: advance.trickWinner != nil || idleHintActive ? 14 : 4)
         .animation(.easeInOut(duration: 0.35), value: idleHintActive)
     }
 
@@ -635,7 +645,7 @@ public struct TableView: View {
         ZStack {
             ForEach(Array(projection.currentTrick.enumerated()), id: \.offset) { _, play in
                 let pos = positionForPlay(player: play.player, opponents: opponentSeats)
-                trickPlayMarker(play: play)
+                trickPlayMarker(play: play, isWinner: play.player == pendingAdvance?.trickWinner)
                     .matchedGeometryEffect(id: play.card, in: animationNamespace)
                     .offset(x: pos.width, y: pos.height)
                     .transition(.scale.combined(with: .opacity))
@@ -647,19 +657,28 @@ public struct TableView: View {
     /// One played card + a subtle name caption. The caption stays below
     /// the card regardless of seat orientation so the eye reads the table
     /// consistently — no upside-down text for the top opponent.
-    private func trickPlayMarker(play: CardPlay) -> some View {
+    private func trickPlayMarker(play: CardPlay, isWinner: Bool) -> some View {
         VStack(spacing: 3) {
             CardView(
                 card: .known(play.card),
                 size: .standard,
                 region: .trick(seat: play.player)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(
+                        isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
+                        lineWidth: isWinner ? 2 : 0
+                    )
+            )
+            .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
+                    radius: isWinner ? 12 : 0)
             Text(projection.displayName(for: play.player))
                 .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 1)
-                .background(Color.black.opacity(0.45), in: Capsule())
+                .background(isWinner ? TableTheme.goldBright : Color.black.opacity(0.45), in: Capsule())
                 .lineLimit(1)
         }
     }

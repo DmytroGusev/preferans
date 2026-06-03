@@ -210,37 +210,7 @@ public final class GameViewModel: ObservableObject {
     /// tap-to-advance freeze. Views render this so the user sees the
     /// just-played beat before the engine's follow-up state.
     public func displayProjection(revealAll: Bool = true) -> PlayerGameProjection {
-        var p = projection(revealAll: revealAll)
-        guard let advance = pendingAdvance else { return p }
-        if let plays = advance.trickPlays {
-            p.currentTrick = plays
-        }
-        if let winner = advance.trickWinner {
-            // Roll the winner's count back to its pre-close value so the
-            // tally on the felt matches what the user is staring at.
-            let prev = p.trickCounts[winner] ?? 0
-            p.trickCounts[winner] = max(0, prev - 1)
-            if let i = p.seats.firstIndex(where: { $0.player == winner }) {
-                p.seats[i].trickCount = max(0, p.seats[i].trickCount - 1)
-            }
-        }
-        if let count = advance.completedTrickCountOverride {
-            p.completedTrickCount = count
-        }
-        if let phase = advance.phaseOverride {
-            p.phase = phase
-        }
-        // While the gate is up, suppress legal-action affordances so a
-        // viewer who happens to be the next actor (e.g., after winning
-        // a trick) can't tap a card and skip past the freeze. The first
-        // tap acknowledges the beat; the second tap makes the move.
-        p.legal.playableCards = []
-        p.legal.playableCardsOwner = nil
-        p.legal.settlementOptions = []
-        p.legal.canAcceptSettlement = false
-        p.legal.canRejectSettlement = false
-        p.legal.canStartDeal = false
-        return p
+        projection(revealAll: revealAll).applyingAdvanceFreeze(pendingAdvance)
     }
 
     /// The error message that should be surfaced to the user as a banner,
@@ -354,6 +324,43 @@ public final class GameViewModel: ObservableObject {
                 self.send(action)
             }
         }
+    }
+}
+
+extension PlayerGameProjection {
+    /// Presentation-only freeze used by both local tap-to-advance and online
+    /// timed trick holds. The engine/host sequence has already advanced; this
+    /// method only keeps the just-finished public beat visible for the viewer.
+    public func applyingAdvanceFreeze(_ advance: PendingAdvance?) -> PlayerGameProjection {
+        var p = self
+        guard let advance else { return p }
+        if let plays = advance.trickPlays {
+            p.currentTrick = plays
+        }
+        if let winner = advance.trickWinner {
+            // Roll the winner's count back to its pre-close value so the tally
+            // on the felt matches the still-visible trick.
+            let prev = p.trickCounts[winner] ?? 0
+            p.trickCounts[winner] = max(0, prev - 1)
+            if let i = p.seats.firstIndex(where: { $0.player == winner }) {
+                p.seats[i].trickCount = max(0, p.seats[i].trickCount - 1)
+            }
+        }
+        if let count = advance.completedTrickCountOverride {
+            p.completedTrickCount = count
+        }
+        if let phase = advance.phaseOverride {
+            p.phase = phase
+        }
+        // While the hold is up, suppress legal-action affordances so the next
+        // actor cannot skip past the visible trick result.
+        p.legal.playableCards = []
+        p.legal.playableCardsOwner = nil
+        p.legal.settlementOptions = []
+        p.legal.canAcceptSettlement = false
+        p.legal.canRejectSettlement = false
+        p.legal.canStartDeal = false
+        return p
     }
 }
 

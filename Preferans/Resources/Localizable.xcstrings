@@ -5196,6 +5196,30 @@
         }
       }
     },
+    "%@ took the trick": {
+      "comment": "Trick-result hold headline. %@ is the player who won the just-completed trick.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ took the trick"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state" : "translated",
+            "value": "%@ взял взятку"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state" : "translated",
+            "value": "%@ взяв взятку"
+          }
+        }
+      }
+    },
     "Tap to continue": {
       "comment": "Tap-to-advance overlay instruction.",
       "extractionState": "manual",

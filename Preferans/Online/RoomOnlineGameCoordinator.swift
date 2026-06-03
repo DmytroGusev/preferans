@@ -169,6 +169,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     @Published public private(set) var state: ConnectionState = .idle
     @Published public private(set) var projection: PlayerGameProjection?
+    @Published public private(set) var pendingAdvance: PendingAdvance?
     @Published public private(set) var eventLog: [String] = []
     @Published public private(set) var recentEvents: [PreferansEvent] = []
     @Published public private(set) var isHost: Bool = false
@@ -201,11 +202,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let botStrategy: any PlayerStrategy = HeuristicStrategy()
     /// Pacing for host-driven bot moves. Only the host runs the loop.
     private let botMoveDelay: Duration
+    /// Local presentation hold after a trick closes in online play. The host
+    /// still publishes immediately; each client keeps the completed trick on
+    /// screen briefly so humans can read who won before the next state appears.
+    private let trickResultHoldDuration: Duration
     /// When false, this coordinator never runs the server-side bot loop. The
     /// in-memory demo/test room sets this off because it drives its bots through
     /// separate per-seat coordinators instead.
     private let runsServerSideBots: Bool
     private var pendingBotTask: Task<Void, Never>?
+    private var pendingAdvanceTask: Task<Void, Never>?
 
     private let heartbeat: HeartbeatConfig
     private var heartbeatTask: Task<Void, Never>?
@@ -217,12 +223,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         dealSource: DealSource = RandomDealSource(),
         heartbeat: HeartbeatConfig = .default,
         botMoveDelay: Duration = BotPacing.interactive,
+        trickResultHoldDuration: Duration = .milliseconds(1_400),
         runsServerSideBots: Bool = true
     ) {
         self.cloudStore = cloudStore
         self.dealSource = dealSource
         self.heartbeat = heartbeat
         self.botMoveDelay = botMoveDelay
+        self.trickResultHoldDuration = trickResultHoldDuration
         self.runsServerSideBots = runsServerSideBots
     }
 
@@ -231,6 +239,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         participantsTask?.cancel()
         heartbeatTask?.cancel()
         pendingBotTask?.cancel()
+        pendingAdvanceTask?.cancel()
+    }
+
+    public var displayProjection: PlayerGameProjection? {
+        projection?.applyingAdvanceFreeze(pendingAdvance)
     }
 
     public func attach(transport: any RoomRealtimeTransport, rules: PreferansRules = .sochi) async {
@@ -276,10 +289,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
+        pendingAdvanceTask?.cancel()
+        pendingAdvanceTask = nil
         transport?.disconnect()
         transport = nil
         hostActor = nil
         projection = nil
+        pendingAdvance = nil
         eventLog = []
         recentEvents = []
         isHost = false
@@ -667,6 +683,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard envelope.viewer == localSeat else { return }
             tableID = envelope.tableID
             projection = envelope.projection
+            beginTrickResultHoldIfNeeded(events: envelope.events, projection: envelope.projection)
             logOnlineFlowProjection(envelope.projection, source: "receive")
             eventLog.append(contentsOf: envelope.eventSummaries)
             appendRecentEvents(envelope.events)
@@ -725,6 +742,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         refreshPeersFromTransport()
         if let localSeat, let localProjection = update.projections[localSeat] {
             projection = localProjection
+            beginTrickResultHoldIfNeeded(events: update.events, projection: localProjection)
             logOnlineFlowProjection(localProjection, source: "publishLocal")
         }
         eventLog.append(contentsOf: update.eventSummaries)
@@ -830,6 +848,88 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         recentEvents.append(contentsOf: events)
         if recentEvents.count > 120 {
             recentEvents.removeFirst(recentEvents.count - 120)
+        }
+    }
+
+    private func beginTrickResultHoldIfNeeded(events: [PreferansEvent], projection: PlayerGameProjection) {
+        guard let trick = events.compactMap({ event -> Trick? in
+            if case let .trickCompleted(trick) = event { return trick }
+            return nil
+        }).first else { return }
+
+        let pending = PendingAdvance(
+            waitingOn: localSeat ?? projection.viewer,
+            trickPlays: trick.plays,
+            trickWinner: trick.winner,
+            phaseOverride: phaseOverrideForCompletedTrick(trick, in: projection),
+            completedTrickCountOverride: max(0, projection.completedTrickCount - 1)
+        )
+        pendingAdvance = pending
+        scheduleTrickResultHoldClear(for: pending)
+    }
+
+    private func scheduleTrickResultHoldClear(for pending: PendingAdvance) {
+        pendingAdvanceTask?.cancel()
+        guard trickResultHoldDuration > .zero else {
+            pendingAdvance = nil
+            pendingAdvanceTask = nil
+            return
+        }
+
+        let duration = trickResultHoldDuration
+        pendingAdvanceTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: duration)
+            guard let self, self.pendingAdvance == pending else { return }
+            self.pendingAdvance = nil
+            self.pendingAdvanceTask = nil
+        }
+    }
+
+    private func phaseOverrideForCompletedTrick(_ trick: Trick, in projection: PlayerGameProjection) -> ProjectedPhase? {
+        switch projection.phase {
+        case .playing:
+            return nil
+        case let .dealFinished(result):
+            return playingPhase(for: result, trick: trick)
+        case let .gameOver(summary):
+            return playingPhase(for: summary.lastDeal, trick: trick)
+        default:
+            return nil
+        }
+    }
+
+    private func playingPhase(for result: DealResult, trick: Trick) -> ProjectedPhase {
+        .playing(
+            currentPlayer: trick.winner,
+            leader: trick.winner,
+            kind: playKind(for: result)
+        )
+    }
+
+    private func playKind(for result: DealResult) -> ProjectedPlayKind {
+        switch result.kind {
+        case let .game(declarer, contract, whisters):
+            return .game(
+                declarer: declarer,
+                contract: contract,
+                defenders: result.activePlayers.filter { $0 != declarer },
+                whisters: whisters,
+                defenderPlayMode: .closed
+            )
+        case let .misere(declarer):
+            return .misere(declarer: declarer)
+        case .allPass:
+            return .allPass
+        case let .halfWhist(declarer, contract, halfWhister):
+            return .game(
+                declarer: declarer,
+                contract: contract,
+                defenders: result.activePlayers.filter { $0 != declarer },
+                whisters: [halfWhister],
+                defenderPlayMode: .closed
+            )
+        case .passedOut:
+            return .allPass
         }
     }
 

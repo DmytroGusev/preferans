@@ -364,7 +364,47 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         }
     }
 
-    private func makeFixture(hostArchiveStore: (any GameArchiveStore)? = nil) async throws -> RoomFixture {
+    func testOnlineDisplayProjectionHoldsCompletedTrickResult() async throws {
+        let fixture = try await makeFixture(trickResultHoldDuration: .seconds(30))
+        var sequence = try await driveRoomToPlaying(fixture)
+        let host = try XCTUnwrap(fixture.coordinators["north"])
+        let completedBefore = host.projection?.completedTrickCount ?? 0
+
+        for _ in 0..<4 {
+            guard let action = nextRoomPlayAction(in: fixture) else {
+                return XCTFail("Expected a legal card play while driving the first trick.")
+            }
+            try await apply(action.action, from: action.sender, in: fixture, sequence: &sequence)
+            if (host.projection?.completedTrickCount ?? 0) > completedBefore {
+                break
+            }
+        }
+
+        let authoritative = try XCTUnwrap(host.projection)
+        let pending = try XCTUnwrap(host.pendingAdvance)
+        let display = try XCTUnwrap(host.displayProjection)
+
+        XCTAssertTrue(authoritative.currentTrick.isEmpty)
+        XCTAssertEqual(pending.trickPlays?.count, authoritative.seats.filter(\.isActive).count)
+        XCTAssertEqual(display.currentTrick, pending.trickPlays)
+        XCTAssertEqual(display.completedTrickCount, completedBefore)
+        XCTAssertTrue(display.legal.playableCards.isEmpty)
+        XCTAssertFalse(display.legal.canStartDeal)
+
+        let winner = try XCTUnwrap(pending.trickWinner)
+        let authoritativeWinnerCount = try XCTUnwrap(
+            authoritative.seats.first { $0.player == winner }?.trickCount
+        )
+        let displayWinnerCount = try XCTUnwrap(
+            display.seats.first { $0.player == winner }?.trickCount
+        )
+        XCTAssertEqual(displayWinnerCount, max(0, authoritativeWinnerCount - 1))
+    }
+
+    private func makeFixture(
+        hostArchiveStore: (any GameArchiveStore)? = nil,
+        trickResultHoldDuration: Duration = .milliseconds(1_400)
+    ) async throws -> RoomFixture {
         let room = InMemoryRoom(peers: peers, hostPlayerID: "north")
         let transports = try Dictionary(uniqueKeysWithValues: peers.map { peer in
             (peer.playerID, try room.transport(for: peer.playerID))
@@ -375,7 +415,8 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
                 peer.playerID,
                 RoomOnlineGameCoordinator(
                     cloudStore: archiveStore,
-                    dealSource: ScriptedDealSource(decks: [Deck.standard32])
+                    dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+                    trickResultHoldDuration: trickResultHoldDuration
                 )
             )
         })
