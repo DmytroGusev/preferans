@@ -5220,6 +5220,54 @@
         }
       }
     },
+    "Last trick": {
+      "comment": "Button and sheet title for reviewing the most recently completed trick.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last trick"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state" : "translated",
+            "value": "Последняя взятка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state" : "translated",
+            "value": "Остання взятка"
+          }
+        }
+      }
+    },
+    "%@ won": {
+      "comment": "Last-trick sheet headline. %@ is the player who won the displayed trick.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ won"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state" : "translated",
+            "value": "%@ выиграл"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state" : "translated",
+            "value": "%@ виграв"
+          }
+        }
+      }
+    },
     "Tap to continue": {
       "comment": "Tap-to-advance overlay instruction.",
       "extractionState": "manual",

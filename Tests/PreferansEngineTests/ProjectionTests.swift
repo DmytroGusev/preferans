@@ -81,6 +81,54 @@ final class ProjectionTests: AppTestCase {
         try assertPublicTalon(in: engine, viewers: players, label: "second talon-led trick")
     }
 
+    func testProjectionCarriesLastCompletedTrickForEveryViewer() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
+        _ = try engine.apply(.startDeal(dealer: "south", deck: Deck.standard32))
+
+        let fresh = PlayerProjectionBuilder.projection(
+            for: "north",
+            tableID: UUID(),
+            sequence: 0,
+            engine: engine,
+            policy: .online
+        )
+        XCTAssertNil(fresh.lastCompletedTrick)
+
+        try EngineTestDriver.driveAuctionWinning(
+            engine: &engine,
+            declarer: "north",
+            bid: .game(GameContract(6, .suit(.spades)))
+        )
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
+        try EngineTestDriver.declareContract(engine: &engine, declarer: "north", contract: GameContract(6, .suit(.spades)))
+        try EngineTestDriver.forceWhist(engine: &engine)
+
+        while case let .playing(state) = engine.state, state.completedTricks.isEmpty {
+            let actor = state.currentPlayer
+            let card = try XCTUnwrap(engine.legalCards(for: actor).max())
+            _ = try engine.apply(.playCard(player: actor, card: card))
+        }
+
+        guard case let .playing(playing) = engine.state,
+              let completed = playing.completedTricks.last else {
+            return XCTFail("Expected a playing state with one completed trick.")
+        }
+
+        for viewer in players {
+            let projection = PlayerProjectionBuilder.projection(
+                for: viewer,
+                tableID: UUID(),
+                sequence: 1,
+                engine: engine,
+                policy: .online
+            )
+            XCTAssertEqual(projection.completedTrickCount, 1)
+            XCTAssertTrue(projection.currentTrick.isEmpty)
+            XCTAssertEqual(projection.lastCompletedTrick, completed, "Last trick should be public to \(viewer).")
+        }
+    }
+
     func testMisereProjectionRevealsEveryActiveHandToEveryViewer() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")

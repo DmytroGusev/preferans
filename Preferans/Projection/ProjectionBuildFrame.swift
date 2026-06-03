@@ -10,6 +10,7 @@ struct ProjectionBuildFrame {
     var auction: [AuctionCall]
     var whistCalls: [WhistCallRecord]
     var currentTrick: [CardPlay]
+    var lastCompletedTrick: Trick?
     var completedTrickCount: Int
     var trickCounts: [PlayerID: Int]
     var currentActor: PlayerID?
@@ -28,6 +29,7 @@ struct ProjectionBuildFrame {
         self.auction = []
         self.whistCalls = []
         self.currentTrick = []
+        self.lastCompletedTrick = nil
         self.completedTrickCount = 0
         self.trickCounts = [:]
         self.currentActor = nil

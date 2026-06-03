@@ -173,6 +173,7 @@ public struct PlayerGameProjection: Codable, Sendable, Equatable, Identifiable {
     public var auction: [AuctionCall]
     public var whistCalls: [WhistCallRecord]
     public var currentTrick: [CardPlay]
+    public var lastCompletedTrick: Trick?
     public var completedTrickCount: Int
     public var trickCounts: [PlayerID: Int]
     public var talon: [ProjectedCard]
@@ -257,6 +258,7 @@ public enum PlayerProjectionBuilder {
             auction: frame.auction,
             whistCalls: frame.whistCalls,
             currentTrick: frame.currentTrick,
+            lastCompletedTrick: frame.lastCompletedTrick,
             completedTrickCount: frame.completedTrickCount,
             trickCounts: frame.trickCounts,
             talon: projectedTalon,

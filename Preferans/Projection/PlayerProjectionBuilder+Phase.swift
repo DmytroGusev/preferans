@@ -115,6 +115,7 @@ extension PlayerProjectionBuilder {
                 status: .dealScored
             )
             frame.activePlayers = result.activePlayers
+            frame.lastCompletedTrick = result.completedTricks.last
             frame.completedTrickCount = result.completedTricks.count
             frame.trickCounts = result.trickCounts
             frame.legal.canStartDeal = true
@@ -127,6 +128,7 @@ extension PlayerProjectionBuilder {
                 status: .matchOver(winner: summary.standings.first?.player)
             )
             frame.activePlayers = summary.lastDeal.activePlayers
+            frame.lastCompletedTrick = summary.lastDeal.completedTricks.last
             frame.completedTrickCount = summary.lastDeal.completedTricks.count
             frame.trickCounts = summary.lastDeal.trickCounts
             markActiveRoles(frame.activePlayers, into: &frame.roleMap)
@@ -155,6 +157,7 @@ extension PlayerProjectionBuilder {
         frame.discardCards = state.discard
         frame.currentActor = engine.state.currentActor
         frame.currentTrick = state.currentTrick
+        frame.lastCompletedTrick = state.completedTricks.last
         frame.completedTrickCount = state.completedTricks.count
         frame.trickCounts = state.trickCounts
         frame.legal.playableCards = engine.legalCards(for: viewer)

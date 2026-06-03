@@ -32,7 +32,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private let extraMenu: Menu
 
     private enum Sheet: String, Identifiable {
-        case score, log, settings
+        case score, log, settings, lastTrick
         var id: String { rawValue }
     }
 
@@ -112,9 +112,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
         #endif
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
-            case .score:    scoreSheet
-            case .log:      logSheet
-            case .settings: SettingsScreen()
+            case .score:      scoreSheet
+            case .log:        logSheet
+            case .settings:   SettingsScreen()
+            case .lastTrick:  lastTrickSheet
             }
         }
         .onChange(of: projection.sequence) { _, _ in
@@ -351,6 +352,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
         HStack(alignment: .center, spacing: 8) {
             phaseChip
             Spacer(minLength: 8)
+            if projection.lastCompletedTrick != nil {
+                lastTrickButton
+            }
             scoresheetButton
             if onLeaveTable != nil {
                 leaveButton
@@ -369,6 +373,20 @@ public struct ProjectionGameScreen<Menu: View>: View {
         } message: {
             Text("Your current match will be discarded.")
         }
+    }
+
+    private var lastTrickButton: some View {
+        Button {
+            activeSheet = .lastTrick
+        } label: {
+            Image(systemName: "arrow.counterclockwise.circle.fill")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(TableTheme.goldBright, Color.black.opacity(0.30))
+                .font(.title3)
+                .padding(4)
+        }
+        .accessibilityLabel("Last trick")
+        .accessibilityIdentifier(UIIdentifiers.buttonLastTrick)
     }
 
     /// One-tap exit from the live table. Always reachable so the user is
@@ -747,6 +765,35 @@ public struct ProjectionGameScreen<Menu: View>: View {
         }
     }
 
+    private var lastTrickSheet: some View {
+        NavigationStack {
+            Group {
+                if let trick = projection.lastCompletedTrick {
+                    LastTrickView(projection: projection, trick: trick)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 20)
+                } else {
+                    Text("Last trick")
+                        .font(.headline)
+                        .foregroundStyle(TableTheme.inkCream)
+                        .padding()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .feltBackground()
+            .navigationTitle("Last trick")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    Button("Done") { activeSheet = nil }
+                        .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
+                }
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private var viewerSeat: SeatProjection? {
@@ -786,5 +833,72 @@ public struct ProjectionGameScreen<Menu: View>: View {
         let available = Set((viewerSeat?.hand ?? []).compactMap(\.knownCard)
             + projection.talon.compactMap(\.knownCard))
         selectedDiscard.formIntersection(available)
+    }
+}
+
+private struct LastTrickView: View {
+    var projection: PlayerGameProjection
+    var trick: Trick
+
+    var body: some View {
+        VStack(spacing: 18) {
+            VStack(spacing: 6) {
+                Text("\(projection.displayName(for: trick.winner)) won")
+                    .font(.headline.weight(.heavy))
+                    .foregroundStyle(TableTheme.goldBright)
+                    .multilineTextAlignment(.center)
+                Text("Last trick")
+                    .font(.caption.weight(.bold))
+                    .tracking(1.1)
+                    .textCase(.uppercase)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+            }
+            HStack(alignment: .bottom, spacing: 12) {
+                ForEach(Array(trick.plays.enumerated()), id: \.offset) { _, play in
+                    trickPlayColumn(play)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 18)
+        .feltSurface(.card, radius: TableTheme.Radius.md)
+    }
+
+    private func trickPlayColumn(_ play: CardPlay) -> some View {
+        let isWinner = play.player == trick.winner
+        return VStack(spacing: 8) {
+            CardView(
+                card: .known(play.card),
+                size: .standard,
+                region: .trick(seat: play.player)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
+                                  lineWidth: isWinner ? 2 : 0)
+            )
+            .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
+                    radius: isWinner ? 12 : 0)
+            HStack(spacing: 4) {
+                if let order = seatOrderNumber(for: play.player) {
+                    SeatOrderBadge(
+                        number: order,
+                        player: play.player,
+                        isCurrentActor: isWinner,
+                        diameter: 20
+                    )
+                }
+                Text(projection.displayName(for: play.player))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(isWinner ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+            }
+        }
+    }
+
+    private func seatOrderNumber(for player: PlayerID) -> Int? {
+        projection.players.firstIndex(of: player).map { $0 + 1 }
     }
 }
