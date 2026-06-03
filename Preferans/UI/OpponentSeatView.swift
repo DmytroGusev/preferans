@@ -316,12 +316,17 @@ public struct OpponentSeatView: View {
     private var openFan: some View {
         let dims = CardView.Size.large.dimensions
         let rows = openHandRows(seat.hand)
-        return VStack(spacing: -dims.height * 0.55) {
+        let rowHeight = dims.height + 12
+        return VStack(spacing: -rowHeight * 0.55) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                fanRow(cards: row, size: .large, stepFactor: 0.32)
+                CardFanView(
+                    cards: row,
+                    seat: seat.player,
+                    size: .large
+                )
             }
         }
-        .frame(height: rows.isEmpty ? 0 : rowsHeight(rowCount: rows.count, cardHeight: dims.height, overlap: 0.55))
+        .frame(height: rows.isEmpty ? 0 : rowsHeight(rowCount: rows.count, cardHeight: rowHeight, overlap: 0.55))
     }
 
     /// One horizontal row. `stepFactor` is the fraction of card width the

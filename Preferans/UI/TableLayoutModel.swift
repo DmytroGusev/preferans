@@ -157,7 +157,7 @@ public struct TableLayoutModel: Equatable {
         case .topNarrow:
             if isOpen {
                 return CGSize(
-                    width: min(bounds.width * 0.60, 250),
+                    width: min(bounds.width * 0.46, 250),
                     height: 230
                 )
             }

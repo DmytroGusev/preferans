@@ -18,6 +18,9 @@ extension PreferansEngine {
             throw PreferansError.invalidPlayer(player)
         }
         try validateSettlement(settlement, in: playing)
+        guard legalSettlements(for: player).contains(settlement) else {
+            throw PreferansError.illegalSettlement("Settlement is only available when the remaining card play is forced.")
+        }
 
         let proposal = TrickSettlementProposal(
             proposer: player,

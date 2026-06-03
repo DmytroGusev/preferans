@@ -159,17 +159,8 @@ public struct PreferansEngine: Sendable {
             return []
         }
 
-        var settlements: [TrickSettlement] = []
-        for target in playing.activePlayers {
-            let current = Self.tricks(target, in: playing.trickCounts)
-            let remaining = 10 - playing.completedTricks.count
-            for targetTricks in current...(current + remaining) {
-                if let settlement = makeSettlement(target: target, targetTricks: targetTricks, in: playing) {
-                    settlements.append(settlement)
-                }
-            }
-        }
-        return settlements
+        guard let settlement = forcedSettlement(in: playing) else { return [] }
+        return [settlement]
     }
 
     public func canAcceptSettlement(player: PlayerID) -> Bool {
@@ -445,37 +436,86 @@ public struct PreferansEngine: Sendable {
         )
     }
 
+    private func forcedSettlement(in playing: PlayingState) -> TrickSettlement? {
+        guard playing.currentTrick.isEmpty, !playing.isComplete else { return nil }
+        var simulated = playing
+        while !simulated.isComplete {
+            let legal = (simulated.hands[simulated.currentPlayer] ?? [])
+                .filter { isLegal(card: $0, by: simulated.currentPlayer, in: simulated) }
+            guard legal.count == 1, let card = legal.first else { return nil }
+            playForced(card, in: &simulated)
+        }
+        return makeSettlement(finalTrickCounts: simulated.trickCounts, in: playing)
+    }
+
+    private func playForced(_ card: Card, in playing: inout PlayingState) {
+        let player = playing.currentPlayer
+        guard let cardIndex = playing.hands[player]?.firstIndex(of: card) else { return }
+        playing.hands[player]?.remove(at: cardIndex)
+        playing.currentTrick.append(CardPlay(player: player, card: card))
+
+        if playing.currentTrick.count < playing.activePlayers.count {
+            playing.currentPlayer = playing.activePlayers.cyclicNext(after: player)
+            return
+        }
+
+        let leadSuit = requiredSuit(for: playing) ?? playing.currentTrick[0].card.suit
+        let winner = trickWinner(for: playing.currentTrick, leadSuit: leadSuit, trump: playing.kind.trumpSuit)
+        let trick = Trick(
+            leader: playing.leader,
+            leadSuit: leadSuit,
+            plays: playing.currentTrick,
+            winner: winner
+        )
+        playing.completedTricks.append(trick)
+        playing.trickCounts[winner, default: 0] += 1
+        playing.currentTrick = []
+        playing.leader = winner
+        playing.currentPlayer = winner
+    }
+
     private func makeSettlement(
-        target: PlayerID,
-        targetTricks: Int,
+        finalTrickCounts: [PlayerID: Int],
         in playing: PlayingState
     ) -> TrickSettlement? {
-        guard playing.activePlayers.contains(target),
-              targetTricks >= Self.tricks(target, in: playing.trickCounts) else {
+        let active = Set(playing.activePlayers)
+        guard Set(finalTrickCounts.keys) == active,
+              finalTrickCounts.values.reduce(0, +) == 10 else {
             return nil
         }
-
-        var counts = playing.trickCounts
-        counts[target] = targetTricks
-        var remaining = 10 - counts.values.reduce(0, +)
-        guard remaining >= 0 else { return nil }
-
-        // The action itself accepts any valid complete trick-count map.
-        // This helper is only for compact UI/bot-generated "X takes N"
-        // offers, so it fills the non-target remainder deterministically.
-        for player in playing.activePlayers where player != target && remaining > 0 {
-            let capacity = 10 - (counts[player] ?? 0)
-            let assigned = min(capacity, remaining)
-            counts[player, default: 0] += assigned
-            remaining -= assigned
+        for player in playing.activePlayers {
+            guard let final = finalTrickCounts[player],
+                  final >= Self.tricks(player, in: playing.trickCounts) else {
+                return nil
+            }
         }
-        guard remaining == 0 else { return nil }
-
+        let target = settlementTarget(in: playing, finalTrickCounts: finalTrickCounts)
         return TrickSettlement(
             target: target,
-            targetTricks: targetTricks,
-            finalTrickCounts: counts
+            targetTricks: finalTrickCounts[target] ?? 0,
+            finalTrickCounts: finalTrickCounts
         )
+    }
+
+    private func settlementTarget(
+        in playing: PlayingState,
+        finalTrickCounts: [PlayerID: Int]
+    ) -> PlayerID {
+        switch playing.kind {
+        case let .game(context):
+            return context.declarer
+        case let .misere(context):
+            return context.declarer
+        case .allPass:
+            return playing.activePlayers.max { lhs, rhs in
+                let left = finalTrickCounts[lhs] ?? 0
+                let right = finalTrickCounts[rhs] ?? 0
+                if left != right { return left < right }
+                let leftIndex = playing.activePlayers.firstIndex(of: lhs) ?? 0
+                let rightIndex = playing.activePlayers.firstIndex(of: rhs) ?? 0
+                return leftIndex > rightIndex
+            } ?? playing.activePlayers[0]
+        }
     }
 
     func validateSettlement(_ settlement: TrickSettlement, in playing: PlayingState) throws {

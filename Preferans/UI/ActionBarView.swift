@@ -277,7 +277,17 @@ public struct ActionBarView: View {
 
     @ViewBuilder
     private var settlementOfferMenu: some View {
-        if !projection.legal.settlementOptions.isEmpty {
+        let options = projection.legal.settlementOptions
+        if options.count == 1, let settlement = options.first {
+            Button {
+                onSend(.proposeSettlement(player: projection.viewer, settlement: settlement))
+            } label: {
+                Label("Settle", systemImage: "checkmark.seal")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.feltSecondary)
+            .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
+        } else if !options.isEmpty {
             Menu {
                 ForEach(settlementTargets, id: \.rawValue) { target in
                     let options = settlementOptions(for: target)

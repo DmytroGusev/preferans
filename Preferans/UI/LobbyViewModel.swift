@@ -36,12 +36,9 @@ public final class LobbyViewModel: ObservableObject {
     public init() {
         let account = Self.loadRegisteredOnlineAccount()
         registeredOnlineAccount = account
-        // Seed a non-empty default so the online flow (and the headless invite
-        // harness, which calls `startCloudflareOnlineRoom()` directly) always
-        // has a usable display name.
         onlineDisplayName = account?.displayName
             ?? UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName)
-            ?? String(localized: "Player")
+            ?? ""
     }
 
     public func setSeatCount(_ count: Int) {
@@ -90,6 +87,11 @@ public final class LobbyViewModel: ObservableObject {
 
     public func startCloudflareOnlineRoom() {
         guard !isOnlineRoomLoading else { return }
+        if let validation = onlineSetupValidationError {
+            errorText = validation
+            infoText = nil
+            return
+        }
         isOnlineRoomLoading = true
         errorText = nil
         infoText = nil
@@ -117,6 +119,11 @@ public final class LobbyViewModel: ObservableObject {
     public func joinCloudflareOnlineRoom() {
         guard !isOnlineRoomLoading,
               let roomCode = pendingJoinRoomCode else {
+            return
+        }
+        if let validation = onlineIdentityValidationError {
+            errorText = validation
+            infoText = nil
             return
         }
         isOnlineRoomLoading = true
@@ -153,6 +160,11 @@ public final class LobbyViewModel: ObservableObject {
     /// Start and the bot seats play out — without a worker or a second device.
     public func startInMemoryOnlineRoom() {
         do {
+            if let validation = onlineSetupValidationError {
+                errorText = validation
+                infoText = nil
+                return
+            }
             let players = OnlineSeatSlot.canonicalPlayerIDs(count: 3)
             let localPlayer = players[0]
             let account = normalizedOnlineAccount(for: localPlayer)
@@ -211,6 +223,10 @@ public final class LobbyViewModel: ObservableObject {
         let formattedName = fullName.map { formatter.string(from: $0) }?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let displayName = formattedName?.isEmpty == false ? formattedName! : resolvedOnlineDisplayName
+        guard !displayName.isEmpty else {
+            errorText = String(localized: "Enter your name to play online.")
+            return
+        }
         let account = RegisteredOnlineAccount(
             provider: .apple,
             accountID: "apple:\(userID)",
@@ -252,11 +268,19 @@ public final class LobbyViewModel: ObservableObject {
     /// valid (slot 0 is always "you"); the only user-fixable error is a missing
     /// display name when not signed in.
     public var onlineSetupValidationError: String? {
-        if registeredOnlineAccount == nil,
-           onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return String(localized: "Enter your name to play online.")
+        onlineIdentityValidationError
+    }
+
+    public var onlineIdentityValidationError: String? {
+        currentOnlineDisplayName.isEmpty ? String(localized: "Enter your name to play online.") : nil
+    }
+
+    public var currentOnlineDisplayName: String {
+        if let registeredName = registeredOnlineAccount?.displayName.trimmingCharacters(in: .whitespacesAndNewlines),
+           !registeredName.isEmpty {
+            return registeredName
         }
-        return nil
+        return onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var onlineBotMoveDelay: Duration {
@@ -265,13 +289,11 @@ public final class LobbyViewModel: ObservableObject {
             : botSpeed.delay
     }
 
-    /// The display name to advertise for the local seat online: the signed-in
-    /// account name, the typed name, or a stock fallback so a seat never goes
-    /// out nameless.
+    /// The display name to advertise for the local seat online. Callers validate
+    /// `onlineIdentityValidationError` before constructing a room, so an online
+    /// seat is never intentionally advertised without a human-visible name.
     private var resolvedOnlineDisplayName: String {
-        if let registeredOnlineAccount { return registeredOnlineAccount.displayName }
-        let trimmed = onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? String(localized: "Player") : trimmed
+        currentOnlineDisplayName
     }
 
     /// `speedOverride` lets the watch-bots demo run instantly without

@@ -94,6 +94,40 @@ final class OnlineBotSeatTests: XCTestCase {
         XCTAssertEqual(occupancy(of: "east", in: host), .bot, "No-show seat is converted to a bot.")
         XCTAssertTrue(host.canHostStart, "Every seat is now human-or-bot.")
 
+        host.startFirstDeal()
+        await pump(until: { (host.projection?.sequence ?? 0) >= 1 })
+        let eastSeat = try XCTUnwrap(host.projection?.seats.first { $0.player == "east" })
+        XCTAssertTrue(
+            eastSeat.displayName.hasPrefix("Bot"),
+            "Botized seats must not keep placeholder names in live projections."
+        )
+        XCTAssertNotEqual(eastSeat.displayName, "East")
+
+        host.detach()
+    }
+
+    func testStartFirstDealRejectsOpenSeats() async throws {
+        let peers = [
+            OnlinePeer(playerID: "north", accountID: "apple:host", provider: .apple, displayName: "Host"),
+            OnlinePeer(playerID: "east", accountID: "pending:east", provider: .dev, displayName: "East"),
+            OnlinePeer(playerID: "south", accountID: "bot:south", provider: .dev, displayName: "Bot 3")
+        ]
+        let room = InMemoryRoom(peers: peers, hostPlayerID: "north")
+        let host = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        await host.attach(transport: try room.transport(for: "north"))
+        await pump(until: { host.rosterSeats.count == 3 })
+
+        host.startFirstDeal()
+        for _ in 0..<5 { await Task.yield() }
+
+        XCTAssertEqual(host.projection?.sequence, 0)
+        XCTAssertEqual(
+            host.errorText,
+            "Start is available once every seat is filled — invite a friend or fill the empty seats with bots."
+        )
         host.detach()
     }
 

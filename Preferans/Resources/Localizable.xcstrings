@@ -1528,6 +1528,30 @@
         }
       }
     },
+    "Enter your name to play online.": {
+      "comment": "Lobby online identity validation error.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter your name to play online."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введите имя, чтобы играть онлайн."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Введіть ім'я, щоб грати онлайн."
+          }
+        }
+      }
+    },
     "Final standings": {
       "comment": "Game-over standings header.",
       "extractionState": "manual",
@@ -5114,6 +5138,30 @@
           "stringUnit": {
             "state" : "translated",
             "value": "Помилка Game Center: %@"
+          }
+        }
+      }
+    },
+    "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.": {
+      "comment": "Online waiting-room validation message shown when open invite seats block starting the game.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start is available once every seat is filled — invite a friend or fill the empty seats with bots."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Старт доступен, когда заняты все места — пригласите друга или заполните пустые места ботами."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Старт доступний, коли всі місця зайняті — запросіть друга або заповніть порожні місця ботами."
           }
         }
       }

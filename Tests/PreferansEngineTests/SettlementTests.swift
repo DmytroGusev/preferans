@@ -9,12 +9,8 @@ struct SettlementTests {
 
     @Test("Unanimous settlement scores the deal without fabricating tricks")
     func unanimousSettlementScoresDeal() throws {
-        var engine = try makeGamePlayingEngine()
-        let settlement = TrickSettlement(
-            target: "east",
-            targetTricks: 6,
-            finalTrickCounts: ["east": 6, "south": 2, "north": 2]
-        )
+        var engine = try makeLastTrickEngine()
+        let settlement = try #require(engine.legalSettlements(for: "east").first)
 
         let proposed = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
         #expect(proposed == [
@@ -39,20 +35,13 @@ struct SettlementTests {
         }
         #expect(result.settlement == settlement)
         #expect(result.trickCounts == settlement.finalTrickCounts)
-        #expect(result.completedTricks == [])
-        #expect(engine.score.pool["east"] == 2)
-        #expect(engine.score.whistsWritten(by: "south", on: "east") == 4)
-        #expect(engine.score.whistsWritten(by: "north", on: "east") == 4)
+        #expect(result.completedTricks.count == 9)
     }
 
     @Test("Rejecting settlement resumes card play")
     func rejectingSettlementResumesCardPlay() throws {
-        var engine = try makeGamePlayingEngine()
-        let settlement = TrickSettlement(
-            target: "east",
-            targetTricks: 6,
-            finalTrickCounts: ["east": 6, "south": 2, "north": 2]
-        )
+        var engine = try makeLastTrickEngine()
+        let settlement = try #require(engine.legalSettlements(for: "east").first)
 
         _ = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
         let events = try engine.apply(.rejectSettlement(player: "south"))
@@ -63,12 +52,12 @@ struct SettlementTests {
             return
         }
         #expect(playing.pendingSettlement == nil)
-        #expect(engine.legalCards(for: playing.currentPlayer).count == 10)
+        #expect(engine.legalCards(for: playing.currentPlayer).count == 1)
     }
 
     @Test("Settlement rejects impossible final counts")
     func settlementRejectsImpossibleFinalCounts() throws {
-        var engine = try makeGamePlayingEngine()
+        var engine = try makeLastTrickEngine()
         let invalid = TrickSettlement(
             target: "east",
             targetTricks: 6,
@@ -79,6 +68,31 @@ struct SettlementTests {
             try engine.apply(.proposeSettlement(player: "east", settlement: invalid))
         } throws: { error in
             (error as? PreferansError) == .illegalSettlement("Settlement final trick counts must total 10.")
+        }
+    }
+
+    @Test("Settlement is unavailable while legal card choices remain")
+    func settlementUnavailableWhileChoicesRemain() throws {
+        let engine = try makeGamePlayingEngine()
+
+        for player in players {
+            #expect(engine.legalSettlements(for: player).isEmpty)
+        }
+    }
+
+    @Test("Settlement rejects hand-crafted final counts while choices remain")
+    func settlementRejectsHandCraftedCountsWhileChoicesRemain() throws {
+        var engine = try makeGamePlayingEngine()
+        let arbitrary = TrickSettlement(
+            target: "east",
+            targetTricks: 6,
+            finalTrickCounts: ["east": 6, "south": 2, "north": 2]
+        )
+
+        #expect {
+            try engine.apply(.proposeSettlement(player: "east", settlement: arbitrary))
+        } throws: { error in
+            (error as? PreferansError) == .illegalSettlement("Settlement is only available when the remaining card play is forced.")
         }
     }
 
@@ -99,10 +113,8 @@ struct SettlementTests {
 
     @Test("Projection exposes settlement actions to viewers")
     func projectionExposesSettlementActions() throws {
-        var engine = try makeGamePlayingEngine()
-        let settlement = try #require(engine.legalSettlements(for: "east").first {
-            $0.target == "east" && $0.targetTricks == 6
-        })
+        var engine = try makeLastTrickEngine()
+        let settlement = try #require(engine.legalSettlements(for: "east").first)
         _ = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
 
         let southProjection = PlayerProjectionBuilder.projection(
@@ -127,20 +139,21 @@ struct SettlementTests {
         #expect(eastProjection.legal.canRejectSettlement)
     }
 
-    @Test("Bot proposes and accepts deterministic last-trick settlement")
-    func botSettlesDeterministicLastTrick() async throws {
+    @Test("Bot plays deterministic last trick instead of proposing settlement")
+    func botPlaysDeterministicLastTrick() async throws {
         let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
         var engine = try makeLastTrickEngine()
 
         let drive = try await BotTestDriver.drive(engine: &engine, strategy: strategy, stepLimit: 4)
 
-        #expect(!drive.stalled, "Bots should settle the deterministic last trick.")
-        #expect(drive.steps <= 3)
+        #expect(!drive.stalled, "Bots should play the deterministic last trick.")
+        #expect(drive.steps == 3)
         guard case let .dealFinished(result) = engine.state else {
-            Issue.record("Expected settlement to finish the deal.")
+            Issue.record("Expected the played last trick to finish the deal.")
             return
         }
-        #expect(result.settlement != nil)
+        #expect(result.settlement == nil)
+        #expect(result.completedTricks.count == 10)
         #expect(result.trickCounts.values.reduce(0, +) == 10)
     }
 

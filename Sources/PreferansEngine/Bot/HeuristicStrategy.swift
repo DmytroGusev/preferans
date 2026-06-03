@@ -50,10 +50,6 @@ public struct HeuristicStrategy: PlayerStrategy {
             let controlled = s.currentPlayer
             let controller = s.controllingActor(of: controlled, rules: snapshot.rules)
             guard controller == viewer else { return nil }
-            if let settlement = deterministicLastTrickSettlement(state: s),
-               (try? PreferansEngine(snapshot: snapshot).legalSettlements(for: viewer).contains(settlement)) == true {
-                return .proposeSettlement(player: viewer, settlement: settlement)
-            }
             let card = planner.choose(snapshot: snapshot, viewer: viewer)
                 ?? (try? PreferansEngine(snapshot: snapshot).legalCards(for: viewer))?.first
             guard let card else { return nil }
@@ -230,7 +226,14 @@ public struct HeuristicStrategy: PlayerStrategy {
         // Per-defender share of the team's whist requirement — for a
         // 6-trick contract that's 4/2 = 2 tricks each.
         let share = max(1.0, Double(requirement) / 2.0)
-        if legal.contains(.whist), estimate >= share { return .whist }
+        let firstDefender = state.defenders.first
+        let firstCall = firstDefender.flatMap { defender in
+            state.calls.first { $0.player == defender }?.call
+        }
+        let whistThreshold = firstCall == .whist && viewer != firstDefender
+            ? share + 1.0
+            : share
+        if legal.contains(.whist), estimate >= whistThreshold { return .whist }
         if legal.contains(.halfWhist), estimate >= share - 0.75 { return .halfWhist }
         return legal.contains(.pass) ? .pass : legal[0]
     }

@@ -83,15 +83,23 @@ public struct LobbyView: View {
         let args = ProcessInfo.processInfo.arguments
         if TestHarness.autoCreateInMemoryRoom(in: args) {
             didRunOnlineHarness = true
+            seedOnlineNameForHarnessIfNeeded()
             viewModel.startInMemoryOnlineRoom()
         } else if TestHarness.autoCreateOnlineRoom(in: args) {
             didRunOnlineHarness = true
+            seedOnlineNameForHarnessIfNeeded()
             viewModel.startCloudflareOnlineRoom()
         } else if let roomCode = TestHarness.autoJoinOnlineRoomCode(from: args) {
             didRunOnlineHarness = true
+            seedOnlineNameForHarnessIfNeeded()
             viewModel.onlineJoinRoomCode = roomCode
             viewModel.joinCloudflareOnlineRoom()
         }
+    }
+
+    private func seedOnlineNameForHarnessIfNeeded() {
+        guard viewModel.onlineIdentityValidationError != nil else { return }
+        viewModel.setOnlineDisplayName(String(localized: "Player"))
     }
 
     private var lobbyContent: some View {
@@ -532,12 +540,14 @@ public struct LobbyView: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(
                             viewModel.pendingJoinRoomCode != nil
+                                && viewModel.onlineIdentityValidationError == nil
                                 ? TableTheme.goldBright
                                 : TableTheme.inkCreamDim
                         )
                         .disabled(
                             viewModel.isOnlineRoomLoading
                                 || viewModel.pendingJoinRoomCode == nil
+                                || viewModel.onlineIdentityValidationError != nil
                         )
                         .accessibilityLabel("Join table")
                         .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
@@ -601,7 +611,7 @@ public struct LobbyView: View {
                 .font(.title3)
                 .frame(width: 24)
             if slot.kind == .you {
-                Text(verbatim: viewModel.onlineDisplayName.isEmpty ? String(localized: "You") : viewModel.onlineDisplayName)
+                Text(verbatim: viewModel.currentOnlineDisplayName.isEmpty ? String(localized: "You") : viewModel.currentOnlineDisplayName)
                     .foregroundStyle(TableTheme.inkCream)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("badge.you")
@@ -718,7 +728,7 @@ public struct LobbyView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(viewModel.isOnlineRoomLoading)
+        .disabled(viewModel.isOnlineRoomLoading || viewModel.onlineIdentityValidationError != nil)
     }
 
     /// Online identity, decoupled from the local roster. Signed-in users see a
@@ -728,10 +738,10 @@ public struct LobbyView: View {
     private var onlineIdentitySection: some View {
         VStack(spacing: 8) {
             onlineSectionLabel("You")
-            if let registeredOnlineAccount = viewModel.registeredOnlineAccount {
+            if viewModel.registeredOnlineAccount != nil {
                 identityStatusRow(
                     icon: "person.crop.circle.badge.checkmark",
-                    title: String(localized: "Signed in as \(registeredOnlineAccount.displayName)"),
+                    title: String(localized: "Signed in as \(viewModel.currentOnlineDisplayName)"),
                     trailingAction: {
                         Button {
                             viewModel.clearRegisteredOnlineAccount()
@@ -776,6 +786,12 @@ public struct LobbyView: View {
                     Spacer()
                 }
                 #endif
+            }
+            if let validation = viewModel.onlineIdentityValidationError {
+                Text(validation)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

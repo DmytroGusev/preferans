@@ -221,7 +221,7 @@ export function createInitialRoom({
 /// caller can skip the storage write and presence broadcast.
 export function fillOpenSeatsWithBots(room: RoomState, now = new Date().toISOString()): RoomState {
   let changed = false;
-  const peers = room.peers.map((peer) => {
+  const peers = room.peers.map((peer, index) => {
     if (!peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX)) {
       return peer;
     }
@@ -229,7 +229,8 @@ export function fillOpenSeatsWithBots(room: RoomState, now = new Date().toISOStr
     return {
       ...peer,
       accountID: `${BOT_ACCOUNT_PREFIX}${peerID(peer)}`,
-      provider: "dev" as OnlineAccountProvider
+      provider: "dev" as OnlineAccountProvider,
+      displayName: `Bot ${index + 1}`
     };
   });
   if (!changed) {

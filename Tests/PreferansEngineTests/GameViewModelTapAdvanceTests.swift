@@ -32,6 +32,17 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
         model.send(.whist(player: "south", call: .whist))
     }
 
+    private func driveToForcedSettlement(_ model: GameViewModel) throws {
+        model.tapToAdvanceEnabled = false
+        driveToPlay(model)
+        while case let .playing(playing) = model.engine.state, playing.completedTricks.count < 9 {
+            let actor = playing.currentPlayer
+            let card = try XCTUnwrap(model.engine.legalCards(for: actor).first)
+            model.send(.playCard(player: actor, card: card))
+            XCTAssertNil(model.lastError)
+        }
+    }
+
     func testMidTrickAllHumanPlayDoesNotFireTheGate() throws {
         let model = try makeModel()
         driveToPlay(model)
@@ -183,7 +194,7 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
                      "viewer's own card play never freezes — they just chose it")
     }
 
-    func testBotCardPlayFreezesFeltMidTrick() throws {
+    func testBotCardPlayDoesNotFreezeFeltMidTrickWhenAnotherBotIsNext() throws {
         let model = try makeModel()
         model.botStrategies["east"] = InertStrategy()
         model.botStrategies["south"] = InertStrategy()
@@ -191,15 +202,32 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
         driveToPlay(model)
 
         // North leads, East (bot) replies. South (also bot) is up next,
-        // so the gate should freeze on East's card.
+        // but the gate should wait for the completed trick instead of
+        // asking the user to acknowledge every bot card.
         model.send(.playCard(player: "north", card: Card(.spades, .ace)))
         XCTAssertNil(model.pendingAdvance, "viewer self-play sanity check")
         model.send(.playCard(player: "east", card: Card(.spades, .seven)))
 
+        XCTAssertNil(model.pendingAdvance,
+                     "mid-trick bot cards should advance on bot pacing; the completed trick is the tap point")
+    }
+
+    func testBotClosingCardFreezesCompletedTrick() throws {
+        let model = try makeModel()
+        model.botStrategies["east"] = InertStrategy()
+        model.botStrategies["south"] = InertStrategy()
+        model.botMoveDelay = .seconds(60)
+        driveToPlay(model)
+
+        model.send(.playCard(player: "north", card: Card(.spades, .ace)))
+        model.send(.playCard(player: "east", card: Card(.spades, .seven)))
+        XCTAssertNil(model.pendingAdvance)
+        model.send(.playCard(player: "south", card: Card(.clubs, .seven)))
+
         let pending = try XCTUnwrap(model.pendingAdvance,
-                                    "a bot card with another bot up next should freeze the felt")
-        XCTAssertNil(pending.trickPlays,
-                     "mid-trick gate carries no override — the engine state already shows the trick")
+                                    "the final card of the trick should freeze the completed trick")
+        XCTAssertEqual(pending.trickPlays?.count, 3)
+        XCTAssertEqual(model.displayProjection().currentTrick.count, 3)
     }
 
     func testBotCardPlayDoesNotFreezeWhenViewerIsNext() throws {
@@ -254,13 +282,9 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
 
     func testLocalAgreementSettlementScoresDealWithoutSeatSwitching() throws {
         let model = try makeModel()
-        driveToPlay(model)
+        try driveToForcedSettlement(model)
 
-        let settlement = try XCTUnwrap(
-            model.engine.legalSettlements(for: "north").first {
-                $0.target == "north" && $0.targetTricks == 6
-            }
-        )
+        let settlement = try XCTUnwrap(model.engine.legalSettlements(for: "north").first)
 
         model.settleByLocalAgreement(proposer: "north", settlement: settlement)
 
@@ -277,8 +301,8 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
             return XCTFail("expected the local agreement to score the deal")
         }
         XCTAssertEqual(result.settlement, settlement)
-        XCTAssertTrue(result.completedTricks.isEmpty,
-                      "agreement settlement should not fabricate card-play tricks")
+        XCTAssertEqual(result.completedTricks.count, 9,
+                       "agreement settlement should not fabricate the forced final trick")
     }
 }
 

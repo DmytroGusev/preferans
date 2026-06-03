@@ -216,7 +216,9 @@ test("fill-bots converts every open seat to a bot and leaves the rest", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, openSouth] });
   const filled = fillOpenSeatsWithBots(room, "2026-05-04T00:00:01.000Z");
 
-  assert.equal(filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "south")?.accountID, "bot:south");
+  const southPeer = filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "south");
+  assert.equal(southPeer?.accountID, "bot:south");
+  assert.equal(southPeer?.displayName, "Bot 3");
   // The host and the already-claimed seat are untouched.
   assert.equal(filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "north")?.accountID, north.accountID);
   assert.equal(filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "east")?.accountID, east.accountID);

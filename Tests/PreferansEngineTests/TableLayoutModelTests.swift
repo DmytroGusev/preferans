@@ -61,6 +61,20 @@ final class TableLayoutModelTests: XCTestCase {
         assertEqual(layout.slotFrameSize(for: slots[1]), CGSize(width: 250, height: 230))
     }
 
+    func testTwoOpenOpponentSlotsDoNotOverlapOnCompactWidth() {
+        let layout = TableLayoutModel(bounds: CGSize(width: 390, height: 700))
+        let first = seat("east", hand: [.known(Card(.spades, .ace)), .known(Card(.hearts, .king))])
+        let second = seat("south", hand: [.known(Card(.clubs, .ace)), .known(Card(.diamonds, .king))])
+        let slots = layout.opponentSlots(opponents: [first, second])
+
+        let firstSize = layout.slotFrameSize(for: slots[0])
+        let secondSize = layout.slotFrameSize(for: slots[1])
+        let firstMaxX = slots[0].position.x * layout.bounds.width + firstSize.width / 2
+        let secondMinX = slots[1].position.x * layout.bounds.width - secondSize.width / 2
+
+        XCTAssertGreaterThanOrEqual(secondMinX, firstMaxX)
+    }
+
     func testTrickOffsetsTrackViewerAndOpponentCount() {
         assertEqual(
             TableLayoutModel.trickOffset(for: "north", viewer: "north", opponents: ["east", "south"]),

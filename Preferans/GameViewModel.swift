@@ -147,26 +147,22 @@ public final class GameViewModel: ObservableObject {
 
     /// Build the pause descriptor for a freshly-applied action, or `nil`
     /// when the table should keep moving without a tap. The gate fires
-    /// only on beats the viewer needs to observe — something landed on
-    /// the felt that they didn't trigger themselves:
+    /// only on beats the viewer needs to explicitly acknowledge before the
+    /// engine sweeps the table or hides public information:
     ///
     /// * a completed trick (any closing card),
-    /// * a bot's card with another bot up next (so it doesn't get
-    ///   immediately replaced),
     /// * the prikup being revealed when the viewer isn't the declarer.
     ///
-    /// Skipped on the viewer's own card play (they just chose it — the
-    /// next beat will gate on its own merits) and on bidding / discard /
-    /// whist phases (already driven by explicit user taps).
+    /// Skipped for mid-trick bot cards: bot pacing gives those cards a
+    /// visible beat, while the completed trick provides the single tap that
+    /// prevents the last card from vanishing.
     private func makePendingAdvance(events: [PreferansEvent], preProjection: PlayerGameProjection) -> PendingAdvance? {
         guard tapToAdvanceEnabled else { return nil }
         // Watch-bots demo / all-bot table: no human to tap, just cascade.
         guard !isBotSeat(selectedViewer) else { return nil }
-        var lastCardPlay: CardPlay?
         var completedTrick: Trick?
         var auctionDeclarer: PlayerID?
         for event in events {
-            if case let .cardPlayed(play) = event { lastCardPlay = play }
             if case let .trickCompleted(trick) = event, completedTrick == nil { completedTrick = trick }
             if case let .auctionWon(declarer, _) = event { auctionDeclarer = declarer }
         }
@@ -185,22 +181,6 @@ public final class GameViewModel: ObservableObject {
                 trickWinner: trick.winner,
                 phaseOverride: preProjection.phase,
                 completedTrickCountOverride: preProjection.completedTrickCount
-            )
-        }
-
-        // A bot played a card and another bot is up next — freeze so
-        // the viewer sees what landed before it gets buried. If the
-        // viewer played the card themselves, or the viewer is the next
-        // actor, no gate: the next interaction is the viewer's tap.
-        if let play = lastCardPlay,
-           play.player != selectedViewer,
-           engine.state.currentActor.map(isBotSeat(_:)) ?? false {
-            return PendingAdvance(
-                waitingOn: selectedViewer,
-                trickPlays: nil,
-                trickWinner: nil,
-                phaseOverride: nil,
-                completedTrickCountOverride: nil
             )
         }
 
@@ -378,11 +358,10 @@ public final class GameViewModel: ObservableObject {
 }
 
 /// Tap-to-advance pause descriptor. When non-nil on the view model, the
-/// table is frozen on a beat the user just watched land — their own card,
-/// a bot's reply, or a completed trick. The view model holds the gate up
-/// until ``GameViewModel/advance()`` is called (typically by a tap on the
-/// felt). Bidding, discard, and other phases skip the gate entirely;
-/// they're already driven by explicit user taps.
+/// table is frozen on a completed trick or public-information reveal. The
+/// view model holds the gate up until ``GameViewModel/advance()`` is called
+/// (typically by a tap on the felt). Bidding, discard, and other phases skip
+/// the gate entirely; they're already driven by explicit user taps.
 public struct PendingAdvance: Equatable, Sendable {
     /// Seat that must tap to advance. Today this is always the on-screen
     /// viewer; the field exists so the "Waiting for X" hint reads from a

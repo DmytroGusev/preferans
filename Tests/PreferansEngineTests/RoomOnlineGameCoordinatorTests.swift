@@ -328,6 +328,7 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
     func testPlayerRoomSettlementCollectsAcceptancesAndScoresDeal() async throws {
         let fixture = try await makeFixture()
         var sequence = try await driveRoomToPlaying(fixture)
+        try await driveRoomToForcedSettlement(fixture, sequence: &sequence)
         let proposalProjection = try XCTUnwrap(fixture.coordinators["north"]?.projection)
         let activePlayers = proposalProjection.seats.filter(\.isActive).map(\.player)
         let proposer = try XCTUnwrap(activePlayers.first)
@@ -359,7 +360,7 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
                 return XCTFail("expected every player projection to show a scored settlement")
             }
             XCTAssertEqual(result.settlement, settlement)
-            XCTAssertTrue(result.completedTricks.isEmpty)
+            XCTAssertEqual(result.completedTricks.count, 9)
         }
     }
 
@@ -464,6 +465,34 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
             }
         }
         throw EngineTestError("Room flow did not reach playing within the bounded setup loop.")
+    }
+
+    private func driveRoomToForcedSettlement(_ fixture: RoomFixture, sequence: inout Int) async throws {
+        for _ in 0..<32 {
+            if fixture.coordinators.values.contains(where: { coordinator in
+                coordinator.projection?.legal.settlementOptions.isEmpty == false
+            }) {
+                return
+            }
+            guard let action = nextRoomPlayAction(in: fixture) else {
+                break
+            }
+            try await apply(action.action, from: action.sender, in: fixture, sequence: &sequence)
+        }
+        throw EngineTestError("Room flow did not reach a forced settlement position.")
+    }
+
+    private func nextRoomPlayAction(in fixture: RoomFixture) -> (sender: PlayerID, action: PreferansAction)? {
+        for (viewer, coordinator) in fixture.coordinators {
+            guard let projection = coordinator.projection,
+                  case let .playing(currentPlayer, _, _) = projection.phase,
+                  let card = projection.legal.playableCards.first else {
+                continue
+            }
+            let owner = projection.legal.playableCardsOwner ?? currentPlayer
+            return (viewer, .playCard(player: owner, card: card))
+        }
+        return nil
     }
 
     private func apply(

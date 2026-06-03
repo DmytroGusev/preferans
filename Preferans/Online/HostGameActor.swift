@@ -181,6 +181,11 @@ public actor HostGameActor {
     public var currentSnapshot: AppEngineSnapshot { AppEngineSnapshot(engine: engine) }
     public var validatedActionLog: [ValidatedActionRecord] { actionLog }
 
+    public func updateIdentities(_ identities: [PlayerIdentity]) {
+        let replacements = Dictionary(uniqueKeysWithValues: identities.map { ($0.playerID, $0) })
+        seats = seats.map { replacements[$0.playerID] ?? $0 }
+    }
+
     /// The bot move (if any) the host currently owes. Returns `nil` when no seat
     /// is on the clock (between deals, match over) or when the controlling seat
     /// is a human — only seats in `botSeats` are auto-played. The returned

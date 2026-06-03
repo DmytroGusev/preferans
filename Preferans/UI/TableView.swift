@@ -393,15 +393,18 @@ public struct TableView: View {
                 radius: isCurrent ? 8 : 0)
     }
 
-    /// Talon exchange: render the two prikup cards face-up centered on the
-    /// felt so the declarer (and observers) see what the declarer just
-    /// took. The hand fan also shows the same cards with a "P" badge for
-    /// the discard interaction; this center view is purely informational.
+    /// Talon exchange: observers see the two prikup cards centered on the
+    /// felt. The declarer sees those cards inside their 12-card discard fan
+    /// with "P" badges instead, so they do not appear duplicated.
     private var shouldShowPublicTalon: Bool {
         let hasKnownCards = projection.talon.contains { $0.knownCard != nil }
         switch projection.phase {
         case .awaitingDiscard:
-            return hasKnownCards
+            // The declarer's hand fan already contains the two prikup cards
+            // with badges during discard selection. Keep the center-table
+            // copy for observers only so the acting player does not see a
+            // confusing duplicate 12-card hand plus table talon.
+            return hasKnownCards && !projection.legal.canDiscard
         case .playing(_, _, kind: .allPass):
             return hasKnownCards
                 && projection.rules.allPassTalonPolicy == .leadSuitOnly

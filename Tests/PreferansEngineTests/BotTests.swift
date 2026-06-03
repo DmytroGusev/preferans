@@ -48,6 +48,52 @@ final class BotTests: XCTestCase {
         }
     }
 
+    func testSecondDefenderPassesMarginalHandAfterFirstDefenderWhists() async throws {
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
+        let engine = try makeSecondDefenderWhistEngine(
+            secondDefenderHand: [
+                Card(.spades, .ace),
+                Card(.diamonds, .ace),
+                Card(.spades, .seven),
+                Card(.spades, .eight),
+                Card(.clubs, .seven),
+                Card(.clubs, .eight),
+                Card(.diamonds, .seven),
+                Card(.diamonds, .eight),
+                Card(.hearts, .seven),
+                Card(.hearts, .eight)
+            ]
+        )
+
+        let action = await strategy.decide(snapshot: engine.snapshot, viewer: "S")
+
+        XCTAssertEqual(action, .whist(player: "S", call: .pass),
+                       "after a first defender has whisted, a marginal second defender should leave the hand open/single-whistable")
+    }
+
+    func testSecondDefenderStillWhistsWithStrongHandAfterFirstDefenderWhists() async throws {
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
+        let engine = try makeSecondDefenderWhistEngine(
+            secondDefenderHand: [
+                Card(.spades, .ace),
+                Card(.diamonds, .ace),
+                Card(.clubs, .king),
+                Card(.clubs, .queen),
+                Card(.clubs, .jack),
+                Card(.clubs, .seven),
+                Card(.spades, .seven),
+                Card(.spades, .eight),
+                Card(.diamonds, .seven),
+                Card(.hearts, .seven)
+            ]
+        )
+
+        let action = await strategy.decide(snapshot: engine.snapshot, viewer: "S")
+
+        XCTAssertEqual(action, .whist(player: "S", call: .whist),
+                       "a genuinely strong second defender should still be willing to whist")
+    }
+
     // MARK: - Driver
 
     private struct DealOutcome {
@@ -130,5 +176,52 @@ final class BotTests: XCTestCase {
             talon: talon,
             activePlayers: players
         )
+    }
+
+    private func makeSecondDefenderWhistEngine(secondDefenderHand south: [Card]) throws -> PreferansEngine {
+        let north = [
+            Card(.clubs, .ace),
+            Card(.clubs, .king),
+            Card(.clubs, .queen),
+            Card(.clubs, .jack),
+            Card(.clubs, .ten),
+            Card(.clubs, .nine),
+            Card(.hearts, .ace),
+            Card(.hearts, .king),
+            Card(.hearts, .queen),
+            Card(.spades, .king)
+        ].filter { !south.contains($0) }
+        var declarerHand = north
+        for card in Deck.standard32 where declarerHand.count < 10 && !south.contains(card) && !declarerHand.contains(card) {
+            declarerHand.append(card)
+        }
+        let talon = [
+            Card(.diamonds, .king),
+            Card(.hearts, .ten)
+        ].filter { !south.contains($0) && !declarerHand.contains($0) }
+        var talonCards = talon
+        for card in Deck.standard32 where talonCards.count < 2 && !south.contains(card) && !declarerHand.contains(card) && !talonCards.contains(card) {
+            talonCards.append(card)
+        }
+        let reserved = Set(declarerHand + south + talonCards)
+        let east = Deck.standard32.filter { !reserved.contains($0) }
+        XCTAssertEqual(declarerHand.count, 10)
+        XCTAssertEqual(south.count, 10)
+        XCTAssertEqual(talonCards.count, 2)
+        XCTAssertEqual(east.count, 10)
+
+        var engine = try PreferansEngine(players: players, firstDealer: "S")
+        _ = try engine.startDeal(deck: assemble(north: declarerHand, east: east, south: south, talon: talonCards))
+        _ = try engine.apply(.bid(player: "N", call: .bid(.game(GameContract(6, .suit(.clubs))))))
+        _ = try engine.apply(.bid(player: "E", call: .pass))
+        _ = try engine.apply(.bid(player: "S", call: .pass))
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "N")
+        try EngineTestDriver.declareContract(engine: &engine, declarer: "N", contract: GameContract(6, .suit(.clubs)))
+        _ = try engine.apply(.whist(player: "E", call: .whist))
+        guard case let .awaitingWhist(whist) = engine.state else {
+            throw EngineTestError("Expected awaitingWhist for second defender.")
+        }
+        XCTAssertEqual(whist.currentPlayer, "S")
+        return engine
     }
 }

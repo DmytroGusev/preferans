@@ -356,6 +356,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// dealer are filled in authoritatively by ``HostGameActor`` (`makeAuthoritative`).
     public func startFirstDeal() {
         guard isHost else { return }
+        refreshPeersFromTransport()
+        guard allExpectedOnlinePlayersConnected() else {
+            errorText = String(localized: "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
+            return
+        }
         send(.startDeal(dealer: nil, deck: nil))
     }
 
@@ -372,8 +377,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     public func fillOpenSeatsWithBots() async {
         guard isHost else { return }
         do {
-            if try await transport?.fillPendingSeatsWithBots() != nil {
-                refreshPeersFromTransport()
+            if let peers = try await transport?.fillPendingSeatsWithBots() {
+                adoptParticipantRoster(peers)
+                await hostActor?.updateIdentities(seats)
                 return
             }
         } catch {
@@ -382,18 +388,27 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
         refreshPeersFromTransport()
         var changed = false
-        for identity in seats {
+        for index in seats.indices {
+            let identity = seats[index]
             guard let peer = peersBySeat[identity.playerID], peer.isPendingSeat else { continue }
+            let accountID = "\(OnlinePeer.botAccountPrefix)\(identity.playerID.rawValue)"
+            let displayName = botDisplayName(at: index)
             peersBySeat[identity.playerID] = OnlinePeer(
                 playerID: identity.playerID,
-                accountID: "\(OnlinePeer.botAccountPrefix)\(identity.playerID.rawValue)",
+                accountID: accountID,
                 provider: .dev,
-                displayName: identity.displayName
+                displayName: displayName
+            )
+            seats[index] = PlayerIdentity(
+                playerID: identity.playerID,
+                gamePlayerID: accountID,
+                displayName: displayName
             )
             botSeats.insert(identity.playerID)
             changed = true
         }
         guard changed else { return }
+        await hostActor?.updateIdentities(seats)
         recomputeRoster()
         if let tableID, let localSeat {
             let assignment = SeatAssignmentEnvelope(
@@ -613,12 +628,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         case let .hello(hello):
             guard isHost else { return }
-            // No late-join bot-seat guard is needed: the relay's Durable Object now
-            // converts open seats to bots authoritatively (see `fillOpenSeatsWithBots`),
-            // so a human is always routed onto a still-open seat and can never send a
-            // hello for a seat the host already drives as a bot.
             if tableID == nil { tableID = hello.tableID }
-            refreshPeerMapping(peer: received.sender, identity: hello.player)
+            guard shouldAcceptHello(from: received.sender, identity: hello.player) else { return }
+            await refreshPeerMapping(peer: received.sender, identity: hello.player)
             if let hostActor, let peer = peersBySeat[hello.player.playerID] {
                 do {
                     if let tableID, let localSeat {
@@ -840,12 +852,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         recomputeRoster()
     }
 
-    private func refreshPeerMapping(peer: OnlinePeer, identity: PlayerIdentity) {
+    private func refreshPeerMapping(peer: OnlinePeer, identity: PlayerIdentity) async {
         peersBySeat[peer.playerID] = peer
         peersBySeat[identity.playerID] = peer
         if let index = seats.firstIndex(where: { $0.playerID == identity.playerID }) {
             seats[index] = identity
         }
+        await hostActor?.updateIdentities(seats)
         recomputeRoster()
     }
 
@@ -858,6 +871,52 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             return false
         }
         return true
+    }
+
+    private func shouldAcceptHello(from sender: OnlinePeer, identity: PlayerIdentity) -> Bool {
+        guard !sender.isPendingSeat else { return false }
+        guard let existing = peersBySeat[identity.playerID] else { return true }
+        if existing.isBotSeat { return false }
+        if existing.isPendingSeat { return true }
+        return existing.accountID == sender.accountID
+    }
+
+    private func adoptParticipantRoster(_ participants: [OnlinePeer]) {
+        for peer in participants {
+            let candidate = normalizedBotPeer(peer)
+            let existing = peersBySeat[candidate.playerID]
+            if shouldReplacePeer(existing, with: candidate) {
+                peersBySeat[candidate.playerID] = candidate
+                updateSeatIdentity(from: candidate)
+            }
+            if candidate.isBotSeat { botSeats.insert(candidate.playerID) }
+        }
+        recomputeRoster()
+    }
+
+    private func updateSeatIdentity(from peer: OnlinePeer) {
+        guard !peer.isPendingSeat,
+              let index = seats.firstIndex(where: { $0.playerID == peer.playerID }) else { return }
+        seats[index] = peer.playerIdentity
+    }
+
+    private func normalizedBotPeer(_ peer: OnlinePeer) -> OnlinePeer {
+        guard peer.isBotSeat,
+              let index = seats.firstIndex(where: { $0.playerID == peer.playerID }) else {
+            return peer
+        }
+        let displayName = botDisplayName(at: index)
+        guard peer.displayName != displayName else { return peer }
+        return OnlinePeer(
+            playerID: peer.playerID,
+            accountID: peer.accountID,
+            provider: peer.provider,
+            displayName: displayName
+        )
+    }
+
+    private func botDisplayName(at seatIndex: Int) -> String {
+        "\(String(localized: "Bot")) \(seatIndex + 1)"
     }
 
     private func autoStartOnlineDealIfNeeded(afterJoin joinedPlayer: PlayerID) async {
