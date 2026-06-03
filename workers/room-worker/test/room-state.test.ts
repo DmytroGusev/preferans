@@ -155,6 +155,29 @@ test("a join is rejected once every reserved seat is taken", () => {
   );
 });
 
+test("a bot seat is not claimable — a joiner is routed to an open seat instead", () => {
+  // A host fills `south` with a server-side bot and leaves `east` open.
+  const botSouth: OnlinePeer = {
+    playerID: { rawValue: "south" },
+    accountID: "bot:south",
+    provider: "dev",
+    displayName: "Bot 3"
+  };
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, botSouth], maxPlayers: 3 });
+
+  // Even when the joiner declares the bot's seat, the bot seat is occupied, so
+  // they land on the only open (`pending:`) seat — east.
+  const joined = joinRoom(room, { playerID: { rawValue: "south" }, accountID: "apple:guest", provider: "apple", displayName: "Guest" });
+  assert.equal(joined.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "south")?.accountID, "bot:south");
+  assert.equal(joined.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "east")?.accountID, "apple:guest");
+
+  // With east now taken and south held by the bot, the next joiner is rejected.
+  assert.throws(
+    () => joinRoom(joined, { playerID: { rawValue: "south" }, accountID: "apple:second", provider: "apple", displayName: "Second" }),
+    /Room is full/
+  );
+});
+
 test("recipient routing excludes the sender and unknown seats", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
 

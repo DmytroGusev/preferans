@@ -57,6 +57,7 @@
 		B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */; };
 		B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */; };
 		B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B005 /* OnlineRoomGameScreen.swift */; };
+		B0000000000000000000BFA0 /* OnlineWaitingRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000BFA1 /* OnlineWaitingRoomView.swift */; };
 		B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B007 /* CloudflareRoomTransport.swift */; };
 		B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */; };
 		B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B00B /* PreferansInviteLink.swift */; };
@@ -69,6 +70,7 @@
 		E0000000000000000000A047 /* FullGameUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A046 /* FullGameUITests.swift */; };
 		E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A048 /* RedesignScreenshotTests.swift */; };
 		E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A04A /* AccessibilityContractTests.swift */; };
+		E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */; };
 		F1095F4DB121A8D07CF6695F /* GameKitRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */; };
 /* End PBXBuildFile section */
 
@@ -148,6 +150,7 @@
 		B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomOnlineGameCoordinator.swift; sourceTree = "<group>"; };
 		B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/InMemoryOnlineGameSession.swift; sourceTree = "<group>"; };
 		B0000000000000000000B005 /* OnlineRoomGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OnlineRoomGameScreen.swift; sourceTree = "<group>"; };
+		B0000000000000000000BFA1 /* OnlineWaitingRoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OnlineWaitingRoomView.swift; sourceTree = "<group>"; };
 		B0000000000000000000B007 /* CloudflareRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/CloudflareRoomTransport.swift; sourceTree = "<group>"; };
 		B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/CloudflareOnlineGameSession.swift; sourceTree = "<group>"; };
 		B0000000000000000000B00B /* PreferansInviteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/PreferansInviteLink.swift; sourceTree = "<group>"; };
@@ -159,6 +162,7 @@
 		E0000000000000000000A046 /* FullGameUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullGameUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A048 /* RedesignScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedesignScreenshotTests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A04A /* AccessibilityContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityContractTests.swift; sourceTree = "<group>"; };
+		E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineWaitingRoomUITests.swift; sourceTree = "<group>"; };
 		EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FakeGameArchiveStore.swift; path = Preferans/Support/FakeGameArchiveStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -233,6 +237,7 @@
 				B00000000000000000000045 /* LobbyView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
 				B0000000000000000000B005 /* OnlineRoomGameScreen.swift */,
+				B0000000000000000000BFA1 /* OnlineWaitingRoomView.swift */,
 				B00000000000000000000048 /* ProjectionGameScreen.swift */,
 				B00000000000000000000049 /* ScoreBoardView.swift */,
 				B000000000000000000000A0 /* PulkaDiagramView.swift */,
@@ -281,6 +286,7 @@
 				E0000000000000000000A046 /* FullGameUITests.swift */,
 				E0000000000000000000A048 /* RedesignScreenshotTests.swift */,
 				E0000000000000000000A04A /* AccessibilityContractTests.swift */,
+				E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */,
 			);
 			path = PreferansUITests;
 			sourceTree = "<group>";
@@ -418,6 +424,7 @@
 				B00000000000000000000015 /* LobbyView.swift in Sources */,
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
 				B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */,
+				B0000000000000000000BFA0 /* OnlineWaitingRoomView.swift in Sources */,
 				B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */,
 				B00000000000000000000019 /* ScoreBoardView.swift in Sources */,
 				B00000000000000000000090 /* PulkaDiagramView.swift in Sources */,
@@ -455,6 +462,7 @@
 				E0000000000000000000A047 /* FullGameUITests.swift in Sources */,
 				E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */,
 				E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */,
+				E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

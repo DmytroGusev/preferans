@@ -18,6 +18,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         transport: CloudflareRoomTransport,
         inviteURL: URL,
         rules: PreferansRules = .sochi,
+        botMoveDelay: Duration = BotPacing.interactive,
         coordinator: RoomOnlineGameCoordinator? = nil
     ) {
         self.transport = transport
@@ -25,7 +26,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         self.inviteURL = inviteURL
         self.localPeer = transport.localPeer
         self.rules = rules
-        self.localCoordinator = coordinator ?? RoomOnlineGameCoordinator()
+        self.localCoordinator = coordinator ?? RoomOnlineGameCoordinator(botMoveDelay: botMoveDelay)
     }
 
     public static func createRoom(
@@ -33,7 +34,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
         peers: [OnlinePeer],
         localPlayerID: PlayerID,
-        rules: PreferansRules = .sochi
+        rules: PreferansRules = .sochi,
+        botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
         guard let localPeer = peers.first(where: { $0.playerID == localPlayerID }) else {
             throw InMemoryRoom.RoomError.unknownPlayer(localPlayerID)
@@ -48,7 +50,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         return CloudflareOnlineGameSession(
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
-            rules: rules
+            rules: rules,
+            botMoveDelay: botMoveDelay
         )
     }
 
@@ -57,7 +60,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         localPeer: OnlinePeer,
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
-        rules: PreferansRules = .sochi
+        rules: PreferansRules = .sochi,
+        botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
         guard let normalizedCode = PreferansInviteLink.normalizedRoomCode(roomCode) else {
             throw CloudflareRoomTransportError.serverError("Room code must be 4-12 letters or numbers.")
@@ -71,7 +75,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         return CloudflareOnlineGameSession(
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
-            rules: rules
+            rules: rules,
+            botMoveDelay: botMoveDelay
         )
     }
 

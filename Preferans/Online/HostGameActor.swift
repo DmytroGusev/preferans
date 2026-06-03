@@ -100,6 +100,20 @@ public struct HostUpdate: Sendable {
     public var status: PreferansGameStatus
 }
 
+/// A pending bot move the host owes for one of its bot-driven seats. Produced
+/// inside ``HostGameActor`` (which owns the full engine and so can hand out a
+/// complete ``PreferansSnapshot`` — hidden hands included — that the strategy
+/// needs), then carried back to the `@MainActor` coordinator which paces the
+/// decision off-actor and applies it. `decider` is the *controlling* seat: for
+/// most phases that equals the seat whose turn it is, but in single-whist
+/// greedy play the lone whister plays the passer's cards, so `decider` names
+/// the whister.
+public struct BotDecisionPlan: Sendable {
+    public let decider: PlayerID
+    public let snapshot: PreferansSnapshot
+    public let baseSequence: Int
+}
+
 public actor HostGameActor {
     public nonisolated let tableID: UUID
     public nonisolated let hostPlayerID: PlayerID
@@ -166,6 +180,27 @@ public actor HostGameActor {
     public var currentSequence: Int { sequence }
     public var currentSnapshot: AppEngineSnapshot { AppEngineSnapshot(engine: engine) }
     public var validatedActionLog: [ValidatedActionRecord] { actionLog }
+
+    /// The bot move (if any) the host currently owes. Returns `nil` when no seat
+    /// is on the clock (between deals, match over) or when the controlling seat
+    /// is a human — only seats in `botSeats` are auto-played. The returned
+    /// snapshot is captured at call time; the coordinator re-checks
+    /// ``stillAwaiting(_:)`` after pacing/deciding so a stale decision is never
+    /// applied.
+    public func nextBotDecisionPlan(botSeats: Set<PlayerID>) -> BotDecisionPlan? {
+        guard let actor = engine.state.currentActor else { return nil }
+        let decider = engine.controllingActor(of: actor)
+        guard botSeats.contains(decider) else { return nil }
+        return BotDecisionPlan(decider: decider, snapshot: engine.snapshot, baseSequence: sequence)
+    }
+
+    /// True while the engine is still in the exact `state` a bot decision was
+    /// computed against — the same snapshot-equality guard the local loop uses
+    /// (`GameViewModel.scheduleBotIfNeeded`) to drop a move that a concurrent
+    /// human action superseded.
+    public func stillAwaiting(_ state: DealState) -> Bool {
+        engine.state == state
+    }
 
     public func initialUpdate() -> HostUpdate {
         makeUpdate(events: [], validatedAction: nil)

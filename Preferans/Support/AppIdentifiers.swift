@@ -39,6 +39,10 @@ public enum SettingsKeys {
     /// registration. The worker still receives it as a development provider
     /// until the deployed API grows a first-class anonymous provider.
     public static let onlineAnonymousAccountID = "settings.onlineAnonymousAccountID"
+
+    /// Display name the player chose for online rooms when not signed in.
+    /// Kept separate from the local bot roster so the two never bleed together.
+    public static let onlineDisplayName = "settings.onlineDisplayName"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

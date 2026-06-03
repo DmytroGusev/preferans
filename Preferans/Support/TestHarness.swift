@@ -45,6 +45,10 @@ public enum TestHarness {
         arguments.contains(Flag.autoCreateOnlineRoom)
     }
 
+    public static func autoCreateInMemoryRoom(in arguments: [String]) -> Bool {
+        arguments.contains(Flag.autoCreateInMemoryRoom)
+    }
+
     public static func autoJoinOnlineRoomCode(from arguments: [String]) -> String? {
         value(after: Flag.autoJoinOnlineRoom, in: arguments)
     }

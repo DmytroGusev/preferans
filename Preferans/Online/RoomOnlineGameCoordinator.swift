@@ -42,9 +42,45 @@ public extension OnlinePeer {
     /// `PENDING_ACCOUNT_PREFIX`.
     static let pendingAccountPrefix = "pending:"
 
+    /// Account-ID prefix for a seat the host fills with a server-side bot it
+    /// drives itself. Unlike `pending:` seats, a `bot:` seat is *not* open: the
+    /// room worker treats any non-`pending:` accountID as occupied, so a late
+    /// human can never claim a bot's seat (kept in sync with the worker comment
+    /// next to `PENDING_ACCOUNT_PREFIX`). Bots have no socket — they consume
+    /// state through the host's in-process engine, never the wire.
+    static let botAccountPrefix = "bot:"
+
     /// A reserved-but-unclaimed seat — a placeholder the host advertised for a
     /// friend who hasn't taken it yet.
     var isPendingSeat: Bool { accountID.hasPrefix(Self.pendingAccountPrefix) }
+
+    /// A seat the host fills with a server-side bot.
+    var isBotSeat: Bool { accountID.hasPrefix(Self.botAccountPrefix) }
+}
+
+/// One seat as shown in the pre-deal online waiting room. Lets the waiting-room
+/// UI render occupancy (who's here, who's still open) without reaching into the
+/// coordinator's private peer map.
+public struct WaitingRoomSeat: Identifiable, Equatable, Sendable {
+    public enum Occupancy: Equatable, Sendable {
+        /// This device's own seat.
+        case you(name: String)
+        /// A different human who has joined.
+        case human(name: String)
+        /// A host-driven bot.
+        case bot
+        /// A reserved seat nobody has joined yet (`pending:`).
+        case openWaiting
+    }
+
+    public var player: PlayerID
+    public var occupancy: Occupancy
+    public var id: PlayerID { player }
+
+    public init(player: PlayerID, occupancy: Occupancy) {
+        self.player = player
+        self.occupancy = occupancy
+    }
 }
 
 public struct ReceivedRoomMessage: Sendable {
@@ -119,6 +155,12 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     @Published public private(set) var tableID: UUID?
     @Published public private(set) var liveness: OnlineLiveness = .connecting
     @Published public var errorText: String?
+    /// Pre-deal seat occupancy for the online waiting room. Empty once a deal is
+    /// underway (the live table reads the projection instead).
+    @Published public private(set) var rosterSeats: [WaitingRoomSeat] = []
+    /// True when every seat is filled by a human or a bot — i.e. the host may
+    /// start the first deal. False while any `pending:` seat is still open.
+    @Published public private(set) var canHostStart: Bool = false
 
     private var transport: (any RoomRealtimeTransport)?
     private var hostActor: HostGameActor?
@@ -131,6 +173,18 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let dealSource: DealSource
     private var didAutoStartOnlineDeal = false
 
+    /// Seats this host drives as server-side bots (derived from `bot:` peers).
+    private var botSeats: Set<PlayerID> = []
+    /// Shared strategy for every bot seat — a value type, safe to reuse.
+    private let botStrategy: any PlayerStrategy = HeuristicStrategy()
+    /// Pacing for host-driven bot moves. Only the host runs the loop.
+    private let botMoveDelay: Duration
+    /// When false, this coordinator never runs the server-side bot loop. The
+    /// in-memory demo/test room sets this off because it drives its bots through
+    /// separate per-seat coordinators instead.
+    private let runsServerSideBots: Bool
+    private var pendingBotTask: Task<Void, Never>?
+
     private let heartbeat: HeartbeatConfig
     private var heartbeatTask: Task<Void, Never>?
     private var lastHostContact: ContinuousClock.Instant?
@@ -139,16 +193,21 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     public init(
         cloudStore: (any GameArchiveStore)? = nil,
         dealSource: DealSource = RandomDealSource(),
-        heartbeat: HeartbeatConfig = .default
+        heartbeat: HeartbeatConfig = .default,
+        botMoveDelay: Duration = BotPacing.interactive,
+        runsServerSideBots: Bool = true
     ) {
         self.cloudStore = cloudStore
         self.dealSource = dealSource
         self.heartbeat = heartbeat
+        self.botMoveDelay = botMoveDelay
+        self.runsServerSideBots = runsServerSideBots
     }
 
     deinit {
         listenTask?.cancel()
         heartbeatTask?.cancel()
+        pendingBotTask?.cancel()
     }
 
     public func attach(transport: any RoomRealtimeTransport, rules: PreferansRules = .sochi) async {
@@ -167,7 +226,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         let seats = participants.map(\.playerIdentity)
         self.seats = seats
         self.peersBySeat = Dictionary(uniqueKeysWithValues: participants.map { ($0.playerID, $0) })
+        self.botSeats = Set(participants.filter(\.isBotSeat).map(\.playerID))
         self.localSeat = transport.localPeer.playerID
+        recomputeRoster()
 
         let host = await transport.chooseHost() ?? participants.first ?? transport.localPeer
         self.hostPeer = host
@@ -186,6 +247,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         listenTask?.cancel()
         listenTask = nil
         stopHeartbeat()
+        pendingBotTask?.cancel()
+        pendingBotTask = nil
         transport?.disconnect()
         transport = nil
         hostActor = nil
@@ -198,6 +261,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         liveness = .connecting
         lastHostContact = nil
         didAutoStartOnlineDeal = false
+        botSeats = []
+        rosterSeats = []
+        canHostStart = false
         state = .disconnected
     }
 
@@ -253,6 +319,120 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 )
             } catch {
                 self?.errorText = error.localizedDescription
+            }
+        }
+    }
+
+    // MARK: - Waiting room / host start
+
+    /// Host kicks off the first deal from the waiting room. The actual deck and
+    /// dealer are filled in authoritatively by ``HostGameActor`` (`makeAuthoritative`).
+    public func startFirstDeal() {
+        guard isHost else { return }
+        send(.startDeal(dealer: nil, deck: nil))
+    }
+
+    /// Convert every still-open (`pending:`) seat into a host-driven bot, then
+    /// re-advertise the roster so clients see the change. Use this when a friend
+    /// didn't show and the host wants to start anyway. (Seats created as `bot:`
+    /// up front never reach here — only no-shows are converted, which is the one
+    /// path a late human could still race; the late-join guard in `handle(.hello)`
+    /// rejects such a claim.)
+    public func fillOpenSeatsWithBots() async {
+        guard isHost else { return }
+        refreshPeersFromTransport()
+        var changed = false
+        for identity in seats {
+            guard let peer = peersBySeat[identity.playerID], peer.isPendingSeat else { continue }
+            peersBySeat[identity.playerID] = OnlinePeer(
+                playerID: identity.playerID,
+                accountID: "\(OnlinePeer.botAccountPrefix)\(identity.playerID.rawValue)",
+                provider: .dev,
+                displayName: identity.displayName
+            )
+            botSeats.insert(identity.playerID)
+            changed = true
+        }
+        guard changed else { return }
+        recomputeRoster()
+        if let tableID, let localSeat {
+            let assignment = SeatAssignmentEnvelope(
+                tableID: tableID,
+                hostPlayerID: localSeat,
+                seats: seats,
+                rules: rules
+            )
+            try? await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
+        }
+    }
+
+    /// Convenience for the waiting-room CTA: fill no-show seats with bots and
+    /// immediately start.
+    public func fillOpenSeatsWithBotsAndStart() async {
+        await fillOpenSeatsWithBots()
+        startFirstDeal()
+    }
+
+    /// Recompute the published `rosterSeats` / `canHostStart` from the current
+    /// seat list + peer map. Cheap; called wherever the peer mapping changes.
+    private func recomputeRoster() {
+        let roster = seats.map { identity -> WaitingRoomSeat in
+            let peer = peersBySeat[identity.playerID]
+            let occupancy: WaitingRoomSeat.Occupancy
+            if identity.playerID == localSeat {
+                occupancy = .you(name: identity.displayName)
+            } else if peer?.isBotSeat == true {
+                occupancy = .bot
+            } else if peer?.isPendingSeat == true {
+                occupancy = .openWaiting
+            } else {
+                occupancy = .human(name: peer?.displayName ?? identity.displayName)
+            }
+            return WaitingRoomSeat(player: identity.playerID, occupancy: occupancy)
+        }
+        let canStart = !roster.isEmpty && roster.allSatisfy { seat in
+            if case .openWaiting = seat.occupancy { return false }
+            return true
+        }
+        if rosterSeats != roster { rosterSeats = roster }
+        if canHostStart != canStart { canHostStart = canStart }
+    }
+
+    // MARK: - Server-side bots
+
+    /// If a host-driven bot owes the current move, pace it off-actor and apply
+    /// it. Re-armed after every `publish`, so it cascades a bot through the
+    /// auction and trick play and then idles once a human (or no one) is on the
+    /// clock. Mirrors the local `GameViewModel.scheduleBotIfNeeded` loop but
+    /// keeps the engine inside the host actor.
+    private func scheduleBotMoveIfNeeded() {
+        pendingBotTask?.cancel()
+        pendingBotTask = nil
+        guard runsServerSideBots, isHost, let hostActor, let tableID, !botSeats.isEmpty else { return }
+        let botSeats = self.botSeats
+        let delay = botMoveDelay
+        let strategy = botStrategy
+        pendingBotTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard let plan = await hostActor.nextBotDecisionPlan(botSeats: botSeats) else { return }
+            if delay > .zero {
+                try? await Task.sleep(for: delay)
+            }
+            if Task.isCancelled { return }
+            guard let action = await strategy.decide(snapshot: plan.snapshot, viewer: plan.decider),
+                  !Task.isCancelled else { return }
+            // A human action (or a prior bot move) may have advanced the engine
+            // while we paced/decided — drop the now-stale move; the publish that
+            // changed the state already re-armed the loop against the truth.
+            guard await hostActor.stillAwaiting(plan.snapshot.state) else { return }
+            let envelope = ClientActionEnvelope(
+                tableID: tableID,
+                actor: action.actor ?? plan.decider,
+                action: action,
+                baseHostSequence: plan.baseSequence
+            )
+            await self.applyClientAction(envelope, sender: plan.decider) { error in
+                self.errorText = error.localizedDescription
             }
         }
     }
@@ -375,10 +555,23 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             hostPeer = peersBySeat[assignment.hostPlayerID] ?? hostPeer
             localSeat = transport?.localPeer.playerID
             state = .connectedAsClient
+            recomputeRoster()
             requestResync()
 
         case let .hello(hello):
             guard isHost else { return }
+            // Late-join guard: the worker still saw a no-show seat as `pending:`
+            // and let a human in after the host converted it to a bot. Reject
+            // the claim rather than letting two actors drive one seat.
+            if botSeats.contains(hello.player.playerID) {
+                await sendHostError(
+                    to: received.sender,
+                    recipient: hello.player.playerID,
+                    nonce: nil,
+                    message: String(localized: "That seat is now filled by a bot.")
+                )
+                return
+            }
             if tableID == nil { tableID = hello.tableID }
             refreshPeerMapping(peer: received.sender, identity: hello.player)
             if let hostActor, let peer = peersBySeat[hello.player.playerID] {
@@ -480,9 +673,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         eventLog.append(contentsOf: update.eventSummaries)
         appendRecentEvents(update.events)
 
+        // Re-arm the bot loop against the new state before fanning projections
+        // out — bots act through the in-process engine, so they don't depend on
+        // the transport being present.
+        scheduleBotMoveIfNeeded()
+
         guard let transport else { return }
         for (viewer, projection) in update.projections where viewer != localSeat {
-            guard let peer = peersBySeat[viewer] else { continue }
+            // Bot seats have no socket — they never receive wire projections;
+            // the host advances them through its own engine.
+            guard let peer = peersBySeat[viewer], !peer.isBotSeat else { continue }
             do {
                 let envelope = ProjectionEnvelope(
                     tableID: update.tableID,
@@ -588,6 +788,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 peersBySeat[peer.playerID] = peer
             }
         }
+        recomputeRoster()
     }
 
     private func refreshPeerMapping(peer: OnlinePeer, identity: PlayerIdentity) {
@@ -596,6 +797,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         if let index = seats.firstIndex(where: { $0.playerID == identity.playerID }) {
             seats[index] = identity
         }
+        recomputeRoster()
     }
 
     private func shouldReplacePeer(_ existing: OnlinePeer?, with candidate: OnlinePeer) -> Bool {
@@ -635,7 +837,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func allExpectedOnlinePlayersConnected() -> Bool {
         seats.allSatisfy { identity in
             guard let peer = peersBySeat[identity.playerID] else { return false }
-            return !peer.isPendingSeat
+            // A seat counts as filled when a human has claimed it or a bot owns
+            // it; only an unclaimed `pending:` seat is still missing a player.
+            return peer.isBotSeat || !peer.isPendingSeat
         }
     }
 

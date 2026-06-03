@@ -5,6 +5,12 @@ export const MAX_RECENT_MESSAGES = 200;
 /// Account-ID prefix the host stamps on a seat it has reserved but nobody has
 /// claimed yet. `joinRoom` binds a joiner to the first such seat. Kept in sync
 /// with the Swift client's `OnlinePeer.pendingAccountPrefix`.
+///
+/// The Swift client also uses a `bot:` prefix (`OnlinePeer.botAccountPrefix`)
+/// for seats the host fills with a server-side bot. The worker needs no special
+/// case for it: only `pending:` accounts are "open" (see `joinRoom`), so a
+/// `bot:` seat — like any non-`pending:` account — is treated as occupied and a
+/// late human can never claim it.
 export const PENDING_ACCOUNT_PREFIX = "pending:";
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

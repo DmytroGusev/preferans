@@ -552,12 +552,21 @@ public struct ProjectionGameScreen<Menu: View>: View {
             .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(projection.viewer))
     }
 
-    private func viewerAccessibilityLabel(seat: SeatProjection) -> some View {
-        Text(AccessibilityStrings.viewerLabelPrefix + seat.displayName)
+    /// Hidden probe re-exposing the viewer-pill contract to UI tests: a
+    /// `viewer.label` static text whose accessibility label is
+    /// "Viewing as <viewer>", parsed back by `MatchUIRobot.currentViewer()`.
+    /// Sourced from `projection.viewer` (not the name-plate's seat) so it
+    /// still names the viewer when the bottom fan flips to a controlled
+    /// passer during single-whist play. Kept barely-there (1×1, opacity
+    /// 0.001) rather than zero-frame or `.accessibilityHidden` — XCUITest
+    /// elides fully transparent, zero-size views from its query tree, which
+    /// is exactly what orphaned this contract before.
+    private var viewerAccessibilityLabel: some View {
+        Text(AccessibilityStrings.viewerLabelPrefix + projection.displayName(for: projection.viewer))
             .font(.caption2)
-            .frame(width: 0, height: 0)
+            .frame(width: 1, height: 1)
             .clipped()
-            .opacity(0)
+            .opacity(0.001)
             .accessibilityIdentifier(UIIdentifiers.viewerLabel)
     }
 
@@ -580,13 +589,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
                 .accessibilityLabel("Viewing as \(projection.displayName(for: projection.viewer))")
                 .accessibilityValue("you")
-            Text("you")
-                .font(.caption2.bold())
-                .padding(.horizontal, 0)
-                .frame(width: 0, height: 0)
-                .opacity(0)
-                .accessibilityHidden(true)
-                .accessibilityIdentifier(UIIdentifiers.viewerLabel)
+            viewerAccessibilityLabel
             seatStatusPill(seat: seat)
             if let badge = seatRoleBadges[seat.player] {
                 viewerRolePill(badge: badge, player: seat.player)

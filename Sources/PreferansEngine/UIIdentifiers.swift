@@ -142,6 +142,22 @@ public enum UIIdentifiers {
     public static let onlineCreateTestRoom     = "online.createTestRoom"
     public static let onlineRoomCode           = "online.roomCode"
     public static let onlineShareInvite        = "online.shareInvite"
+    // Lobby mode segment (local vs online) — see LobbyView.modeSegment.
+    public static let lobbyModeLocal           = "lobby.mode.local"
+    public static let lobbyModeOnline          = "lobby.mode.online"
+    // Online setup: identity + its own seat composition (decoupled from the
+    // local bot roster).
+    public static let onlineDisplayNameField   = "online.displayName"
+    public static let onlineTableSizePicker    = "online.tableSize"
+    public static func onlineSeatRow(index: Int) -> String { "online.seat.\(index)" }
+    public static func onlineSeatKindPicker(index: Int) -> String { "online.seatKind.\(index)" }
+    // Online waiting room (pre-first-deal).
+    public static let screenWaitingRoom        = "screen.waitingRoom"
+    public static func waitingRoomSeat(index: Int) -> String { "waitingRoom.seat.\(index)" }
+    public static func waitingRoomSeatOccupancy(index: Int) -> String { "waitingRoom.seat.\(index).occupancy" }
+    public static let onlineStartGame          = "online.startGame"
+    public static let onlineFillWithBots       = "online.fillWithBots"
+    public static let onlineWaitingForHost     = "online.waitingForHost"
 
     // MARK: - Game screen — header / structure
 
@@ -332,6 +348,10 @@ public enum UITestFlags {
     /// Create a worker-backed invite room automatically after the lobby
     /// appears. Used for multi-simulator invite verification.
     public static let autoCreateOnlineRoom = "-uiTestAutoCreateOnlineRoom"
+    /// Spin up the DEBUG all-bot in-memory online room after the lobby appears,
+    /// landing on the waiting room without a worker or a second device. Used by
+    /// the single-process waiting-room UI test.
+    public static let autoCreateInMemoryRoom = "-uiTestAutoCreateInMemoryRoom"
     /// Join a worker-backed invite room automatically after the lobby
     /// appears. The room code must be the following launch argument.
     public static let autoJoinOnlineRoom = "-uiTestAutoJoinOnlineRoom"

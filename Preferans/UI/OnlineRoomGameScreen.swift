@@ -20,53 +20,62 @@ public struct OnlineRoomGameScreen: View {
     }
 
     public var body: some View {
+        // No screen-level identifier on this Group: it has a single child, so
+        // an identifier here would collapse onto and shadow the child's own id
+        // (`screenWaitingRoom` / `screenGame`). Each branch carries its own.
         Group {
-            if let projection = coordinator.projection {
-                ZStack {
-                    ProjectionGameScreen(
-                        projection: projection,
-                        eventLog: coordinator.eventLog,
-                        recentEvents: coordinator.recentEvents,
-                        onSend: coordinator.send,
-                        onLeaveTable: onLeaveTable,
-                        extraMenu: {
-                            Section("Room") {
-                                Text(roomCode)
-                                if let inviteURL {
-                                    ShareLink(
-                                        item: inviteURL,
-                                        subject: Text("Join my Preferans table"),
-                                        message: Text("Join my Preferans table \(roomCode)")
-                                    ) {
-                                        Label("Share invite", systemImage: "square.and.arrow.up")
-                                    }
-                                    .accessibilityIdentifier(UIIdentifiers.onlineShareInvite)
-                                }
-                            }
-                        }
-                    )
-                    onlineFlowState(projection: projection)
-                }
+            if isLiveTable, let projection = coordinator.projection {
+                liveTable(projection: projection)
             } else {
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Connecting room \(roomCode)")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
-                    if let inviteURL {
-                        ShareLink(item: inviteURL) {
-                            Label("Share invite", systemImage: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.feltPrimary)
-                        .accessibilityIdentifier(UIIdentifiers.onlineShareInvite)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .feltBackground()
+                // Pre-first-deal: the waiting room owns seat occupancy + the
+                // prominent invite share, and (for the host) the Start gate.
+                OnlineWaitingRoomView(
+                    coordinator: coordinator,
+                    roomCode: roomCode,
+                    inviteURL: inviteURL,
+                    onLeaveTable: onLeaveTable
+                )
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(UIIdentifiers.screenOnlineRoom)
+    }
+
+    /// The live table is up once the host has dealt the first hand
+    /// (`sequence >= 1`). At sequence 0 we're still in the waiting room; any
+    /// non-`waitingForDeal` phase at seq 0 shouldn't happen, but fail toward the
+    /// live table rather than trapping the user in the lobby.
+    private var isLiveTable: Bool {
+        guard let projection = coordinator.projection else { return false }
+        if projection.sequence >= 1 { return true }
+        if case .waitingForDeal = projection.phase { return false }
+        return true
+    }
+
+    private func liveTable(projection: PlayerGameProjection) -> some View {
+        ZStack {
+            ProjectionGameScreen(
+                projection: projection,
+                eventLog: coordinator.eventLog,
+                recentEvents: coordinator.recentEvents,
+                onSend: coordinator.send,
+                onLeaveTable: onLeaveTable,
+                extraMenu: {
+                    Section("Room") {
+                        Text(roomCode)
+                        if let inviteURL {
+                            ShareLink(
+                                item: inviteURL,
+                                subject: Text("Join my Preferans table"),
+                                message: Text("Join my Preferans table \(roomCode)")
+                            ) {
+                                Label("Share invite", systemImage: "square.and.arrow.up")
+                            }
+                            .accessibilityIdentifier(UIIdentifiers.onlineShareInvite)
+                        }
+                    }
+                }
+            )
+            onlineFlowState(projection: projection)
+        }
         .overlay(alignment: .top) {
             VStack(spacing: 6) {
                 if !coordinator.isHost, coordinator.liveness == .hostUnreachable {
@@ -84,6 +93,9 @@ public struct OnlineRoomGameScreen: View {
             .padding(.top, 8)
             .animation(.default, value: coordinator.liveness)
         }
+        // No screen-level id here: it would propagate onto the inner
+        // ProjectionGameScreen and shadow its `screenGame` id. The live table
+        // is identified by `screenGame`; the pre-deal state by `screenWaitingRoom`.
     }
 
     private var connectionBanner: some View {

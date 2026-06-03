@@ -81,7 +81,10 @@ public struct LobbyView: View {
     private func runOnlineHarnessIfNeeded() {
         guard !didRunOnlineHarness else { return }
         let args = ProcessInfo.processInfo.arguments
-        if TestHarness.autoCreateOnlineRoom(in: args) {
+        if TestHarness.autoCreateInMemoryRoom(in: args) {
+            didRunOnlineHarness = true
+            viewModel.startInMemoryOnlineRoom()
+        } else if TestHarness.autoCreateOnlineRoom(in: args) {
             didRunOnlineHarness = true
             viewModel.startCloudflareOnlineRoom()
         } else if let roomCode = TestHarness.autoJoinOnlineRoomCode(from: args) {
@@ -95,8 +98,14 @@ public struct LobbyView: View {
         ScrollView {
             VStack(spacing: 18) {
                 hero
-                onlineRoomCard
-                localTableCard
+                modeSegment
+                if viewModel.lobbyMode == .local {
+                    localTableCard
+                    onlineHiddenAffordances
+                } else {
+                    onlineSetupCard
+                    localHiddenAffordances
+                }
                 if let infoText = viewModel.infoText {
                     Label(infoText, systemImage: "checkmark.seal.fill")
                         .font(.footnote.weight(.semibold))
@@ -112,6 +121,7 @@ public struct LobbyView: View {
                         .multilineTextAlignment(.center)
                         .accessibilityIdentifier(UIIdentifiers.lobbyError)
                 }
+                conventionsFooterLink
             }
             .padding(.horizontal, 18)
             .padding(.top, 18)
@@ -125,9 +135,9 @@ public struct LobbyView: View {
         .accessibilityIdentifier(UIIdentifiers.screenLobby)
     }
 
-    /// Hero on the felt: gold suit glyph, large cream title, gold subtitle
-    /// rule. Replaces the system-grouped-background hero so the lobby
-    /// reads as the same continuous environment as the table.
+    /// Hero on the felt: gold suit glyph, large cream title. The house-
+    /// convention naming used to dominate this spot; it now lives as a quiet
+    /// footer link so the hero leads with "what do you want to do" instead.
     private var hero: some View {
         VStack(spacing: 4) {
             ZStack {
@@ -145,69 +155,118 @@ public struct LobbyView: View {
                 .font(.largeTitle.bold())
                 .foregroundStyle(TableTheme.inkCream)
                 .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
-            houseConventionTagline
         }
         .padding(.top, 12)
-        .padding(.bottom, 6)
+        .padding(.bottom, 2)
     }
 
-    /// Hero tagline: four house-named conventions in their renamed forms
-    /// (Одеса, Wien, Θεσσαλονίκη, Крути) instead of the standard
-    /// Sochi / Leningrad / Rostov / Stalingrad. Each name carries its own
-    /// `.help(...)` (hover tooltip on iPad-with-pointer / Mac Catalyst /
-    /// macOS) and `.accessibilityHint(...)` (VoiceOver) mapping it back to
-    /// the standard name plus a one-line description. Tapping anywhere on
-    /// the row opens the full legend sheet — that's the iPhone fallback for
-    /// devices without hover.
-    private var houseConventionTagline: some View {
+    /// The single top-level choice: play a quick local game against bots, or
+    /// set up an online room with friends. Picking a mode swaps the composition
+    /// card below — the two flows no longer share any state.
+    private var modeSegment: some View {
+        HStack(spacing: 8) {
+            modeButton(.local, title: "Play with bots", icon: "cpu",
+                       identifier: UIIdentifiers.lobbyModeLocal)
+            modeButton(.online, title: "Play online", icon: "person.2.wave.2.fill",
+                       identifier: UIIdentifiers.lobbyModeOnline)
+        }
+    }
+
+    private func modeButton(
+        _ mode: LobbyViewModel.LobbyMode,
+        title: LocalizedStringKey,
+        icon: String,
+        identifier: String
+    ) -> some View {
+        let isSelected = viewModel.lobbyMode == mode
+        return Button {
+            viewModel.lobbyMode = mode
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                Text(title).fontWeight(.semibold)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .foregroundStyle(isSelected ? TableTheme.feltDeep : TableTheme.inkCream)
+            .background(
+                isSelected ? TableTheme.goldBright : Color.black.opacity(0.22),
+                in: RoundedRectangle(cornerRadius: 10)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(identifier)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    /// Demoted house-convention entry point. The names that used to crowd the
+    /// hero now sit quietly at the foot of the lobby; tapping still opens the
+    /// full legend sheet.
+    private var conventionsFooterLink: some View {
         Button {
             showingConventionLegend = true
         } label: {
             HStack(spacing: 6) {
-                conventionPill(verbatim: "Одеса",
-                               helpKey: "convention.odesa.help",
-                               hintKey: "convention.odesa.hint")
-                conventionDot
-                conventionPill(verbatim: "Wien",
-                               helpKey: "convention.wien.help",
-                               hintKey: "convention.wien.hint")
-                conventionDot
-                conventionPill(verbatim: "Θεσσαλονίκη",
-                               helpKey: "convention.thessaloniki.help",
-                               hintKey: "convention.thessaloniki.hint")
-                conventionDot
-                conventionPill(verbatim: "Крути",
-                               helpKey: "convention.kruty.help",
-                               hintKey: "convention.kruty.hint")
+                Image(systemName: "info.circle")
+                Text("House conventions")
             }
             .font(.footnote.weight(.semibold))
-            .tracking(1.4)
-            .textCase(.uppercase)
             .foregroundStyle(TableTheme.gold)
-            .lineLimit(1)
-            .minimumScaleFactor(0.55)
         }
         .buttonStyle(.plain)
         .help("convention.tagline.help")
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("convention.tagline.accessibilityLabel")
         .accessibilityHint("convention.tagline.accessibilityHint")
         .accessibilityIdentifier(UIIdentifiers.lobbyHouseConventions)
     }
 
-    private func conventionPill(verbatim name: String,
-                                helpKey: LocalizedStringKey,
-                                hintKey: LocalizedStringKey) -> some View {
-        Text(verbatim: name)
-            .help(helpKey)
-            .accessibilityLabel(Text(verbatim: name))
-            .accessibilityHint(hintKey)
+    /// Test-only mirror keeping the online Create/Join identifiers in the
+    /// accessibility tree while the lobby is showing the *local* card. Uses the
+    /// same 1×1 / near-zero-opacity idiom as the other hidden affordances so the
+    /// "all automation roots reachable at launch" contract holds in either mode.
+    private var onlineHiddenAffordances: some View {
+        VStack(spacing: 0) {
+            Button { viewModel.startCloudflareOnlineRoom() } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
+            TextField("", text: $viewModel.onlineJoinRoomCode)
+                .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
+            Button { viewModel.joinCloudflareOnlineRoom() } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
+        }
+        .frame(width: 1, height: 1)
+        .opacity(0.001)
+        .allowsHitTesting(true)
     }
 
-    private var conventionDot: some View {
-        Text(verbatim: "·")
-            .foregroundStyle(TableTheme.gold.opacity(0.45))
-            .accessibilityHidden(true)
+    /// Mirror of the local automation roots, kept alive while the *online* card
+    /// is showing. Symmetric counterpart to `onlineHiddenAffordances`.
+    private var localHiddenAffordances: some View {
+        VStack(spacing: 0) {
+            Button { viewModel.startLocalTable() } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
+            Button { viewModel.quickPlayVsBots() } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
+            Button { showingWatchBotsConfirm = true } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyWatchBots)
+            Button { viewModel.addBot() } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyAddBot)
+            Button { viewModel.removeBot() } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyRemoveBot)
+            Button { viewModel.setSeatCount(3) } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountThree)
+            Button { viewModel.setSeatCount(4) } label: { Color.clear }
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountFour)
+            TextField("", text: nameBinding(for: 0))
+                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: 0))
+            Picker("", selection: $viewModel.botSpeed) {
+                ForEach(BotMoveSpeed.allCases) { speed in
+                    Text(speed.label).tag(speed)
+                }
+            }
+            .accessibilityIdentifier(UIIdentifiers.lobbyBotSpeedPicker)
+        }
+        .frame(width: 1, height: 1)
+        .opacity(0.001)
+        .allowsHitTesting(true)
     }
 
     private var localTableCard: some View {
@@ -394,13 +453,14 @@ public struct LobbyView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Online play, reorganized so the three intents that used to be jumbled
-    /// in one "Invite to game" card now read as distinct, labeled steps:
-    /// who you are (identity) → host a new table → or join an existing one.
-    private var onlineRoomCard: some View {
-        card(title: "Play online", icon: "person.2.wave.2.fill") {
+    /// Online play, with its OWN identity and seat composition — no longer
+    /// borrowing the local bot roster. Reads top to bottom: who you are →
+    /// who's at the table → host a new table → or join an existing one.
+    private var onlineSetupCard: some View {
+        card(title: "Play online with friends", icon: "person.2.wave.2.fill") {
             VStack(spacing: 16) {
-                onlineAccountControl
+                onlineIdentitySection
+                onlineCompositionSection
 
                 VStack(spacing: 8) {
                     onlineSectionLabel("Host a table")
@@ -422,16 +482,23 @@ public struct LobbyView: View {
                     .buttonStyle(.feltPrimary)
                     .controlSize(.large)
                     .disabled(
-                        viewModel.seats.validationError != nil
+                        viewModel.onlineSetupValidationError != nil
                             || viewModel.isOnlineRoomLoading
                     )
                     .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
 
-                    Text("You get a link and code to share — friends join from their own devices.")
-                        .font(.caption2)
-                        .foregroundStyle(TableTheme.inkCreamDim)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
+                    if let validation = viewModel.onlineSetupValidationError {
+                        Text(validation)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        Text("You get a link and code to share — friends join from their own devices.")
+                            .font(.caption2)
+                            .foregroundStyle(TableTheme.inkCreamDim)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                    }
                 }
 
                 onlineOrJoinDivider
@@ -480,6 +547,112 @@ public struct LobbyView: View {
                 hiddenLocalTestRoomButton
             }
         }
+    }
+
+    /// Online seat composition — the host picks how many seats and, for each
+    /// non-host seat, whether it's an open invite or a bot. Entirely separate
+    /// from the local `seats` roster.
+    private var onlineCompositionSection: some View {
+        VStack(spacing: 8) {
+            HStack {
+                onlineSectionLabel("At the table")
+                Spacer(minLength: 8)
+                Text(viewModel.onlineComposition.compositionSummary)
+                    .font(.caption2)
+                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .lineLimit(1)
+            }
+            onlineTableSizeRow
+            VStack(spacing: 8) {
+                ForEach(Array(viewModel.onlineComposition.enumerated()), id: \.element.id) { index, slot in
+                    onlineSeatRow(index: index, slot: slot)
+                }
+            }
+        }
+    }
+
+    private var onlineTableSizeRow: some View {
+        HStack {
+            Label {
+                Text("Players")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(TableTheme.inkCream)
+            } icon: {
+                Image(systemName: "person.3.fill")
+                    .foregroundStyle(TableTheme.goldBright)
+            }
+            Spacer()
+            Picker("Players", selection: onlineTableSizeBinding) {
+                Text("3").tag(3)
+                Text("4").tag(4)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 96)
+            .accessibilityIdentifier(UIIdentifiers.onlineTableSizePicker)
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func onlineSeatRow(index: Int, slot: OnlineSeatSlot) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: seatIcon(for: slot.kind))
+                .foregroundStyle(slot.kind == .you ? TableTheme.goldBright : TableTheme.gold)
+                .font(.title3)
+                .frame(width: 24)
+            if slot.kind == .you {
+                Text(verbatim: viewModel.onlineDisplayName.isEmpty ? String(localized: "You") : viewModel.onlineDisplayName)
+                    .foregroundStyle(TableTheme.inkCream)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("badge.you")
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(TableTheme.feltDeep)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(TableTheme.goldBright, in: Capsule())
+            } else {
+                Text("Seat \(index + 1)")
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Picker("Seat \(index + 1)", selection: onlineSeatKindBinding(index)) {
+                    Text("Invite").tag(OnlineSeatSlot.Kind.invite)
+                    Text("Bot").tag(OnlineSeatSlot.Kind.bot)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 130)
+                .accessibilityIdentifier(UIIdentifiers.onlineSeatKindPicker(index: index))
+            }
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityIdentifier(UIIdentifiers.onlineSeatRow(index: index))
+    }
+
+    private func seatIcon(for kind: OnlineSeatSlot.Kind) -> String {
+        switch kind {
+        case .you:    return "person.crop.circle.fill"
+        case .invite: return "person.badge.plus"
+        case .bot:    return "cpu"
+        }
+    }
+
+    private var onlineTableSizeBinding: Binding<Int> {
+        Binding(
+            get: { viewModel.onlineComposition.count },
+            set: { viewModel.setOnlineTableSize($0) }
+        )
+    }
+
+    private func onlineSeatKindBinding(_ index: Int) -> Binding<OnlineSeatSlot.Kind> {
+        Binding(
+            get: {
+                viewModel.onlineComposition.indices.contains(index)
+                    ? viewModel.onlineComposition[index].kind
+                    : .invite
+            },
+            set: { viewModel.setOnlineSeatKind($0, at: index) }
+        )
     }
 
     private func onlineSectionLabel(_ text: LocalizedStringKey) -> some View {
@@ -548,40 +721,70 @@ public struct LobbyView: View {
         .disabled(viewModel.isOnlineRoomLoading)
     }
 
+    /// Online identity, decoupled from the local roster. Signed-in users see a
+    /// status row; everyone else gets a name field (what opponents see) plus
+    /// Sign in with Apple. Neither path ever writes into the local `seats`.
     @ViewBuilder
-    private var onlineAccountControl: some View {
-        if let registeredOnlineAccount = viewModel.registeredOnlineAccount {
-            identityStatusRow(
-                icon: "person.crop.circle.badge.checkmark",
-                title: String(localized: "Signed in as \(registeredOnlineAccount.displayName)"),
-                trailingAction: {
-                    Button {
-                        viewModel.clearRegisteredOnlineAccount()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
+    private var onlineIdentitySection: some View {
+        VStack(spacing: 8) {
+            onlineSectionLabel("You")
+            if let registeredOnlineAccount = viewModel.registeredOnlineAccount {
+                identityStatusRow(
+                    icon: "person.crop.circle.badge.checkmark",
+                    title: String(localized: "Signed in as \(registeredOnlineAccount.displayName)"),
+                    trailingAction: {
+                        Button {
+                            viewModel.clearRegisteredOnlineAccount()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .accessibilityLabel("Use anonymous identity")
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .accessibilityLabel("Use anonymous identity")
-                }
-            )
-        } else {
-            #if canImport(AuthenticationServices)
-            HStack {
-                SignInWithAppleButton(
-                    .signIn,
-                    onRequest: configureAppleSignIn,
-                    onCompletion: handleAppleSignIn
                 )
-                .signInWithAppleButtonStyle(.black)
-                .frame(width: 190, height: 36)
-                .clipShape(Capsule())
-                .accessibilityIdentifier(UIIdentifiers.onlineRegisterWithApple)
-                Spacer()
+            } else {
+                HStack(spacing: 10) {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(TableTheme.goldBright)
+                    TextField(
+                        "Your name",
+                        text: onlineNameBinding,
+                        prompt: Text("Your name").foregroundStyle(TableTheme.inkCreamDim)
+                    )
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(TableTheme.inkCream)
+                    .accessibilityIdentifier(UIIdentifiers.onlineDisplayNameField)
+                }
+                .padding(10)
+                .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+
+                #if canImport(AuthenticationServices)
+                HStack {
+                    SignInWithAppleButton(
+                        .signIn,
+                        onRequest: configureAppleSignIn,
+                        onCompletion: handleAppleSignIn
+                    )
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(width: 190, height: 36)
+                    .clipShape(Capsule())
+                    .accessibilityIdentifier(UIIdentifiers.onlineRegisterWithApple)
+                    Spacer()
+                }
+                #endif
             }
-            #endif
         }
+    }
+
+    private var onlineNameBinding: Binding<String> {
+        Binding(
+            get: { viewModel.onlineDisplayName },
+            set: { viewModel.setOnlineDisplayName($0) }
+        )
     }
 
     @ViewBuilder

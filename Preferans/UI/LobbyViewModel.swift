@@ -4,9 +4,18 @@ import PreferansEngine
 
 @MainActor
 public final class LobbyViewModel: ObservableObject {
+    /// Which path the lobby is showing. The two flows no longer share a roster:
+    /// `.local` configures a solo-vs-bots table; `.online` configures an online
+    /// room with its own identity + seat composition.
+    public enum LobbyMode: String, CaseIterable, Identifiable, Equatable {
+        case local, online
+        public var id: String { rawValue }
+    }
+
     @Published public var localModel: GameViewModel?
     @Published public var onlineSession: InMemoryOnlineGameSession?
     @Published public var cloudOnlineSession: CloudflareOnlineGameSession?
+    @Published public var lobbyMode: LobbyMode = .local
     @Published public var seats: [LobbySeat] = LobbySeat.defaults(count: 3)
     @Published public var botSpeed: BotMoveSpeed = .normal
     @Published public var errorText: String?
@@ -17,9 +26,22 @@ public final class LobbyViewModel: ObservableObject {
     @Published public private(set) var registeredOnlineAccount: RegisteredOnlineAccount?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
+    /// Online display name, kept entirely separate from the local bot roster.
+    /// Signing in overwrites this — never `seats`.
+    @Published public var onlineDisplayName: String = ""
+    /// The online table's own seat composition (you + invite/bot seats),
+    /// independent of the local `seats` roster.
+    @Published public var onlineComposition: [OnlineSeatSlot] = OnlineSeatSlot.defaultComposition(count: 3)
 
     public init() {
-        registeredOnlineAccount = Self.loadRegisteredOnlineAccount()
+        let account = Self.loadRegisteredOnlineAccount()
+        registeredOnlineAccount = account
+        // Seed a non-empty default so the online flow (and the headless invite
+        // harness, which calls `startCloudflareOnlineRoom()` directly) always
+        // has a usable display name.
+        onlineDisplayName = account?.displayName
+            ?? UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName)
+            ?? String(localized: "Player")
     }
 
     public func setSeatCount(_ count: Int) {
@@ -67,18 +89,20 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     public func startCloudflareOnlineRoom() {
-        guard seats.validationError == nil, !isOnlineRoomLoading else { return }
+        guard !isOnlineRoomLoading else { return }
         isOnlineRoomLoading = true
         errorText = nil
         infoText = nil
         let setup = onlineRoomSetup()
+        let delay = onlineBotMoveDelay
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let session = try await CloudflareOnlineGameSession.createRoom(
                     peers: setup.peers,
                     localPlayerID: setup.localPlayer,
-                    rules: setup.rules
+                    rules: setup.rules,
+                    botMoveDelay: delay
                 )
                 await session.start()
                 cloudOnlineSession = session
@@ -100,17 +124,19 @@ public final class LobbyViewModel: ObservableObject {
         infoText = nil
         let setup = onlineRoomSetup()
         guard let localPeer = setup.peers.first(where: { $0.playerID == setup.localPlayer }) else {
-            errorText = "Selected seat is not available."
+            errorText = String(localized: "Selected seat is not available.")
             isOnlineRoomLoading = false
             return
         }
+        let delay = onlineBotMoveDelay
         Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let session = try await CloudflareOnlineGameSession.joinRoom(
                     roomCode: roomCode,
                     localPeer: localPeer,
-                    rules: setup.rules
+                    rules: setup.rules,
+                    botMoveDelay: delay
                 )
                 await session.start()
                 cloudOnlineSession = session
@@ -122,24 +148,33 @@ public final class LobbyViewModel: ObservableObject {
         }
     }
 
+    /// DEBUG/test affordance: an all-bot online room backed by the in-memory
+    /// transport. Lands on the same waiting room as a real room — host taps
+    /// Start and the bot seats play out — without a worker or a second device.
     public func startInMemoryOnlineRoom() {
-        guard seats.validationError == nil else { return }
         do {
-            let setup = onlineRoomSetup()
-            let automatedPlayers = Set(setup.peers.map(\.playerID).filter { $0 != setup.localPlayer })
+            let players = OnlineSeatSlot.canonicalPlayerIDs(count: 3)
+            let localPlayer = players[0]
+            let account = normalizedOnlineAccount(for: localPlayer)
+            let peers = players.enumerated().map { index, player -> OnlinePeer in
+                index == 0
+                    ? OnlinePeer(playerID: player, accountID: account.id, provider: account.provider, displayName: resolvedOnlineDisplayName)
+                    : OnlinePeer(playerID: player, accountID: "\(OnlinePeer.botAccountPrefix)\(player.rawValue)", provider: .dev, displayName: String(localized: "Bot \(index + 1)"))
+            }
+            let automatedPlayers = Set(peers.map(\.playerID).filter { $0 != localPlayer })
             let session = try InMemoryOnlineGameSession(
                 roomCode: makeRoomCode(),
-                peers: setup.peers,
-                localPlayerID: setup.localPlayer,
-                hostPlayerID: setup.peers.first?.playerID,
+                peers: peers,
+                localPlayerID: localPlayer,
+                hostPlayerID: peers.first?.playerID,
                 automatedPlayerIDs: automatedPlayers,
-                dealSource: setup.dealSource,
-                botDelay: TestHarness.fastBotDelay(in: ProcessInfo.processInfo.arguments) ? BotPacing.testFast : botSpeed.delay
+                dealSource: RandomDealSource(),
+                botDelay: onlineBotMoveDelay
             )
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 do {
-                    try await session.start(rules: setup.rules)
+                    try await session.start(rules: .sochi)
                     onlineSession = session
                     errorText = nil
                 } catch {
@@ -175,16 +210,16 @@ public final class LobbyViewModel: ObservableObject {
         formatter.style = .medium
         let formattedName = fullName.map { formatter.string(from: $0) }?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        let displayName = formattedName?.isEmpty == false ? formattedName! : localSeatName
+        let displayName = formattedName?.isEmpty == false ? formattedName! : resolvedOnlineDisplayName
         let account = RegisteredOnlineAccount(
             provider: .apple,
             accountID: "apple:\(userID)",
             displayName: displayName
         )
         registeredOnlineAccount = account
-        if seats.indices.contains(localSeatIndex) {
-            seats[localSeatIndex].name = displayName
-        }
+        // Identity flows into the online display name only — never the local
+        // bot roster (`seats`), which the online flow no longer touches.
+        onlineDisplayName = displayName
         Self.saveRegisteredOnlineAccount(account)
         errorText = nil
     }
@@ -192,6 +227,51 @@ public final class LobbyViewModel: ObservableObject {
     public func clearRegisteredOnlineAccount() {
         registeredOnlineAccount = nil
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
+    }
+
+    public func setOnlineDisplayName(_ name: String) {
+        onlineDisplayName = name
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
+        } else {
+            UserDefaults.standard.set(trimmed, forKey: SettingsKeys.onlineDisplayName)
+        }
+    }
+
+    public func setOnlineTableSize(_ count: Int) {
+        onlineComposition = OnlineSeatSlot.resize(onlineComposition, to: count)
+    }
+
+    public func setOnlineSeatKind(_ kind: OnlineSeatSlot.Kind, at index: Int) {
+        guard onlineComposition.indices.contains(index), index != 0 else { return }
+        onlineComposition[index].kind = kind
+    }
+
+    /// Validity of the online setup. The seat composition is always structurally
+    /// valid (slot 0 is always "you"); the only user-fixable error is a missing
+    /// display name when not signed in.
+    public var onlineSetupValidationError: String? {
+        if registeredOnlineAccount == nil,
+           onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return String(localized: "Enter your name to play online.")
+        }
+        return nil
+    }
+
+    private var onlineBotMoveDelay: Duration {
+        TestHarness.fastBotDelay(in: ProcessInfo.processInfo.arguments)
+            ? BotPacing.testFast
+            : botSpeed.delay
+    }
+
+    /// The display name to advertise for the local seat online: the signed-in
+    /// account name, the typed name, or a stock fallback so a seat never goes
+    /// out nameless.
+    private var resolvedOnlineDisplayName: String {
+        if let registeredOnlineAccount { return registeredOnlineAccount.displayName }
+        let trimmed = onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? String(localized: "Player") : trimmed
     }
 
     /// `speedOverride` lets the watch-bots demo run instantly without
@@ -247,44 +327,51 @@ public final class LobbyViewModel: ObservableObject {
         }
     }
 
+    /// Builds the online peer set from the online seat composition + identity —
+    /// deliberately independent of the local `seats` roster, so local bot names
+    /// never leak into an online room. Player IDs come from a canonical pool
+    /// (north/east/south/west) unless a UI test pins them via `-uiTestPlayers`;
+    /// either way the player sees `displayName`, not the raw seat ID.
     private func onlineRoomSetup() -> (
         peers: [OnlinePeer],
         localPlayer: PlayerID,
         rules: PreferansRules,
         dealSource: DealSource
     ) {
-        let lobbyPlayers = seats.map { PlayerID($0.trimmedName) }
-        let defaultDealer = lobbyPlayers.last
+        let poolPlayers = OnlineSeatSlot.canonicalPlayerIDs(count: onlineComposition.count)
         let args = ProcessInfo.processInfo.arguments
         let configuration = TestHarness.resolveConfiguration(
             from: args,
-            defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
+            defaults: TestHarness.Defaults(players: poolPlayers, firstDealer: poolPlayers.last)
         )
         let players = configuration.players
-        let selectedIndex = min(localSeatIndex, max(0, players.count - 1))
+        // The host always sits in the "you" slot (slot 0). A joiner declares the
+        // same slot — the worker rebinds them to an open seat by accountID.
+        let selectedIndex = min(onlineComposition.firstIndex { $0.kind == .you } ?? 0, max(0, players.count - 1))
         let localPlayer = players[selectedIndex]
         let account = normalizedOnlineAccount(for: localPlayer)
-        let peers = players.enumerated().map { index, player in
-            OnlinePeer(
-                playerID: player,
-                accountID: index == selectedIndex ? account.id : "\(OnlinePeer.pendingAccountPrefix)\(player.rawValue)",
-                provider: index == selectedIndex ? account.provider : .dev,
-                displayName: player.rawValue
-            )
+        let displayName = resolvedOnlineDisplayName
+        let peers = players.enumerated().map { index, player -> OnlinePeer in
+            let kind = onlineComposition.indices.contains(index) ? onlineComposition[index].kind : .invite
+            if index == selectedIndex {
+                return OnlinePeer(playerID: player, accountID: account.id, provider: account.provider, displayName: displayName)
+            } else if kind == .bot {
+                return OnlinePeer(
+                    playerID: player,
+                    accountID: "\(OnlinePeer.botAccountPrefix)\(player.rawValue)",
+                    provider: .dev,
+                    displayName: String(localized: "Bot \(index + 1)")
+                )
+            } else {
+                return OnlinePeer(
+                    playerID: player,
+                    accountID: "\(OnlinePeer.pendingAccountPrefix)\(player.rawValue)",
+                    provider: .dev,
+                    displayName: String(localized: "Open seat")
+                )
+            }
         }
         return (peers, localPlayer, configuration.rules, configuration.dealSource)
-    }
-
-    private var localSeatIndex: Int {
-        seats.firstIndex { $0.kind == .human } ?? 0
-    }
-
-    private var localSeatName: String {
-        if seats.indices.contains(localSeatIndex) {
-            let trimmedName = seats[localSeatIndex].trimmedName
-            if !trimmedName.isEmpty { return trimmedName }
-        }
-        return String(localized: "Player")
     }
 
     private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
@@ -465,5 +552,75 @@ extension Array where Element == LobbySeat {
             return String(localized: "Names must be unique.")
         }
         return nil
+    }
+}
+
+/// One seat in the *online* table's composition. Separate from `LobbySeat`
+/// (which configures the local bot game): an online seat is either you (the
+/// host), an open seat you'll invite a friend to, or a bot the host drives.
+public struct OnlineSeatSlot: Identifiable, Equatable {
+    public enum Kind: String, Equatable, CaseIterable, Identifiable {
+        case you, invite, bot
+        public var id: String { rawValue }
+    }
+
+    public let id: UUID
+    public var kind: Kind
+
+    public init(id: UUID = UUID(), kind: Kind) {
+        self.id = id
+        self.kind = kind
+    }
+}
+
+extension OnlineSeatSlot {
+    /// Canonical seat IDs for an online table. Display names ride on
+    /// `PlayerIdentity`, so these compass IDs stay invisible to the player —
+    /// they exist only so two fresh installs don't collide on a name.
+    static func canonicalPlayerIDs(count: Int) -> [PlayerID] {
+        let pool = ["north", "east", "south", "west"]
+        let clamped = min(max(count, 3), 4)
+        return (0..<clamped).map { PlayerID(pool[$0]) }
+    }
+
+    /// Fresh composition: you + open invite seats. The host opens invite seats
+    /// by default and can flip any of them to a bot.
+    static func defaultComposition(count: Int) -> [OnlineSeatSlot] {
+        let clamped = min(max(count, 3), 4)
+        return (0..<clamped).map { OnlineSeatSlot(kind: $0 == 0 ? .you : .invite) }
+    }
+
+    static func resize(_ existing: [OnlineSeatSlot], to count: Int) -> [OnlineSeatSlot] {
+        let clamped = min(max(count, 3), 4)
+        if existing.count == clamped { return existing }
+        if clamped < existing.count { return Array(existing.prefix(clamped)) }
+        var resized = existing
+        while resized.count < clamped {
+            resized.append(OnlineSeatSlot(kind: .invite))
+        }
+        return resized
+    }
+}
+
+extension Array where Element == OnlineSeatSlot {
+    var inviteCount: Int { filter { $0.kind == .invite }.count }
+    var botCount: Int { filter { $0.kind == .bot }.count }
+
+    /// "You + 1 friend + 1 bot"-style summary for the online setup card.
+    var compositionSummary: String {
+        var parts: [String] = [String(localized: "You")]
+        let invites = inviteCount
+        if invites == 1 {
+            parts.append(String(localized: "1 friend"))
+        } else if invites > 1 {
+            parts.append(String(localized: "\(invites) friends"))
+        }
+        let bots = botCount
+        if bots == 1 {
+            parts.append(String(localized: "1 bot"))
+        } else if bots > 1 {
+            parts.append(String(localized: "\(bots) bots"))
+        }
+        return parts.joined(separator: " + ")
     }
 }

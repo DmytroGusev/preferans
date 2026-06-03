@@ -42,7 +42,7 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         self.botDelay = botDelay
         self.room = InMemoryRoom(code: roomCode, peers: peers, hostPlayerID: self.hostPlayerID)
         self.roomCode = roomCode
-        self.localCoordinator = RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled)
+        self.localCoordinator = RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled, runsServerSideBots: false)
     }
 
     deinit {
@@ -58,7 +58,7 @@ public final class InMemoryOnlineGameSession: ObservableObject {
 
         remoteCoordinators = Dictionary(uniqueKeysWithValues: peers
             .filter { $0.playerID != localPeer.playerID }
-            .map { ($0.playerID, RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled)) })
+            .map { ($0.playerID, RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled, runsServerSideBots: false)) })
 
         installBotObservers()
 
@@ -94,7 +94,7 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         if let coordinator = remoteCoordinators[playerID] {
             return coordinator
         }
-        let coordinator = RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled)
+        let coordinator = RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled, runsServerSideBots: false)
         remoteCoordinators[playerID] = coordinator
         return coordinator
     }
