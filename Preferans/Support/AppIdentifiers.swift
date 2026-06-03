@@ -43,6 +43,9 @@ public enum SettingsKeys {
     /// Display name the player chose for online rooms when not signed in.
     /// Kept separate from the local bot roster so the two never bleed together.
     public static let onlineDisplayName = "settings.onlineDisplayName"
+
+    /// House-rule variant selected for online rooms.
+    public static let onlineVariant = "settings.onlineVariant"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

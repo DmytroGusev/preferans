@@ -32,6 +32,11 @@ public final class LobbyViewModel: ObservableObject {
     /// The online table's own seat composition (you + invite/bot seats),
     /// independent of the local `seats` roster.
     @Published public var onlineComposition: [OnlineSeatSlot] = OnlineSeatSlot.defaultComposition(count: 3)
+    @Published public var onlineVariant: PreferansVariant = .odesa {
+        didSet {
+            UserDefaults.standard.set(onlineVariant.rawValue, forKey: SettingsKeys.onlineVariant)
+        }
+    }
 
     public init() {
         let account = Self.loadRegisteredOnlineAccount()
@@ -39,6 +44,7 @@ public final class LobbyViewModel: ObservableObject {
         onlineDisplayName = account?.displayName
             ?? UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName)
             ?? ""
+        onlineVariant = Self.loadOnlineVariant()
     }
 
     public func setSeatCount(_ count: Int) {
@@ -186,7 +192,7 @@ public final class LobbyViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 do {
-                    try await session.start(rules: .sochi)
+                    try await session.start(rules: self.onlineVariant.rules)
                     onlineSession = session
                     errorText = nil
                 } catch {
@@ -393,7 +399,10 @@ public final class LobbyViewModel: ObservableObject {
                 )
             }
         }
-        return (peers, localPlayer, configuration.rules, configuration.dealSource)
+        let rules = args.contains(UITestFlags.matchScript)
+            ? configuration.rules
+            : onlineVariant.rules
+        return (peers, localPlayer, rules, configuration.dealSource)
     }
 
     private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
@@ -427,6 +436,14 @@ public final class LobbyViewModel: ObservableObject {
         UserDefaults.standard.set(data, forKey: SettingsKeys.onlineRegisteredAccount)
     }
 
+    private static func loadOnlineVariant() -> PreferansVariant {
+        guard let raw = UserDefaults.standard.string(forKey: SettingsKeys.onlineVariant),
+              let variant = PreferansVariant(rawValue: raw) else {
+            return .odesa
+        }
+        return variant
+    }
+
     private func makeRoomCode() -> String {
         @Dependency(\.uuid) var uuid
         return String(uuid().uuidString.prefix(6))
@@ -436,6 +453,49 @@ public final class LobbyViewModel: ObservableObject {
     /// Always pinned to the first seat; there is no pass-the-device mode.
     private func defaultViewerPolicy(for players: [PlayerID]) -> ViewerPolicy {
         .pinned(players.first ?? PlayerID("player"))
+    }
+}
+
+public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Codable {
+    case odesa
+    case wien
+
+    public var id: String { rawValue }
+
+    public var title: LocalizedStringKey {
+        switch self {
+        case .odesa: return "variant.odesa.title"
+        case .wien:  return "variant.wien.title"
+        }
+    }
+
+    public var standardName: LocalizedStringKey {
+        switch self {
+        case .odesa: return "variant.odesa.standard"
+        case .wien:  return "variant.wien.standard"
+        }
+    }
+
+    public var summary: LocalizedStringKey {
+        switch self {
+        case .odesa: return "variant.odesa.summary"
+        case .wien:  return "variant.wien.summary"
+        }
+    }
+
+    public var rules: PreferansRules {
+        switch self {
+        case .odesa:
+            return .sochi
+        case .wien:
+            return PreferansRules(
+                requireWhistOnTenTrickContracts: true,
+                singleWhistScoring: .ownHandOnly,
+                failedDeclarerConsolation: .none,
+                allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false),
+                zeroTricksAllPassPoolBonus: 0
+            )
+        }
     }
 }
 

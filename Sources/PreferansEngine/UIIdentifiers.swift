@@ -148,6 +148,7 @@ public enum UIIdentifiers {
     // Online setup: identity + its own seat composition (decoupled from the
     // local bot roster).
     public static let onlineDisplayNameField   = "online.displayName"
+    public static let onlineVariantPicker      = "online.variant"
     public static let onlineTableSizePicker    = "online.tableSize"
     public static func onlineSeatRow(index: Int) -> String { "online.seat.\(index)" }
     public static func onlineSeatKindPicker(index: Int) -> String { "online.seatKind.\(index)" }

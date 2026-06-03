@@ -69,9 +69,38 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(model.currentOnlineDisplayName, "Ada")
     }
 
+    func testOnlineVariantDefaultsToOdesaAndPersists() {
+        resetOnlineIdentityDefaults()
+
+        let model = LobbyViewModel()
+        XCTAssertEqual(model.onlineVariant, .odesa)
+        XCTAssertEqual(model.onlineVariant.rules, .sochi)
+
+        model.onlineVariant = .wien
+
+        let reloaded = LobbyViewModel()
+        XCTAssertEqual(reloaded.onlineVariant, .wien)
+    }
+
+    func testWienVariantUsesStrictRuleProfile() {
+        let rules = PreferansVariant.wien.rules
+
+        XCTAssertTrue(rules.requireWhistOnTenTrickContracts)
+        XCTAssertEqual(rules.singleWhistScoring, .ownHandOnly)
+        XCTAssertEqual(rules.failedDeclarerConsolation, .none)
+        XCTAssertEqual(rules.zeroTricksAllPassPoolBonus, 0)
+        if case let .perTrick(multiplier, amnesty) = rules.allPassPenaltyPolicy {
+            XCTAssertEqual(multiplier, 2)
+            XCTAssertFalse(amnesty)
+        } else {
+            XCTFail("Expected doubled all-pass penalties.")
+        }
+    }
+
     private func resetOnlineIdentityDefaults() {
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineVariant)
     }
 }

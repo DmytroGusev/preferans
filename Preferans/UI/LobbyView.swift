@@ -461,117 +461,77 @@ public struct LobbyView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Online play, with its OWN identity and seat composition — no longer
-    /// borrowing the local bot roster. Reads top to bottom: who you are →
-    /// who's at the table → host a new table → or join an existing one.
+    /// Online play, with its own identity, variant, and seat composition.
     private var onlineSetupCard: some View {
-        card(title: "Play online with friends", icon: "person.2.wave.2.fill") {
-            VStack(spacing: 16) {
-                onlineIdentitySection
-                onlineCompositionSection
-
-                VStack(spacing: 8) {
-                    onlineSectionLabel("Host a table")
-                    Button {
-                        viewModel.startCloudflareOnlineRoom()
-                    } label: {
-                        HStack {
-                            if viewModel.isOnlineRoomLoading {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Image(systemName: "person.3.sequence.fill")
-                            }
-                            Text("Create invite link")
-                                .fontWeight(.semibold)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.feltPrimary)
-                    .controlSize(.large)
-                    .disabled(
-                        viewModel.onlineSetupValidationError != nil
-                            || viewModel.isOnlineRoomLoading
-                    )
-                    .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
-
-                    if let validation = viewModel.onlineSetupValidationError {
-                        Text(validation)
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Text("You get a link and code to share — friends join from their own devices.")
-                            .font(.caption2)
-                            .foregroundStyle(TableTheme.inkCreamDim)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-
-                onlineOrJoinDivider
-
-                VStack(spacing: 8) {
-                    onlineSectionLabel("Join a table")
-                    if let pendingCode = viewModel.pendingJoinRoomCode {
-                        readyToJoinRow(code: pendingCode)
-                    }
-                    HStack(spacing: 8) {
-                        TextField(
-                            "Paste link or code",
-                            text: $viewModel.onlineJoinRoomCode,
-                            prompt: Text("Paste link or code")
-                                .foregroundStyle(TableTheme.inkCreamDim)
-                        )
-                            .textFieldStyle(.plain)
-                            .autocorrectionDisabled()
-                            .foregroundStyle(TableTheme.inkCream)
-                            .padding(10)
-                            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
-                            .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
-
-                        Button {
-                            viewModel.joinCloudflareOnlineRoom()
-                        } label: {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .font(.title3)
-                                .frame(width: 34, height: 34)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(
-                            viewModel.pendingJoinRoomCode != nil
-                                && viewModel.onlineIdentityValidationError == nil
-                                ? TableTheme.goldBright
-                                : TableTheme.inkCreamDim
-                        )
-                        .disabled(
-                            viewModel.isOnlineRoomLoading
-                                || viewModel.pendingJoinRoomCode == nil
-                                || viewModel.onlineIdentityValidationError != nil
-                        )
-                        .accessibilityLabel("Join table")
-                        .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
-                    }
-                }
-
-                hiddenLocalTestRoomButton
-            }
+        VStack(spacing: 12) {
+            onlineSetupHeader
+            onlineIdentitySection
+            onlineVariantSection
+            onlineCompositionSection
+            onlineRoomActionsSection
+            hiddenLocalTestRoomButton
         }
+    }
+
+    private var onlineSetupHeader: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(TableTheme.gold.opacity(0.16))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "person.2.wave.2.fill")
+                    .font(.title3)
+                    .foregroundStyle(TableTheme.goldBright)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Play online with friends")
+                    .font(.headline)
+                    .foregroundStyle(TableTheme.inkCream)
+                Text(viewModel.onlineVariant.standardName)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+            }
+            Spacer(minLength: 8)
+            Text(viewModel.onlineComposition.compositionSummary)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(TableTheme.goldBright)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(14)
+        .feltSurface(.card, radius: TableTheme.Radius.sm)
     }
 
     /// Online seat composition — the host picks how many seats and, for each
     /// non-host seat, whether it's an open invite or a bot. Entirely separate
     /// from the local `seats` roster.
-    private var onlineCompositionSection: some View {
-        VStack(spacing: 8) {
-            HStack {
-                onlineSectionLabel("At the table")
-                Spacer(minLength: 8)
-                Text(viewModel.onlineComposition.compositionSummary)
-                    .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
-                    .lineLimit(1)
+    private var onlineVariantSection: some View {
+        onlinePanel(title: "Variant", icon: "slider.horizontal.3") {
+            Picker("Variant", selection: $viewModel.onlineVariant) {
+                ForEach(PreferansVariant.allCases) { variant in
+                    Text(variant.title).tag(variant)
+                }
             }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier(UIIdentifiers.onlineVariantPicker)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(viewModel.onlineVariant.standardName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(TableTheme.inkCream)
+                Text(viewModel.onlineVariant.summary)
+                    .font(.caption)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+        }
+    }
+
+    private var onlineCompositionSection: some View {
+        onlinePanel(title: "Seats", icon: "person.3.fill") {
             onlineTableSizeRow
             VStack(spacing: 8) {
                 ForEach(Array(viewModel.onlineComposition.enumerated()), id: \.element.id) { index, slot in
@@ -601,7 +561,7 @@ public struct LobbyView: View {
             .accessibilityIdentifier(UIIdentifiers.onlineTableSizePicker)
         }
         .padding(10)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func onlineSeatRow(index: Int, slot: OnlineSeatSlot) -> some View {
@@ -612,6 +572,7 @@ public struct LobbyView: View {
                 .frame(width: 24)
             if slot.kind == .you {
                 Text(verbatim: viewModel.currentOnlineDisplayName.isEmpty ? String(localized: "You") : viewModel.currentOnlineDisplayName)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(TableTheme.inkCream)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("badge.you")
@@ -623,10 +584,11 @@ public struct LobbyView: View {
                     .background(TableTheme.goldBright, in: Capsule())
             } else {
                 Text("Seat \(index + 1)")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(TableTheme.inkCreamSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Picker("Seat \(index + 1)", selection: onlineSeatKindBinding(index)) {
-                    Text("Invite").tag(OnlineSeatSlot.Kind.invite)
+                    Text("Friend").tag(OnlineSeatSlot.Kind.invite)
                     Text("Bot").tag(OnlineSeatSlot.Kind.bot)
                 }
                 .pickerStyle(.segmented)
@@ -635,7 +597,7 @@ public struct LobbyView: View {
             }
         }
         .padding(10)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
         .accessibilityIdentifier(UIIdentifiers.onlineSeatRow(index: index))
     }
 
@@ -672,25 +634,6 @@ public struct LobbyView: View {
             .textCase(.uppercase)
             .foregroundStyle(TableTheme.gold)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var onlineOrJoinDivider: some View {
-        HStack(spacing: 10) {
-            Rectangle()
-                .fill(TableTheme.gold.opacity(0.22))
-                .frame(height: 0.5)
-                .frame(maxWidth: .infinity)
-            Text("or")
-                .font(.caption2.weight(.semibold))
-                .textCase(.uppercase)
-                .tracking(1.0)
-                .foregroundStyle(TableTheme.inkCreamDim)
-                .fixedSize()
-            Rectangle()
-                .fill(TableTheme.gold.opacity(0.22))
-                .frame(height: 0.5)
-                .frame(maxWidth: .infinity)
-        }
     }
 
     /// Prominent, in-context affordance shown the moment a valid invite code is
@@ -736,8 +679,7 @@ public struct LobbyView: View {
     /// Sign in with Apple. Neither path ever writes into the local `seats`.
     @ViewBuilder
     private var onlineIdentitySection: some View {
-        VStack(spacing: 8) {
-            onlineSectionLabel("You")
+        onlinePanel(title: "You", icon: "person.crop.circle.fill") {
             if viewModel.registeredOnlineAccount != nil {
                 identityStatusRow(
                     icon: "person.crop.circle.badge.checkmark",
@@ -755,22 +697,7 @@ public struct LobbyView: View {
                     }
                 )
             } else {
-                HStack(spacing: 10) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(TableTheme.goldBright)
-                    TextField(
-                        "Your name",
-                        text: onlineNameBinding,
-                        prompt: Text("Your name").foregroundStyle(TableTheme.inkCreamDim)
-                    )
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(TableTheme.inkCream)
-                    .accessibilityIdentifier(UIIdentifiers.onlineDisplayNameField)
-                }
-                .padding(10)
-                .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                onlineNameField
 
                 #if canImport(AuthenticationServices)
                 HStack {
@@ -794,6 +721,122 @@ public struct LobbyView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+    }
+
+    private var onlineRoomActionsSection: some View {
+        onlinePanel(title: "Room", icon: "link") {
+            Button {
+                viewModel.startCloudflareOnlineRoom()
+            } label: {
+                HStack {
+                    if viewModel.isOnlineRoomLoading {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "person.3.sequence.fill")
+                    }
+                    Text("Create invite link")
+                        .fontWeight(.semibold)
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.feltPrimary)
+            .controlSize(.large)
+            .disabled(
+                viewModel.onlineSetupValidationError != nil
+                    || viewModel.isOnlineRoomLoading
+            )
+            .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
+
+            if let validation = viewModel.onlineSetupValidationError {
+                Text(validation)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            onlineSectionLabel("Join a table")
+            if let pendingCode = viewModel.pendingJoinRoomCode {
+                readyToJoinRow(code: pendingCode)
+            }
+            HStack(spacing: 8) {
+                TextField(
+                    "Paste link or code",
+                    text: $viewModel.onlineJoinRoomCode,
+                    prompt: Text("Paste link or code")
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                )
+                    .textFieldStyle(.plain)
+                    .autocorrectionDisabled()
+                    .foregroundStyle(TableTheme.inkCream)
+                    .padding(10)
+                    .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+                    .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
+
+                Button {
+                    viewModel.joinCloudflareOnlineRoom()
+                } label: {
+                    Image(systemName: "arrow.right.circle.fill")
+                        .font(.title3)
+                        .frame(width: 38, height: 38)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(
+                    viewModel.pendingJoinRoomCode != nil
+                        && viewModel.onlineIdentityValidationError == nil
+                        ? TableTheme.goldBright
+                        : TableTheme.inkCreamDim
+                )
+                .disabled(
+                    viewModel.isOnlineRoomLoading
+                        || viewModel.pendingJoinRoomCode == nil
+                        || viewModel.onlineIdentityValidationError != nil
+                )
+                .accessibilityLabel("Join table")
+                .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
+            }
+        }
+    }
+
+    private var onlineNameField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "person.crop.circle.fill")
+                .font(.title3)
+                .foregroundStyle(TableTheme.goldBright)
+            TextField(
+                "Your name",
+                text: onlineNameBinding,
+                prompt: Text("Your name").foregroundStyle(TableTheme.inkCreamDim)
+            )
+            .textFieldStyle(.plain)
+            .autocorrectionDisabled()
+            .foregroundStyle(TableTheme.inkCream)
+            .accessibilityIdentifier(UIIdentifiers.onlineDisplayNameField)
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func onlinePanel<Content: View>(
+        title: LocalizedStringKey,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.0)
+                    .textCase(.uppercase)
+                    .foregroundStyle(TableTheme.gold)
+            } icon: {
+                Image(systemName: icon)
+                    .foregroundStyle(TableTheme.goldBright)
+            }
+            content()
+        }
+        .padding(14)
+        .feltSurface(.card, radius: TableTheme.Radius.sm)
     }
 
     private var onlineNameBinding: Binding<String> {

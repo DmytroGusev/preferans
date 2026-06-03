@@ -25,6 +25,30 @@
         }
       }
     },
+    "Play with bots" : {
+      "comment" : "Lobby mode segment option for local play against bots.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play with bots"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игра с ботами"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Гра з ботами"
+          }
+        }
+      }
+    },
     "Host a table" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -67,6 +91,246 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Приєднатися до столу"
+          }
+        }
+      }
+    },
+    "Play online with friends" : {
+      "comment" : "Online lobby header.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Play online with friends"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игра с друзьями онлайн"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Гра з друзями онлайн"
+          }
+        }
+      }
+    },
+    "Join table" : {
+      "comment" : "Accessibility label for the online join button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Join table"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Присоединиться к столу"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приєднатися до столу"
+          }
+        }
+      }
+    },
+    "You" : {
+      "comment" : "Online lobby label for the local player.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вы"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ви"
+          }
+        }
+      }
+    },
+    "Your name" : {
+      "comment" : "Online lobby display-name field placeholder.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your name"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваше имя"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваше ім'я"
+          }
+        }
+      }
+    },
+    "Players" : {
+      "comment" : "Online lobby table-size picker label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Players"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игроки"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Гравці"
+          }
+        }
+      }
+    },
+    "Invite" : {
+      "comment" : "Online lobby seat-kind picker option for an invite/open seat.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invite"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Инвайт"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запросити"
+          }
+        }
+      }
+    },
+    "Friend" : {
+      "comment" : "Online lobby seat-kind picker option for a friend/open invite seat.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friend"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Друг"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Друг"
+          }
+        }
+      }
+    },
+    "Variant" : {
+      "comment" : "Online lobby section label for the rules variant selector.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variant"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вариант"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Варіант"
+          }
+        }
+      }
+    },
+    "Seats" : {
+      "comment" : "Online lobby section label for seat composition.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seats"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Места"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Місця"
+          }
+        }
+      }
+    },
+    "Room" : {
+      "comment" : "Online lobby section label for host/join room actions.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Room"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Комната"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кімната"
           }
         }
       }
@@ -276,6 +540,114 @@
           "stringUnit": {
             "state" : "translated",
             "value": "1 людина"
+          }
+        }
+      }
+    },
+    "1 friend": {
+      "comment": "Online lobby composition summary, singular invite seat.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 friend"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 друг"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 друг"
+          }
+        }
+      }
+    },
+    "%lld friends": {
+      "comment": "Online lobby composition summary, plural invite seats.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld friend"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld friends"
+                }
+              }
+            }
+          }
+        },
+        "ru": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друг"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друга"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друзей"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друзей"
+                }
+              }
+            }
+          }
+        },
+        "uk": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друг"
+                }
+              },
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друзі"
+                }
+              },
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друзів"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld друзів"
+                }
+              }
+            }
           }
         }
       }
@@ -2536,6 +2908,60 @@
         }
       }
     },
+    "variant.odesa.title": {
+      "comment": "Online lobby variant selector title for Odesa.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Odesa" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Одесса" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Одеса" } }
+      }
+    },
+    "variant.odesa.standard": {
+      "comment": "Online lobby standard-name subtitle for Odesa.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Odesa · Sochi" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Одесса · Сочи" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Одеса · Сочі" } }
+      }
+    },
+    "variant.odesa.summary": {
+      "comment": "Online lobby short summary for the Odesa variant.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Balanced house default." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Сбалансированный домашний вариант." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Збалансований домашній варіант." } }
+      }
+    },
+    "variant.wien.title": {
+      "comment": "Online lobby variant selector title for Wien.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Wien" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Вена" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Відень" } }
+      }
+    },
+    "variant.wien.standard": {
+      "comment": "Online lobby standard-name subtitle for Wien.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Wien · Leningrad" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Вена · Ленинград" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Відень · Ленінград" } }
+      }
+    },
+    "variant.wien.summary": {
+      "comment": "Online lobby short summary for the Wien variant.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Stricter whist and all-pass scoring." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Строже вистование и распасы." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Строгіший віст і розпаси." } }
+      }
+    },
     "convention.tagline.help": {
       "comment": "Hover tooltip on the lobby hero's house-name tagline (whole row). Spelled out per pill in the convention.<name>.help strings.",
       "extractionState": "manual",
@@ -2892,6 +3318,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "замість"
+          }
+        }
+      }
+    },
+    "House conventions": {
+      "comment": "Lobby footer link opening the house-convention legend.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "House conventions"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домашние конвенции"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Домашні конвенції"
           }
         }
       }
