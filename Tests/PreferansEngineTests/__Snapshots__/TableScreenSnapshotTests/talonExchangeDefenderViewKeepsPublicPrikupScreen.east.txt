@@ -1,0 +1,19 @@
+viewer: east
+phase: awaitingDiscard declarer=north finalBid=6♠
+players: north -> east -> south
+bottom: 2:east role=active hand=known:10/10[9♠ 10♠ 9♣ 10♣ 7♦ 8♦ K♦ A♦ J♥ Q♥]
+play-area: size=(316.48,322.40) center=(184.00,322.40)
+opponent-slots:
+  south(role=active,current=false,dealer=true) orientation=top kind=topNarrow pos=(0.25,0.18) frame=(169.28,182.00) hand=hidden:10 tricks=0
+  north(role=declarer,current=true,dealer=false) orientation=top kind=topNarrow pos=(0.75,0.18) frame=(169.28,182.00) hand=hidden:10 tricks=0
+sitting-out: none
+auction:
+  south(role=active,current=false,dealer=true) current=false last=pass
+  east(role=active,current=false,dealer=false) current=false last=pass
+  north(role=declarer,current=true,dealer=false) current=true last=6♠
+trick:
+  none
+talon: K♠ A♠
+discard: none
+legal-owner: east
+legal-cards: none

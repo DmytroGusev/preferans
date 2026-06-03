@@ -254,4 +254,19 @@ extension PlayerGameProjection {
 
         return orderedSeats
     }
+
+    var tableClockwiseAuctionSeats: [SeatProjection] {
+        let opponents = tableClockwiseOpponentSeats.filter { $0.role != .sittingOut }
+        guard let viewerSeat = seats.first(where: {
+            $0.player == viewer && $0.role != .sittingOut
+        }) else {
+            return opponents
+        }
+
+        guard opponents.count == 2 else {
+            return [viewerSeat] + opponents
+        }
+
+        return [opponents[0], viewerSeat, opponents[1]]
+    }
 }

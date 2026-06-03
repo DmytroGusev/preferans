@@ -1,0 +1,19 @@
+viewer: east
+phase: playing current=east leader=north kind=game declarer=north contract=6♠ defenders=east+south whisters=east+south mode=closed
+players: north -> east -> south
+bottom: 2:east role=whister hand=known:10/10[9♠ 10♠ 9♣ 10♣ 7♦ 8♦ K♦ A♦ J♥ Q♥]
+play-area: size=(316.48,322.40) center=(184.00,322.40)
+opponent-slots:
+  south(role=whister,current=false,dealer=true) orientation=top kind=topNarrow pos=(0.25,0.18) frame=(169.28,182.00) hand=hidden:10 tricks=0
+  north(role=declarer,current=false,dealer=false) orientation=top kind=topNarrow pos=(0.75,0.18) frame=(169.28,182.00) hand=hidden:9 tricks=0
+sitting-out: none
+auction:
+  south(role=whister,current=false,dealer=true) current=false last=-
+  east(role=whister,current=true,dealer=false) current=true last=-
+  north(role=declarer,current=false,dealer=false) current=false last=-
+trick:
+  1:north card=7♠ offset=(57.20,-33.30)
+talon: hidden hidden
+discard: hidden hidden
+legal-owner: east
+legal-cards: 9♠ 10♠

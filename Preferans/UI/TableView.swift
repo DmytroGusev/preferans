@@ -312,7 +312,7 @@ public struct TableView: View {
     /// auction-trail row at the top of the strip as the primary read
     /// of "where is the auction".
     private func biddingContext() -> some View {
-        let active = tableOrderedActiveSeats()
+        let active = projection.tableClockwiseAuctionSeats
         return VStack(spacing: 14) {
             auctionPanelTitle
             HStack(spacing: 0) {
@@ -340,21 +340,6 @@ public struct TableView: View {
                 .strokeBorder(TableTheme.gold.opacity(0.34), lineWidth: 0.75)
         )
         .multilineTextAlignment(.center)
-    }
-
-    private func tableOrderedActiveSeats() -> [SeatProjection] {
-        let opponents = projection.tableClockwiseOpponentSeats.filter { $0.role != .sittingOut }
-        guard let viewerSeat = projection.seats.first(where: {
-            $0.player == projection.viewer && $0.role != .sittingOut
-        }) else {
-            return opponents
-        }
-
-        guard opponents.count == 2 else {
-            return [viewerSeat] + opponents
-        }
-
-        return [opponents[0], viewerSeat, opponents[1]]
     }
 
     private var auctionPanelTitle: some View {
