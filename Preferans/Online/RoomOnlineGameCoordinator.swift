@@ -839,7 +839,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard let peer = peersBySeat[identity.playerID] else { return false }
             // A seat counts as filled when a human has claimed it or a bot owns
             // it; only an unclaimed `pending:` seat is still missing a player.
-            return peer.isBotSeat || !peer.isPendingSeat
+            // (`bot:` accounts are non-`pending:`, so this covers them too.)
+            return !peer.isPendingSeat
         }
     }
 

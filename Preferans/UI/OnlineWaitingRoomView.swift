@@ -175,7 +175,7 @@ public struct OnlineWaitingRoomView: View {
                 .foregroundStyle(info.iconColor)
                 .font(.title3)
                 .frame(width: 24)
-            Text(info.title)
+            info.title
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(info.isOpen ? TableTheme.inkCreamSoft : TableTheme.inkCream)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -295,7 +295,10 @@ public struct OnlineWaitingRoomView: View {
     private struct OccupancyInfo {
         let icon: String
         let iconColor: Color
-        let title: LocalizedStringKey
+        /// Built as `Text` (not `LocalizedStringKey`) so player names go out
+        /// `verbatim` — a name colliding with a catalog key must not be
+        /// translated — while the bot/open titles stay localizable.
+        let title: Text
         let pill: LocalizedStringKey
         let pillAccent: Bool
         let isOpen: Bool
@@ -308,7 +311,7 @@ public struct OnlineWaitingRoomView: View {
             return OccupancyInfo(
                 icon: "person.crop.circle.fill",
                 iconColor: TableTheme.goldBright,
-                title: LocalizedStringKey(name),
+                title: Text(verbatim: name),
                 pill: "You",
                 pillAccent: true,
                 isOpen: false,
@@ -318,7 +321,7 @@ public struct OnlineWaitingRoomView: View {
             return OccupancyInfo(
                 icon: "person.crop.circle.fill",
                 iconColor: TableTheme.goldBright,
-                title: LocalizedStringKey(name),
+                title: Text(verbatim: name),
                 pill: "Ready",
                 pillAccent: false,
                 isOpen: false,
@@ -328,7 +331,7 @@ public struct OnlineWaitingRoomView: View {
             return OccupancyInfo(
                 icon: "cpu",
                 iconColor: TableTheme.gold,
-                title: "Bot",
+                title: Text("Bot"),
                 pill: "Bot",
                 pillAccent: false,
                 isOpen: false,
@@ -338,7 +341,7 @@ public struct OnlineWaitingRoomView: View {
             return OccupancyInfo(
                 icon: "hourglass",
                 iconColor: TableTheme.inkCreamSoft,
-                title: "Waiting for a friend…",
+                title: Text("Waiting for a friend…"),
                 pill: "Open",
                 pillAccent: false,
                 isOpen: true,
