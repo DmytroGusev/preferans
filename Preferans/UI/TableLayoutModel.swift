@@ -192,6 +192,23 @@ public struct TableLayoutModel: Equatable {
         seat.hand.contains { $0.knownCard != nil }
     }
 
+    /// Opponent order for a viewer-relative table where the viewer's hand
+    /// stays at the bottom: first item is the next seat clockwise, then the
+    /// order continues around the table.
+    public static func clockwiseOpponents(
+        players: [PlayerID],
+        viewer: PlayerID
+    ) -> [PlayerID] {
+        guard let viewerIndex = players.firstIndex(of: viewer) else {
+            return players.filter { $0 != viewer }
+        }
+        guard players.count > 1 else { return [] }
+
+        return (1..<players.count).map { offset in
+            players[(viewerIndex + offset) % players.count]
+        }
+    }
+
     public static func trickOffset(
         for player: PlayerID,
         viewer: PlayerID,
@@ -216,5 +233,25 @@ public struct TableLayoutModel: Equatable {
         default:
             return .zero
         }
+    }
+}
+
+extension PlayerGameProjection {
+    var tableClockwiseOpponentSeats: [SeatProjection] {
+        let seatsByPlayer = Dictionary(
+            seats.map { ($0.player, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var orderedSeats = TableLayoutModel
+            .clockwiseOpponents(players: players, viewer: viewer)
+            .compactMap { seatsByPlayer[$0] }
+        var seen = Set(orderedSeats.map(\.player))
+
+        for seat in seats where seat.player != viewer && !seen.contains(seat.player) {
+            orderedSeats.append(seat)
+            seen.insert(seat.player)
+        }
+
+        return orderedSeats
     }
 }

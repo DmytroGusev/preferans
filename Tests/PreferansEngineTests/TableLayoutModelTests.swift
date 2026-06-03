@@ -3,6 +3,44 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testClockwiseOpponentsRotateFromEveryViewer() {
+        let players: [PlayerID] = ["north", "east", "south", "west"]
+
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "north"),
+            ["east", "south", "west"]
+        )
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "east"),
+            ["south", "west", "north"]
+        )
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "south"),
+            ["west", "north", "east"]
+        )
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "west"),
+            ["north", "east", "south"]
+        )
+    }
+
+    func testThreePlayerClockwiseOpponentsKeepNextSeatOnTheLeft() {
+        let players: [PlayerID] = ["north", "east", "south"]
+
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "north"),
+            ["east", "south"]
+        )
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "east"),
+            ["south", "north"]
+        )
+        XCTAssertEqual(
+            TableLayoutModel.clockwiseOpponents(players: players, viewer: "south"),
+            ["north", "east"]
+        )
+    }
+
     func testThreeOpponentSlotsStayInUpperThirdWithCenterSeatHighest() {
         let layout = TableLayoutModel(bounds: CGSize(width: 1_000, height: 700))
         let slots = layout.opponentSlots(opponents: [

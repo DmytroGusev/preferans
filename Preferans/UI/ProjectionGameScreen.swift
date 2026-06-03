@@ -244,7 +244,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     }
 
     private var orderedOpponentSeats: [SeatProjection] {
-        projection.seats.filter { $0.player != projection.viewer }
+        projection.tableClockwiseOpponentSeats
     }
 
     /// True when at least one active opponent has a revealed hand —

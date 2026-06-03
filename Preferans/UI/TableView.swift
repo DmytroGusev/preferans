@@ -312,7 +312,7 @@ public struct TableView: View {
     /// auction-trail row at the top of the strip as the primary read
     /// of "where is the auction".
     private func biddingContext() -> some View {
-        let active = projection.seats.filter { $0.role != .sittingOut }
+        let active = tableOrderedActiveSeats()
         return VStack(spacing: 14) {
             auctionPanelTitle
             HStack(spacing: 0) {
@@ -340,6 +340,21 @@ public struct TableView: View {
                 .strokeBorder(TableTheme.gold.opacity(0.34), lineWidth: 0.75)
         )
         .multilineTextAlignment(.center)
+    }
+
+    private func tableOrderedActiveSeats() -> [SeatProjection] {
+        let opponents = projection.tableClockwiseOpponentSeats.filter { $0.role != .sittingOut }
+        guard let viewerSeat = projection.seats.first(where: {
+            $0.player == projection.viewer && $0.role != .sittingOut
+        }) else {
+            return opponents
+        }
+
+        guard opponents.count == 2 else {
+            return [viewerSeat] + opponents
+        }
+
+        return [opponents[0], viewerSeat, opponents[1]]
     }
 
     private var auctionPanelTitle: some View {
@@ -713,14 +728,14 @@ public struct TableView: View {
         TableLayoutModel.trickOffset(for: player, viewer: projection.viewer, opponents: opponents)
     }
 
-    /// Every seat except the viewer's, including the 4-player sitting-out
-    /// dealer. The caller splits this into active vs sitting-out so the
-    /// active opponents claim the main slot layout while the sitting-out
-    /// seat is rendered as a compact corner chip — hiding the dealer
-    /// entirely was confusing for users who couldn't see who's at the
-    /// table during the deal they're sitting out.
+    /// Every seat except the viewer's in clockwise table order, including
+    /// the 4-player sitting-out dealer. The caller splits this into active
+    /// vs sitting-out so the active opponents claim the main slot layout
+    /// while the sitting-out seat is rendered as a compact corner chip —
+    /// hiding the dealer entirely was confusing for users who couldn't see
+    /// who's at the table during the deal they're sitting out.
     private func orderedOpponents() -> [SeatProjection] {
-        projection.seats.filter { $0.player != projection.viewer }
+        projection.tableClockwiseOpponentSeats
     }
 
     private func seatOrderNumber(for player: PlayerID) -> Int? {
