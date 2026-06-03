@@ -138,13 +138,10 @@ public struct TableView: View {
                     .accessibilityIdentifier(UIIdentifiers.waitingForViewer)
             }
             if canTap {
-                HStack(spacing: 6) {
-                    Image(systemName: "hand.tap.fill")
-                        .font(.caption)
-                    Text("Tap to continue")
-                        .font(.caption.weight(.semibold))
-                }
-                .foregroundStyle(TableTheme.inkCream)
+                Image(systemName: "hand.tap.fill")
+                    .font(.caption)
+                    .foregroundStyle(TableTheme.inkCream)
+                    .accessibilityLabel(Text("Tap to continue"))
             }
         }
         .padding(.horizontal, 14)
