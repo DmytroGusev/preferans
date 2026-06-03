@@ -13,7 +13,14 @@ export const MAX_RECENT_MESSAGES = 200;
 /// late human can never claim it.
 export const PENDING_ACCOUNT_PREFIX = "pending:";
 
+/// Account-ID prefix for a seat the host fills with a server-side bot it drives
+/// itself. Kept in sync with the Swift client's `OnlinePeer.botAccountPrefix`.
+/// A `bot:` seat is not `pending:`, so — like any claimed seat — it can never be
+/// taken by a late joiner.
+export const BOT_ACCOUNT_PREFIX = "bot:";
+
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const HOST_SECRET_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "dev"]);
 
 export type OnlineAccountProvider = "gameCenter" | "apple" | "email" | "dev";
@@ -33,6 +40,10 @@ export interface RoomState {
   schemaVersion: number;
   roomCode: string;
   hostPlayerID: string;
+  /// Secret minted at creation and handed back only in the `/create` response.
+  /// Required to authenticate host-only mutations. Never included in `publicRoom`,
+  /// so it is never broadcast to guests over presence/summary/join.
+  hostSecret: string;
   peers: OnlinePeer[];
   maxPlayers: number;
   createdAt: string;
@@ -58,6 +69,9 @@ export interface CreateRoomInput {
   seats?: unknown[];
   maxPlayers?: number;
   now?: string;
+  /// Optional override for the generated host secret (tests pin it for
+  /// determinism; production lets `createInitialRoom` mint a random one).
+  hostSecret?: string;
 }
 
 export interface RelayEntry {
@@ -93,6 +107,15 @@ export function generateRoomCode(random: () => number = Math.random): string {
     code += ROOM_CODE_ALPHABET[alphabetIndex] ?? ROOM_CODE_ALPHABET[0];
   }
   return code;
+}
+
+export function generateHostSecret(random: () => number = Math.random): string {
+  let secret = "";
+  for (let index = 0; index < 24; index += 1) {
+    const alphabetIndex = Math.floor(random() * HOST_SECRET_ALPHABET.length);
+    secret += HOST_SECRET_ALPHABET[alphabetIndex] ?? HOST_SECRET_ALPHABET[0];
+  }
+  return secret;
 }
 
 export function normalizeRoomCode(value: unknown): string {
@@ -163,7 +186,8 @@ export function createInitialRoom({
   localPeer,
   seats,
   maxPlayers = DEFAULT_MAX_PLAYERS,
-  now = new Date().toISOString()
+  now = new Date().toISOString(),
+  hostSecret
 }: CreateRoomInput): RoomState {
   const normalizedRoomCode = normalizeRoomCode(roomCode);
   const normalizedMaxPlayers = clampMaxPlayers(maxPlayers);
@@ -181,6 +205,7 @@ export function createInitialRoom({
     schemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: normalizedRoomCode,
     hostPlayerID: peerID(peers[0]),
+    hostSecret: hostSecret && hostSecret.length > 0 ? hostSecret : generateHostSecret(),
     peers,
     maxPlayers: normalizedMaxPlayers,
     createdAt: now,
@@ -188,6 +213,29 @@ export function createInitialRoom({
     relaySequence: 0,
     recentMessages: []
   };
+}
+
+/// Convert every still-open (`pending:`) seat into a host-driven bot, binding the
+/// bot's account to its seat (`bot:<playerID>`). Claimed and already-bot seats are
+/// left untouched. Returns the same room reference when nothing was open, so the
+/// caller can skip the storage write and presence broadcast.
+export function fillOpenSeatsWithBots(room: RoomState, now = new Date().toISOString()): RoomState {
+  let changed = false;
+  const peers = room.peers.map((peer) => {
+    if (!peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX)) {
+      return peer;
+    }
+    changed = true;
+    return {
+      ...peer,
+      accountID: `${BOT_ACCOUNT_PREFIX}${peerID(peer)}`,
+      provider: "dev" as OnlineAccountProvider
+    };
+  });
+  if (!changed) {
+    return room;
+  }
+  return { ...room, peers, updatedAt: now };
 }
 
 export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().toISOString()): RoomState {

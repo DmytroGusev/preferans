@@ -100,9 +100,30 @@ public protocol RoomRealtimeTransport: AnyObject {
 
     func chooseHost() async -> OnlinePeer?
     func messages() -> AsyncStream<ReceivedRoomMessage>
+    /// A stream of roster snapshots, emitted whenever the room's authority pushes
+    /// a new membership (the relay's presence broadcast). The waiting room is
+    /// driven off this so an already-connected client reflects later joins and
+    /// leaves instead of freezing on the roster it saw at its own join. Transports
+    /// with no server-pushed presence inherit the default empty stream.
+    func participantUpdates() -> AsyncStream<[OnlinePeer]>
     func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws
     func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws
+    /// Ask the room's authority to convert every still-open (`pending:`) seat into
+    /// a host-driven bot. Returns the updated roster when the transport owns a
+    /// server-side authority that performed the change (Cloudflare), or `nil` when
+    /// the caller should fall back to converting seats locally (in-memory/GameKit).
+    func fillPendingSeatsWithBots() async throws -> [OnlinePeer]?
     func disconnect()
+}
+
+public extension RoomRealtimeTransport {
+    /// Default: no server-pushed presence, so the roster is fixed at attach time.
+    func participantUpdates() -> AsyncStream<[OnlinePeer]> {
+        AsyncStream { $0.finish() }
+    }
+
+    /// Default: no server-side seat authority — the caller converts seats itself.
+    func fillPendingSeatsWithBots() async throws -> [OnlinePeer]? { nil }
 }
 
 /// Whether this client is currently hearing back from the authoritative host.
@@ -165,6 +186,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var transport: (any RoomRealtimeTransport)?
     private var hostActor: HostGameActor?
     private var listenTask: Task<Void, Never>?
+    private var participantsTask: Task<Void, Never>?
     private var hostPeer: OnlinePeer?
     private var peersBySeat: [PlayerID: OnlinePeer] = [:]
     private var seats: [PlayerIdentity] = []
@@ -206,6 +228,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     deinit {
         listenTask?.cancel()
+        participantsTask?.cancel()
         heartbeatTask?.cancel()
         pendingBotTask?.cancel()
     }
@@ -219,8 +242,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.didAutoStartOnlineDeal = false
         self.transport = transport
         self.listenTask?.cancel()
+        self.participantsTask?.cancel()
         self.heartbeatTask?.cancel()
         self.listenTask = listen(to: transport)
+        self.participantsTask = observeParticipants(of: transport)
 
         let participants = orderedParticipants(from: transport.participants)
         let seats = participants.map(\.playerIdentity)
@@ -246,6 +271,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     public func detach() {
         listenTask?.cancel()
         listenTask = nil
+        participantsTask?.cancel()
+        participantsTask = nil
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
@@ -334,12 +361,25 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     /// Convert every still-open (`pending:`) seat into a host-driven bot, then
     /// re-advertise the roster so clients see the change. Use this when a friend
-    /// didn't show and the host wants to start anyway. (Seats created as `bot:`
-    /// up front never reach here — only no-shows are converted, which is the one
-    /// path a late human could still race; the late-join guard in `handle(.hello)`
-    /// rejects such a claim.)
+    /// didn't show and the host wants to start anyway.
+    ///
+    /// When the transport owns a server-side authority (Cloudflare), the relay's
+    /// Durable Object flips the seats and pushes the new roster over presence —
+    /// closing the late-join race at the source, since a human can no longer be
+    /// routed onto a seat the server already converted. Transports with no such
+    /// authority (in-memory/GameKit) fall back to converting locally and
+    /// advertising the roster over the wire.
     public func fillOpenSeatsWithBots() async {
         guard isHost else { return }
+        do {
+            if try await transport?.fillPendingSeatsWithBots() != nil {
+                refreshPeersFromTransport()
+                return
+            }
+        } catch {
+            errorText = error.localizedDescription
+            return
+        }
         refreshPeersFromTransport()
         var changed = false
         for identity in seats {
@@ -544,6 +584,19 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
+    /// Reconcile the roster against every presence broadcast the relay pushes.
+    /// Without this, a client only learns the membership it saw at its own join:
+    /// a later peer's arrival updates the host and the new joiner, but already-
+    /// connected clients froze on a stale roster. Driving off the relay's presence
+    /// keeps the Durable Object the single source of truth for who is seated.
+    private func observeParticipants(of transport: any RoomRealtimeTransport) -> Task<Void, Never> {
+        Task { [weak self] in
+            for await _ in transport.participantUpdates() {
+                self?.refreshPeersFromTransport()
+            }
+        }
+    }
+
     private func handle(_ received: ReceivedRoomMessage) async {
         switch received.message {
         case let .seatAssignment(assignment):
@@ -560,18 +613,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         case let .hello(hello):
             guard isHost else { return }
-            // Late-join guard: the worker still saw a no-show seat as `pending:`
-            // and let a human in after the host converted it to a bot. Reject
-            // the claim rather than letting two actors drive one seat.
-            if botSeats.contains(hello.player.playerID) {
-                await sendHostError(
-                    to: received.sender,
-                    recipient: hello.player.playerID,
-                    nonce: nil,
-                    message: String(localized: "That seat is now filled by a bot.")
-                )
-                return
-            }
+            // No late-join bot-seat guard is needed: the relay's Durable Object now
+            // converts open seats to bots authoritatively (see `fillOpenSeatsWithBots`),
+            // so a human is always routed onto a still-open seat and can never send a
+            // hello for a seat the host already drives as a bot.
             if tableID == nil { tableID = hello.tableID }
             refreshPeerMapping(peer: received.sender, identity: hello.player)
             if let hostActor, let peer = peersBySeat[hello.player.playerID] {
@@ -787,6 +832,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             if shouldReplacePeer(existing, with: peer) {
                 peersBySeat[peer.playerID] = peer
             }
+            // Adopt any seat the relay reports as a bot so the host engine drives
+            // it. Insert-only: a seat never un-bots, so this can't drop a bot the
+            // local-authority path inserted before the roster echoed back.
+            if peer.isBotSeat { botSeats.insert(peer.playerID) }
         }
         recomputeRoster()
     }

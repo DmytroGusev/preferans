@@ -6,6 +6,7 @@ import {
   type WirePlayerID,
   RoomStateError,
   createInitialRoom,
+  fillOpenSeatsWithBots,
   generateRoomCode,
   joinRoom,
   normalizePeer,
@@ -48,8 +49,16 @@ interface JoinRoomBody {
   localPeer?: unknown;
 }
 
+interface FillBotsBody {
+  hostSecret?: unknown;
+}
+
+/// A `PublicRoom` plus the host secret — only ever produced by `/create`.
+type RoomWithSecret = PublicRoom & { hostSecret?: string };
+
 interface RoomWithSocketURL extends PublicRoom {
   websocketURL: string;
+  hostSecret?: string;
 }
 
 interface ClientSocketEnvelope {
@@ -92,6 +101,14 @@ export default {
           roomCode
         });
         return json(withSocketURL(request, room, body.localPeer));
+      }
+
+      const fillBotsMatch = url.pathname.match(/^\/rooms\/([A-Za-z0-9-]+)\/seats\/fill-bots$/);
+      if (fillBotsMatch && request.method === "POST") {
+        const roomCode = normalizeRoomCode(fillBotsMatch[1]);
+        const body = await readJSON<FillBotsBody>(request);
+        const room = await roomFetch(env, roomCode, "/seats/fill-bots", body);
+        return json(room);
       }
 
       const match = url.pathname.match(/^\/rooms\/([A-Za-z0-9-]+)(?:\/(join|socket))?$/);
@@ -143,11 +160,11 @@ export class PreferansRoom {
         const body = await readJSON<CreateRoomInput>(request);
         const existing = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
         if (existing) {
-          return json(publicRoom(existing));
+          return json(createResult(existing));
         }
         const room = createInitialRoom(body);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
-        return json(publicRoom(room), 201);
+        return json(createResult(room), 201);
       }
 
       if (request.method === "POST" && url.pathname === "/join") {
@@ -156,6 +173,21 @@ export class PreferansRoom {
         const updated = joinRoom(room, body.localPeer);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
         await this.broadcastPresence(updated);
+        return json(publicRoom(updated));
+      }
+
+      if (request.method === "POST" && url.pathname === "/seats/fill-bots") {
+        const body = await readJSON<FillBotsBody>(request);
+        const room = await this.loadRequiredRoom();
+        // Host-only: the caller must present the secret minted at `/create`.
+        if (!room.hostSecret || String(body.hostSecret ?? "") !== room.hostSecret) {
+          throw new RoomStateError("forbidden", "Only the host can fill open seats with bots.", 403);
+        }
+        const updated = fillOpenSeatsWithBots(room);
+        if (updated !== room) {
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+          await this.broadcastPresence(updated);
+        }
         return json(publicRoom(updated));
       }
 
@@ -290,7 +322,7 @@ export class PreferansRoom {
   }
 }
 
-async function roomFetch(env: Env, roomCode: string, pathname: string, body?: unknown): Promise<PublicRoom> {
+async function roomFetch(env: Env, roomCode: string, pathname: string, body?: unknown): Promise<RoomWithSecret> {
   const id = env.ROOMS.idFromName(roomCode);
   const stub = env.ROOMS.get(id);
   const response = await stub.fetch(`https://room${pathname}`, {
@@ -298,14 +330,21 @@ async function roomFetch(env: Env, roomCode: string, pathname: string, body?: un
     headers: { "content-type": "application/json" },
     body: body ? JSON.stringify(body) : undefined
   });
-  const data = await response.json() as { code?: string; error?: string } & PublicRoom;
+  const data = await response.json() as { code?: string; error?: string } & RoomWithSecret;
   if (!response.ok) {
     throw new RoomStateError(data.code ?? "room_error", data.error ?? "Room request failed.", response.status);
   }
   return data;
 }
 
-function withSocketURL(request: Request, room: PublicRoom, localPeer: unknown): RoomWithSocketURL {
+/// The `/create` response: the public room plus the host secret. This is the one
+/// and only payload that carries the secret — every other surface uses
+/// `publicRoom`, which omits it.
+function createResult(room: RoomState): RoomWithSecret {
+  return { ...publicRoom(room), hostSecret: room.hostSecret };
+}
+
+function withSocketURL(request: Request, room: RoomWithSecret, localPeer: unknown): RoomWithSocketURL {
   const url = new URL(request.url);
   const protocol = url.protocol === "https:" ? "wss:" : "ws:";
   const playerID = assignedSeatID(room, localPeer);

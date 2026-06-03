@@ -11,6 +11,10 @@ public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
     public var updatedAt: String
     public var relaySequence: Int
     public var websocketURL: URL?
+    /// Returned only in the `/create` response — the secret the room's host must
+    /// present to perform host-only mutations (e.g. filling open seats with bots).
+    /// Absent (`nil`) on join/summary/presence payloads, so guests never see it.
+    public var hostSecret: String?
 }
 
 public enum CloudflareRoomTransportError: LocalizedError {
@@ -48,10 +52,14 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 
     private let socketURL: URL
     private let session: URLSession
+    /// The host secret from the `/create` response; required to authenticate
+    /// host-only mutations. `nil` on a joined (guest) transport.
+    private let hostSecret: String?
     private var socketTask: URLSessionWebSocketTask?
     private var connectionTask: Task<Void, Never>?
     private var isClosed = false
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
+    private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
 
     private var encoder: JSONEncoder { PreferansJSONCoder.encoder }
     private var decoder: JSONDecoder { PreferansJSONCoder.decoder }
@@ -66,6 +74,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.participants = summary.peers
         self.hostPlayerID = summary.hostPlayerID
         self.socketURL = socketURL
+        self.hostSecret = summary.hostSecret
         self.session = session
     }
 
@@ -117,12 +126,51 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         }
     }
 
+    public func participantUpdates() -> AsyncStream<[OnlinePeer]> {
+        connectIfNeeded()
+        let id = UUID()
+        return AsyncStream { continuation in
+            // Replay the current roster on subscribe so a presence frame that
+            // landed between attach and this subscription isn't missed.
+            continuation.yield(participants)
+            participantContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.participantContinuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
     public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) async throws {
         try await send(ClientSocketEnvelope(type: .wire, recipients: peers.map(\.playerID), reliable: reliably, message: message))
     }
 
     public func sendToAll(_ message: GameWireMessage, reliably: Bool = true) async throws {
         try await send(ClientSocketEnvelope(type: .wire, recipients: nil, reliable: reliably, message: message))
+    }
+
+    /// Ask the worker to convert every still-open (`pending:`) seat into a bot.
+    /// Authenticated with the host secret from `/create`, so only the host can do
+    /// it. Adopts and re-publishes the roster the server returns so the caller
+    /// sees the change without waiting for the presence broadcast to round-trip.
+    public func fillPendingSeatsWithBots() async throws -> [OnlinePeer]? {
+        guard let hostSecret else {
+            throw CloudflareRoomTransportError.serverError("Only the host can fill open seats with bots.")
+        }
+        let summary = try await Self.postRoomRequest(
+            FillBotsRequest(hostSecret: hostSecret),
+            to: Self.endpoint(baseURL, "rooms", roomCode, "seats", "fill-bots"),
+            session: session
+        )
+        participants = summary.peers
+        hostPlayerID = summary.hostPlayerID
+        emitParticipants()
+        return summary.peers
+    }
+
+    private func emitParticipants() {
+        for continuation in participantContinuations.values {
+            continuation.yield(participants)
+        }
     }
 
     public func disconnect() {
@@ -135,6 +183,10 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             continuation.finish()
         }
         continuations.removeAll()
+        for continuation in participantContinuations.values {
+            continuation.finish()
+        }
+        participantContinuations.removeAll()
     }
 
     private func connectIfNeeded() {
@@ -231,6 +283,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             if let room = envelope.room {
                 participants = room.peers
                 hostPlayerID = room.hostPlayerID
+                emitParticipants()
             }
         case .wire:
             guard let sender = envelope.sender, let message = envelope.message else { return }
@@ -282,6 +335,10 @@ private struct CreateRoomRequest: Encodable {
 
 private struct JoinRoomRequest: Encodable {
     var localPeer: OnlinePeer
+}
+
+private struct FillBotsRequest: Encodable {
+    var hostSecret: String
 }
 
 private struct RoomServerError: Decodable {

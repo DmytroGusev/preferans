@@ -83,6 +83,37 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertEqual(eastCoordinator.projection?.tableID, hostCoordinator.tableID)
     }
 
+    func testWaitingRoomRosterReflectsLaterJoinViaPresence() async throws {
+        // A guest (east) is seated while south is still an unclaimed `pending:`
+        // seat. This reproduces the stale-roster bug: a guest that joined before
+        // south must still see south fill in when a later presence broadcast
+        // arrives, rather than freezing on the roster it saw at its own join.
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
+        let pendingSouth = OnlinePeer(playerID: "south", accountID: "pending:south", provider: .dev, displayName: "South")
+        let joinedSouth = OnlinePeer(playerID: "south", accountID: "anonymous:south:joined", provider: .dev, displayName: "Sue")
+
+        let transport = PresenceDrivenTransport(
+            localPeer: east,
+            hostPlayerID: "north",
+            participants: [host, east, pendingSouth]
+        )
+        let coordinator = RoomOnlineGameCoordinator(heartbeat: .disabled, runsServerSideBots: false)
+        await coordinator.attach(transport: transport)
+
+        // Before anyone claims south, the guest renders it as an open seat.
+        XCTAssertEqual(
+            coordinator.rosterSeats.first { $0.player == "south" }?.occupancy,
+            .openWaiting
+        )
+
+        // The relay broadcasts presence with south now claimed by a human.
+        transport.simulatePresence([host, east, joinedSouth])
+        await pump(until: {
+            coordinator.rosterSeats.first { $0.player == "south" }?.occupancy == .human(name: "Sue")
+        })
+    }
+
     func testClientActionFlowsThroughHostAndSpoofedActorIsRejected() async throws {
         let fixture = try await makeFixture()
 
@@ -653,6 +684,61 @@ private final class AccountAddressedTransport: RoomRealtimeTransport {
             for continuation in continuations.values {
                 continuation.yield(message)
             }
+        }
+    }
+}
+
+/// A transport whose roster can change after attach, mirroring the Cloudflare
+/// relay pushing a fresh presence snapshot. `simulatePresence` updates the roster
+/// and notifies subscribers; `participantUpdates` replays the current roster on
+/// subscribe so the coordinator can't miss a snapshot that landed first.
+@MainActor
+private final class PresenceDrivenTransport: RoomRealtimeTransport {
+    let localPeer: OnlinePeer
+    private(set) var participants: [OnlinePeer]
+
+    private let hostPlayerID: PlayerID
+    private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
+
+    init(localPeer: OnlinePeer, hostPlayerID: PlayerID, participants: [OnlinePeer]) {
+        self.localPeer = localPeer
+        self.hostPlayerID = hostPlayerID
+        self.participants = participants
+    }
+
+    func chooseHost() async -> OnlinePeer? {
+        participants.first { $0.playerID == hostPlayerID }
+    }
+
+    func messages() -> AsyncStream<ReceivedRoomMessage> {
+        AsyncStream { $0.finish() }
+    }
+
+    func participantUpdates() -> AsyncStream<[OnlinePeer]> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            continuation.yield(participants)
+            participantContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.participantContinuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
+    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws {}
+    func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {}
+
+    func disconnect() {
+        for continuation in participantContinuations.values {
+            continuation.finish()
+        }
+        participantContinuations.removeAll()
+    }
+
+    func simulatePresence(_ peers: [OnlinePeer]) {
+        participants = peers
+        for continuation in participantContinuations.values {
+            continuation.yield(peers)
         }
     }
 }

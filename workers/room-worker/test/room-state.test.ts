@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createInitialRoom,
+  fillOpenSeatsWithBots,
   joinRoom,
   type OnlinePeer,
   playerIDValue,
@@ -199,6 +200,45 @@ test("relay records are sequenced and capped", () => {
   assert.equal(room.relaySequence, 205);
   assert.equal(room.recentMessages.length, 200);
   assert.equal(room.recentMessages[0].serverSequence, 6);
+});
+
+test("mints a host secret that publicRoom never exposes", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+
+  assert.ok(typeof room.hostSecret === "string" && room.hostSecret.length >= 16);
+  // The secret authenticates host-only mutations, so it must never leak to the
+  // payload guests receive over summary/join/presence.
+  assert.ok(!("hostSecret" in publicRoom(room)));
+});
+
+test("fill-bots converts every open seat to a bot and leaves the rest", () => {
+  // North (host) + a claimed east + a still-open south.
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, openSouth] });
+  const filled = fillOpenSeatsWithBots(room, "2026-05-04T00:00:01.000Z");
+
+  assert.equal(filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "south")?.accountID, "bot:south");
+  // The host and the already-claimed seat are untouched.
+  assert.equal(filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "north")?.accountID, north.accountID);
+  assert.equal(filled.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === "east")?.accountID, east.accountID);
+  assert.equal(filled.updatedAt, "2026-05-04T00:00:01.000Z");
+});
+
+test("fill-bots is a no-op when no seat is open", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  // Same reference back signals the caller to skip the storage write + broadcast.
+  assert.equal(fillOpenSeatsWithBots(room), room);
+});
+
+test("a seat converted to a bot can no longer be claimed by a late joiner", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, openSouth], maxPlayers: 3 });
+  const filled = fillOpenSeatsWithBots(room);
+
+  // South is now a bot; east is the only human seat and it is already claimed,
+  // so a late human has nowhere to sit.
+  assert.throws(
+    () => joinRoom(filled, { playerID: { rawValue: "south" }, accountID: "apple:late", provider: "apple", displayName: "Late" }),
+    /Room is full/
+  );
 });
 
 test("accepts raw string player IDs for HTTP query parameters", () => {
