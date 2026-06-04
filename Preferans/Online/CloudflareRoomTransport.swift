@@ -167,6 +167,108 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         return summary.peers
     }
 
+    /// Push the host's progress to the worker: lifecycle status, the
+    /// worker-readable summary, and the opaque resume snapshot. Authenticated
+    /// with the host secret, so a guest transport (no secret) is a silent no-op.
+    /// Best-effort and called after every host update — the room/engine remain
+    /// the source of truth if a report is lost.
+    public func reportState(
+        status: PreferansGameStatus,
+        summary: OnlineStateSummary,
+        snapshot: PreferansSnapshot?,
+        snapshotSequence: Int
+    ) async throws {
+        guard let hostSecret else { return }
+        // Send the snapshot as a *pre-encoded JSON string*, not an inline object:
+        // the worker stores the blob via JS `JSON.parse`/`stringify`, which would
+        // silently round large engine integers through a double and corrupt them
+        // (> 2^53). Keeping it an opaque string makes the round-trip byte-exact.
+        let snapshotBlob = try snapshot.map { String(decoding: try encoder.encode($0), as: UTF8.self) }
+        let body = StateReportRequest(
+            hostSecret: hostSecret,
+            status: status,
+            summary: summary,
+            snapshot: snapshotBlob,
+            snapshotSequence: snapshotSequence
+        )
+        var request = URLRequest(url: Self.endpoint(baseURL, "rooms", roomCode, "state"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try encoder.encode(body)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        if !(200..<300).contains(http.statusCode) {
+            if let serverError = try? decoder.decode(RoomServerError.self, from: data) {
+                throw CloudflareRoomTransportError.serverError(serverError.error)
+            }
+            throw CloudflareRoomTransportError.serverError("Room server returned HTTP \(http.statusCode).")
+        }
+    }
+
+    /// Fetch the durable resume snapshot for a room, gated server-side on the
+    /// caller presenting a seat they hold. Static because resume runs before a
+    /// live transport exists — the lobby calls this, then hands the snapshot to
+    /// a freshly attached coordinator.
+    public static func fetchSnapshot(
+        baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
+        roomCode: String,
+        playerID: PlayerID,
+        session: URLSession = .shared
+    ) async throws -> ResumeSnapshotPayload {
+        var components = URLComponents(
+            url: endpoint(baseURL, "rooms", roomCode, "snapshot"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [URLQueryItem(name: "playerID", value: playerID.rawValue)]
+        guard let url = components?.url else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        if !(200..<300).contains(http.statusCode) {
+            if let serverError = try? PreferansJSONCoder.decoder.decode(RoomServerError.self, from: data) {
+                throw CloudflareRoomTransportError.serverError(serverError.error)
+            }
+            throw CloudflareRoomTransportError.serverError("Room server returned HTTP \(http.statusCode).")
+        }
+        return try PreferansJSONCoder.decoder.decode(ResumeSnapshotPayload.self, from: data)
+    }
+
+    /// Abandon an unfinished game from the lobby (a game the player isn't
+    /// currently sitting at). Authorized by the seat the account holds, not the
+    /// host secret — so it works even though the original host is gone. Static,
+    /// since there's no live transport for a game that isn't open.
+    public static func abandon(
+        baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
+        roomCode: String,
+        playerID: PlayerID,
+        session: URLSession = .shared
+    ) async throws {
+        var request = URLRequest(url: endpoint(baseURL, "rooms", roomCode, "abandon"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try PreferansJSONCoder.encoder.encode(AbandonRequest(playerID: playerID))
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        if !(200..<300).contains(http.statusCode) {
+            if let serverError = try? PreferansJSONCoder.decoder.decode(RoomServerError.self, from: data) {
+                throw CloudflareRoomTransportError.serverError(serverError.error)
+            }
+            throw CloudflareRoomTransportError.serverError("Room server returned HTTP \(http.statusCode).")
+        }
+    }
+
     private func emitParticipants() {
         for continuation in participantContinuations.values {
             continuation.yield(participants)
@@ -339,6 +441,21 @@ private struct JoinRoomRequest: Encodable {
 
 private struct FillBotsRequest: Encodable {
     var hostSecret: String
+}
+
+private struct StateReportRequest: Encodable {
+    var hostSecret: String
+    var status: PreferansGameStatus
+    var summary: OnlineStateSummary
+    /// The PreferansSnapshot pre-encoded to a JSON string. Sent as a string (not
+    /// a nested object) so the worker never re-parses it and can't lose integer
+    /// precision; it stores and returns the bytes verbatim.
+    var snapshot: String?
+    var snapshotSequence: Int
+}
+
+private struct AbandonRequest: Encodable {
+    var playerID: PlayerID
 }
 
 private struct RoomServerError: Decodable {

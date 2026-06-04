@@ -110,6 +110,7 @@ public final class LobbyViewModel: ObservableObject {
                     peers: setup.peers,
                     localPlayerID: setup.localPlayer,
                     rules: setup.rules,
+                    variantTag: onlineVariant.rawValue,
                     botMoveDelay: delay
                 )
                 await session.start()
@@ -149,6 +150,7 @@ public final class LobbyViewModel: ObservableObject {
                     roomCode: roomCode,
                     localPeer: localPeer,
                     rules: setup.rules,
+                    variantTag: onlineVariant.rawValue,
                     botMoveDelay: delay
                 )
                 await session.start()
@@ -287,6 +289,78 @@ public final class LobbyViewModel: ObservableObject {
             return registeredName
         }
         return onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The account the worker indexes this device's games under: the registered
+    /// Apple identity when signed in, otherwise the persisted anonymous ID (which
+    /// only exists once the player has created/joined a room). Nil on a fresh
+    /// install that never played online — the "Your games" list stays empty.
+    public var currentOnlineAccountID: String? {
+        if let registeredOnlineAccount {
+            return registeredOnlineAccount.accountID
+        }
+        return UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID)
+    }
+
+    /// Resume an in-progress online game from the "Your games" list. Rebuilds the
+    /// local peer from the seat the summary records and this device's account, so
+    /// the worker rebinds the original seat by `accountID`.
+    public func resumeCloudflareOnlineRoom(_ summary: OnlineGameSummary) {
+        guard !isOnlineRoomLoading else { return }
+        guard let localPeer = resumeLocalPeer(for: summary) else {
+            errorText = String(localized: "Sign in or set your name to resume your games.")
+            infoText = nil
+            return
+        }
+        isOnlineRoomLoading = true
+        errorText = nil
+        infoText = nil
+        let delay = onlineBotMoveDelay
+        let variantTag = summary.variant ?? onlineVariant.rawValue
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let session = try await CloudflareOnlineGameSession.resumeRoom(
+                    roomCode: summary.roomCode,
+                    localPeer: localPeer,
+                    variantTag: variantTag,
+                    botMoveDelay: delay
+                )
+                await session.start()
+                cloudOnlineSession = session
+                onlineJoinRoomCode = session.roomCode
+            } catch {
+                errorText = error.localizedDescription
+            }
+            isOnlineRoomLoading = false
+        }
+    }
+
+    /// Give up an unfinished online game from the list (best-effort). The worker
+    /// authorizes by the seat the account holds, so no host secret is needed.
+    public func abandonOnlineGame(_ summary: OnlineGameSummary) async {
+        do {
+            try await CloudflareRoomTransport.abandon(
+                roomCode: summary.roomCode,
+                playerID: summary.youSeat
+            )
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func resumeLocalPeer(for summary: OnlineGameSummary) -> OnlinePeer? {
+        guard let accountID = currentOnlineAccountID else { return nil }
+        let provider = registeredOnlineAccount?.provider ?? .dev
+        let displayName = currentOnlineDisplayName.isEmpty
+            ? String(localized: "You")
+            : currentOnlineDisplayName
+        return OnlinePeer(
+            playerID: summary.youSeat,
+            accountID: accountID,
+            provider: provider,
+            displayName: displayName
+        )
     }
 
     private var onlineBotMoveDelay: Duration {

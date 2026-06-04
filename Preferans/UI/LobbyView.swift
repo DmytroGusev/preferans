@@ -6,12 +6,24 @@ import AuthenticationServices
 
 public struct LobbyView: View {
     @StateObject private var viewModel = LobbyViewModel()
+    @StateObject private var gameLibrary = OnlineGameLibrary()
     @State private var showingSettings = false
     @State private var showingWatchBotsConfirm = false
     @State private var showingConventionLegend = false
     @State private var didRunOnlineHarness = false
+    /// Finished game tapped for its result sheet.
+    @State private var historyGame: OnlineGameSummary?
 
     public init() {}
+
+    /// Re-fetches "Your games" whenever the player switches into online mode or
+    /// their account changes. Returning from a finished/left game re-creates the
+    /// lobby content, which also re-runs the `.task`, so the list stays fresh.
+    private var onlineGamesRefreshKey: String {
+        viewModel.lobbyMode == .online
+            ? "online:\(viewModel.currentOnlineAccountID ?? "anonymous-none")"
+            : "local"
+    }
 
     public var body: some View {
         NavigationStack {
@@ -111,6 +123,7 @@ public struct LobbyView: View {
                     localTableCard
                     onlineHiddenAffordances
                 } else {
+                    yourGamesSection
                     onlineSetupCard
                     localHiddenAffordances
                 }
@@ -139,6 +152,13 @@ public struct LobbyView: View {
         }
         .scrollIndicators(.hidden)
         .feltBackground()
+        .task(id: onlineGamesRefreshKey) {
+            guard viewModel.lobbyMode == .online else { return }
+            await gameLibrary.refresh(accountID: viewModel.currentOnlineAccountID)
+        }
+        .sheet(item: $historyGame) { game in
+            OnlineGameSummarySheet(game: game)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenLobby)
     }
@@ -459,6 +479,195 @@ public struct LobbyView: View {
             .accessibilityIdentifier(UIIdentifiers.lobbyBotSpeedPicker)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Your games (Continue / History)
+
+    /// The lobby's window onto a player's online games. Continue rows resume an
+    /// in-progress table; History rows open a finished game's result. Hidden
+    /// entirely until there's something to show (or an account to show nothing
+    /// for), so a brand-new player isn't greeted by an empty shelf.
+    @ViewBuilder
+    private var yourGamesSection: some View {
+        if !gameLibrary.inProgress.isEmpty || !gameLibrary.finished.isEmpty {
+            onlinePanel(title: "Your games", icon: "clock.arrow.circlepath") {
+                yourGamesRefreshRow
+                if !gameLibrary.inProgress.isEmpty {
+                    yourGamesSubhead("Continue")
+                    VStack(spacing: 8) {
+                        ForEach(gameLibrary.inProgress) { continueRow($0) }
+                    }
+                }
+                if !gameLibrary.finished.isEmpty {
+                    yourGamesSubhead("Finished")
+                    VStack(spacing: 8) {
+                        ForEach(gameLibrary.finished) { historyRow($0) }
+                    }
+                }
+                if let error = gameLibrary.loadError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .accessibilityIdentifier(UIIdentifiers.onlineGamesSection)
+        } else if gameLibrary.isLoading && !gameLibrary.hasLoaded {
+            onlinePanel(title: "Your games", icon: "clock.arrow.circlepath") {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Loading your games…")
+                        .font(.caption)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityIdentifier(UIIdentifiers.onlineGamesSection)
+        } else if gameLibrary.hasLoaded, viewModel.currentOnlineAccountID != nil {
+            Text("Games you start or join show up here, so you can pick up where you left off.")
+                .font(.footnote)
+                .foregroundStyle(TableTheme.inkCreamDim)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier(UIIdentifiers.onlineGamesEmpty)
+        }
+    }
+
+    private var yourGamesRefreshRow: some View {
+        HStack {
+            Spacer()
+            Button {
+                Task { await gameLibrary.refresh(accountID: viewModel.currentOnlineAccountID) }
+            } label: {
+                if gameLibrary.isLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "arrow.clockwise").font(.caption.weight(.semibold))
+                }
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(TableTheme.gold)
+            .accessibilityLabel("Refresh your games")
+            .accessibilityIdentifier(UIIdentifiers.onlineGamesRefresh)
+        }
+    }
+
+    private func yourGamesSubhead(_ text: LocalizedStringKey) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .tracking(1.0)
+            .textCase(.uppercase)
+            .foregroundStyle(TableTheme.gold)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func continueRow(_ game: OnlineGameSummary) -> some View {
+        Button {
+            viewModel.resumeCloudflareOnlineRoom(game)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "play.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(TableTheme.goldBright)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(continueTitle(game))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCream)
+                    Text(continueSubtitle(game))
+                        .font(.caption2)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if viewModel.isOnlineRoomLoading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote)
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                }
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isOnlineRoomLoading)
+        .accessibilityIdentifier(UIIdentifiers.onlineGameResume(roomCode: game.roomCode))
+        .contextMenu {
+            Button(role: .destructive) {
+                Task {
+                    await viewModel.abandonOnlineGame(game)
+                    gameLibrary.removeLocally(roomCode: game.roomCode)
+                }
+            } label: {
+                Label("Abandon game", systemImage: "trash")
+            }
+        }
+    }
+
+    private func historyRow(_ game: OnlineGameSummary) -> some View {
+        Button {
+            historyGame = game
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "flag.checkered")
+                    .font(.title3)
+                    .foregroundStyle(TableTheme.gold)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(historyTitle(game))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCream)
+                    Text(historySubtitle(game))
+                        .font(.caption2)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.footnote)
+                    .foregroundStyle(TableTheme.inkCreamDim)
+            }
+            .padding(10)
+            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(UIIdentifiers.onlineGameHistory(roomCode: game.roomCode))
+    }
+
+    private func continueTitle(_ game: OnlineGameSummary) -> String {
+        let variant = LobbyFormat.variantDisplayName(game.variant)
+        if game.status == .lobby {
+            return variant + " · " + String(localized: "Waiting to start")
+        }
+        if let deal = game.dealNumber {
+            return variant + " · " + String(localized: "Deal \(deal)")
+        }
+        return variant
+    }
+
+    private func continueSubtitle(_ game: OnlineGameSummary) -> String {
+        var parts: [String] = []
+        let names = game.opponents.map(\.displayName)
+        if !names.isEmpty {
+            parts.append(String(localized: "with \(names.joined(separator: ", "))"))
+        }
+        if game.botCount == 1 {
+            parts.append(String(localized: "1 bot"))
+        } else if game.botCount > 1 {
+            parts.append(String(localized: "\(game.botCount) bots"))
+        }
+        parts.append(LobbyFormat.relativeTime(game.updatedAt))
+        return parts.joined(separator: " · ")
+    }
+
+    private func historyTitle(_ game: OnlineGameSummary) -> String {
+        if let winner = game.winnerName {
+            return String(localized: "Won by \(winner)")
+        }
+        return String(localized: "Finished")
+    }
+
+    private func historySubtitle(_ game: OnlineGameSummary) -> String {
+        LobbyFormat.variantDisplayName(game.variant) + " · " + LobbyFormat.relativeTime(game.updatedAt)
     }
 
     /// Online play, with its own identity, variant, and seat composition.
@@ -1057,5 +1266,118 @@ struct ConventionLegendSheet: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(TableTheme.gold.opacity(0.22), lineWidth: 0.5)
         )
+    }
+}
+
+// MARK: - Your-games formatting helpers
+
+enum LobbyFormat {
+    /// Human label for a variant tag. Unknown tags are title-cased rather than
+    /// dropped, so a future variant still reads sensibly before it's mapped.
+    static func variantDisplayName(_ raw: String?) -> String {
+        switch raw {
+        case "odesa": return "Odesa"
+        case "wien":  return "Wien"
+        case let other?: return other.capitalized
+        case nil: return String(localized: "Preferans")
+        }
+    }
+
+    /// "2m ago"-style relative time from a worker ISO-8601 timestamp (which
+    /// carries fractional seconds), falling back to the plain form.
+    static func relativeTime(_ iso: String) -> String {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let plain = ISO8601DateFormatter()
+        guard let date = fractional.date(from: iso) ?? plain.date(from: iso) else { return "" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Finished-game result sheet
+
+/// Read-only summary for a finished online game: winner + each seat's final
+/// pool. "Summaries only" per the lobby spec — no deal-by-deal replay.
+struct OnlineGameSummarySheet: View {
+    let game: OnlineGameSummary
+    @Environment(\.dismiss) private var dismiss
+
+    private struct Row: Identifiable {
+        let id: PlayerID
+        let name: String
+        let score: Int?
+        let isBot: Bool
+        let isWinner: Bool
+    }
+
+    private var rows: [Row] {
+        game.peers.map { peer in
+            Row(
+                id: peer.playerID,
+                name: peer.displayName,
+                score: game.result?.finalScores?[peer.playerID.rawValue],
+                isBot: peer.isBotSeat,
+                isWinner: game.result?.winner == peer.playerID
+            )
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let winner = game.winnerName {
+                        HStack(spacing: 10) {
+                            Image(systemName: "crown.fill")
+                                .foregroundStyle(TableTheme.goldBright)
+                            Text("Won by \(winner)")
+                                .font(.headline)
+                                .foregroundStyle(TableTheme.inkCream)
+                        }
+                    }
+
+                    VStack(spacing: 8) {
+                        ForEach(rows) { row in
+                            HStack(spacing: 10) {
+                                Image(systemName: row.isWinner ? "crown.fill" : (row.isBot ? "cpu" : "person.crop.circle.fill"))
+                                    .foregroundStyle(row.isWinner ? TableTheme.goldBright : TableTheme.gold)
+                                Text(verbatim: row.name)
+                                    .foregroundStyle(TableTheme.inkCream)
+                                Spacer()
+                                if let score = row.score {
+                                    Text("\(score)")
+                                        .font(.headline.monospacedDigit())
+                                        .foregroundStyle(TableTheme.inkCreamSoft)
+                                }
+                            }
+                            .padding(10)
+                            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+
+                    Text("Final pool scores")
+                        .font(.caption)
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                }
+                .padding(20)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden)
+            .feltBackground()
+            .navigationTitle(Text("Game result"))
+            #if canImport(UIKit)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: { dismiss() }) {
+                        Text("Done").foregroundStyle(TableTheme.goldBright)
+                    }
+                }
+            }
+        }
     }
 }

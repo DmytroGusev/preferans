@@ -5,9 +5,11 @@ import {
   type RoomState,
   type WirePlayerID,
   RoomStateError,
+  applyStateReport,
   createInitialRoom,
   fillOpenSeatsWithBots,
   generateRoomCode,
+  isHumanAccount,
   joinRoom,
   normalizePeer,
   normalizeRoomCode,
@@ -15,10 +17,21 @@ import {
   playerIDValue,
   publicRoom,
   recordRelay,
-  routeRecipients
+  routeRecipients,
+  humanPeers
 } from "./room-state";
+import {
+  type GameSummaryEntry,
+  type LibraryState,
+  buildSummaryEntry,
+  emptyLibrary,
+  listGames,
+  removeGame,
+  upsertGame
+} from "./library-state";
 
 const ROOM_STORAGE_KEY = "room";
+const LIBRARY_STORAGE_KEY = "library";
 const APP_ID = "3WSQ6X9CDT.com.mixandmatch.preferans";
 
 const appleAppSiteAssociation = {
@@ -39,6 +52,9 @@ const appleAppSiteAssociation = {
 
 export interface Env {
   ROOMS: DurableObjectNamespace;
+  /// Per-account game index, keyed by `accountID`. Rooms fan their summaries
+  /// into it so the lobby can list a player's games with a single read.
+  ACCOUNTS: DurableObjectNamespace;
 }
 
 interface CreateRoomBody {
@@ -51,6 +67,23 @@ interface JoinRoomBody {
 
 interface FillBotsBody {
   hostSecret?: unknown;
+}
+
+/// Host-authored progress report. Carries the lifecycle status, worker-readable
+/// summary, and the opaque resume snapshot. Authenticated with the host secret.
+interface StateReportBody {
+  hostSecret?: unknown;
+  status?: unknown;
+  summary?: unknown;
+  snapshot?: unknown;
+  snapshotSequence?: unknown;
+}
+
+/// A seated participant gives up an unfinished game. Authorized by holding the
+/// seat (`playerID`), not the host secret — abandoning is any participant's
+/// right, and the originating host may be long gone.
+interface AbandonBody {
+  playerID?: unknown;
 }
 
 /// A `PublicRoom` plus the host secret — only ever produced by `/create`.
@@ -78,6 +111,15 @@ export default {
       const url = new URL(request.url);
       if (request.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "preferans-room-worker" });
+      }
+
+      if (request.method === "GET" && url.pathname === "/my-games") {
+        const accountID = (url.searchParams.get("accountID") ?? "").trim();
+        if (!accountID) {
+          throw new RoomStateError("invalid_account", "An accountID query parameter is required.");
+        }
+        const id = env.ACCOUNTS.idFromName(accountID);
+        return env.ACCOUNTS.get(id).fetch("https://account/list");
       }
 
       if (
@@ -111,7 +153,7 @@ export default {
         return json(room);
       }
 
-      const match = url.pathname.match(/^\/rooms\/([A-Za-z0-9-]+)(?:\/(join|socket))?$/);
+      const match = url.pathname.match(/^\/rooms\/([A-Za-z0-9-]+)(?:\/(join|socket|state|snapshot|abandon))?$/);
       if (!match) {
         return json({ error: "Not found." }, 404);
       }
@@ -128,6 +170,24 @@ export default {
         const body = await readJSON<JoinRoomBody>(request);
         const room = await roomFetch(env, roomCode, "/join", body);
         return json(withSocketURL(request, room, body.localPeer));
+      }
+
+      if (action === "state" && request.method === "POST") {
+        const body = await readJSON<StateReportBody>(request);
+        const room = await roomFetch(env, roomCode, "/state", body);
+        return json(room);
+      }
+
+      if (action === "snapshot" && request.method === "GET") {
+        // Forward the participant's seat as a query param; the DO authorizes it.
+        const playerID = url.searchParams.get("playerID") ?? "";
+        return roomStubFetch(env, roomCode, `/snapshot?playerID=${encodeURIComponent(playerID)}`);
+      }
+
+      if (action === "abandon" && request.method === "POST") {
+        const body = await readJSON<AbandonBody>(request);
+        const room = await roomFetch(env, roomCode, "/abandon", body);
+        return json(room);
       }
 
       if (action === "socket" && request.method === "GET") {
@@ -164,6 +224,7 @@ export class PreferansRoom {
         }
         const room = createInitialRoom(body);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
+        await this.fanOutToLibraries(room);
         return json(createResult(room), 201);
       }
 
@@ -173,6 +234,9 @@ export class PreferansRoom {
         const updated = joinRoom(room, body.localPeer);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
         await this.broadcastPresence(updated);
+        // A join changes the roster — refresh every participant's library entry
+        // (and seed the new joiner's) so the game shows up under "Your games".
+        await this.fanOutToLibraries(updated);
         return json(publicRoom(updated));
       }
 
@@ -187,6 +251,47 @@ export class PreferansRoom {
         if (updated !== room) {
           await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
           await this.broadcastPresence(updated);
+          await this.fanOutToLibraries(updated);
+        }
+        return json(publicRoom(updated));
+      }
+
+      if (request.method === "POST" && url.pathname === "/state") {
+        const body = await readJSON<StateReportBody>(request);
+        const room = await this.loadRequiredRoom();
+        // Host-only: progress reports must present the secret minted at `/create`.
+        if (!room.hostSecret || String(body.hostSecret ?? "") !== room.hostSecret) {
+          throw new RoomStateError("forbidden", "Only the host can report game state.", 403);
+        }
+        const { room: updated, changed } = applyStateReport(room, body);
+        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+        // Only a material change (status/deal/phase) is worth a presence push
+        // and a library fan-out; per-action snapshot refreshes stay silent to
+        // avoid socket churn and DO-to-DO chatter.
+        if (changed) {
+          await this.broadcastPresence(updated);
+          await this.fanOutToLibraries(updated);
+        }
+        return json(publicRoom(updated));
+      }
+
+      if (request.method === "GET" && url.pathname === "/snapshot") {
+        return json(this.resumePayload(await this.loadRequiredRoom(), url));
+      }
+
+      if (request.method === "POST" && url.pathname === "/abandon") {
+        const body = await readJSON<AbandonBody>(request);
+        const room = await this.loadRequiredRoom();
+        const playerID = playerIDValue(body.playerID);
+        const peer = room.peers.find((candidate) => peerID(candidate) === playerID);
+        if (!peer || !isHumanAccount(peer.accountID)) {
+          throw new RoomStateError("forbidden", "Only a seated player can abandon this game.", 403);
+        }
+        const { room: updated, changed } = applyStateReport(room, { status: "abandoned" });
+        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+        if (changed) {
+          await this.broadcastPresence(updated);
+          await this.fanOutToLibraries(updated);
         }
         return json(publicRoom(updated));
       }
@@ -300,6 +405,25 @@ export class PreferansRoom {
     return room;
   }
 
+  /// The resume payload for a seated participant: the opaque authoritative
+  /// snapshot plus the worker-readable status/summary. Gated on the caller
+  /// presenting a seat they actually hold — the snapshot reveals hidden hands,
+  /// so a non-participant must not be able to read it from the room code alone.
+  resumePayload(room: RoomState, url: URL): Record<string, unknown> {
+    const playerID = playerIDValue(url.searchParams.get("playerID"));
+    const peer = room.peers.find((candidate) => peerID(candidate) === playerID);
+    if (!peer || !isHumanAccount(peer.accountID)) {
+      throw new RoomStateError("forbidden", "Only a seated player can fetch the resume snapshot.", 403);
+    }
+    return {
+      roomCode: room.roomCode,
+      status: room.status ?? "lobby",
+      summary: room.summary ?? null,
+      lastSnapshotSequence: room.lastSnapshotSequence ?? 0,
+      snapshot: room.latestSnapshot ?? null
+    };
+  }
+
   async broadcastPresence(room: RoomState): Promise<void> {
     const message = JSON.stringify({ type: "presence", room: publicRoom(room) });
     for (const socket of this.ctx.getWebSockets()) {
@@ -311,6 +435,28 @@ export class PreferansRoom {
     }
   }
 
+  /// Push this room's current summary into every human participant's
+  /// `PlayerLibrary`, one entry per seat. Bots and reserved (`pending:`) seats
+  /// are skipped — only real accounts get a "Your games" row. Failures are
+  /// swallowed per-account so one unreachable index never blocks the others.
+  async fanOutToLibraries(room: RoomState): Promise<void> {
+    await Promise.all(
+      humanPeers(room).map(async (peer) => {
+        const entry = buildSummaryEntry(room, peer);
+        try {
+          const id = this.env.ACCOUNTS.idFromName(peer.accountID);
+          await this.env.ACCOUNTS.get(id).fetch("https://account/upsert", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(entry)
+          });
+        } catch {
+          // Best-effort index update; the room state remains the source of truth.
+        }
+      })
+    );
+  }
+
   sendToPlayers(playerIDs: string[], message: string): void {
     const recipients = new Set(playerIDs);
     for (const socket of this.ctx.getWebSockets()) {
@@ -319,6 +465,54 @@ export class PreferansRoom {
         socket.send(message);
       }
     }
+  }
+}
+
+/// Per-account game index, keyed by `accountID`. Holds one `GameSummaryEntry`
+/// per room the account participates in; rooms upsert into it on every material
+/// transition. The lobby reads `/list` (via the worker's `/my-games`) to render
+/// a player's Continue + History without scanning rooms.
+export class PlayerLibrary {
+  private readonly ctx: DurableObjectState;
+
+  constructor(ctx: DurableObjectState, _env: Env) {
+    this.ctx = ctx;
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    try {
+      const url = new URL(request.url);
+
+      if (request.method === "POST" && url.pathname === "/upsert") {
+        const entry = await readJSON<GameSummaryEntry>(request);
+        const state = await this.load();
+        await this.ctx.storage.put(LIBRARY_STORAGE_KEY, upsertGame(state, entry));
+        return json({ ok: true });
+      }
+
+      if (request.method === "POST" && url.pathname === "/remove") {
+        const body = await readJSON<{ roomCode?: unknown }>(request);
+        const roomCode = String(body.roomCode ?? "").trim();
+        const state = await this.load();
+        const next = removeGame(state, roomCode);
+        if (next !== state) {
+          await this.ctx.storage.put(LIBRARY_STORAGE_KEY, next);
+        }
+        return json({ ok: true });
+      }
+
+      if (request.method === "GET" && url.pathname === "/list") {
+        return json({ games: listGames(await this.load()) });
+      }
+
+      return json({ error: "Method not allowed." }, 405);
+    } catch (error: unknown) {
+      return errorResponse(error);
+    }
+  }
+
+  private async load(): Promise<LibraryState> {
+    return (await this.ctx.storage.get<LibraryState>(LIBRARY_STORAGE_KEY)) ?? emptyLibrary();
   }
 }
 
@@ -335,6 +529,15 @@ async function roomFetch(env: Env, roomCode: string, pathname: string, body?: un
     throw new RoomStateError(data.code ?? "room_error", data.error ?? "Room request failed.", response.status);
   }
   return data;
+}
+
+/// Pass a Durable Object's response straight back to the caller, untouched. Used
+/// for payloads (e.g. the resume snapshot) that don't fit the `RoomWithSecret`
+/// shape `roomFetch` parses, where re-decoding would be wasteful.
+async function roomStubFetch(env: Env, roomCode: string, pathname: string): Promise<Response> {
+  const id = env.ROOMS.idFromName(roomCode);
+  const stub = env.ROOMS.get(id);
+  return stub.fetch(`https://room${pathname}`);
 }
 
 /// The `/create` response: the public room plus the host secret. This is the one

@@ -159,6 +159,12 @@ public enum UIIdentifiers {
     public static let onlineStartGame          = "online.startGame"
     public static let onlineFillWithBots       = "online.fillWithBots"
     public static let onlineWaitingForHost     = "online.waitingForHost"
+    // "Your games" library: Continue (resume in-progress) + History (finished).
+    public static let onlineGamesSection       = "online.games.section"
+    public static let onlineGamesRefresh       = "online.games.refresh"
+    public static let onlineGamesEmpty         = "online.games.empty"
+    public static func onlineGameResume(roomCode: String) -> String { "online.games.resume.\(roomCode)" }
+    public static func onlineGameHistory(roomCode: String) -> String { "online.games.history.\(roomCode)" }
 
     // MARK: - Game screen — header / structure
 

@@ -22,8 +22,40 @@ export const BOT_ACCOUNT_PREFIX = "bot:";
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const HOST_SECRET_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "dev"]);
+const GAME_STATUSES = new Set<GameStatus>(["lobby", "playing", "finished", "abandoned"]);
 
 export type OnlineAccountProvider = "gameCenter" | "apple" | "email" | "dev";
+
+/// Lifecycle of a table, mirrored from the Swift client's `PreferansGameStatus`.
+/// The worker treats it as an opaque-but-validated label the host reports; it
+/// drives the lobby's Continue (`playing`/`lobby`) vs History (`finished`)
+/// split and lets a stale room be swept to `abandoned`.
+export type GameStatus = "lobby" | "playing" | "finished" | "abandoned";
+
+/// Tiny, worker-readable result kept for finished games so the History list can
+/// render a winner + final pool without decoding the (dropped) snapshot blob.
+export interface GameResultSummary {
+  /// Seat that won the match, when there is a single winner.
+  winner?: WirePlayerID;
+  /// Final pool score per seat (`playerID.rawValue` → points).
+  finalScores?: Record<string, number>;
+}
+
+/// Host-authored, worker-readable metadata about a table's progress. Fanned out
+/// to each participant's `PlayerLibrary` so the lobby can describe a game
+/// ("Odesa · deal 3 · bidding") without ever decoding the opaque snapshot.
+export interface GameSummary {
+  /// Rules variant identifier (`"odesa"` | `"wien"`), opaque to the worker.
+  variant?: string;
+  /// Authoritative action sequence at the time of the report.
+  lastSequence: number;
+  /// Coarse phase label for the lobby row (e.g. `"bidding"`, `"playing"`).
+  phase?: string;
+  /// 1-based deal number within the match.
+  dealNumber?: number;
+  /// Present once `status === "finished"`.
+  result?: GameResultSummary;
+}
 
 export interface WirePlayerID {
   rawValue: string;
@@ -50,6 +82,17 @@ export interface RoomState {
   updatedAt: string;
   relaySequence: number;
   recentMessages: RelayEntry[];
+  /// Lifecycle status, host-reported. Defaults to `lobby` at creation.
+  status: GameStatus;
+  /// Latest host-reported progress metadata (worker-readable). `undefined`
+  /// until the host sends its first state report.
+  summary?: GameSummary;
+  /// Opaque authoritative engine snapshot the resuming host hydrates from. The
+  /// worker never decodes it; dropped once the game is finished/abandoned.
+  latestSnapshot?: unknown;
+  /// Action sequence the stored `latestSnapshot` was taken at, so an
+  /// out-of-order report can't clobber a newer snapshot with an older one.
+  lastSnapshotSequence?: number;
 }
 
 export interface PublicRoom {
@@ -61,6 +104,10 @@ export interface PublicRoom {
   createdAt: string;
   updatedAt: string;
   relaySequence: number;
+  /// Live status so guests can tell a still-forming room from one in play.
+  status: GameStatus;
+  /// Progress metadata (no snapshot blob — that stays server-only).
+  summary?: GameSummary;
 }
 
 export interface CreateRoomInput {
@@ -177,7 +224,9 @@ export function publicRoom(room: RoomState): PublicRoom {
     maxPlayers: room.maxPlayers,
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
-    relaySequence: room.relaySequence ?? 0
+    relaySequence: room.relaySequence ?? 0,
+    status: room.status ?? "lobby",
+    summary: room.summary
   };
 }
 
@@ -211,7 +260,8 @@ export function createInitialRoom({
     createdAt: now,
     updatedAt: now,
     relaySequence: 0,
-    recentMessages: []
+    recentMessages: [],
+    status: "lobby"
   };
 }
 
@@ -306,6 +356,134 @@ export function recordRelay(room: RoomState, { senderPlayerID, recipientPlayerID
     },
     entry
   };
+}
+
+export interface StateReportInput {
+  status?: unknown;
+  summary?: unknown;
+  snapshot?: unknown;
+  snapshotSequence?: unknown;
+}
+
+export interface StateReportResult {
+  room: RoomState;
+  /// True when a material change (status / deal / phase / result) means the
+  /// participants' library entries should be refreshed. Per-action snapshot
+  /// pushes that don't move the phase return false, keeping fan-out bounded.
+  changed: boolean;
+}
+
+/// Fold a host state report into the room: validate the status/summary, store
+/// the latest snapshot monotonically (an older out-of-order report can't clobber
+/// a newer one), and drop the snapshot once the game is finished/abandoned (it
+/// is never resumed). Pure so it can be unit-tested without a Durable Object.
+export function applyStateReport(
+  room: RoomState,
+  input: StateReportInput,
+  now: string = new Date().toISOString()
+): StateReportResult {
+  const status = normalizeGameStatus(input.status) ?? room.status ?? "lobby";
+  const summary = normalizeGameSummary(input.summary) ?? room.summary;
+  const terminal = status === "finished" || status === "abandoned";
+
+  let latestSnapshot = room.latestSnapshot;
+  let lastSnapshotSequence = room.lastSnapshotSequence ?? 0;
+  if (input.snapshot !== undefined && !terminal) {
+    const raw = Number(input.snapshotSequence ?? summary?.lastSequence ?? 0);
+    const seq = Number.isFinite(raw) ? raw : 0;
+    if (seq >= lastSnapshotSequence) {
+      latestSnapshot = input.snapshot;
+      lastSnapshotSequence = seq;
+    }
+  }
+  if (terminal) {
+    latestSnapshot = undefined;
+  }
+
+  const updated: RoomState = {
+    ...room,
+    status,
+    summary,
+    latestSnapshot,
+    lastSnapshotSequence,
+    updatedAt: now
+  };
+  return { room: updated, changed: summarySignature(room) !== summarySignature(updated) };
+}
+
+export function normalizeGameStatus(value: unknown): GameStatus | undefined {
+  return typeof value === "string" && GAME_STATUSES.has(value as GameStatus)
+    ? (value as GameStatus)
+    : undefined;
+}
+
+export function normalizeGameSummary(value: unknown): GameSummary | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const lastSequenceRaw = Number(value.lastSequence ?? 0);
+  const summary: GameSummary = {
+    lastSequence: Number.isFinite(lastSequenceRaw) ? lastSequenceRaw : 0
+  };
+  if (typeof value.variant === "string") {
+    summary.variant = value.variant;
+  }
+  if (typeof value.phase === "string") {
+    summary.phase = value.phase;
+  }
+  const dealNumber = Number(value.dealNumber);
+  if (Number.isFinite(dealNumber) && dealNumber > 0) {
+    summary.dealNumber = dealNumber;
+  }
+  const result = normalizeGameResult(value.result);
+  if (result) {
+    summary.result = result;
+  }
+  return summary;
+}
+
+/// A participant the lobby should list a game for: any seat that is neither a
+/// reserved-but-unclaimed (`pending:`) seat nor a host-driven bot (`bot:`).
+export function isHumanAccount(accountID: string): boolean {
+  return !accountID.startsWith(PENDING_ACCOUNT_PREFIX) && !accountID.startsWith(BOT_ACCOUNT_PREFIX);
+}
+
+export function humanPeers(room: RoomState): OnlinePeer[] {
+  return room.peers.filter((peer) => isHumanAccount(peer.accountID));
+}
+
+function normalizeGameResult(value: unknown): GameResultSummary | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+  const result: GameResultSummary = {};
+  if (value.winner !== undefined) {
+    try {
+      result.winner = wirePlayerID(value.winner);
+    } catch {
+      // Ignore an unparseable winner — the rest of the result still stands.
+    }
+  }
+  if (isRecord(value.finalScores)) {
+    const scores: Record<string, number> = {};
+    for (const [seat, raw] of Object.entries(value.finalScores)) {
+      const score = Number(raw);
+      if (Number.isFinite(score)) {
+        scores[seat] = score;
+      }
+    }
+    result.finalScores = scores;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function summarySignature(room: RoomState): string {
+  return [
+    room.status ?? "lobby",
+    room.summary?.dealNumber ?? "",
+    room.summary?.phase ?? "",
+    room.summary?.result ? "done" : ""
+  ].join("|");
 }
 
 function uniquePeers(peers: OnlinePeer[]): OnlinePeer[] {

@@ -98,6 +98,9 @@ public struct HostUpdate: Sendable {
     public var validatedAction: ValidatedActionRecord?
     public var snapshot: AppEngineSnapshot
     public var status: PreferansGameStatus
+    /// 1-based number of the deal currently in (or just) play — for the lobby's
+    /// "deal N" progress label. Derived from the engine, not the action log.
+    public var dealNumber: Int
 }
 
 /// A pending bot move the host owes for one of its bot-driven seats. Produced
@@ -176,9 +179,38 @@ public actor HostGameActor {
         self.dealSource = dealSource
     }
 
+    /// Resume a host from a durable engine snapshot (the Durable-Object-backed
+    /// resume path). Unlike the action-log constructor, this restores the engine
+    /// directly from the authoritative `PreferansSnapshot` the previous host
+    /// pushed to the worker, continuing the host sequence from `sequence`. The
+    /// nonce/action history isn't carried — sequence numbering simply resumes,
+    /// which is sufficient because the snapshot already encodes the full state.
+    public init(
+        tableID: UUID,
+        hostPlayerID: PlayerID,
+        seats: [PlayerIdentity],
+        resumeSnapshot snapshot: PreferansSnapshot,
+        sequence: Int,
+        projectionPolicy: ProjectionPolicy = .online,
+        dealSource: DealSource = RandomDealSource()
+    ) throws {
+        self.tableID = tableID
+        self.hostPlayerID = hostPlayerID
+        self.engine = try PreferansEngine(snapshot: snapshot)
+        self.sequence = max(0, sequence)
+        self.seats = seats
+        self.appliedNonces = []
+        self.actionLog = []
+        self.projectionPolicy = projectionPolicy
+        self.dealSource = dealSource
+    }
+
     public var players: [PlayerID] { engine.players }
     public var currentSequence: Int { sequence }
     public var currentSnapshot: AppEngineSnapshot { AppEngineSnapshot(engine: engine) }
+    /// The full authoritative engine snapshot (hidden hands included) — pushed to
+    /// the worker as the opaque resume blob so a future host can rehydrate.
+    public var engineSnapshot: PreferansSnapshot { engine.snapshot }
     public var validatedActionLog: [ValidatedActionRecord] { actionLog }
 
     public func updateIdentities(_ identities: [PlayerIdentity]) {
@@ -307,7 +339,8 @@ public actor HostGameActor {
             eventSummaries: ValidatedActionRecord.summaries(for: events),
             validatedAction: validatedAction,
             snapshot: AppEngineSnapshot(engine: engine),
-            status: currentStatus
+            status: currentStatus,
+            dealNumber: engine.dealsPlayed + 1
         )
     }
 
@@ -315,8 +348,8 @@ public actor HostGameActor {
         switch engine.state {
         case .waitingForDeal:
             return sequence == 0 ? .lobby : .playing
-        case .dealFinished:
-            return .playing
+        case .gameOver:
+            return .finished
         default:
             return .playing
         }

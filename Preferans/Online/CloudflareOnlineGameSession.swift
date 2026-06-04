@@ -13,19 +13,28 @@ public final class CloudflareOnlineGameSession: ObservableObject {
 
     private let transport: CloudflareRoomTransport
     private let rules: PreferansRules
+    /// Variant label carried into the worker summary (presentation-only).
+    private let variantTag: String?
+    /// Present when this session was opened to resume an in-progress game; the
+    /// host rebuilds its engine from this instead of dealing fresh.
+    private let resume: OnlineResumeContext?
 
     public init(
         transport: CloudflareRoomTransport,
         inviteURL: URL,
         rules: PreferansRules = .sochi,
         botMoveDelay: Duration = BotPacing.interactive,
-        coordinator: RoomOnlineGameCoordinator? = nil
+        coordinator: RoomOnlineGameCoordinator? = nil,
+        variantTag: String? = nil,
+        resume: OnlineResumeContext? = nil
     ) {
         self.transport = transport
         self.roomCode = transport.roomCode
         self.inviteURL = inviteURL
         self.localPeer = transport.localPeer
         self.rules = rules
+        self.variantTag = variantTag
+        self.resume = resume
         self.localCoordinator = coordinator ?? RoomOnlineGameCoordinator(botMoveDelay: botMoveDelay)
     }
 
@@ -35,6 +44,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         peers: [OnlinePeer],
         localPlayerID: PlayerID,
         rules: PreferansRules = .sochi,
+        variantTag: String? = nil,
         botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
         guard let localPeer = peers.first(where: { $0.playerID == localPlayerID }) else {
@@ -51,7 +61,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
             rules: rules,
-            botMoveDelay: botMoveDelay
+            botMoveDelay: botMoveDelay,
+            variantTag: variantTag
         )
     }
 
@@ -61,6 +72,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
         rules: PreferansRules = .sochi,
+        variantTag: String? = nil,
         botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
         guard let normalizedCode = PreferansInviteLink.normalizedRoomCode(roomCode) else {
@@ -76,12 +88,62 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
             rules: rules,
-            botMoveDelay: botMoveDelay
+            botMoveDelay: botMoveDelay,
+            variantTag: variantTag
+        )
+    }
+
+    /// Resume an in-progress online game from the lobby's "Your games" list.
+    /// Rejoins the room (the worker rebinds the original seat by `accountID`),
+    /// fetches the durable engine snapshot for that seat, and — when one exists —
+    /// carries it as a resume context so the elected host rebuilds the engine
+    /// instead of dealing fresh. A missing snapshot (the room is still in its
+    /// pre-deal lobby) degrades to a plain rejoin.
+    public static func resumeRoom(
+        roomCode: String,
+        localPeer: OnlinePeer,
+        baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
+        inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
+        variantTag: String? = nil,
+        botMoveDelay: Duration = BotPacing.interactive
+    ) async throws -> CloudflareOnlineGameSession {
+        guard let normalizedCode = PreferansInviteLink.normalizedRoomCode(roomCode) else {
+            throw CloudflareRoomTransportError.serverError("Room code must be 4-12 letters or numbers.")
+        }
+        let transport = try await CloudflareRoomTransport.joinRoom(
+            baseURL: baseURL,
+            roomCode: normalizedCode,
+            localPeer: localPeer
+        )
+
+        var resume: OnlineResumeContext?
+        do {
+            let payload = try await CloudflareRoomTransport.fetchSnapshot(
+                baseURL: baseURL,
+                roomCode: normalizedCode,
+                playerID: transport.localPeer.playerID
+            )
+            if let snapshot = payload.decodedSnapshot {
+                resume = OnlineResumeContext(snapshot: snapshot, sequence: payload.lastSnapshotSequence)
+            }
+        } catch {
+            // Snapshot unavailable (pre-deal lobby, or transient) — rejoin plainly.
+            resume = nil
+        }
+
+        logOnlineFlow("event=resume roomCode=\(transport.roomCode) local=\(transport.localPeer.playerID.rawValue) hasSnapshot=\(resume != nil)")
+        return CloudflareOnlineGameSession(
+            transport: transport,
+            inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
+            rules: resume?.snapshot.rules ?? .sochi,
+            botMoveDelay: botMoveDelay,
+            variantTag: variantTag,
+            resume: resume
         )
     }
 
     public func start() async {
-        await localCoordinator.attach(transport: transport, rules: rules)
+        await localCoordinator.attach(transport: transport, rules: rules, variantTag: variantTag, resume: resume)
     }
 
     public func stop() {

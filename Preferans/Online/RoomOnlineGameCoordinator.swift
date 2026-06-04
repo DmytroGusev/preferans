@@ -93,6 +93,21 @@ public struct ReceivedRoomMessage: Sendable {
     }
 }
 
+/// What a host needs to resume an in-progress online game from the
+/// Durable-Object-backed snapshot: the authoritative engine state and the host
+/// sequence to continue numbering from. The table identity is re-minted on
+/// resume and re-broadcast via seat assignment — the worker keys by room code,
+/// so the original UUID never needs to survive.
+public struct OnlineResumeContext: Sendable {
+    public var snapshot: PreferansSnapshot
+    public var sequence: Int
+
+    public init(snapshot: PreferansSnapshot, sequence: Int) {
+        self.snapshot = snapshot
+        self.sequence = sequence
+    }
+}
+
 @MainActor
 public protocol RoomRealtimeTransport: AnyObject {
     var localPeer: OnlinePeer { get }
@@ -192,6 +207,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var peersBySeat: [PlayerID: OnlinePeer] = [:]
     private var seats: [PlayerIdentity] = []
     private var rules: PreferansRules = .sochi
+    /// Variant label (`"odesa"`/`"wien"`) carried into the worker summary so the
+    /// lobby's "Your games" rows can name the house rules. Presentation-only.
+    private var variantTag: String?
     private let cloudStore: (any GameArchiveStore)?
     private let dealSource: DealSource
     private var didAutoStartOnlineDeal = false
@@ -246,8 +264,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         projection?.applyingAdvanceFreeze(pendingAdvance)
     }
 
-    public func attach(transport: any RoomRealtimeTransport, rules: PreferansRules = .sochi) async {
-        self.rules = rules
+    public func attach(
+        transport: any RoomRealtimeTransport,
+        rules: PreferansRules = .sochi,
+        variantTag: String? = nil,
+        resume: OnlineResumeContext? = nil
+    ) async {
+        // On resume the snapshot's rules are authoritative — adopt them so the
+        // seat assignment we broadcast matches the engine we rebuild.
+        self.rules = resume?.snapshot.rules ?? rules
+        self.variantTag = variantTag
         self.errorText = nil
         self.state = .selectingHost
         self.liveness = .connecting
@@ -273,7 +299,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.isHost = host.playerID == transport.localPeer.playerID
 
         if isHost {
-            await becomeHost(host: host, seats: seats, rules: rules)
+            await becomeHost(host: host, seats: seats, rules: self.rules, resume: resume)
         } else {
             self.state = .connectedAsClient
             await sendHello()
@@ -558,18 +584,37 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func becomeHost(host: OnlinePeer, seats: [PlayerIdentity], rules: PreferansRules) async {
+    private func becomeHost(
+        host: OnlinePeer,
+        seats: [PlayerIdentity],
+        rules: PreferansRules,
+        resume: OnlineResumeContext? = nil
+    ) async {
         let tableID = UUID()
         self.tableID = tableID
         do {
             let hostID = host.playerID
-            let actor = try HostGameActor(
-                tableID: tableID,
-                hostPlayerID: hostID,
-                seats: seats,
-                rules: rules,
-                dealSource: dealSource
-            )
+            let actor: HostGameActor
+            if let resume {
+                // Rehydrate the engine from the durable snapshot the previous
+                // host pushed to the worker, rather than starting a fresh deal.
+                actor = try HostGameActor(
+                    tableID: tableID,
+                    hostPlayerID: hostID,
+                    seats: seats,
+                    resumeSnapshot: resume.snapshot,
+                    sequence: resume.sequence,
+                    dealSource: dealSource
+                )
+            } else {
+                actor = try HostGameActor(
+                    tableID: tableID,
+                    hostPlayerID: hostID,
+                    seats: seats,
+                    rules: rules,
+                    dealSource: dealSource
+                )
+            }
             self.hostActor = actor
             self.state = .connectedAsHost
             self.liveness = .live
@@ -580,6 +625,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             let update = await actor.initialUpdate()
             await publish(update)
             await persistTableSummary(update)
+            await reportStateToWorker(update)
         } catch {
             self.errorText = error.localizedDescription
             self.state = .disconnected
@@ -732,6 +778,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             let update = try await hostActor.applyClientAction(envelope, sender: sender)
             await publish(update)
             await persistAfter(update)
+            await reportStateToWorker(update)
         } catch {
             await onError(error)
         }
@@ -825,6 +872,75 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         } catch {
             errorText = String(localized: "CloudKit archive failed: \(error.localizedDescription)")
         }
+    }
+
+    /// Push the host's latest state into the worker so the durable game directory
+    /// — and every participant's "Your games" list — stays current and the table
+    /// stays resumable. Host-only, and only over the Cloudflare transport: the
+    /// in-memory/GameKit transports have no worker behind them. Best-effort: a
+    /// dropped report never blocks play (the engine remains the source of truth).
+    private func reportStateToWorker(_ update: HostUpdate) async {
+        guard isHost, let cloud = transport as? CloudflareRoomTransport, let hostActor else { return }
+        let snapshot = await hostActor.engineSnapshot
+        let summary = OnlineStateSummary(
+            variant: variantTag,
+            lastSequence: update.sequence,
+            phase: Self.phaseLabel(for: update.snapshot.state),
+            dealNumber: update.dealNumber,
+            result: Self.finishedResult(from: update.snapshot.state)
+        )
+        do {
+            try await cloud.reportState(
+                status: update.status,
+                summary: summary,
+                // A finished game is never resumed, so don't ship its snapshot.
+                snapshot: update.status == .finished ? nil : snapshot,
+                snapshotSequence: update.sequence
+            )
+        } catch {
+            logOnlineFlow("event=reportStateFailed sequence=\(update.sequence) error=\(error.localizedDescription)")
+        }
+    }
+
+    /// Mark the current table abandoned in the worker directory so it drops out
+    /// of the player's Continue list. Host-only and best-effort; a guest simply
+    /// disconnects and the host's own reports continue to govern status.
+    public func abandon() async {
+        guard isHost, let cloud = transport as? CloudflareRoomTransport, let hostActor else { return }
+        let sequence = await hostActor.currentSequence
+        try? await cloud.reportState(
+            status: .abandoned,
+            summary: OnlineStateSummary(variant: variantTag, lastSequence: sequence),
+            snapshot: nil,
+            snapshotSequence: sequence
+        )
+    }
+
+    /// Coarse, lobby-facing phase label for a deal state.
+    private static func phaseLabel(for state: DealState) -> String {
+        switch state {
+        case .waitingForDeal:      return "waiting"
+        case .bidding:             return "bidding"
+        case .awaitingDiscard:     return "exchange"
+        case .awaitingContract:    return "declaring"
+        case .awaitingWhist:       return "whist"
+        case .awaitingDefenderMode: return "defending"
+        case .playing:             return "playing"
+        case .dealFinished:        return "scoring"
+        case .gameOver:            return "finished"
+        }
+    }
+
+    /// Distill a finished match into the worker-readable result: the
+    /// best-balance seat as winner plus each seat's final pool.
+    private static func finishedResult(from state: DealState) -> OnlineGameResult? {
+        guard case let .gameOver(summary) = state else { return nil }
+        let winner = summary.standings.max(by: { $0.balance < $1.balance })?.player
+        var finalScores: [String: Int] = [:]
+        for standing in summary.standings {
+            finalScores[standing.player.rawValue] = standing.pool
+        }
+        return OnlineGameResult(winner: winner, finalScores: finalScores)
     }
 
     private func sendHostError(to peer: OnlinePeer, recipient: PlayerID?, nonce: UUID?, message: String) async {

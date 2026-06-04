@@ -59,6 +59,53 @@ Server WebSocket messages:
 }
 ```
 
+## Durable Game Library (resume + history)
+
+Beyond live relay, the worker is the durable home for a player's games so the
+lobby can list **Continue** (in-progress) and **History** (finished) games and
+resume an unfinished table from any device. Two pieces back this:
+
+- **`PreferansRoom`** (per room, key = room code) additionally stores a
+  lifecycle `status` (`lobby` | `playing` | `finished` | `abandoned`), a small
+  worker-readable `summary` (variant, deal/phase, final result), and an opaque
+  `latestSnapshot` blob (the authoritative engine state the resuming host
+  hydrates from — the worker never decodes it, and it is dropped once the game
+  is finished/abandoned).
+- **`PlayerLibrary`** (per account, key = `accountID`) holds one
+  `GameSummaryEntry` per room the account is in. Rooms fan their summary into
+  every human participant's library on each material transition, so the lobby
+  lists a player's games with a single read.
+
+### State report (host-only)
+
+The host pushes progress after each validated action. The snapshot is stored
+monotonically (a late, lower-sequence report can't clobber a newer snapshot),
+and only material changes (status/deal/phase) trigger a presence push + library
+fan-out — per-action snapshot refreshes are silent.
+
+```sh
+curl -s http://127.0.0.1:8787/rooms/ABC123/state \
+  -H 'content-type: application/json' \
+  -d '{"hostSecret":"<from /create>","status":"playing","summary":{"variant":"odesa","lastSequence":4,"phase":"bidding","dealNumber":1},"snapshot":{ /* opaque */ },"snapshotSequence":4}'
+```
+
+### List a player's games
+
+```sh
+curl -s "http://127.0.0.1:8787/my-games?accountID=apple:north"
+# → { "games": [ GameSummaryEntry, ... ] }   # most-recently-updated first
+```
+
+### Fetch the resume snapshot (seated participant only)
+
+The snapshot reveals hidden hands, so it is gated on presenting a seat the
+caller actually holds (a `pending:`/`bot:` seat is rejected).
+
+```sh
+curl -s "http://127.0.0.1:8787/rooms/ABC123/snapshot?playerID=north"
+# → { "roomCode", "status", "summary", "lastSnapshotSequence", "snapshot" }
+```
+
 ## Launch Boundary
 
 This worker is the correct room/transport foundation, but it is not yet a public-launch authoritative game server. For public multiplayer, move Preferans validation/projection generation into the Durable Object, either by porting the engine to TypeScript or compiling a shared core to WASM.

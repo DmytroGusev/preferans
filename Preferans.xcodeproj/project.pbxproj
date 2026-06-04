@@ -61,6 +61,7 @@
 		B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B007 /* CloudflareRoomTransport.swift */; };
 		B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */; };
 		B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B00B /* PreferansInviteLink.swift */; };
+		B0000000000000000000BD00 /* OnlineGameLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000BD01 /* OnlineGameLibrary.swift */; };
 		B182FEDEF8F1C8AC3A81F85C /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = DA899D375EB0CF2E0EE45608 /* PreferansEngine */; };
 		BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
@@ -154,6 +155,7 @@
 		B0000000000000000000B007 /* CloudflareRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/CloudflareRoomTransport.swift; sourceTree = "<group>"; };
 		B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/CloudflareOnlineGameSession.swift; sourceTree = "<group>"; };
 		B0000000000000000000B00B /* PreferansInviteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/PreferansInviteLink.swift; sourceTree = "<group>"; };
+		B0000000000000000000BD01 /* OnlineGameLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/OnlineGameLibrary.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -226,6 +228,7 @@
 				B0000000000000000000B007 /* CloudflareRoomTransport.swift */,
 				B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */,
 				B0000000000000000000B00B /* PreferansInviteLink.swift */,
+				B0000000000000000000BD01 /* OnlineGameLibrary.swift */,
 				B0000000000000000000003E /* PlayerProjection.swift */,
 				B0000000000000000000003F /* AppEngineSnapshot.swift */,
 				B00000000000000000000040 /* AppIdentifiers.swift */,
@@ -413,6 +416,7 @@
 				B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */,
 				B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */,
 				B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */,
+				B0000000000000000000BD00 /* OnlineGameLibrary.swift in Sources */,
 				B0000000000000000000000E /* PlayerProjection.swift in Sources */,
 				B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */,
 				B00000000000000000000010 /* AppIdentifiers.swift in Sources */,
