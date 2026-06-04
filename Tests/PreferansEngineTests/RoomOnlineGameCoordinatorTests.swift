@@ -327,7 +327,9 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
 
     func testPlayerRoomSettlementCollectsAcceptancesAndScoresDeal() async throws {
         let fixture = try await makeFixture()
-        var sequence = try await driveRoomToPlaying(fixture)
+        // A misère is settleable by everyone at the table, so the room reaches
+        // an eligible position without having to play any tricks first.
+        var sequence = try await driveRoomToPlaying(fixture, openingBid: .misere)
         try await driveRoomToForcedSettlement(fixture, sequence: &sequence)
         let proposalProjection = try XCTUnwrap(fixture.coordinators["north"]?.projection)
         let activePlayers = proposalProjection.seats.filter(\.isActive).map(\.player)
@@ -360,7 +362,7 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
                 return XCTFail("expected every player projection to show a scored settlement")
             }
             XCTAssertEqual(result.settlement, settlement)
-            XCTAssertEqual(result.completedTricks.count, 9)
+            XCTAssertTrue(result.completedTricks.isEmpty)
         }
     }
 
@@ -459,14 +461,17 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         return currentPlayer
     }
 
-    private func driveRoomToPlaying(_ fixture: RoomFixture) async throws -> Int {
+    private func driveRoomToPlaying(
+        _ fixture: RoomFixture,
+        openingBid: ContractBid = .game(GameContract(6, .suit(.clubs)))
+    ) async throws -> Int {
         var sequence = 0
         try await apply(.startDeal(dealer: nil, deck: nil), from: "north", in: fixture, sequence: &sequence)
 
         var projection = try XCTUnwrap(fixture.coordinators["north"]?.projection)
         let openingBidder = try currentBidder(in: projection)
         try await apply(
-            .bid(player: openingBidder, call: .bid(.game(GameContract(6, .suit(.clubs))))),
+            .bid(player: openingBidder, call: .bid(openingBid)),
             from: openingBidder,
             in: fixture,
             sequence: &sequence

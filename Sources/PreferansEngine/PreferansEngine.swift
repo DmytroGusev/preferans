@@ -151,16 +151,102 @@ public struct PreferansEngine: Sendable {
         return current
     }
 
+    /// Settlement offers `player` may legally propose right now. A
+    /// settlement ends play early by agreeing on the final trick split, so
+    /// only a side that plays with its cards exposed may offer one: the
+    /// declarer or a whister during an *open* game, or anyone during a
+    /// misère. A closed game and an all-pass deal are always played out,
+    /// and a defender who merely passed (never whisted) cannot offer.
+    /// Returns `[]` when `player` is not entitled to settle the current
+    /// position. See ``eligibleSettlementProposers(in:)``.
     public func legalSettlements(for player: PlayerID) -> [TrickSettlement] {
         guard case let .playing(playing) = state,
               playing.pendingSettlement == nil,
               playing.currentTrick.isEmpty,
-              playing.activePlayers.contains(player) else {
+              !playing.isComplete,
+              eligibleSettlementProposers(in: playing).contains(player) else {
             return []
         }
 
-        guard let settlement = forcedSettlement(in: playing) else { return [] }
-        return [settlement]
+        return candidateSettlements(in: playing)
+    }
+
+    /// Seats permitted to *offer* a settlement in the current position.
+    /// Only sides whose cards are on the table may settle:
+    /// - **Open game** — the declarer and the whisters (a passed-out
+    ///   defender is excluded).
+    /// - **Misère** — the declarer and every defender (a misère has no
+    ///   whist phase, so all defenders qualify).
+    /// - **Closed game / all-pass** — nobody; the deal is played out.
+    func eligibleSettlementProposers(in playing: PlayingState) -> Set<PlayerID> {
+        switch playing.kind {
+        case let .game(context) where context.defenderPlayMode == .open:
+            return Set([context.declarer] + context.whisters)
+        case .game:
+            return []
+        case .misere:
+            return Set(playing.activePlayers)
+        case .allPass:
+            return []
+        }
+    }
+
+    /// The settlement offers available between tricks of an open game or
+    /// misère: concede the remaining tricks to the defenders, claim them
+    /// all for the declarer, and — when the rest of the play is forced —
+    /// the exact resulting split. Duplicates are collapsed (e.g. with one
+    /// trick left, or when the forced split matches a concession).
+    private func candidateSettlements(in playing: PlayingState) -> [TrickSettlement] {
+        let declarer: PlayerID
+        switch playing.kind {
+        case let .game(context):   declarer = context.declarer
+        case let .misere(context): declarer = context.declarer
+        case .allPass:             return []
+        }
+        let remaining = 10 - playing.completedTricks.count
+        guard remaining > 0 else { return [] }
+        let defenders = playing.activePlayers.filter { $0 != declarer }
+
+        var offers: [TrickSettlement] = [
+            settlementGivingDeclarer(0, declarer: declarer, defenders: defenders, in: playing),
+            settlementGivingDeclarer(remaining, declarer: declarer, defenders: defenders, in: playing),
+        ]
+        if let forced = forcedSettlement(in: playing) {
+            offers.append(forced)
+        }
+
+        var unique: [TrickSettlement] = []
+        for offer in offers where !unique.contains(offer) {
+            unique.append(offer)
+        }
+        return unique
+    }
+
+    /// Builds a settlement that credits the declarer with `declarerExtra`
+    /// of the remaining tricks and spreads the rest across the defenders in
+    /// seat order. The result always totals ten and never takes back a
+    /// trick already won, so it satisfies ``validateSettlement(_:in:)``.
+    private func settlementGivingDeclarer(
+        _ declarerExtra: Int,
+        declarer: PlayerID,
+        defenders: [PlayerID],
+        in playing: PlayingState
+    ) -> TrickSettlement {
+        var counts = playing.trickCounts
+        counts[declarer, default: 0] += declarerExtra
+        var defenseRemaining = (10 - playing.completedTricks.count) - declarerExtra
+        var index = 0
+        while defenseRemaining > 0, !defenders.isEmpty {
+            let defender = defenders[index % defenders.count]
+            counts[defender, default: 0] += 1
+            defenseRemaining -= 1
+            index += 1
+        }
+        return TrickSettlement(
+            target: declarer,
+            targetTricks: counts[declarer] ?? 0,
+            finalTrickCounts: counts
+        )
     }
 
     public func canAcceptSettlement(player: PlayerID) -> Bool {

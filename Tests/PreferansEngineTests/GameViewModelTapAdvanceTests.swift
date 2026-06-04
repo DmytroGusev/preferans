@@ -32,15 +32,19 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
         model.send(.whist(player: "south", call: .whist))
     }
 
-    private func driveToForcedSettlement(_ model: GameViewModel) throws {
+    /// Drives the scripted deal into a misère, where every seat at the table
+    /// may offer a settlement. A misère has no whist phase, so play begins
+    /// straight after the declarer discards.
+    private func driveToMiserePlay(_ model: GameViewModel) {
         model.tapToAdvanceEnabled = false
-        driveToPlay(model)
-        while case let .playing(playing) = model.engine.state, playing.completedTricks.count < 9 {
-            let actor = playing.currentPlayer
-            let card = try XCTUnwrap(model.engine.legalCards(for: actor).first)
-            model.send(.playCard(player: actor, card: card))
-            XCTAssertNil(model.lastError)
+        model.startDeal()
+        model.send(.bid(player: "north", call: .bid(.misere)))
+        model.send(.bid(player: "east", call: .pass))
+        model.send(.bid(player: "south", call: .pass))
+        guard case let .awaitingDiscard(exchange) = model.engine.state else {
+            return XCTFail("expected awaitingDiscard, got \(model.engine.state.description)")
         }
+        model.send(.discard(player: "north", cards: exchange.talon))
     }
 
     func testMidTrickAllHumanPlayDoesNotFireTheGate() throws {
@@ -282,7 +286,7 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
 
     func testLocalAgreementSettlementScoresDealWithoutSeatSwitching() throws {
         let model = try makeModel()
-        try driveToForcedSettlement(model)
+        driveToMiserePlay(model)
 
         let settlement = try XCTUnwrap(model.engine.legalSettlements(for: "north").first)
 
@@ -301,8 +305,8 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
             return XCTFail("expected the local agreement to score the deal")
         }
         XCTAssertEqual(result.settlement, settlement)
-        XCTAssertEqual(result.completedTricks.count, 9,
-                       "agreement settlement should not fabricate the forced final trick")
+        XCTAssertTrue(result.completedTricks.isEmpty,
+                      "an agreement settles the unplayed tricks rather than fabricating them")
     }
 }
 
