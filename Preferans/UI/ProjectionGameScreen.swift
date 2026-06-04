@@ -288,7 +288,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            ScoreBoardView(score: projection.score)
+            ScoreBoardView(score: projection.score, displayName: projection.displayName(for:))
                 .frame(width: 360)
         }
         .padding(.vertical, 16)
@@ -723,7 +723,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var scoreSheet: some View {
         NavigationStack {
             ScrollView {
-                ScoreBoardView(score: projection.score)
+                ScoreBoardView(score: projection.score, displayName: projection.displayName(for:))
                     .padding()
             }
             .navigationTitle("Scoresheet")

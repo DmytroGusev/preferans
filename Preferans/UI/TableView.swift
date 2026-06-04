@@ -253,7 +253,7 @@ public struct TableView: View {
     @ViewBuilder
     private func playArea(opponentSeats: [PlayerID]) -> some View {
         if case let .gameOver(summary) = projection.phase {
-            GameOverCard(summary: summary, onRematch: onRematch, onLeaveTable: onLeaveTable)
+            GameOverCard(summary: summary, displayName: projection.displayName(for:), onRematch: onRematch, onLeaveTable: onLeaveTable)
         } else if case let .dealFinished(result) = projection.phase {
             dealSummaryCard(result: result)
                 .accessibilityElement(children: .contain)

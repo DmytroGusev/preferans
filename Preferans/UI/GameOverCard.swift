@@ -7,15 +7,21 @@ import PreferansEngine
 /// hop into the scoresheet without dismissing anything first.
 public struct GameOverCard: View {
     public var summary: MatchSummary
+    /// Resolves a seat's `PlayerID` to the name the player sees, so the
+    /// winner line and standings show real names instead of the raw compass
+    /// seat ids used online.
+    public var displayName: (PlayerID) -> String
     public var onRematch: (() -> Void)?
     public var onLeaveTable: (() -> Void)?
 
     public init(
         summary: MatchSummary,
+        displayName: @escaping (PlayerID) -> String,
         onRematch: (() -> Void)? = nil,
         onLeaveTable: (() -> Void)? = nil
     ) {
         self.summary = summary
+        self.displayName = displayName
         self.onRematch = onRematch
         self.onLeaveTable = onLeaveTable
     }
@@ -28,10 +34,10 @@ public struct GameOverCard: View {
                     .foregroundStyle(TableTheme.goldBright)
                     .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
                 if let winner = summary.standings.first {
-                    Text("\(winner.player.rawValue) takes the pulka")
+                    Text("\(displayName(winner.player)) takes the pulka")
                         .font(.subheadline.bold())
                         .foregroundStyle(TableTheme.inkCream)
-                        .accessibilityLabel(Text("\(winner.player.rawValue) takes the pulka"))
+                        .accessibilityLabel(Text("\(displayName(winner.player)) takes the pulka"))
                         .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
                     Text("Match won")
                         .font(.caption2)
@@ -120,7 +126,7 @@ public struct GameOverCard: View {
                         .font(.caption.bold())
                         .foregroundStyle(TableTheme.inkCream)
                         .frame(width: 18, alignment: .leading)
-                    Text(standing.player.rawValue)
+                    Text(displayName(standing.player))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(TableTheme.inkCream)
                         .frame(maxWidth: .infinity, alignment: .leading)

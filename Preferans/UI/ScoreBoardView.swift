@@ -12,15 +12,20 @@ import PreferansEngine
 /// players without rewrapping a tabular layout.
 public struct ScoreBoardView: View {
     public var score: ScoreSheet
+    /// Resolves a seat's `PlayerID` to the name the player sees. Threaded
+    /// from the projection so the scoresheet shows real names instead of the
+    /// raw compass seat ids used online.
+    public var displayName: (PlayerID) -> String
 
-    public init(score: ScoreSheet) {
+    public init(score: ScoreSheet, displayName: @escaping (PlayerID) -> String) {
         self.score = score
+        self.displayName = displayName
     }
 
     public var body: some View {
         VStack(spacing: 16) {
             if (3...4).contains(score.players.count) {
-                PulkaDiagramView(score: score)
+                PulkaDiagramView(score: score, displayName: displayName)
             }
             VStack(spacing: 12) {
                 ForEach(score.players, id: \.self) { player in
@@ -39,7 +44,7 @@ public struct ScoreBoardView: View {
         let balance = score.balance(for: player)
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text(player.rawValue)
+                Text(displayName(player))
                     .font(.title3.bold())
                     .accessibilityIdentifier(UIIdentifiers.scorePlayer(player))
                 Spacer()
@@ -107,7 +112,7 @@ public struct ScoreBoardView: View {
                 ForEach(score.players.filter { $0 != player }, id: \.self) { target in
                     let value = score.whistsWritten(by: player, on: target)
                     HStack(spacing: 4) {
-                        Text("vs \(target.rawValue)")
+                        Text("vs \(displayName(target))")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
