@@ -243,7 +243,11 @@ extension PlayerProjectionBuilder {
             frame.roleMap[context.declarer] = .declarer
             let defenders = activePlayers.filter { $0 != context.declarer }
             for defender in defenders { frame.roleMap[defender] = .whister }
-            frame.revealHandOwners.formUnion(activePlayers)
+            // Closed misère: the declarer's hand stays concealed (only the
+            // declarer sees their own cards). The defenders play open so
+            // everyone — including the declarer — can see them and try to
+            // force a trick onto the declarer.
+            frame.revealHandOwners.formUnion(defenders)
 
         case .allPass:
             break

@@ -42,6 +42,15 @@ public struct DealSampler {
                 visibleSeats.insert(seat)
             }
         }
+        // Closed misère plays the defenders' hands open: every seat —
+        // declarer and both defenders — can legitimately see the
+        // defenders' cards, so they must not be scrambled into the hidden
+        // pool. Only the declarer's hand stays concealed.
+        if case let .misere(context) = playing.kind {
+            for seat in playing.activePlayers where seat != context.declarer {
+                visibleSeats.insert(seat)
+            }
+        }
         var results: [PreferansSnapshot] = []
         results.reserveCapacity(count)
         for _ in 0..<count {

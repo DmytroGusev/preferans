@@ -129,7 +129,7 @@ final class ProjectionTests: AppTestCase {
         }
     }
 
-    func testMisereProjectionRevealsEveryActiveHandToEveryViewer() throws {
+    func testClosedMisereHidesDeclarerHandButOpensDefenders() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
         let deck = HandRecipe.cleanMisere(declarer: "north")
@@ -143,6 +143,9 @@ final class ProjectionTests: AppTestCase {
             return XCTFail("Expected playing.misere; got \(engine.state.description)")
         }
 
+        let declarer: PlayerID = "north"
+        let defenders: [PlayerID] = ["east", "south"]
+
         for viewer in players {
             let projection = PlayerProjectionBuilder.projection(
                 for: viewer,
@@ -152,18 +155,27 @@ final class ProjectionTests: AppTestCase {
                 policy: .online
             )
 
-            for player in players {
-                let seat = try XCTUnwrap(projection.seats.first { $0.player == player })
+            // Closed misère: the declarer's hand is only visible to the
+            // declarer; every other viewer sees it face-down.
+            let declarerSeat = try XCTUnwrap(projection.seats.first { $0.player == declarer })
+            XCTAssertEqual(declarerSeat.hand.count, 10)
+            let expectedDeclarerKnown = viewer == declarer ? 10 : 0
+            XCTAssertEqual(
+                declarerSeat.hand.compactMap(\.knownCard).count,
+                expectedDeclarerKnown,
+                "Closed misère must hide the declarer's hand from \(viewer)."
+            )
+
+            // The defenders play open: their hands are visible to everyone,
+            // including the declarer.
+            for defender in defenders {
+                let seat = try XCTUnwrap(projection.seats.first { $0.player == defender })
                 XCTAssertEqual(seat.hand.count, 10)
                 XCTAssertEqual(
                     seat.hand.compactMap(\.knownCard).count,
                     10,
-                    "Misère should reveal \(player)'s hand to \(viewer)."
+                    "Closed misère should reveal defender \(defender)'s hand to \(viewer)."
                 )
-            }
-
-            for defender in ["east", "south"] as [PlayerID] {
-                let seat = try XCTUnwrap(projection.seats.first { $0.player == defender })
                 XCTAssertEqual(seat.role, .whister)
             }
         }
@@ -261,9 +273,11 @@ final class ProjectionTests: AppTestCase {
             recipe: .cleanMisere(declarer: "north"),
             kind: .misere(MiserePlayContext(declarer: "north"))
         )
+        // Closed misère: defenders open, declarer concealed (the declarer
+        // still sees their own hand via the viewer == seat rule).
         assertPlayingHandVisibility(
             in: misere,
-            openedPlayers: Set(misere.players),
+            openedPlayers: Set(misere.players.filter { $0 != "north" }),
             label: "misere"
         )
 
