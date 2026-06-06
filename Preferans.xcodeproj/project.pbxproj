@@ -44,6 +44,7 @@
 		B00000000000000000000062 /* OpponentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000072 /* OpponentSeatView.swift */; };
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
 		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
+		B00000000000000000000C00 /* SettlementComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000C01 /* SettlementComposer.swift */; };
 		B00000000000000000000065 /* TableTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000075 /* TableTheme.swift */; };
 		B00000000000000000000066 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000076 /* SettingsScreen.swift */; };
 		B00000000000000000000067 /* ScoreFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000077 /* ScoreFormatting.swift */; };
@@ -138,6 +139,7 @@
 		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OpponentSeatView.swift; sourceTree = "<group>"; };
 		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableView.swift; sourceTree = "<group>"; };
 		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ActionBarView.swift; sourceTree = "<group>"; };
+		B00000000000000000000C01 /* SettlementComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SettlementComposer.swift; sourceTree = "<group>"; };
 		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableTheme.swift; sourceTree = "<group>"; };
 		B00000000000000000000076 /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SettingsScreen.swift; sourceTree = "<group>"; };
 		B00000000000000000000077 /* ScoreFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ScoreFormatting.swift; sourceTree = "<group>"; };
@@ -248,6 +250,7 @@
 				B00000000000000000000072 /* OpponentSeatView.swift */,
 				B00000000000000000000073 /* TableView.swift */,
 				B00000000000000000000074 /* ActionBarView.swift */,
+				B00000000000000000000C01 /* SettlementComposer.swift */,
 				B00000000000000000000075 /* TableTheme.swift */,
 				B00000000000000000000076 /* SettingsScreen.swift */,
 				B00000000000000000000077 /* ScoreFormatting.swift */,
@@ -436,6 +439,7 @@
 				B00000000000000000000062 /* OpponentSeatView.swift in Sources */,
 				B00000000000000000000063 /* TableView.swift in Sources */,
 				B00000000000000000000064 /* ActionBarView.swift in Sources */,
+				B00000000000000000000C00 /* SettlementComposer.swift in Sources */,
 				B00000000000000000000065 /* TableTheme.swift in Sources */,
 				B00000000000000000000066 /* SettingsScreen.swift in Sources */,
 				B00000000000000000000067 /* ScoreFormatting.swift in Sources */,

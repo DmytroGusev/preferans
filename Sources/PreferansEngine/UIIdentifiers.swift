@@ -232,6 +232,7 @@ public enum UIIdentifiers {
     public static let buttonRematch            = "button.rematch"
     public static let buttonBackToLobby        = "button.backToLobby"
     public static let buttonOfferSettlement    = "button.offerSettlement"
+    public static let buttonCancelSettlement   = "button.cancelSettlement"
     public static let buttonAcceptSettlement   = "button.acceptSettlement"
     public static let buttonRejectSettlement   = "button.rejectSettlement"
 

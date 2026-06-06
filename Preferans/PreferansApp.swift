@@ -39,9 +39,22 @@ struct PreferansApp: App {
         #endif
     }
 
+    @ViewBuilder
+    private var rootContent: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-previewSettlement") {
+            SettlementPreviewGallery()
+        } else {
+            LobbyView()
+        }
+        #else
+        LobbyView()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
-            LobbyView()
+            rootContent
                 .environment(\.locale, Locale(identifier: AppLanguage.current.rawValue))
                 .transaction { transaction in
                     if animationsDisabled { transaction.animation = nil }

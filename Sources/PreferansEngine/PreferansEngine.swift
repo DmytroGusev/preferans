@@ -182,13 +182,15 @@ public struct PreferansEngine: Sendable {
         playing.settlementParties
     }
 
-    /// Suggested settlement splits for the UI menu: every way the remaining
-    /// tricks can divide between the declarer and the defending side, plus
-    /// the forced line when the rest of the play is determined. These are
-    /// only *suggestions* — the reducer accepts any
-    /// ``validateSettlement(_:in:)``-valid configuration, so a richer UI can
-    /// offer arbitrary splits without changing the engine. Duplicates are
-    /// collapsed (e.g. when a split matches the forced outcome).
+    /// The canonical anchor offers for the current position: concede every
+    /// remaining trick to the defence, claim them all for the declarer, and —
+    /// when the rest of the play is forced — the determined split. These are
+    /// the meaningful endpoints. The UI's tug-of-war composer lets a proposer
+    /// pick any split *between* them, and the reducer accepts any
+    /// ``validateSettlement(_:in:)``-valid configuration, so the engine never
+    /// has to enumerate the continuum. A non-empty result here also gates
+    /// whether a seat may settle at all. Duplicates are collapsed (e.g. with
+    /// one trick left, or when the forced split matches a concession).
     private func candidateSettlements(in playing: PlayingState) -> [TrickSettlement] {
         let declarer: PlayerID
         switch playing.kind {
@@ -200,9 +202,10 @@ public struct PreferansEngine: Sendable {
         guard remaining > 0 else { return [] }
         let defenders = playing.activePlayers.filter { $0 != declarer }
 
-        var offers: [TrickSettlement] = (0...remaining).map { declarerExtra in
-            settlementGivingDeclarer(declarerExtra, declarer: declarer, defenders: defenders, in: playing)
-        }
+        var offers: [TrickSettlement] = [
+            settlementGivingDeclarer(0, declarer: declarer, defenders: defenders, in: playing),
+            settlementGivingDeclarer(remaining, declarer: declarer, defenders: defenders, in: playing),
+        ]
         if let forced = forcedSettlement(in: playing) {
             offers.append(forced)
         }

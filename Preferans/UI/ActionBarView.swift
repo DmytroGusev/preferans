@@ -9,6 +9,12 @@ public struct ActionBarView: View {
     public var selectedDiscard: Set<Card>
     public var onSend: (PreferansAction) -> Void
 
+    /// True while the proposer has the tug-of-war settlement composer open.
+    /// Local view state — opening it doesn't touch the engine until an offer
+    /// is sent. Only honored while the viewer may actually settle, so a stale
+    /// `true` between deals stays dormant.
+    @State private var isComposingSettlement = false
+
     public init(
         projection: PlayerGameProjection,
         selectedDiscard: Set<Card>,
@@ -217,6 +223,20 @@ public struct ActionBarView: View {
             settlementResponseRow(proposal)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
+        } else if isComposingSettlement, canOfferSettlement, let context = settlementContext {
+            SettlementComposer(
+                declarerName: projection.displayName(for: context.declarer),
+                defenseName: defenseName(for: context.defenders),
+                remaining: context.remaining,
+                currentDeclarerTricks: context.currentDeclarerTricks,
+                goal: context.goal,
+                initialShare: context.defaultShare,
+                onOffer: { share in send(settlement: share, in: context) },
+                onCancel: { isComposingSettlement = false }
+            )
+            .transition(.opacity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
         } else {
             HStack(spacing: 8) {
                 if let actor = currentActorName {
@@ -233,7 +253,16 @@ public struct ActionBarView: View {
                         .lineLimit(2)
                 }
                 Spacer()
-                settlementOfferMenu
+                if canOfferSettlement {
+                    Button {
+                        isComposingSettlement = true
+                    } label: {
+                        Label("Settle", systemImage: "checkmark.seal")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.feltSecondary)
+                    .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
+                }
             }
         }
     }
@@ -275,37 +304,92 @@ public struct ActionBarView: View {
         }
     }
 
-    @ViewBuilder
-    private var settlementOfferMenu: some View {
-        let options = projection.legal.settlementOptions
-        if options.count == 1, let settlement = options.first {
-            Button {
-                onSend(.proposeSettlement(player: projection.viewer, settlement: settlement))
-            } label: {
-                Label("Settle", systemImage: "checkmark.seal")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.feltSecondary)
-            .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
-        } else if !options.isEmpty {
-            Menu {
-                ForEach(settlementTargets, id: \.rawValue) { target in
-                    let options = settlementOptions(for: target)
-                    Section(projection.displayName(for: target)) {
-                        ForEach(Array(options.enumerated()), id: \.offset) { _, settlement in
-                            Button(settlementMenuLabel(settlement)) {
-                                onSend(.proposeSettlement(player: projection.viewer, settlement: settlement))
-                            }
-                        }
-                    }
-                }
-            } label: {
-                Label("Settle", systemImage: "checkmark.seal")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.feltSecondary)
-            .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
+    /// Everything the tug-of-war composer needs, derived from the typed
+    /// projection phase. `nil` outside a settle-able playing position.
+    private struct SettlementContext {
+        var declarer: PlayerID
+        var activePlayers: [PlayerID]
+        var defenders: [PlayerID]
+        var remaining: Int
+        var currentDeclarerTricks: Int
+        var goal: SettlementComposer.Goal
+        var defaultShare: Int
+    }
+
+    /// The viewer may open the composer exactly when the engine offers them a
+    /// settlement — `settlementOptions` is empty for a passed-out defender, a
+    /// closed game, and an all-pass deal.
+    private var canOfferSettlement: Bool {
+        !projection.legal.settlementOptions.isEmpty
+    }
+
+    private func defenseName(for defenders: [PlayerID]) -> String {
+        defenders.count == 1 ? projection.displayName(for: defenders[0]) : "Defense"
+    }
+
+    private var settlementContext: SettlementContext? {
+        guard case let .playing(_, _, kind) = projection.phase else { return nil }
+        let remaining = 10 - projection.completedTrickCount
+        guard remaining > 0 else { return nil }
+        let active = projection.seats.filter(\.isActive).map(\.player)
+
+        let declarer: PlayerID
+        let goal: SettlementComposer.Goal
+        switch kind {
+        case let .game(d, contract, _, _, _):
+            declarer = d
+            goal = .contract(needs: contract.tricks, tricks: contract.tricks, strain: contract.strain.suit)
+        case let .misere(d):
+            declarer = d
+            goal = .misere
+        case .allPass:
+            return nil
         }
+
+        let current = projection.trickCounts[declarer] ?? 0
+        // Open the slider on the meaningful anchor: the share that lands the
+        // declarer exactly on the contract (zero tricks for a misère).
+        let defaultShare: Int
+        switch goal {
+        case let .contract(needs, _, _): defaultShare = min(max(needs - current, 0), remaining)
+        case .misere:                    defaultShare = 0
+        }
+
+        return SettlementContext(
+            declarer: declarer,
+            activePlayers: active,
+            defenders: active.filter { $0 != declarer },
+            remaining: remaining,
+            currentDeclarerTricks: current,
+            goal: goal,
+            defaultShare: defaultShare
+        )
+    }
+
+    /// Build the final-count split for `share` of the remaining tricks going
+    /// to the declarer (the rest spread across the defenders in seat order,
+    /// mirroring the engine's own concession layout) and propose it. The
+    /// reducer accepts any ``validateSettlement(_:in:)``-valid configuration,
+    /// and this always totals ten without clawing back a won trick.
+    private func send(settlement share: Int, in context: SettlementContext) {
+        var counts = Dictionary(
+            uniqueKeysWithValues: context.activePlayers.map { ($0, projection.trickCounts[$0] ?? 0) }
+        )
+        counts[context.declarer, default: 0] += share
+        var defenseRemaining = context.remaining - share
+        var index = 0
+        while defenseRemaining > 0, !context.defenders.isEmpty {
+            counts[context.defenders[index % context.defenders.count], default: 0] += 1
+            defenseRemaining -= 1
+            index += 1
+        }
+        let settlement = TrickSettlement(
+            target: context.declarer,
+            targetTricks: counts[context.declarer] ?? 0,
+            finalTrickCounts: counts
+        )
+        onSend(.proposeSettlement(player: projection.viewer, settlement: settlement))
+        isComposingSettlement = false
     }
 
     // MARK: - Helpers
@@ -362,31 +446,10 @@ public struct ActionBarView: View {
         projection.seats.first { $0.isCurrentActor && $0.player != projection.viewer }?.displayName
     }
 
-    private var settlementTargets: [PlayerID] {
-        projection.players.filter { target in
-            projection.legal.settlementOptions.contains { $0.target == target }
-        }
-    }
-
-    private func settlementOptions(for target: PlayerID) -> [TrickSettlement] {
-        projection.legal.settlementOptions
-            .filter { $0.target == target }
-            .sorted { lhs, rhs in
-                if lhs.targetTricks != rhs.targetTricks {
-                    return lhs.targetTricks < rhs.targetTricks
-                }
-                return settlementCountsSummary(lhs) < settlementCountsSummary(rhs)
-            }
-    }
-
     private func settlementHeadline(_ settlement: TrickSettlement, proposer: PlayerID) -> String {
         let proposerName = projection.displayName(for: proposer)
         let targetName = projection.displayName(for: settlement.target)
         return "\(proposerName) offers: \(targetName) takes \(settlement.targetTricks)"
-    }
-
-    private func settlementMenuLabel(_ settlement: TrickSettlement) -> String {
-        "\(projection.displayName(for: settlement.target)): \(settlement.targetTricks) \(trickWord(settlement.targetTricks))"
     }
 
     private func settlementCountsSummary(_ settlement: TrickSettlement) -> String {
@@ -396,9 +459,5 @@ public struct ActionBarView: View {
                 "\(projection.displayName(for: player)) \(settlement.finalTrickCounts[player] ?? 0)"
             }
             .joined(separator: " · ")
-    }
-
-    private func trickWord(_ count: Int) -> String {
-        count == 1 ? "trick" : "tricks"
     }
 }
