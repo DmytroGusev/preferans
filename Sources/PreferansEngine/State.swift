@@ -40,7 +40,11 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
         case let .awaitingDefenderMode(s): return s.whister
         case let .playing(s):
             if let proposal = s.pendingSettlement {
-                return s.activePlayers.first { !proposal.acceptedBy.contains($0) }
+                // Only the contesting parties approve, and they do so in
+                // seat order so the clock is deterministic. A passed-out
+                // defender is a bystander and never on the settlement clock.
+                let parties = s.settlementParties
+                return s.activePlayers.first { parties.contains($0) && !proposal.acceptedBy.contains($0) }
             }
             return s.currentPlayer
         case .waitingForDeal, .dealFinished, .gameOver:
@@ -417,6 +421,30 @@ public struct PlayingState: Equatable, Codable, Sendable {
 
     public var isComplete: Bool {
         completedTricks.count == 10
+    }
+
+    /// The seats that may both *suggest* and must *approve* a trick
+    /// settlement in the current position — the contesting sides, and only
+    /// them. In an open game that is the declarer plus the whisters; a
+    /// passed-out defender is a bystander who neither suggests nor approves.
+    /// A misère has no whist phase, so every active seat contests. A closed
+    /// game and an all-pass deal are always played out, so no one settles.
+    ///
+    /// This is the single source of truth for settlement participation:
+    /// ``DealState/currentActor``, the projection's accept/reject
+    /// affordances, and the reducer's unanimity check all read from here, so
+    /// the suggesting side and the approving side can never drift apart.
+    public var settlementParties: Set<PlayerID> {
+        switch kind {
+        case let .game(context) where context.defenderPlayMode == .open:
+            return Set([context.declarer] + context.whisters)
+        case .game:
+            return []
+        case .misere:
+            return Set(activePlayers)
+        case .allPass:
+            return []
+        }
     }
 }
 

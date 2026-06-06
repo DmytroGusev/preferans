@@ -231,9 +231,13 @@ public final class GameViewModel: ObservableObject {
         send(.startDeal(dealer: nil, deck: nil))
     }
 
-    /// Local shared-table shortcut for a verbal agreement around the
-    /// device. Online rooms still use explicit per-player accept/reject
-    /// actions from each seat's own projection.
+    /// Local shared-table shortcut for a verbal agreement around the device.
+    /// Auto-agrees only on behalf of the *human* seats sharing the screen —
+    /// the spoken "ok, let's settle" this stands in for. Bot parties keep
+    /// their own say: their approval strategy runs through the scheduler, so
+    /// a human can't force a settlement past a bot that would rather play on.
+    /// Online rooms always use explicit per-player accept/reject from each
+    /// seat's own projection.
     public func settleByLocalAgreement(proposer: PlayerID, settlement: TrickSettlement) {
         send(.proposeSettlement(player: proposer, settlement: settlement))
         guard case let .playing(playing) = engine.state,
@@ -243,10 +247,15 @@ public final class GameViewModel: ObservableObject {
             return
         }
 
-        for player in playing.activePlayers where engine.canAcceptSettlement(player: player) {
+        for player in playing.activePlayers
+        where playing.settlementParties.contains(player)
+            && !isBotSeat(player)
+            && engine.canAcceptSettlement(player: player) {
             send(.acceptSettlement(player: player))
-            guard case .playing = engine.state else { break }
+            guard case .playing = engine.state else { return }
         }
+        // Any remaining party is a bot — let it make its own decision.
+        scheduleBotIfNeeded()
     }
 
     public func projection(revealAll: Bool = true) -> PlayerGameProjection {

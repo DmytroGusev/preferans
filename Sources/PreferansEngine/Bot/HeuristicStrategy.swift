@@ -38,7 +38,13 @@ public struct HeuristicStrategy: PlayerStrategy {
         case let .playing(s):
             if let proposal = s.pendingSettlement {
                 guard snapshot.state.currentActor == viewer else { return nil }
-                return shouldAcceptSettlement(state: s, proposal: proposal)
+                // Agree only to the determined outcome: accept a settlement
+                // that reproduces the forced remainder of the deal, and
+                // defend (reject) anything speculative the bot could still
+                // contest by playing on. Works at any trick, not just the
+                // last one.
+                let forced = (try? PreferansEngine(snapshot: snapshot))?.forcedSettlement(in: s)
+                return forced == proposal.settlement
                     ? .acceptSettlement(player: viewer)
                     : .rejectSettlement(player: viewer)
             }
@@ -238,43 +244,4 @@ public struct HeuristicStrategy: PlayerStrategy {
         return legal.contains(.pass) ? .pass : legal[0]
     }
 
-    // MARK: Settlement
-
-    private func shouldAcceptSettlement(
-        state: PlayingState,
-        proposal: TrickSettlementProposal
-    ) -> Bool {
-        deterministicLastTrickSettlement(state: state) == proposal.settlement
-    }
-
-    private func deterministicLastTrickSettlement(state: PlayingState) -> TrickSettlement? {
-        guard state.currentTrick.isEmpty,
-              state.completedTricks.count == 9 else {
-            return nil
-        }
-
-        var plays: [CardPlay] = []
-        var player = state.currentPlayer
-        repeat {
-            guard let hand = state.hands[player], hand.count == 1, let card = hand.first else {
-                return nil
-            }
-            plays.append(CardPlay(player: player, card: card))
-            player = state.activePlayers.cyclicNext(after: player)
-        } while player != state.currentPlayer
-
-        guard let leadSuit = plays.first?.card.suit else { return nil }
-        let winner = PreferansEngine.trickWinner(
-            for: plays,
-            leadSuit: leadSuit,
-            trump: state.kind.trumpSuit
-        ).player
-        var finalCounts = state.trickCounts
-        finalCounts[winner, default: 0] += 1
-        return TrickSettlement(
-            target: winner,
-            targetTricks: finalCounts[winner] ?? 0,
-            finalTrickCounts: finalCounts
-        )
-    }
 }

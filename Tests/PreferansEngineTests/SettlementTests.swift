@@ -188,6 +188,92 @@ struct SettlementTests {
         #expect(result.trickCounts.values.reduce(0, +) == 10)
     }
 
+    @Test("Any valid trick configuration may be agreed, not just a preset offer")
+    func anyValidConfigurationIsAccepted() throws {
+        var engine = try makeMisereEngine()
+        // A split outside the suggestion menu, but still a valid future
+        // configuration: totals 10 and takes nothing back at the opening lead.
+        let custom = TrickSettlement(
+            target: "north",
+            targetTricks: 2,
+            finalTrickCounts: ["north": 2, "east": 5, "south": 3]
+        )
+        #expect(!engine.legalSettlements(for: "north").contains(custom),
+                "the chosen split is deliberately outside the suggestion menu")
+
+        _ = try engine.apply(.proposeSettlement(player: "north", settlement: custom))
+        _ = try engine.apply(.acceptSettlement(player: "east"))
+        _ = try engine.apply(.acceptSettlement(player: "south"))
+
+        guard case let .dealFinished(result) = engine.state else {
+            Issue.record("Expected the agreed custom split to score the deal.")
+            return
+        }
+        #expect(result.trickCounts == custom.finalTrickCounts)
+    }
+
+    @Test("Only the contesting parties approve — a passed defender is excluded")
+    func passedDefenderIsNotASettlementParty() throws {
+        // east declares, south whists (open), north passed out of the whist.
+        var engine = try makeOpenGameEngine()
+        let settlement = try #require(engine.legalSettlements(for: "east").first)
+        _ = try engine.apply(.proposeSettlement(player: "east", settlement: settlement))
+
+        // The passed defender is a bystander: no say either way.
+        #expect(!engine.canAcceptSettlement(player: "north"))
+        #expect(!engine.canRejectSettlement(player: "north"))
+        #expect(engine.canAcceptSettlement(player: "south"))
+        #expect(throws: (any Error).self) {
+            try engine.apply(.acceptSettlement(player: "north"))
+        }
+
+        // Declarer (auto-approved) plus the whister settles it — the passed
+        // defender never approves.
+        _ = try engine.apply(.acceptSettlement(player: "south"))
+        guard case .dealFinished = engine.state else {
+            Issue.record("Declarer + whister approval should settle without the passed defender.")
+            return
+        }
+    }
+
+    @Test("A bot defends rather than agreeing to a speculative settlement")
+    func botRejectsSpeculativeSettlement() async throws {
+        var engine = try makeMisereEngine()
+        let settlement = try #require(engine.legalSettlements(for: "north").first)
+        _ = try engine.apply(.proposeSettlement(player: "north", settlement: settlement))
+        #expect(engine.state.currentActor == "east", "east is on the settlement clock")
+
+        let action = try #require(
+            await HeuristicStrategy().decide(snapshot: engine.snapshot, viewer: "east")
+        )
+        #expect(action == .rejectSettlement(player: "east"),
+                "the opening-lead split isn't forced, so the bot plays on")
+    }
+
+    @Test("A bot agrees once the remaining trick is determined")
+    func botAcceptsForcedSettlement() async throws {
+        var engine = try makeMisereEngine()
+        while case let .playing(p) = engine.state, p.completedTricks.count < 9 {
+            let actor = p.currentPlayer
+            let card = try #require(engine.legalCards(for: actor).min())
+            _ = try engine.apply(.playCard(player: actor, card: card))
+        }
+        guard case let .playing(playing) = engine.state, playing.completedTricks.count == 9 else {
+            Issue.record("Expected to reach the final, forced trick still in play.")
+            return
+        }
+        let proposer = playing.currentPlayer
+        let forced = try #require(engine.forcedSettlement(in: playing))
+        _ = try engine.apply(.proposeSettlement(player: proposer, settlement: forced))
+
+        let onTheClock = try #require(engine.state.currentActor)
+        let action = try #require(
+            await HeuristicStrategy().decide(snapshot: engine.snapshot, viewer: onTheClock)
+        )
+        #expect(action == .acceptSettlement(player: onTheClock),
+                "the last trick is determined, so the bot agrees instead of playing it out")
+    }
+
     // MARK: - Fixtures
 
     /// A closed two-whister game at the opening lead. Two whisters always

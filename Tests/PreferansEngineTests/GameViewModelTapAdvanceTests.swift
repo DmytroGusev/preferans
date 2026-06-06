@@ -308,6 +308,27 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
         XCTAssertTrue(result.completedTricks.isEmpty,
                       "an agreement settles the unplayed tricks rather than fabricating them")
     }
+
+    func testLocalSettlementDoesNotForceBotPartyConsent() throws {
+        let model = try makeModel()
+        driveToMiserePlay(model)
+        // east becomes a bot party; the long delay parks its async decision so
+        // the synchronous proposal flow can be inspected on its own.
+        model.botMoveDelay = .seconds(60)
+        model.botStrategies["east"] = HeuristicStrategy()
+
+        let settlement = try XCTUnwrap(model.engine.legalSettlements(for: "north").first)
+        model.settleByLocalAgreement(proposer: "north", settlement: settlement)
+
+        guard case let .playing(playing) = model.engine.state else {
+            return XCTFail("a bot party hasn't agreed, so the deal must not settle")
+        }
+        let proposal = try XCTUnwrap(playing.pendingSettlement)
+        XCTAssertEqual(proposal.acceptedBy, ["north", "south"],
+                       "human seats auto-agree; the bot party keeps its own say")
+        XCTAssertFalse(proposal.acceptedBy.contains("east"),
+                       "a human must not be able to force a settlement past a bot party")
+    }
 }
 
 /// No-op strategy so test seats can be marked as bots without the

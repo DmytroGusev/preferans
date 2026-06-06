@@ -18,12 +18,8 @@ extension PreferansEngine {
             throw PreferansError.invalidPlayer(player)
         }
         try validateSettlement(settlement, in: playing)
-        let offers = legalSettlements(for: player)
-        guard !offers.isEmpty else {
+        guard playing.settlementParties.contains(player) else {
             throw PreferansError.illegalSettlement("Only the declarer or a whister may offer a settlement, and only in an open game or misère.")
-        }
-        guard offers.contains(settlement) else {
-            throw PreferansError.illegalSettlement("That settlement is not a valid offer for the current position.")
         }
 
         let proposal = TrickSettlementProposal(
@@ -42,7 +38,7 @@ extension PreferansEngine {
         guard var proposal = playing.pendingSettlement else {
             throw PreferansError.illegalSettlement("There is no settlement proposal to accept.")
         }
-        guard playing.activePlayers.contains(player) else {
+        guard playing.settlementParties.contains(player) else {
             throw PreferansError.invalidPlayer(player)
         }
         guard !proposal.acceptedBy.contains(player) else {
@@ -51,7 +47,7 @@ extension PreferansEngine {
 
         proposal.acceptedBy.insert(player)
         var events: [PreferansEvent] = [.settlementAccepted(player: player)]
-        if proposal.acceptedBy.isSuperset(of: Set(playing.activePlayers)) {
+        if proposal.acceptedBy.isSuperset(of: playing.settlementParties) {
             playing.pendingSettlement = nil
             let result = try scoreSettlement(proposal.settlement, in: playing)
             events.append(.playSettled(proposal.settlement))
@@ -70,7 +66,7 @@ extension PreferansEngine {
         guard playing.pendingSettlement != nil else {
             throw PreferansError.illegalSettlement("There is no settlement proposal to reject.")
         }
-        guard playing.activePlayers.contains(player) else {
+        guard playing.settlementParties.contains(player) else {
             throw PreferansError.invalidPlayer(player)
         }
 

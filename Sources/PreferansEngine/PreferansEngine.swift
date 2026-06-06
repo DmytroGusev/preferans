@@ -179,23 +179,16 @@ public struct PreferansEngine: Sendable {
     ///   whist phase, so all defenders qualify).
     /// - **Closed game / all-pass** — nobody; the deal is played out.
     func eligibleSettlementProposers(in playing: PlayingState) -> Set<PlayerID> {
-        switch playing.kind {
-        case let .game(context) where context.defenderPlayMode == .open:
-            return Set([context.declarer] + context.whisters)
-        case .game:
-            return []
-        case .misere:
-            return Set(playing.activePlayers)
-        case .allPass:
-            return []
-        }
+        playing.settlementParties
     }
 
-    /// The settlement offers available between tricks of an open game or
-    /// misère: concede the remaining tricks to the defenders, claim them
-    /// all for the declarer, and — when the rest of the play is forced —
-    /// the exact resulting split. Duplicates are collapsed (e.g. with one
-    /// trick left, or when the forced split matches a concession).
+    /// Suggested settlement splits for the UI menu: every way the remaining
+    /// tricks can divide between the declarer and the defending side, plus
+    /// the forced line when the rest of the play is determined. These are
+    /// only *suggestions* — the reducer accepts any
+    /// ``validateSettlement(_:in:)``-valid configuration, so a richer UI can
+    /// offer arbitrary splits without changing the engine. Duplicates are
+    /// collapsed (e.g. when a split matches the forced outcome).
     private func candidateSettlements(in playing: PlayingState) -> [TrickSettlement] {
         let declarer: PlayerID
         switch playing.kind {
@@ -207,10 +200,9 @@ public struct PreferansEngine: Sendable {
         guard remaining > 0 else { return [] }
         let defenders = playing.activePlayers.filter { $0 != declarer }
 
-        var offers: [TrickSettlement] = [
-            settlementGivingDeclarer(0, declarer: declarer, defenders: defenders, in: playing),
-            settlementGivingDeclarer(remaining, declarer: declarer, defenders: defenders, in: playing),
-        ]
+        var offers: [TrickSettlement] = (0...remaining).map { declarerExtra in
+            settlementGivingDeclarer(declarerExtra, declarer: declarer, defenders: defenders, in: playing)
+        }
         if let forced = forcedSettlement(in: playing) {
             offers.append(forced)
         }
@@ -252,7 +244,7 @@ public struct PreferansEngine: Sendable {
     public func canAcceptSettlement(player: PlayerID) -> Bool {
         guard case let .playing(playing) = state,
               let proposal = playing.pendingSettlement,
-              playing.activePlayers.contains(player) else {
+              playing.settlementParties.contains(player) else {
             return false
         }
         return !proposal.acceptedBy.contains(player)
@@ -263,7 +255,7 @@ public struct PreferansEngine: Sendable {
               playing.pendingSettlement != nil else {
             return false
         }
-        return playing.activePlayers.contains(player)
+        return playing.settlementParties.contains(player)
     }
 
     /// Contracts the declarer may legally declare in ``DealState/awaitingContract``.
@@ -522,7 +514,12 @@ public struct PreferansEngine: Sendable {
         )
     }
 
-    private func forcedSettlement(in playing: PlayingState) -> TrickSettlement? {
+    /// The settlement that exactly reproduces the rest of the deal when every
+    /// remaining play is forced (one legal card at each step). `nil` when any
+    /// player still has a real choice. Shared by the suggestion menu and by
+    /// the bot's approval check, so both agree on what "the determined
+    /// outcome" is.
+    func forcedSettlement(in playing: PlayingState) -> TrickSettlement? {
         guard playing.currentTrick.isEmpty, !playing.isComplete else { return nil }
         var simulated = playing
         while !simulated.isComplete {
