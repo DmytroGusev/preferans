@@ -21,9 +21,7 @@
 		B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000033 /* CloudKitGameArchiveStore.swift */; };
 		B00000000000000000000004 /* CloudKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000034 /* CloudKitModels.swift */; };
 		B00000000000000000000005 /* CloudKitRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000035 /* CloudKitRecords.swift */; };
-		B00000000000000000000006 /* GameCenterMatchmakerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000036 /* GameCenterMatchmakerView.swift */; };
 		B00000000000000000000007 /* GameCenterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* GameCenterService.swift */; };
-		B00000000000000000000008 /* GameKitRealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000038 /* GameKitRealtimeTransport.swift */; };
 		B00000000000000000000009 /* GameWireMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000039 /* GameWireMessage.swift */; };
 		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
 		B0000000000000000000000C /* HostGameActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003C /* HostGameActor.swift */; };
@@ -73,7 +71,6 @@
 		E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A048 /* RedesignScreenshotTests.swift */; };
 		E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A04A /* AccessibilityContractTests.swift */; };
 		E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */; };
-		F1095F4DB121A8D07CF6695F /* GameKitRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -110,15 +107,12 @@
 		A00000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A00000000000000000000019 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A00000000000000000000024 /* AppStore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppStore; sourceTree = "<group>"; };
-		A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GameKitRoomTransport.swift; path = Preferans/GameKit/GameKitRoomTransport.swift; sourceTree = "<group>"; };
 		B00000000000000000000031 /* PreferansApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansApp.swift; sourceTree = "<group>"; };
 		B00000000000000000000032 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
 		B00000000000000000000033 /* CloudKitGameArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitGameArchiveStore.swift; sourceTree = "<group>"; };
 		B00000000000000000000034 /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitModels.swift; sourceTree = "<group>"; };
 		B00000000000000000000035 /* CloudKitRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitRecords.swift; sourceTree = "<group>"; };
-		B00000000000000000000036 /* GameCenterMatchmakerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameCenterMatchmakerView.swift; sourceTree = "<group>"; };
 		B00000000000000000000037 /* GameCenterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameCenterService.swift; sourceTree = "<group>"; };
-		B00000000000000000000038 /* GameKitRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameKitRealtimeTransport.swift; sourceTree = "<group>"; };
 		B00000000000000000000039 /* GameWireMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameWireMessage.swift; sourceTree = "<group>"; };
 		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/GameLogReplayer.swift; sourceTree = "<group>"; };
 		B0000000000000000000003C /* HostGameActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/HostGameActor.swift; sourceTree = "<group>"; };
@@ -199,7 +193,6 @@
 				E00000000000000000000060 /* PreferansUITests */,
 				A00000000000000000000024 /* AppStore */,
 				A00000000000000000000023 /* Products */,
-				A72479AECA2CCAC3F3CB299D /* GameKitRoomTransport.swift */,
 				4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */,
 				2A20DD5DCD2B0E3F8897CF17 /* PlayerProjectionBuilder+Visibility.swift */,
 				591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */,
@@ -218,9 +211,7 @@
 				B00000000000000000000033 /* CloudKitGameArchiveStore.swift */,
 				B00000000000000000000034 /* CloudKitModels.swift */,
 				B00000000000000000000035 /* CloudKitRecords.swift */,
-				B00000000000000000000036 /* GameCenterMatchmakerView.swift */,
 				B00000000000000000000037 /* GameCenterService.swift */,
-				B00000000000000000000038 /* GameKitRealtimeTransport.swift */,
 				B00000000000000000000039 /* GameWireMessage.swift */,
 				B0000000000000000000003B /* GameLogReplayer.swift */,
 				B0000000000000000000003C /* HostGameActor.swift */,
@@ -407,9 +398,7 @@
 				B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */,
 				B00000000000000000000004 /* CloudKitModels.swift in Sources */,
 				B00000000000000000000005 /* CloudKitRecords.swift in Sources */,
-				B00000000000000000000006 /* GameCenterMatchmakerView.swift in Sources */,
 				B00000000000000000000007 /* GameCenterService.swift in Sources */,
-				B00000000000000000000008 /* GameKitRealtimeTransport.swift in Sources */,
 				B00000000000000000000009 /* GameWireMessage.swift in Sources */,
 				B0000000000000000000000B /* GameLogReplayer.swift in Sources */,
 				B0000000000000000000000C /* HostGameActor.swift in Sources */,
@@ -448,7 +437,6 @@
 				B0000000000000000000007A /* RecentAction.swift in Sources */,
 				B0000000000000000000007B /* CenterActionBanner.swift in Sources */,
 				B0000000000000000000A080 /* Localized.swift in Sources */,
-				F1095F4DB121A8D07CF6695F /* GameKitRoomTransport.swift in Sources */,
 				82816EDA29C185CD55470F2D /* PlayerProjectionBuilder+Phase.swift in Sources */,
 				57ACCE90BA16F946A4F7AF39 /* PlayerProjectionBuilder+Visibility.swift in Sources */,
 				5E490BED770B1DF621F6B33C /* ProjectionBuildFrame.swift in Sources */,
