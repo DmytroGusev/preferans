@@ -12,7 +12,13 @@ final class WireCompatibilityTests: XCTestCase {
         let projection = try makeProjection(sequence: 1)
         let messages: [GameWireMessage] = [
             .hello(HelloEnvelope(tableID: tableID, player: seats()[0], lastSeenSequence: 1)),
-            .seatAssignment(SeatAssignmentEnvelope(tableID: tableID, hostPlayerID: "north", seats: seats(), rules: .sochi)),
+            .seatAssignment(SeatAssignmentEnvelope(
+                tableID: tableID,
+                hostPlayerID: "north",
+                seats: seats(),
+                rules: .sochi,
+                match: MatchSettings(poolTarget: 21)
+            )),
             .clientAction(ClientActionEnvelope(
                 tableID: tableID,
                 actor: "north",
@@ -45,6 +51,30 @@ final class WireCompatibilityTests: XCTestCase {
             let decoded = try PreferansJSONCoder.decoder.decode(GameWireMessage.self, from: data)
             XCTAssertEqual(decoded, message)
         }
+    }
+
+    func testLegacySeatAssignmentDecodesWithUnboundedMatch() throws {
+        let envelope = SeatAssignmentEnvelope(
+            tableID: tableID,
+            hostPlayerID: "north",
+            seats: seats(),
+            rules: .sochi,
+            match: MatchSettings(poolTarget: 11)
+        )
+        let encoded = try PreferansJSONCoder.encoder.encode(envelope)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "schemaVersion")
+        legacy.removeValue(forKey: "match")
+
+        let legacyData = try JSONSerialization.data(withJSONObject: legacy)
+        let decoded = try PreferansJSONCoder.decoder.decode(SeatAssignmentEnvelope.self, from: legacyData)
+
+        XCTAssertEqual(decoded.schemaVersion, AppIdentifiers.gameWireSchemaVersion)
+        XCTAssertEqual(decoded.tableID, envelope.tableID)
+        XCTAssertEqual(decoded.hostPlayerID, envelope.hostPlayerID)
+        XCTAssertEqual(decoded.seats, envelope.seats)
+        XCTAssertEqual(decoded.rules, envelope.rules)
+        XCTAssertEqual(decoded.match, .unbounded)
     }
 
     func testLegacyProjectionEnvelopeDecodesWithDefaultSchemaAndEmptyEvents() throws {

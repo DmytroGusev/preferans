@@ -106,7 +106,7 @@ public enum TestHarness {
         var players = defaults.players
         var firstDealer = defaults.firstDealer
         var rules = PreferansRules.sochi
-        var match = MatchSettings.unbounded
+        var match = defaults.match
         var dealSource: DealSource = dealSource(from: arguments)
 
         if let scriptName = value(after: Flag.matchScript, in: arguments),
@@ -151,9 +151,11 @@ public enum TestHarness {
     public struct Defaults {
         public let players: [PlayerID]
         public let firstDealer: PlayerID?
-        public init(players: [PlayerID], firstDealer: PlayerID? = nil) {
+        public let match: MatchSettings
+        public init(players: [PlayerID], firstDealer: PlayerID? = nil, match: MatchSettings = .unbounded) {
             self.players = players
             self.firstDealer = firstDealer
+            self.match = match
         }
     }
 

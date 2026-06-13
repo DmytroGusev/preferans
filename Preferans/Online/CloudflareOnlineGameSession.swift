@@ -13,6 +13,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
 
     private let transport: CloudflareRoomTransport
     private let rules: PreferansRules
+    private let match: MatchSettings
     /// Variant label carried into the worker summary (presentation-only).
     private let variantTag: String?
     /// Present when this session was opened to resume an in-progress game; the
@@ -23,6 +24,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         transport: CloudflareRoomTransport,
         inviteURL: URL,
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         botMoveDelay: Duration = BotPacing.interactive,
         coordinator: RoomOnlineGameCoordinator? = nil,
         variantTag: String? = nil,
@@ -33,6 +35,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         self.inviteURL = inviteURL
         self.localPeer = transport.localPeer
         self.rules = rules
+        self.match = match
         self.variantTag = variantTag
         self.resume = resume
         self.localCoordinator = coordinator ?? RoomOnlineGameCoordinator(botMoveDelay: botMoveDelay)
@@ -44,6 +47,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         peers: [OnlinePeer],
         localPlayerID: PlayerID,
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         variantTag: String? = nil,
         botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
@@ -61,6 +65,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
             rules: rules,
+            match: match,
             botMoveDelay: botMoveDelay,
             variantTag: variantTag
         )
@@ -72,6 +77,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         variantTag: String? = nil,
         botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
@@ -88,6 +94,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
             rules: rules,
+            match: match,
             botMoveDelay: botMoveDelay,
             variantTag: variantTag
         )
@@ -136,6 +143,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
             rules: resume?.snapshot.rules ?? .sochi,
+            match: resume?.snapshot.match ?? .unbounded,
             botMoveDelay: botMoveDelay,
             variantTag: variantTag,
             resume: resume
@@ -143,7 +151,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     }
 
     public func start() async {
-        await localCoordinator.attach(transport: transport, rules: rules, variantTag: variantTag, resume: resume)
+        await localCoordinator.attach(transport: transport, rules: rules, match: match, variantTag: variantTag, resume: resume)
     }
 
     public func stop() {

@@ -133,6 +133,7 @@ public actor HostGameActor {
         hostPlayerID: PlayerID,
         seats: [PlayerIdentity],
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         firstDealer: PlayerID? = nil,
         projectionPolicy: ProjectionPolicy = .online,
         dealSource: DealSource = RandomDealSource()
@@ -140,7 +141,7 @@ public actor HostGameActor {
         let players = seats.map(\.playerID)
         self.tableID = tableID
         self.hostPlayerID = hostPlayerID
-        self.engine = try PreferansEngine(players: players, rules: rules, firstDealer: firstDealer ?? players.first)
+        self.engine = try PreferansEngine(players: players, rules: rules, match: match, firstDealer: firstDealer ?? players.first)
         self.sequence = 0
         self.seats = seats
         self.appliedNonces = []
@@ -154,6 +155,7 @@ public actor HostGameActor {
         hostPlayerID: PlayerID,
         seats: [PlayerIdentity],
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         firstDealer: PlayerID? = nil,
         validatedActionLog records: [ValidatedActionRecord],
         projectionPolicy: ProjectionPolicy = .online,
@@ -168,6 +170,7 @@ public actor HostGameActor {
         self.engine = try GameLogReplayer.replay(
             players: players,
             rules: rules,
+            match: match,
             firstDealer: firstDealer ?? players.first,
             records: records
         )

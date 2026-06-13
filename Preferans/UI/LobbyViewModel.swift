@@ -37,6 +37,11 @@ public final class LobbyViewModel: ObservableObject {
             UserDefaults.standard.set(onlineVariant.rawValue, forKey: SettingsKeys.onlineVariant)
         }
     }
+    @Published public var pulkaLimit: PulkaLimit = .standard {
+        didSet {
+            UserDefaults.standard.set(pulkaLimit.rawValue, forKey: SettingsKeys.pulkaLimit)
+        }
+    }
 
     public init() {
         let account = Self.loadRegisteredOnlineAccount()
@@ -45,6 +50,7 @@ public final class LobbyViewModel: ObservableObject {
             ?? UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName)
             ?? ""
         onlineVariant = Self.loadOnlineVariant()
+        pulkaLimit = Self.loadPulkaLimit()
     }
 
     public func setSeatCount(_ count: Int) {
@@ -110,6 +116,7 @@ public final class LobbyViewModel: ObservableObject {
                     peers: setup.peers,
                     localPlayerID: setup.localPlayer,
                     rules: setup.rules,
+                    match: setup.match,
                     variantTag: onlineVariant.rawValue,
                     botMoveDelay: delay
                 )
@@ -150,6 +157,7 @@ public final class LobbyViewModel: ObservableObject {
                     roomCode: roomCode,
                     localPeer: localPeer,
                     rules: setup.rules,
+                    match: setup.match,
                     variantTag: onlineVariant.rawValue,
                     botMoveDelay: delay
                 )
@@ -194,7 +202,7 @@ public final class LobbyViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 do {
-                    try await session.start(rules: self.onlineVariant.rules)
+                    try await session.start(rules: self.onlineVariant.rules, match: self.selectedMatchSettings)
                     onlineSession = session
                     errorText = nil
                 } catch {
@@ -388,7 +396,11 @@ public final class LobbyViewModel: ObservableObject {
             let args = ProcessInfo.processInfo.arguments
             let configuration = TestHarness.resolveConfiguration(
                 from: args,
-                defaults: TestHarness.Defaults(players: lobbyPlayers, firstDealer: defaultDealer)
+                defaults: TestHarness.Defaults(
+                    players: lobbyPlayers,
+                    firstDealer: defaultDealer,
+                    match: selectedMatchSettings
+                )
             )
 
             let viewerPolicy = configuration.viewerPolicyOverride
@@ -438,13 +450,18 @@ public final class LobbyViewModel: ObservableObject {
         peers: [OnlinePeer],
         localPlayer: PlayerID,
         rules: PreferansRules,
+        match: MatchSettings,
         dealSource: DealSource
     ) {
         let poolPlayers = OnlineSeatSlot.canonicalPlayerIDs(count: onlineComposition.count)
         let args = ProcessInfo.processInfo.arguments
         let configuration = TestHarness.resolveConfiguration(
             from: args,
-            defaults: TestHarness.Defaults(players: poolPlayers, firstDealer: poolPlayers.last)
+            defaults: TestHarness.Defaults(
+                players: poolPlayers,
+                firstDealer: poolPlayers.last,
+                match: selectedMatchSettings
+            )
         )
         let players = configuration.players
         // The host always sits in the "you" slot (slot 0). A joiner declares the
@@ -476,7 +493,7 @@ public final class LobbyViewModel: ObservableObject {
         let rules = args.contains(UITestFlags.matchScript)
             ? configuration.rules
             : onlineVariant.rules
-        return (peers, localPlayer, rules, configuration.dealSource)
+        return (peers, localPlayer, rules, configuration.match, configuration.dealSource)
     }
 
     private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
@@ -516,6 +533,18 @@ public final class LobbyViewModel: ObservableObject {
             return .odesa
         }
         return variant
+    }
+
+    private static func loadPulkaLimit() -> PulkaLimit {
+        guard let raw = UserDefaults.standard.string(forKey: SettingsKeys.pulkaLimit),
+              let limit = PulkaLimit(rawValue: raw) else {
+            return .standard
+        }
+        return limit
+    }
+
+    private var selectedMatchSettings: MatchSettings {
+        MatchSettings(poolTarget: pulkaLimit.target)
     }
 
     private func makeRoomCode() -> String {
@@ -569,6 +598,27 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
                 allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false),
                 zeroTricksAllPassPoolBonus: 0
             )
+        }
+    }
+}
+
+public enum PulkaLimit: String, CaseIterable, Identifiable, Equatable, Codable {
+    case short = "11"
+    case standard = "21"
+
+    public var id: String { rawValue }
+
+    public var target: Int {
+        switch self {
+        case .short: return 11
+        case .standard: return 21
+        }
+    }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .short: return "11"
+        case .standard: return "21"
         }
     }
 }

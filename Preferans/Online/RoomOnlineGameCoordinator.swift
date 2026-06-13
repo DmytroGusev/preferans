@@ -213,6 +213,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var peersBySeat: [PlayerID: OnlinePeer] = [:]
     private var seats: [PlayerIdentity] = []
     private var rules: PreferansRules = .sochi
+    private var match: MatchSettings = .unbounded
     /// Variant label (`"odesa"`/`"wien"`) carried into the worker summary so the
     /// lobby's "Your games" rows can name the house rules. Presentation-only.
     private var variantTag: String?
@@ -273,12 +274,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     public func attach(
         transport: any RoomRealtimeTransport,
         rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
         variantTag: String? = nil,
         resume: OnlineResumeContext? = nil
     ) async {
         // On resume the snapshot's rules are authoritative — adopt them so the
         // seat assignment we broadcast matches the engine we rebuild.
         self.rules = resume?.snapshot.rules ?? rules
+        self.match = resume?.snapshot.match ?? match
         self.variantTag = variantTag
         self.errorText = nil
         self.state = .selectingHost
@@ -305,7 +308,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.isHost = host.playerID == transport.localPeer.playerID
 
         if isHost {
-            await becomeHost(host: host, seats: seats, rules: self.rules, resume: resume)
+            await becomeHost(host: host, seats: seats, rules: self.rules, match: self.match, resume: resume)
         } else {
             self.state = .connectedAsClient
             await sendHello()
@@ -463,7 +466,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 tableID: tableID,
                 hostPlayerID: localSeat,
                 seats: seats,
-                rules: rules
+                rules: rules,
+                match: match
             )
             try? await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
         }
@@ -594,6 +598,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         host: OnlinePeer,
         seats: [PlayerIdentity],
         rules: PreferansRules,
+        match: MatchSettings,
         resume: OnlineResumeContext? = nil
     ) async {
         let tableID = UUID()
@@ -618,6 +623,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     hostPlayerID: hostID,
                     seats: seats,
                     rules: rules,
+                    match: match,
                     dealSource: dealSource
                 )
             }
@@ -625,7 +631,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             self.state = .connectedAsHost
             self.liveness = .live
 
-            let assignment = SeatAssignmentEnvelope(tableID: tableID, hostPlayerID: hostID, seats: seats, rules: rules)
+            let assignment = SeatAssignmentEnvelope(
+                tableID: tableID,
+                hostPlayerID: hostID,
+                seats: seats,
+                rules: rules,
+                match: match
+            )
             try await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
 
             let update = await actor.initialUpdate()
@@ -687,6 +699,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             noteHostContact()
             tableID = assignment.tableID
             rules = assignment.rules
+            match = assignment.match
             seats = assignment.seats
             hostPeer = peersBySeat[assignment.hostPlayerID] ?? hostPeer
             localSeat = transport?.localPeer.playerID
@@ -706,7 +719,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                             tableID: tableID,
                             hostPlayerID: localSeat,
                             seats: seats,
-                            rules: rules
+                            rules: rules,
+                            match: match
                         )
                         try await transport?.send(.seatAssignment(assignment), to: [peer], reliably: true)
                     }

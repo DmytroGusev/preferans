@@ -51,7 +51,7 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         }
     }
 
-    public func start(rules: PreferansRules = .sochi) async throws {
+    public func start(rules: PreferansRules = .sochi, match: MatchSettings = .unbounded) async throws {
         transports = try Dictionary(uniqueKeysWithValues: peers.map { peer in
             (peer.playerID, try room.transport(for: peer.playerID))
         })
@@ -65,7 +65,7 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         for peer in peers {
             let coordinator = coordinator(for: peer.playerID)
             guard let transport = transports[peer.playerID] else { continue }
-            await coordinator.attach(transport: transport, rules: rules)
+            await coordinator.attach(transport: transport, rules: rules, match: match)
         }
 
         for playerID in automatedPlayerIDs {

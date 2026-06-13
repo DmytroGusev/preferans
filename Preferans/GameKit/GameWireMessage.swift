@@ -30,12 +30,39 @@ public struct SeatAssignmentEnvelope: Codable, Sendable, Equatable {
     public var hostPlayerID: PlayerID
     public var seats: [PlayerIdentity]
     public var rules: PreferansRules
+    public var match: MatchSettings
 
-    public init(tableID: UUID, hostPlayerID: PlayerID, seats: [PlayerIdentity], rules: PreferansRules) {
+    public init(
+        tableID: UUID,
+        hostPlayerID: PlayerID,
+        seats: [PlayerIdentity],
+        rules: PreferansRules,
+        match: MatchSettings = .unbounded
+    ) {
         self.tableID = tableID
         self.hostPlayerID = hostPlayerID
         self.seats = seats
         self.rules = rules
+        self.match = match
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? AppIdentifiers.gameWireSchemaVersion
+        self.tableID = try container.decode(UUID.self, forKey: .tableID)
+        self.hostPlayerID = try container.decode(PlayerID.self, forKey: .hostPlayerID)
+        self.seats = try container.decode([PlayerIdentity].self, forKey: .seats)
+        self.rules = try container.decode(PreferansRules.self, forKey: .rules)
+        self.match = try container.decodeIfPresent(MatchSettings.self, forKey: .match) ?? .unbounded
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case tableID
+        case hostPlayerID
+        case seats
+        case rules
+        case match
     }
 }
 

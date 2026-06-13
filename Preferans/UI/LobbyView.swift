@@ -313,6 +313,7 @@ public struct LobbyView: View {
                 legacySeatCountAccessibilityButtons
 
                 botSpeedPicker
+                pulkaLimitPicker
 
                 if let validation = viewModel.seats.validationError {
                     Text(validation)
@@ -480,6 +481,24 @@ public struct LobbyView: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier(UIIdentifiers.lobbyBotSpeedPicker)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var pulkaLimitPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Pulka max")
+                .font(.caption.weight(.semibold))
+                .tracking(1.0)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.gold)
+            Picker("Pulka max", selection: $viewModel.pulkaLimit) {
+                ForEach(PulkaLimit.allCases) { limit in
+                    Text(limit.label).tag(limit)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier(UIIdentifiers.matchPoolTarget)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -713,6 +732,8 @@ public struct LobbyView: View {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+
+            pulkaLimitPicker
         }
     }
 

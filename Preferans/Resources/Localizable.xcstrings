@@ -1504,6 +1504,30 @@
         }
       }
     },
+    "Pulka max": {
+      "comment": "Lobby picker label — maximum pulka value for the match.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulka max"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Макс. пулька"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Макс. пулька"
+          }
+        }
+      }
+    },
     "Instant": {
       "comment": "Bot speed — no delay between bot moves.",
       "extractionState": "manual",

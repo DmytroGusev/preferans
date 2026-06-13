@@ -33,11 +33,12 @@ public enum GameLogReplayer {
     public static func replay(
         players: [PlayerID],
         rules: PreferansRules,
+        match: MatchSettings = .unbounded,
         firstDealer: PlayerID?,
         records: [ValidatedActionRecord]
     ) throws -> PreferansEngine {
         guard !players.isEmpty else { throw GameLogReplayError.emptyPlayers }
-        var engine = try PreferansEngine(players: players, rules: rules, firstDealer: firstDealer ?? players[0])
+        var engine = try PreferansEngine(players: players, rules: rules, match: match, firstDealer: firstDealer ?? players[0])
         var expected = 1
         for record in records.sorted(by: { $0.sequence < $1.sequence }) {
             guard record.sequence == expected else {
