@@ -1504,26 +1504,74 @@
         }
       }
     },
-    "Pulka max": {
-      "comment": "Lobby picker label — maximum pulka value for the match.",
+    "Pulka per player": {
+      "comment": "Lobby picker label — pulka value configured for each player.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pulka max"
+            "value": "Pulka per player"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Макс. пулька"
+            "value": "Пулька на игрока"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Макс. пулька"
+            "value": "Пулька на гравця"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "comment": "Generic segmented-control option for a user-entered value.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Своя"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Власна"
+          }
+        }
+      }
+    },
+    "Per player": {
+      "comment": "Placeholder for the custom pulka value field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per player"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На игрока"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "На гравця"
           }
         }
       }

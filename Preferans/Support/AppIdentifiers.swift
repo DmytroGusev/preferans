@@ -47,8 +47,11 @@ public enum SettingsKeys {
     /// House-rule variant selected for online rooms.
     public static let onlineVariant = "settings.onlineVariant"
 
-    /// Maximum pulka value selected for newly-created local and online tables.
+    /// Per-player pulka preset selected for newly-created local and online tables.
     public static let pulkaLimit = "settings.pulkaLimit"
+
+    /// Custom per-player pulka value used when the custom preset is selected.
+    public static let customPulkaPerPlayer = "settings.customPulkaPerPlayer"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

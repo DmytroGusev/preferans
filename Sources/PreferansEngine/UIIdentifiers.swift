@@ -304,6 +304,7 @@ public enum UIIdentifiers {
     // MARK: - Match settings status (visible affordance)
 
     public static let matchPoolTarget = "match.poolTarget"
+    public static let matchCustomPulkaPerPlayer = "match.customPulkaPerPlayer"
     public static let matchTotusPolicy = "match.totusPolicy"
     public static let matchRaspasyPolicy = "match.raspasyPolicy"
 }

@@ -42,6 +42,16 @@ public final class LobbyViewModel: ObservableObject {
             UserDefaults.standard.set(pulkaLimit.rawValue, forKey: SettingsKeys.pulkaLimit)
         }
     }
+    @Published public var customPulkaPerPlayer: Int = PulkaLimit.defaultCustomTarget {
+        didSet {
+            let clamped = Self.clampedPulkaPerPlayer(customPulkaPerPlayer)
+            if customPulkaPerPlayer != clamped {
+                customPulkaPerPlayer = clamped
+                return
+            }
+            UserDefaults.standard.set(customPulkaPerPlayer, forKey: SettingsKeys.customPulkaPerPlayer)
+        }
+    }
 
     public init() {
         let account = Self.loadRegisteredOnlineAccount()
@@ -51,6 +61,7 @@ public final class LobbyViewModel: ObservableObject {
             ?? ""
         onlineVariant = Self.loadOnlineVariant()
         pulkaLimit = Self.loadPulkaLimit()
+        customPulkaPerPlayer = Self.loadCustomPulkaPerPlayer()
     }
 
     public func setSeatCount(_ count: Int) {
@@ -202,7 +213,10 @@ public final class LobbyViewModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 do {
-                    try await session.start(rules: self.onlineVariant.rules, match: self.selectedMatchSettings)
+                    try await session.start(
+                        rules: self.onlineVariant.rules,
+                        match: self.selectedMatchSettings(playerCount: players.count)
+                    )
                     onlineSession = session
                     errorText = nil
                 } catch {
@@ -399,7 +413,7 @@ public final class LobbyViewModel: ObservableObject {
                 defaults: TestHarness.Defaults(
                     players: lobbyPlayers,
                     firstDealer: defaultDealer,
-                    match: selectedMatchSettings
+                    match: selectedMatchSettings(playerCount: lobbyPlayers.count)
                 )
             )
 
@@ -460,7 +474,7 @@ public final class LobbyViewModel: ObservableObject {
             defaults: TestHarness.Defaults(
                 players: poolPlayers,
                 firstDealer: poolPlayers.last,
-                match: selectedMatchSettings
+                match: selectedMatchSettings(playerCount: poolPlayers.count)
             )
         )
         let players = configuration.players
@@ -543,8 +557,27 @@ public final class LobbyViewModel: ObservableObject {
         return limit
     }
 
-    private var selectedMatchSettings: MatchSettings {
-        MatchSettings(poolTarget: pulkaLimit.target)
+    private static func loadCustomPulkaPerPlayer() -> Int {
+        guard let stored = UserDefaults.standard.object(forKey: SettingsKeys.customPulkaPerPlayer) as? Int else {
+            return PulkaLimit.defaultCustomTarget
+        }
+        return clampedPulkaPerPlayer(stored)
+    }
+
+    private static func clampedPulkaPerPlayer(_ value: Int) -> Int {
+        min(max(value, PulkaLimit.customRange.lowerBound), PulkaLimit.customRange.upperBound)
+    }
+
+    public var pulkaPerPlayer: Int {
+        pulkaLimit.target(custom: customPulkaPerPlayer)
+    }
+
+    public func totalPulkaTarget(playerCount: Int) -> Int {
+        pulkaPerPlayer * max(1, playerCount)
+    }
+
+    private func selectedMatchSettings(playerCount: Int) -> MatchSettings {
+        MatchSettings(poolTarget: totalPulkaTarget(playerCount: playerCount))
     }
 
     private func makeRoomCode() -> String {
@@ -605,6 +638,10 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
 public enum PulkaLimit: String, CaseIterable, Identifiable, Equatable, Codable {
     case short = "11"
     case standard = "21"
+    case custom = "custom"
+
+    public static let defaultCustomTarget = 21
+    public static let customRange = 1...999
 
     public var id: String { rawValue }
 
@@ -612,6 +649,16 @@ public enum PulkaLimit: String, CaseIterable, Identifiable, Equatable, Codable {
         switch self {
         case .short: return 11
         case .standard: return 21
+        case .custom: return Self.defaultCustomTarget
+        }
+    }
+
+    public func target(custom: Int) -> Int {
+        switch self {
+        case .short, .standard:
+            return target
+        case .custom:
+            return min(max(custom, Self.customRange.lowerBound), Self.customRange.upperBound)
         }
     }
 
@@ -619,6 +666,7 @@ public enum PulkaLimit: String, CaseIterable, Identifiable, Equatable, Codable {
         switch self {
         case .short: return "11"
         case .standard: return "21"
+        case .custom: return "Custom"
         }
     }
 }

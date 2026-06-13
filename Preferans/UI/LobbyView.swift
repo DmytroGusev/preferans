@@ -487,18 +487,41 @@ public struct LobbyView: View {
 
     private var pulkaLimitPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Pulka max")
+            Text("Pulka per player")
                 .font(.caption.weight(.semibold))
                 .tracking(1.0)
                 .textCase(.uppercase)
                 .foregroundStyle(TableTheme.gold)
-            Picker("Pulka max", selection: $viewModel.pulkaLimit) {
+            Picker("Pulka per player", selection: $viewModel.pulkaLimit) {
                 ForEach(PulkaLimit.allCases) { limit in
                     Text(limit.label).tag(limit)
                 }
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier(UIIdentifiers.matchPoolTarget)
+
+            if viewModel.pulkaLimit == .custom {
+                HStack(spacing: 10) {
+                    Image(systemName: "number")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(TableTheme.goldBright)
+                    TextField(
+                        "Per player",
+                        value: $viewModel.customPulkaPerPlayer,
+                        format: .number,
+                        prompt: Text("Per player").foregroundStyle(TableTheme.inkCreamDim)
+                    )
+                    .textFieldStyle(.plain)
+                    #if canImport(UIKit)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .submitLabel(.done)
+                    .foregroundStyle(TableTheme.inkCream)
+                    .accessibilityIdentifier(UIIdentifiers.matchCustomPulkaPerPlayer)
+                }
+                .padding(10)
+                .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

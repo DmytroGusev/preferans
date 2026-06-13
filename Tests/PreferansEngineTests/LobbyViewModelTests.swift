@@ -82,7 +82,7 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(reloaded.onlineVariant, .wien)
     }
 
-    func testPulkaLimitDefaultsPersistsAndSeedsLocalMatch() throws {
+    func testPulkaLimitDefaultsPersistsAndSeedsLocalMatchPerPlayer() throws {
         resetOnlineIdentityDefaults()
 
         let model = LobbyViewModel()
@@ -94,7 +94,24 @@ final class LobbyViewModelTests: AppTestCase {
 
         reloaded.startLocalTable()
         let game = try XCTUnwrap(reloaded.localModel)
-        XCTAssertEqual(game.engine.match.poolTarget, 11)
+        XCTAssertEqual(game.engine.match.poolTarget, 33)
+    }
+
+    func testCustomPulkaPersistsAndSeedsLocalMatchPerPlayer() throws {
+        resetOnlineIdentityDefaults()
+
+        let model = LobbyViewModel()
+        model.pulkaLimit = .custom
+        model.customPulkaPerPlayer = 17
+
+        let reloaded = LobbyViewModel()
+        XCTAssertEqual(reloaded.pulkaLimit, .custom)
+        XCTAssertEqual(reloaded.customPulkaPerPlayer, 17)
+
+        reloaded.setSeatCount(4)
+        reloaded.startLocalTable()
+        let game = try XCTUnwrap(reloaded.localModel)
+        XCTAssertEqual(game.engine.match.poolTarget, 68)
     }
 
     func testWienVariantUsesStrictRuleProfile() {
@@ -118,5 +135,6 @@ final class LobbyViewModelTests: AppTestCase {
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineVariant)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.pulkaLimit)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.customPulkaPerPlayer)
     }
 }
