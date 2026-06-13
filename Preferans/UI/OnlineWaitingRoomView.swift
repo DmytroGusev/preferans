@@ -1,5 +1,8 @@
 import SwiftUI
 import PreferansEngine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Pre-first-deal lobby for an online table. Replaces the old behavior of
 /// dropping the host straight onto a bare felt with a "Deal" button: here the
@@ -15,6 +18,8 @@ public struct OnlineWaitingRoomView: View {
 
     @State private var showLeaveConfirm = false
     @State private var isStarting = false
+    /// Transient "Copied" confirmation after tapping the room code.
+    @State private var didCopyCode = false
 
     public init(
         coordinator: RoomOnlineGameCoordinator,
@@ -41,8 +46,8 @@ public struct OnlineWaitingRoomView: View {
                 }
                 if let error = coordinator.errorText {
                     Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(TableTheme.errorInk)
                         .multilineTextAlignment(.center)
                         .accessibilityIdentifier(UIIdentifiers.errorBanner)
                 }
@@ -107,17 +112,45 @@ public struct OnlineWaitingRoomView: View {
 
     private var invitePanel: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: "number")
-                    .foregroundStyle(TableTheme.goldBright)
-                Text(verbatim: roomCode)
-                    .font(.title2.bold().monospaced())
-                    .foregroundStyle(TableTheme.inkCream)
-                    .textSelection(.enabled)
-                    .accessibilityLabel("Room code")
-                    .accessibilityValue(roomCode)
-                    .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
+            // Tap-to-copy: long-press text selection is undiscoverable, and
+            // in-memory/offline rooms have no share link at all — the code
+            // chip is then the only way to hand the room to a friend.
+            Button {
+                #if canImport(UIKit)
+                UIPasteboard.general.string = roomCode
+                #endif
+                withAnimation(.easeOut(duration: 0.15)) { didCopyCode = true }
+                Task {
+                    try? await Task.sleep(nanoseconds: 1_600_000_000)
+                    withAnimation(.easeIn(duration: 0.3)) { didCopyCode = false }
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "number")
+                        .foregroundStyle(TableTheme.goldBright)
+                    Text(verbatim: roomCode)
+                        .font(.title2.bold().monospaced())
+                        .foregroundStyle(TableTheme.inkCream)
+                        .accessibilityLabel("Room code")
+                        .accessibilityValue(roomCode)
+                        .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
+                    if didCopyCode {
+                        Label("Copied", systemImage: "checkmark")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(TableTheme.feltDeep)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(TableTheme.goldBright, in: Capsule())
+                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                    } else {
+                        Image(systemName: "doc.on.doc")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(TableTheme.inkCreamSoft)
+                    }
+                }
             }
+            .buttonStyle(.plain)
+            .accessibilityHint("Copies the room code")
             if let inviteURL {
                 ShareLink(
                     item: inviteURL,
@@ -140,7 +173,7 @@ public struct OnlineWaitingRoomView: View {
                     .foregroundStyle(TableTheme.inkCreamDim)
                     .multilineTextAlignment(.center)
             } else {
-                Text("Read the code to your friends so they can join.")
+                Text("Tap the code to copy it, or read it to your friends.")
                     .font(.caption2)
                     .foregroundStyle(TableTheme.inkCreamDim)
                     .multilineTextAlignment(.center)
@@ -327,11 +360,11 @@ public struct OnlineWaitingRoomView: View {
                 isOpen: false,
                 token: "human"
             )
-        case .bot:
+        case let .bot(name):
             return OccupancyInfo(
                 icon: "cpu",
                 iconColor: TableTheme.gold,
-                title: Text("Bot"),
+                title: name.isEmpty ? Text("Bot") : Text(verbatim: name),
                 pill: "Bot",
                 pillAccent: false,
                 isOpen: false,

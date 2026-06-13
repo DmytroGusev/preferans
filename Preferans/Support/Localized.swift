@@ -16,7 +16,10 @@ public enum Localized {
         switch phase {
         case .waitingForDeal:       return "Ready"
         case .bidding:              return "Bidding"
-        case .awaitingDiscard:      return "Prikup exchange"
+        // "Prikup", not "Prikup exchange": the status message next to the
+        // title already reads "<name> takes the prikup", and the longer
+        // title pushed the header chip into truncation on compact phones.
+        case .awaitingDiscard:      return "Prikup"
         case .awaitingContract:     return "Contract"
         case .awaitingWhist:        return "Whist"
         case .awaitingDefenderMode: return "Defense"

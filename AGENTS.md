@@ -5,6 +5,26 @@
 Always respond to the user in English, regardless of the language used in the
 user's message, unless the user explicitly requests another language.
 
+## Screenshots must reflect HEAD, never the disk
+
+**Never critique, review, or reason about the UI from screenshots you find
+lying on disk.** `build/screens/`, `bin/.screens/`, and any `*.xcresult`
+bundle are gitignored local scratch — they can be weeks older than the
+source and there is nothing tying them to the current code. Pixels that
+predate the `.swift` files they depict are worse than no pixels: they look
+authoritative and quietly mislead.
+
+Before looking at any rendered screen:
+
+1. Run `bin/screens-latest`. It prints the freshest run dir, or exits
+   non-zero if no run exists (2) or the newest frames are older than any
+   `Preferans/**.swift` (3).
+2. If it exits non-zero, run `bin/screens` to re-render from current source,
+   *then* read the PNGs it writes.
+
+One-liner for scripts/agents:
+`dir="$(bin/screens-latest)" || { bin/screens && dir="$(bin/screens-latest)"; }`
+
 ## Tight feedback loops during testing
 
 **A 10-minute test timeout is a smell, not a workaround.** If a UI test or

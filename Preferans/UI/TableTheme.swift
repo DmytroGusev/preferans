@@ -17,14 +17,26 @@ public enum TableTheme {
     // MARK: - Inks
 
     public static let inkCream     = Color(red: 0.95, green: 0.92, blue: 0.83)
-    public static let inkCreamSoft = Color(red: 0.95, green: 0.92, blue: 0.83).opacity(0.65)
-    public static let inkCreamDim  = Color(red: 0.95, green: 0.92, blue: 0.83).opacity(0.42)
+    // Secondary / tertiary inks. Kept high enough to clear WCAG AA at the
+    // small sizes (9–11 pt) these labels actually render at — over the
+    // lighter top of the felt gradient, 0.65/0.42 dropped to ~3.5:1.
+    public static let inkCreamSoft = Color(red: 0.95, green: 0.92, blue: 0.83).opacity(0.80)
+    public static let inkCreamDim  = Color(red: 0.95, green: 0.92, blue: 0.83).opacity(0.60)
 
     // MARK: - Accents
 
     public static let gold       = Color(red: 0.83, green: 0.67, blue: 0.34)
     public static let goldBright = Color(red: 0.96, green: 0.82, blue: 0.46)
     public static let wine       = Color(red: 0.62, green: 0.13, blue: 0.16)
+
+    // MARK: - Status inks
+    //
+    // Error/warning text rendered ON the felt. System `.red`/`.orange`
+    // disappear against the dark green; these stay warm enough to read as
+    // trouble while clearing contrast on every felt surface.
+
+    public static let errorInk   = Color(red: 0.96, green: 0.49, blue: 0.45)
+    public static let warningInk = Color(red: 0.95, green: 0.73, blue: 0.40)
 
     // MARK: - Background
 

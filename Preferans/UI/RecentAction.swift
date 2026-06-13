@@ -52,8 +52,26 @@ public enum RecentActionFeed {
     /// takes over the same screen real estate, so a stale "6♠" pill from
     /// the auction trail doesn't hover next to the live trick area.
     public static func perSeat(from events: [PreferansEvent]) -> [PlayerID: RecentAction] {
+        // Once trick play starts the per-seat pill's job is done — the
+        // persistent role badge carries declarer/whist/pass from here on.
+        // Without this the pre-play snapshot lingered through the whole
+        // play phase and the viewer plate showed "Pass" twice (role badge
+        // + stale action pill).
+        let scoped = scopedToCurrentDeal(events)
+        let playStarted = scoped.contains { if case .playStarted = $0 { return true } else { return false } }
+        if playStarted { return [:] }
+
         var result: [PlayerID: RecentAction] = [:]
         for (offset, event) in scopedToPreplay(events).enumerated() {
+            // Once a contract is declared the auction is settled, and a
+            // seat still wearing "Passed" from the bidding reads as a
+            // whist-pass during the whist round. Drop auction passes at
+            // that boundary; a real whist-pass re-adds the pill with the
+            // correct meaning. The winning bid stays — "6♠" on the
+            // declarer is still the headline of the deal.
+            if case .contractDeclared = event {
+                result = result.filter { $0.value.label != .pass }
+            }
             guard let resolved = bannerLabel(for: event) else { continue }
             result[resolved.player] = RecentAction(id: offset, player: resolved.player, label: resolved.label)
         }

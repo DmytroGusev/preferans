@@ -67,10 +67,16 @@ public struct WaitingRoomSeat: Identifiable, Equatable, Sendable {
         case you(name: String)
         /// A different human who has joined.
         case human(name: String)
-        /// A host-driven bot.
-        case bot
+        /// A host-driven bot, named so the waiting room matches the
+        /// "Bot 2"/"Bot 3" labels the live table will show.
+        case bot(name: String)
         /// A reserved seat nobody has joined yet (`pending:`).
         case openWaiting
+
+        public var isBot: Bool {
+            if case .bot = self { return true }
+            return false
+        }
     }
 
     public var player: PlayerID
@@ -478,8 +484,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             let occupancy: WaitingRoomSeat.Occupancy
             if identity.playerID == localSeat {
                 occupancy = .you(name: identity.displayName)
-            } else if peer?.isBotSeat == true {
-                occupancy = .bot
+            } else if let peer, peer.isBotSeat {
+                occupancy = .bot(name: peer.displayName)
             } else if peer?.isPendingSeat == true {
                 occupancy = .openWaiting
             } else {

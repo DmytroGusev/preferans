@@ -110,7 +110,7 @@ final class PreferansUITests: XCTestCase {
         XCTAssertEqual(robot.currentViewer(), "south")
         robot.bid(.pass)
 
-        robot.waitForPhase("Prikup exchange")
+        robot.waitForPhase("Prikup")
         robot.waitForElement(UIIdentifiers.Panel.discard.rawValue)
         XCTAssertEqual(robot.currentViewer(), "north")
     }

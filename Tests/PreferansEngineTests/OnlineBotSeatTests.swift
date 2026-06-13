@@ -85,13 +85,13 @@ final class OnlineBotSeatTests: XCTestCase {
 
         XCTAssertEqual(occupancy(of: "north", in: host), .you(name: "Host"))
         XCTAssertEqual(occupancy(of: "east", in: host), .openWaiting)
-        XCTAssertEqual(occupancy(of: "south", in: host), .bot)
+        XCTAssertTrue(occupancy(of: "south", in: host)?.isBot == true)
         XCTAssertFalse(host.canHostStart, "An open seat blocks Start.")
 
         await host.fillOpenSeatsWithBots()
         await pump(until: { host.canHostStart })
 
-        XCTAssertEqual(occupancy(of: "east", in: host), .bot, "No-show seat is converted to a bot.")
+        XCTAssertTrue(occupancy(of: "east", in: host)?.isBot == true, "No-show seat is converted to a bot.")
         XCTAssertTrue(host.canHostStart, "Every seat is now human-or-bot.")
 
         host.startFirstDeal()
@@ -145,7 +145,7 @@ final class OnlineBotSeatTests: XCTestCase {
         await host.attach(transport: try room.transport(for: "north"))
         await pump(until: { host.rosterSeats.count == 3 })
         await host.fillOpenSeatsWithBots()
-        await pump(until: { occupancy(of: "east", in: host) == .bot })
+        await pump(until: { occupancy(of: "east", in: host)?.isBot == true })
 
         // A late human tries to claim the seat the host already gave to a bot.
         let lateTransport = try room.transport(for: "east")
@@ -160,7 +160,7 @@ final class OnlineBotSeatTests: XCTestCase {
         // Give the host a few turns of the run loop to process the hello.
         for _ in 0..<20 { await Task.yield() }
 
-        XCTAssertEqual(occupancy(of: "east", in: host), .bot, "The bot keeps the seat; the late claim is rejected.")
+        XCTAssertTrue(occupancy(of: "east", in: host)?.isBot == true, "The bot keeps the seat; the late claim is rejected.")
         host.detach()
     }
 

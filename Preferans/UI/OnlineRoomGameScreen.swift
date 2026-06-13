@@ -1,5 +1,8 @@
 import SwiftUI
 import PreferansEngine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct OnlineRoomGameScreen: View {
     @ObservedObject public var coordinator: RoomOnlineGameCoordinator
@@ -67,7 +70,15 @@ public struct OnlineRoomGameScreen: View {
                 onLeaveTable: onLeaveTable,
                 extraMenu: {
                     Section("Room") {
-                        Text(roomCode)
+                        // A bare Text renders as an inert, mislabeled menu
+                        // row — make the code actionable instead.
+                        Button {
+                            #if canImport(UIKit)
+                            UIPasteboard.general.string = roomCode
+                            #endif
+                        } label: {
+                            Label("Copy code \(roomCode)", systemImage: "doc.on.doc")
+                        }
                         if let inviteURL {
                             ShareLink(
                                 item: inviteURL,

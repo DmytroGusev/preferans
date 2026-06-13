@@ -55,7 +55,7 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "05-bidding-west")
 
         robot.bid(.pass)
-        robot.waitForPhase("Prikup exchange")
+        robot.waitForPhase("Prikup")
         recorder.capture(name: "06-talon-exchange")
     }
 
@@ -67,6 +67,10 @@ final class RedesignScreenshotTests: XCTestCase {
     /// when set, otherwise under the temp directory.
     func testHumanVsBotsPlaythrough() {
         let screenDir = screenDir("screens")
+        // Start from an empty bucket like the match/pulka tests do —
+        // otherwise frames from an older run interleave with this one's
+        // and the folder lies about what the current code renders.
+        try? FileManager.default.removeItem(at: screenDir)
         func sanitize(_ s: String) -> String {
             String(s.replacingOccurrences(of: " ", with: "_")
                 .replacingOccurrences(of: ":", with: "")
@@ -75,7 +79,15 @@ final class RedesignScreenshotTests: XCTestCase {
         }
 
         let app = XCUIApplication()
-        app.launchArguments += [UITestFlags.viewerFollowsActor]
+        // Auto-advance trick results and run bots fast so the playthrough
+        // actually progresses through tricks (and so the captured "Play"
+        // frames show real, populated tricks rather than freezing on the
+        // opening lead).
+        app.launchArguments += [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.skipTapToAdvance,
+            UITestFlags.fastBotDelay,
+        ]
         app.launch()
         let robot = MatchUIRobot(app: app)
         let recorder = MatchScreenshotRecorder(testCase: self, app: app, outputDirectory: screenDir, filePrefix: "play")
@@ -105,7 +117,10 @@ final class RedesignScreenshotTests: XCTestCase {
 
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "Anya", acceptanceTimeout: 0.4) { continue }
+            // Stalingrad (6♠) makes whist obligatory — pass never renders,
+            // so take the forced call instead of idling out the loop.
+            if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
+            if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.4) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
             if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) { continue }
 
@@ -232,7 +247,14 @@ final class RedesignScreenshotTests: XCTestCase {
             }
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            if robot.playFirstAcceptedHandCard(for: "Anya", acceptanceTimeout: 0.12) { continue }
+            // Stalingrad (6♠) makes whist obligatory — pass never renders,
+            // so take the forced call instead of idling out the loop.
+            if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
+            // Seat-agnostic: with viewerFollowsActor the interactive hand
+            // changes owner every trick, and a hard-coded display name
+            // ("Anya") silently never matches the current roster — the
+            // match then stalls forever on the first real trick.
+            if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.12) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
 
             // Bot turn — with bot delay = 0 (animations off) the next

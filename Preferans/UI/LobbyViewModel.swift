@@ -761,22 +761,4 @@ extension OnlineSeatSlot {
 extension Array where Element == OnlineSeatSlot {
     var inviteCount: Int { filter { $0.kind == .invite }.count }
     var botCount: Int { filter { $0.kind == .bot }.count }
-
-    /// "You + 1 friend + 1 bot"-style summary for the online setup card.
-    var compositionSummary: String {
-        var parts: [String] = [String(localized: "You")]
-        let invites = inviteCount
-        if invites == 1 {
-            parts.append(String(localized: "1 friend"))
-        } else if invites > 1 {
-            parts.append(String(localized: "\(invites) friends"))
-        }
-        let bots = botCount
-        if bots == 1 {
-            parts.append(String(localized: "1 bot"))
-        } else if bots > 1 {
-            parts.append(String(localized: "\(bots) bots"))
-        }
-        return parts.joined(separator: " + ")
-    }
 }

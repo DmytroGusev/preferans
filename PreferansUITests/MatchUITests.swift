@@ -15,7 +15,7 @@ final class MatchUITests: XCTestCase {
     /// Launches with Game 1 (`firstDealer = north`, 4 players, classic Sochi,
     /// `asTenTrickGame(requireWhist: false)`, `poolTarget = 20`). Drives the
     /// first deal's auction (east opens 6♠, south and west pass) and asserts
-    /// the engine transitions through `Bidding → Prikup exchange` while the
+    /// the engine transitions through `Bidding → Prikup` while the
     /// robot's readings stay coherent with the engine's state.
     func testRobotDrivesGame1FirstAuctionToTalonExchange() {
         let app = XCUIApplication()
@@ -59,7 +59,7 @@ final class MatchUITests: XCTestCase {
 
         // West passes — auction ends, prikup exchange opens with east declaring.
         robot.bid(.pass)
-        robot.waitForPhase("Prikup exchange")
+        robot.waitForPhase("Prikup")
         XCTAssertEqual(robot.currentViewer(), "east",
                        "viewer should follow the declarer into the discard window.")
 

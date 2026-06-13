@@ -137,8 +137,8 @@ public struct LobbyView: View {
                 }
                 if let errorText = viewModel.errorText {
                     Text(errorText)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(TableTheme.errorInk)
                         .multilineTextAlignment(.center)
                         .accessibilityIdentifier(UIIdentifiers.lobbyError)
                 }
@@ -151,6 +151,9 @@ public struct LobbyView: View {
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
+        // The online card is a long form with two text fields — let a drag
+        // put the keyboard away instead of trapping it on screen.
+        .scrollDismissesKeyboard(.interactively)
         .feltBackground()
         .task(id: onlineGamesRefreshKey) {
             guard viewModel.lobbyMode == .online else { return }
@@ -314,7 +317,7 @@ public struct LobbyView: View {
                 if let validation = viewModel.seats.validationError {
                     Text(validation)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(TableTheme.warningInk)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
                 }
@@ -507,7 +510,7 @@ public struct LobbyView: View {
                 if let error = gameLibrary.loadError {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(TableTheme.warningInk)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -671,44 +674,18 @@ public struct LobbyView: View {
     }
 
     /// Online play, with its own identity, variant, and seat composition.
+    /// Two intents, in reading order: a guest with an invite finds "Join a
+    /// table" right under their identity, without scrolling through the
+    /// host-only variant/seat configuration that follows.
     private var onlineSetupCard: some View {
         VStack(spacing: 12) {
-            onlineSetupHeader
             onlineIdentitySection
+            onlineJoinSection
             onlineVariantSection
             onlineCompositionSection
             onlineRoomActionsSection
             hiddenLocalTestRoomButton
         }
-    }
-
-    private var onlineSetupHeader: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(TableTheme.gold.opacity(0.16))
-                    .frame(width: 44, height: 44)
-                Image(systemName: "person.2.wave.2.fill")
-                    .font(.title3)
-                    .foregroundStyle(TableTheme.goldBright)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Play online with friends")
-                    .font(.headline)
-                    .foregroundStyle(TableTheme.inkCream)
-                Text(viewModel.onlineVariant.standardName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-            }
-            Spacer(minLength: 8)
-            Text(viewModel.onlineComposition.compositionSummary)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(TableTheme.goldBright)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .padding(14)
-        .feltSurface(.card, radius: TableTheme.Radius.sm)
     }
 
     /// Online seat composition — the host picks how many seats and, for each
@@ -836,15 +813,6 @@ public struct LobbyView: View {
         )
     }
 
-    private func onlineSectionLabel(_ text: LocalizedStringKey) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .tracking(1.2)
-            .textCase(.uppercase)
-            .foregroundStyle(TableTheme.gold)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     /// Prominent, in-context affordance shown the moment a valid invite code is
     /// present (pasted or arrived via a `/join/<code>` link) — replacing the old
     /// behavior where the code silently dropped into the text field with no cue.
@@ -881,6 +849,7 @@ public struct LobbyView: View {
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isOnlineRoomLoading || viewModel.onlineIdentityValidationError != nil)
+        .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
     }
 
     /// Online identity, decoupled from the local roster. Signed-in users see a
@@ -909,31 +878,70 @@ public struct LobbyView: View {
                 onlineNameField
 
                 #if canImport(AuthenticationServices)
-                HStack {
-                    SignInWithAppleButton(
-                        .signIn,
-                        onRequest: configureAppleSignIn,
-                        onCompletion: handleAppleSignIn
-                    )
-                    .signInWithAppleButtonStyle(.black)
-                    .frame(width: 190, height: 36)
-                    .clipShape(Capsule())
-                    .accessibilityIdentifier(UIIdentifiers.onlineRegisterWithApple)
-                    Spacer()
-                }
+                // Full width and 44pt tall: aligned to the same grid (and
+                // minimum touch-target size) as the other lobby CTAs.
+                SignInWithAppleButton(
+                    .signIn,
+                    onRequest: configureAppleSignIn,
+                    onCompletion: handleAppleSignIn
+                )
+                .signInWithAppleButtonStyle(.black)
+                .frame(height: 44)
+                .frame(maxWidth: .infinity)
+                .clipShape(Capsule())
+                .accessibilityIdentifier(UIIdentifiers.onlineRegisterWithApple)
                 #endif
             }
             if let validation = viewModel.onlineIdentityValidationError {
                 Text(validation)
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(TableTheme.warningInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
+    /// Guest path: paste/read an invite, take a seat. The prominent
+    /// ready-to-join row doubles as the single join trigger — the field on
+    /// its own can't be "submitted invalid", so no second button is needed.
+    private var onlineJoinSection: some View {
+        onlinePanel(title: "Join a table", icon: "ticket.fill") {
+            if let pendingCode = viewModel.pendingJoinRoomCode {
+                readyToJoinRow(code: pendingCode)
+            } else {
+                // Keep the join automation root alive while no code is
+                // pending — same 1×1 idiom as the other hidden affordances.
+                Button { viewModel.joinCloudflareOnlineRoom() } label: { Color.clear }
+                    .frame(width: 1, height: 1)
+                    .opacity(0.001)
+                    .allowsHitTesting(true)
+                    .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
+            }
+            TextField(
+                "Paste link or code",
+                text: $viewModel.onlineJoinRoomCode,
+                prompt: Text("Paste link or code")
+                    .foregroundStyle(TableTheme.inkCreamDim)
+            )
+            .textFieldStyle(.plain)
+            .autocorrectionDisabled()
+            #if canImport(UIKit)
+            .textInputAutocapitalization(.characters)
+            #endif
+            .submitLabel(.go)
+            .onSubmit {
+                if viewModel.pendingJoinRoomCode != nil { viewModel.joinCloudflareOnlineRoom() }
+            }
+            .foregroundStyle(TableTheme.inkCream)
+            .padding(10)
+            .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
+        }
+    }
+
+    /// Host path: the terminal CTA after variant + seats are set.
     private var onlineRoomActionsSection: some View {
-        onlinePanel(title: "Room", icon: "link") {
+        onlinePanel(title: "Start a table", icon: "link") {
             Button {
                 viewModel.startCloudflareOnlineRoom()
             } label: {
@@ -957,52 +965,15 @@ public struct LobbyView: View {
             )
             .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
 
-            if let validation = viewModel.onlineSetupValidationError {
-                Text(validation)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            onlineSectionLabel("Join a table")
-            if let pendingCode = viewModel.pendingJoinRoomCode {
-                readyToJoinRow(code: pendingCode)
-            }
-            HStack(spacing: 8) {
-                TextField(
-                    "Paste link or code",
-                    text: $viewModel.onlineJoinRoomCode,
-                    prompt: Text("Paste link or code")
-                        .foregroundStyle(TableTheme.inkCreamDim)
-                )
-                    .textFieldStyle(.plain)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(TableTheme.inkCream)
-                    .padding(10)
-                    .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
-                    .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
-
-                Button {
-                    viewModel.joinCloudflareOnlineRoom()
-                } label: {
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.title3)
-                        .frame(width: 38, height: 38)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(
-                    viewModel.pendingJoinRoomCode != nil
-                        && viewModel.onlineIdentityValidationError == nil
-                        ? TableTheme.goldBright
-                        : TableTheme.inkCreamDim
-                )
-                .disabled(
-                    viewModel.isOnlineRoomLoading
-                        || viewModel.pendingJoinRoomCode == nil
-                        || viewModel.onlineIdentityValidationError != nil
-                )
-                .accessibilityLabel("Join table")
-                .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
+            // The field-level error in the "You" panel is the fix-it cue;
+            // down here a quiet pointer explains the disabled CTA without
+            // repeating the alert.
+            if viewModel.onlineSetupValidationError != nil {
+                Text("Add your name above to create a table.")
+                    .font(.caption2)
+                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
         }
     }
@@ -1338,6 +1309,12 @@ struct OnlineGameSummarySheet: View {
                         }
                     }
 
+                    Text("Final pool scores")
+                        .font(.caption2.weight(.semibold))
+                        .tracking(1.2)
+                        .textCase(.uppercase)
+                        .foregroundStyle(TableTheme.gold)
+
                     VStack(spacing: 8) {
                         ForEach(rows) { row in
                             HStack(spacing: 10) {
@@ -1356,10 +1333,6 @@ struct OnlineGameSummarySheet: View {
                             .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
                         }
                     }
-
-                    Text("Final pool scores")
-                        .font(.caption)
-                        .foregroundStyle(TableTheme.inkCreamDim)
                 }
                 .padding(20)
                 .frame(maxWidth: 560)
