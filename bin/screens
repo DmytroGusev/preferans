@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Run RedesignScreenshotTests and dump the captured PNGs into a flat folder
-# so you can scroll through the felt-redesign frames without clicking
-# attachments inside the .xcresult bundle.
+# Run the screenshot suites (RedesignScreenshotTests + the online/multiplayer
+# OnlineScreensScreenshotTests) and dump the captured PNGs into a flat folder
+# so you can scroll through the frames without clicking attachments inside
+# the .xcresult bundle.
 #
 # Output: bin/.screens/<run-id>/*.png  (always written, even on test failure)
 #
@@ -56,12 +57,14 @@ fi
 echo "[screens] running RedesignScreenshotTests on $DEST_NAME"
 # Tell the playthrough tests where to dump their secondary PNG bucket.
 # Without this they fall back to NSTemporaryDirectory, which works but
-# isn't where you'd look. xcodebuild forwards parent env vars to the
-# test runner, so the tests pick this up via ProcessInfo.
-export PREFERANS_SCREEN_DIR="$(pwd)/build"
+# isn't where you'd look. xcodebuild only forwards env vars that carry
+# the TEST_RUNNER_ prefix (it strips the prefix before injecting them
+# into the runner), so a bare PREFERANS_SCREEN_DIR never arrives.
+export TEST_RUNNER_PREFERANS_SCREEN_DIR="$(pwd)/build"
 set +e
 preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED" \
   -only-testing:PreferansUITests/RedesignScreenshotTests \
+  -only-testing:PreferansUITests/OnlineScreensScreenshotTests \
   -resultBundlePath "$RESULT_BUNDLE" \
   -quiet
 TEST_STATUS=$?
@@ -69,7 +72,10 @@ set -e
 
 # xcrun xcresulttool extract-attachments lands in Xcode 16+; fall back to a
 # manual walk of the legacy schema for older toolchains.
-if xcrun xcresulttool help 2>&1 | grep -q "export attachments"; then
+# Probe the *subcommand* directly — `export attachments` is nested and does
+# not show up in the top-level `xcresulttool help`, so grepping that gave a
+# false negative and silently skipped extraction (0 PNGs despite a green run).
+if xcrun xcresulttool export attachments --help >/dev/null 2>&1; then
   echo "[screens] extracting attachments via xcresulttool"
   xcrun xcresulttool export attachments \
     --path "$RESULT_BUNDLE" \

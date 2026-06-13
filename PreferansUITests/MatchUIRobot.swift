@@ -88,8 +88,8 @@ final class MatchUIRobot {
     }
 
     func play(_ card: Card, by player: PlayerID) {
-        tapCard(id: UIIdentifiers.card(card, in: .hand(seat: player)),
-                      descriptor: "play \(card) from \(player)'s hand")
+        playCard(id: UIIdentifiers.card(card, in: .hand(seat: player)),
+                 descriptor: "play \(card) from \(player)'s hand")
     }
 
     func startNextDeal() {
@@ -114,6 +114,31 @@ final class MatchUIRobot {
         return tapIfPresent(UIIdentifiers.buttonDiscardSelected)
     }
 
+    /// Plays the first playable card in whichever hand is currently
+    /// interactive, regardless of which seat owns it. Robust to display-name
+    /// changes (the older `for:` variant hard-codes a seat name that drifts
+    /// out of sync with the dealt players) and to `viewerFollowsActor`
+    /// rotating the active hand. Success = the tapped card leaves the hand row.
+    @discardableResult
+    func playFirstPlayableHandCard(acceptanceTimeout: TimeInterval = 0.4) -> Bool {
+        let playable = app.buttons.matching(
+            NSPredicate(format: "identifier CONTAINS %@ AND value == %@", ".hand.", "Playable")
+        )
+        let candidates = playable.allElementsBoundByIndex
+        guard !candidates.isEmpty else { return false }
+        for card in candidates {
+            guard let coordinate = cardTapCoordinate(card) else { continue }
+            let id = card.identifier
+            coordinate.doubleTap()
+            let gone = NSPredicate(format: "exists == false")
+            let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
+            if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Tries visible hand cards in order and returns after the first accepted
     /// play. Success is detected by the tapped identifier leaving the hand row.
     @discardableResult
@@ -122,14 +147,19 @@ final class MatchUIRobot {
         let playable = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH %@ AND value == %@", prefix, "Playable")
         )
-        if playable.count > 0 {
-            let card = playable.element(boundBy: 0)
-            guard card.exists, card.isHittable else { return false }
-            let id = card.identifier
-            card.tap()
-            let gone = NSPredicate(format: "exists == false")
-            let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
-            return XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed
+        let playableCandidates = playable.allElementsBoundByIndex
+        if !playableCandidates.isEmpty {
+            for card in playableCandidates {
+                guard let coordinate = cardTapCoordinate(card) else { continue }
+                let id = card.identifier
+                coordinate.doubleTap()
+                let gone = NSPredicate(format: "exists == false")
+                let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
+                if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
+                    return true
+                }
+            }
+            return false
         }
 
         let predicate = NSPredicate(format: "identifier BEGINSWITH %@", prefix)
@@ -138,9 +168,9 @@ final class MatchUIRobot {
         guard count > 0 else { return false }
         for index in 0..<count {
             let card = cards.element(boundBy: index)
-            guard card.exists, card.isHittable else { continue }
+            guard let coordinate = cardTapCoordinate(card) else { continue }
             let id = card.identifier
-            card.tap()
+            coordinate.doubleTap()
 
             let gone = NSPredicate(format: "exists == false")
             let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
@@ -153,7 +183,7 @@ final class MatchUIRobot {
 
     // MARK: - Reading state
 
-    /// Current phase title (e.g. "Bidding", "Prikup exchange", "Game over").
+    /// Current phase title (e.g. "Bidding", "Prikup", "Game over").
     func phaseTitle() -> String {
         let element = app.staticTexts[UIIdentifiers.phaseTitle]
         assertExists(element, "Phase title never appeared.")
@@ -280,7 +310,12 @@ final class MatchUIRobot {
 
     func labelIfExists(_ identifier: String) -> String {
         let element = app.staticTexts[identifier]
-        return element.exists ? element.label : ""
+        guard element.exists else { return "" }
+        // `exists` and `.label` are two separate queries; an element that
+        // vanishes between them (e.g. viewer.label when the hand rail
+        // hides on deal completion) fails the second one and records a
+        // test failure. Snapshot once and read the label off that.
+        return (try? element.snapshot().label) ?? ""
     }
 
     func screenshotDeduplicationKey() -> String {
@@ -346,6 +381,23 @@ final class MatchUIRobot {
         let button = app.buttons[id]
         assertExists(button, "Card button for \(descriptor) (id: \(id)) never appeared.")
         button.coordinate(withNormalizedOffset: CGVector(dx: 0.08, dy: 0.5)).tap()
+    }
+
+    private func playCard(id: String, descriptor: String) {
+        let button = app.buttons[id]
+        assertExists(button, "Card button for \(descriptor) (id: \(id)) never appeared.")
+        button.doubleTap()
+    }
+
+    private func cardTapCoordinate(_ element: XCUIElement) -> XCUICoordinate? {
+        guard element.exists else { return nil }
+        let frame = element.frame
+        guard frame.width > 1, frame.height > 1 else { return nil }
+        guard app.frame.intersects(frame) else { return nil }
+        let appFrame = app.frame
+        let dx = min(max((frame.minX + min(8, frame.width / 2)) / appFrame.width, 0.01), 0.99)
+        let dy = min(max(frame.midY / appFrame.height, 0.01), 0.99)
+        return app.coordinate(withNormalizedOffset: CGVector(dx: dx, dy: dy))
     }
 
     private func readInt(id: String, descriptor: String) -> Int {

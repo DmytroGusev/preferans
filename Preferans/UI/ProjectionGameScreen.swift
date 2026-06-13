@@ -37,6 +37,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     }
 
     @State private var selectedDiscard: Set<Card> = []
+    @State private var selectedPlayCard: Card?
     @State private var activeSheet: Sheet?
     @State private var showLeaveConfirm = false
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
@@ -122,6 +123,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
             // Game-over rendering is now inline on the felt — see
             // `TableView.gameOverCard`. No modal auto-presentation here.
             reconcileDiscardSelection()
+            reconcilePlaySelection()
         }
     }
 
@@ -200,7 +202,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     isDeemphasized: hasOpenOpponentHand && !isOpenHand(seat),
                     lastAction: seatActions[seat.player],
                     roleBadge: seatRoleBadges[seat.player],
-                    seatOrder: seatOrderNumber(for: seat.player)
+                    seatOrder: seatOrderNumber(for: seat.player),
+                    showsTrickCount: seat.trickCount > 0 || isPlayingPhase,
+                    playableCards: playableCards(for: seat.player),
+                    selectedCards: selectedCards(for: seat.player),
+                    onSelectCard: cardSelectHandler(for: seat.player),
+                    onPlayCard: cardPlayHandler(for: seat.player),
+                    onDragCard: cardPlayHandler(for: seat.player)
                 )
             }
             Spacer(minLength: 0)
@@ -239,6 +247,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
             pendingAdvance: pendingAdvance,
             idleHintActive: idleHintActive,
             cardSuitOrder: cardSuitDisplayOrder,
+            selectedPlayCard: selectedPlayCard,
+            onSelectPlayCard: selectPlayCard,
+            onPlayCard: { owner, card in playCard(card, from: owner) },
             onTapToAdvance: onTapToAdvance
         )
     }
@@ -352,14 +363,19 @@ public struct ProjectionGameScreen<Menu: View>: View {
         HStack(alignment: .center, spacing: 8) {
             phaseChip
             Spacer(minLength: 8)
-            if projection.lastCompletedTrick != nil {
-                lastTrickButton
+            // The icons own their spacing via 40 pt hit frames; extra
+            // HStack spacing here would push the phase chip into
+            // truncation on compact widths.
+            HStack(spacing: 0) {
+                if projection.lastCompletedTrick != nil {
+                    lastTrickButton
+                }
+                scoresheetButton
+                if onLeaveTable != nil {
+                    leaveButton
+                }
+                overflowMenu
             }
-            scoresheetButton
-            if onLeaveTable != nil {
-                leaveButton
-            }
-            overflowMenu
         }
         .confirmationDialog(
             "Leave this table?",
@@ -375,15 +391,27 @@ public struct ProjectionGameScreen<Menu: View>: View {
         }
     }
 
+    /// Shared hit-target treatment for the header's icon buttons. The
+    /// glyphs render at ~22 pt; without this the tappable area is the
+    /// glyph itself (~31 pt), well under the 44 pt HIG minimum. 40 pt is
+    /// the compromise that still fits four buttons plus the phase chip on
+    /// a compact phone.
+    private func headerIconTarget<Glyph: View>(_ glyph: Glyph) -> some View {
+        glyph
+            .frame(width: 40, height: 40)
+            .contentShape(Rectangle())
+    }
+
     private var lastTrickButton: some View {
         Button {
             activeSheet = .lastTrick
         } label: {
-            Image(systemName: "arrow.counterclockwise.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(TableTheme.goldBright, Color.black.opacity(0.30))
-                .font(.title3)
-                .padding(4)
+            headerIconTarget(
+                Image(systemName: "arrow.counterclockwise.circle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(TableTheme.goldBright, Color.black.opacity(0.30))
+                    .font(.title3)
+            )
         }
         .accessibilityLabel("Last trick")
         .accessibilityIdentifier(UIIdentifiers.buttonLastTrick)
@@ -396,11 +424,12 @@ public struct ProjectionGameScreen<Menu: View>: View {
         Button {
             showLeaveConfirm = true
         } label: {
-            Image(systemName: "xmark.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
-                .font(.title3)
-                .padding(4)
+            headerIconTarget(
+                Image(systemName: "xmark.circle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                    .font(.title3)
+            )
         }
         .accessibilityLabel("Leave table")
         .accessibilityIdentifier(UIIdentifiers.buttonLeaveTable)
@@ -412,11 +441,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
         Button {
             activeSheet = .score
         } label: {
-            Image(systemName: "list.number")
-                .foregroundStyle(TableTheme.inkCream)
-                .font(.subheadline.weight(.semibold))
-                .padding(6)
-                .background(Color.black.opacity(0.30), in: Capsule())
+            headerIconTarget(
+                Image(systemName: "tablecells.fill")
+                    .foregroundStyle(TableTheme.inkCream)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(6)
+                    .background(Color.black.opacity(0.30), in: Capsule())
+            )
         }
         .accessibilityLabel("Scoresheet")
         .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
@@ -426,7 +457,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
         HStack(spacing: 6) {
             Text(Localized.phaseTitle(projection.phase))
                 .font(.caption.weight(.bold))
-                .foregroundStyle(TableTheme.goldBright)
+                // Phase name is orientation, not an action — cream, not gold.
+                .foregroundStyle(TableTheme.inkCream)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
             if !shouldShowCenterDealCTA {
@@ -437,6 +469,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     .font(.caption)
                     .foregroundStyle(TableTheme.inkCreamSoft)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.78)
                     .accessibilityIdentifier(UIIdentifiers.phaseMessage)
             } else {
                 // Idle state: the centered Deal CTA already says everything
@@ -481,12 +514,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 }
             }
         } label: {
-            Image(systemName: "ellipsis.circle.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
-                .font(.title3)
-                .padding(4)
-                .accessibilityLabel("Menu")
+            headerIconTarget(
+                Image(systemName: "ellipsis.circle.fill")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                    .font(.title3)
+            )
+            .accessibilityLabel("Menu")
         }
         .accessibilityIdentifier(UIIdentifiers.overflowMenu)
     }
@@ -497,23 +531,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var viewerHandFan: some View {
         if let seat = activeHandSeat {
             let isDiscardPhase = projection.legal.canDiscard
-            let isControlledHand = projection.legal.playableCardsOwner != nil
-                && projection.legal.playableCardsOwner != projection.viewer
-            let playable: Set<Card> = isDiscardPhase ? [] : Set(projection.legal.playableCards)
-            let selected: Set<Card> = isDiscardPhase ? selectedDiscard : []
+            let playable: Set<Card> = isDiscardPhase ? [] : playableCards(for: seat.player)
+            let selected: Set<Card> = isDiscardPhase ? selectedDiscard : selectedCards(for: seat.player)
             let talonKnown: [Card] = isDiscardPhase ? projection.talon.compactMap(\.knownCard) : []
             let cards: [ProjectedCard] = isDiscardPhase
                 ? sortedHandFan(seat.hand + projection.talon)
                 : sortedHandFan(seat.hand)
-            // Whose seat the resulting playCard action should speak for.
-            // Default to the viewer's seat, but when the viewer is acting
-            // on behalf of a controlled passer, the action speaks for
-            // that seat (and the engine plays the card from its hand).
-            let actionPlayer: PlayerID = projection.legal.playableCardsOwner ?? projection.viewer
             VStack(spacing: 0) {
-                if isControlledHand {
-                    controlledHandLabel(seat: seat)
-                }
                 ZStack(alignment: .topLeading) {
                     CardFanView(
                         cards: cards,
@@ -526,9 +550,15 @@ public struct ProjectionGameScreen<Menu: View>: View {
                         onTap: { card in
                             if isDiscardPhase {
                                 toggleDiscardSelection(card)
-                            } else if playable.contains(card) {
-                                onSend(.playCard(player: actionPlayer, card: card))
+                            } else {
+                                selectPlayCard(card)
                             }
+                        },
+                        onDoubleTap: isDiscardPhase ? nil : { card in
+                            playCard(card, from: seat.player)
+                        },
+                        onDragEnded: isDiscardPhase ? nil : { card in
+                            playCard(card, from: seat.player)
                         }
                     )
                     .shadow(color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.35) : .clear,
@@ -545,22 +575,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
             .padding(.vertical, 6)
             .padding(.horizontal, 4)
         }
-    }
-
-    /// In single-whist greedy play the whister's bottom fan flips to the
-    /// passer's hand on the passer's turn — without a header it would
-    /// look like the whister suddenly grew different cards. The chip
-    /// names the seat the whister is pulling for so the swap reads as
-    /// intentional.
-    private func controlledHandLabel(seat: SeatProjection) -> some View {
-        Text("Playing for \(seat.displayName)")
-            .font(.caption2.weight(.bold))
-            .tracking(0.3)
-            .foregroundStyle(TableTheme.feltDeep)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(TableTheme.goldBright, in: Capsule())
-            .padding(.bottom, 4)
     }
 
     private var viewerActorAccessibilityMarker: some View {
@@ -602,14 +616,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// counter.
     private func ownerNamePlate(seat: SeatProjection) -> some View {
         HStack(spacing: 8) {
-            if let seatOrder = seatOrderNumber(for: seat.player) {
-                SeatOrderBadge(
-                    number: seatOrder,
-                    player: seat.player,
-                    isCurrentActor: seat.isCurrentActor,
-                    diameter: 22
-                )
-            }
             Text(seat.displayName)
                 .font(.caption.bold())
                 .foregroundStyle(TableTheme.inkCream)
@@ -648,9 +654,12 @@ public struct ProjectionGameScreen<Menu: View>: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 1)
             .background(
+                // Dim gold (not bright) for the contract role: a second,
+                // quieter tier so it reads as identity while bright gold stays
+                // reserved for whose-turn and the viewer's live controls.
                 Capsule().fill(
                     badge.isAccent
-                        ? TableTheme.goldBright
+                        ? TableTheme.gold
                         : Color.black.opacity(0.30)
                 )
             )
@@ -804,16 +813,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
         projection.players.firstIndex(of: player).map { $0 + 1 }
     }
 
-    /// Seat whose hand belongs in the bottom fan right now. Usually the
-    /// viewer's own seat, but flips to the controlled passer when the
-    /// viewer is the lone whister and it's the passer's turn — that's
-    /// the hand the whister needs to tap from.
+    /// Seat whose hand belongs in the bottom fan. Controlled passer hands
+    /// stay at the passer's table seat so the whister does not appear to
+    /// swap identities mid-trick.
     private var activeHandSeat: SeatProjection? {
-        if let owner = projection.legal.playableCardsOwner,
-           owner != projection.viewer,
-           let controlled = projection.seats.first(where: { $0.player == owner }) {
-            return controlled
-        }
         return viewerSeat
     }
 
@@ -833,6 +836,51 @@ public struct ProjectionGameScreen<Menu: View>: View {
         let available = Set((viewerSeat?.hand ?? []).compactMap(\.knownCard)
             + projection.talon.compactMap(\.knownCard))
         selectedDiscard.formIntersection(available)
+    }
+
+    private var playableOwner: PlayerID {
+        projection.legal.playableCardsOwner ?? projection.viewer
+    }
+
+    private func playableCards(for player: PlayerID) -> Set<Card> {
+        guard playableOwner == player else { return [] }
+        return Set(projection.legal.playableCards)
+    }
+
+    private func selectedCards(for player: PlayerID) -> Set<Card> {
+        guard playableOwner == player, let selectedPlayCard else { return [] }
+        return [selectedPlayCard]
+    }
+
+    private func cardSelectHandler(for player: PlayerID) -> ((Card) -> Void)? {
+        guard !playableCards(for: player).isEmpty else { return nil }
+        return { card in selectPlayCard(card) }
+    }
+
+    private func cardPlayHandler(for player: PlayerID) -> ((Card) -> Void)? {
+        guard !playableCards(for: player).isEmpty else { return nil }
+        return { card in playCard(card, from: player) }
+    }
+
+    private func selectPlayCard(_ card: Card) {
+        selectedPlayCard = card
+    }
+
+    private func playCard(_ card: Card, from owner: PlayerID) {
+        guard playableCards(for: owner).contains(card) else {
+            selectedPlayCard = card
+            return
+        }
+        selectedPlayCard = nil
+        onSend(.playCard(player: owner, card: card))
+    }
+
+    private func reconcilePlaySelection() {
+        guard let selectedPlayCard else { return }
+        let visiblePlayable = Set(projection.legal.playableCards)
+        if !visiblePlayable.contains(selectedPlayCard) {
+            self.selectedPlayCard = nil
+        }
     }
 }
 
@@ -880,25 +928,11 @@ private struct LastTrickView: View {
             )
             .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
                     radius: isWinner ? 12 : 0)
-            HStack(spacing: 4) {
-                if let order = seatOrderNumber(for: play.player) {
-                    SeatOrderBadge(
-                        number: order,
-                        player: play.player,
-                        isCurrentActor: isWinner,
-                        diameter: 20
-                    )
-                }
-                Text(projection.displayName(for: play.player))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(isWinner ? TableTheme.goldBright : TableTheme.inkCreamSoft)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
-            }
+            Text(projection.displayName(for: play.player))
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(isWinner ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                .lineLimit(1)
+                .minimumScaleFactor(0.62)
         }
-    }
-
-    private func seatOrderNumber(for player: PlayerID) -> Int? {
-        projection.players.firstIndex(of: player).map { $0 + 1 }
     }
 }

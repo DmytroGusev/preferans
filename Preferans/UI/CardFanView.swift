@@ -19,6 +19,10 @@ public struct CardFanView: View {
     /// merge to avoid SwiftUI keeping multiple geometry copies alive.
     public var animationNamespace: Namespace.ID?
     public var onTap: ((Card) -> Void)?
+    public var onDoubleTap: ((Card) -> Void)?
+    public var onDragEnded: ((Card) -> Void)?
+
+    @GestureState private var dragState: DragState?
 
     public init(
         cards: [ProjectedCard],
@@ -28,7 +32,9 @@ public struct CardFanView: View {
         seat: PlayerID,
         size: CardView.Size = .standard,
         animationNamespace: Namespace.ID? = nil,
-        onTap: ((Card) -> Void)? = nil
+        onTap: ((Card) -> Void)? = nil,
+        onDoubleTap: ((Card) -> Void)? = nil,
+        onDragEnded: ((Card) -> Void)? = nil
     ) {
         self.cards = cards
         self.playableCards = playableCards
@@ -38,6 +44,8 @@ public struct CardFanView: View {
         self.size = size
         self.animationNamespace = animationNamespace
         self.onTap = onTap
+        self.onDoubleTap = onDoubleTap
+        self.onDragEnded = onDragEnded
     }
 
     public var body: some View {
@@ -59,6 +67,8 @@ public struct CardFanView: View {
                     let isPlayable = known.map { playableCards.contains($0) } ?? false
                     let isSelected = known.map { selectedCards.contains($0) } ?? false
                     let isTalon = known.map { talonCards.contains($0) } ?? false
+                    let drag = known.flatMap(dragTranslation(for:)) ?? .zero
+                    let isDragging = known.map { dragState?.card == $0 } ?? false
                     let region: UIIdentifiers.CardRegion = isTalon ? .discardSelect : .hand(seat: seat)
                     let isInteractive = known != nil && onTap != nil
                     ZStack(alignment: .topLeading) {
@@ -88,10 +98,12 @@ public struct CardFanView: View {
                             .accessibilityLabel(projected.description)
                             .accessibilityValue(isPlayable ? "Playable" : "Not playable")
                             .accessibilityIdentifier(UIIdentifiers.card(known, in: region))
+                            .simultaneousGesture(doubleTapGesture(for: known))
+                            .simultaneousGesture(dragGesture(for: known))
                         }
                     }
-                        .offset(x: startX + step * CGFloat(index), y: 0)
-                        .zIndex(Double(index) + (isSelected || isPlayable ? 100 : 0))
+                        .offset(x: startX + step * CGFloat(index) + drag.width, y: drag.height)
+                        .zIndex(Double(index) + (isDragging ? 300 : (isSelected || isPlayable ? 100 : 0)))
                 }
             }
             .frame(width: available, height: cardHeight + 12, alignment: .topLeading)
@@ -148,10 +160,42 @@ public struct CardFanView: View {
         // single card. Tighten only when the hand is wide enough that the
         // full fan won't fit; never collapse below 45% so the corner glyph
         // always stays readable.
-        let natural = cardWidth * 0.92
+        let natural = cardWidth * 0.98
         let maxStepThatFits = (available - cardWidth) / CGFloat(count - 1)
         let minimumReadable = cardWidth * 0.45
         return min(natural, max(minimumReadable, maxStepThatFits))
+    }
+
+    private func dragTranslation(for card: Card) -> CGSize? {
+        guard dragState?.card == card else { return nil }
+        return dragState?.translation
+    }
+
+    private func doubleTapGesture(for card: Card) -> some Gesture {
+        TapGesture(count: 2)
+            .onEnded {
+                onDoubleTap?(card)
+            }
+    }
+
+    private func dragGesture(for card: Card) -> some Gesture {
+        DragGesture(minimumDistance: 8)
+            .updating($dragState) { value, state, _ in
+                state = DragState(card: card, translation: value.translation)
+            }
+            .onEnded { value in
+                guard isIntentionalDrop(value.translation) else { return }
+                onDragEnded?(card)
+            }
+    }
+
+    private func isIntentionalDrop(_ translation: CGSize) -> Bool {
+        max(abs(translation.width), abs(translation.height)) >= 44
+    }
+
+    private struct DragState: Equatable {
+        var card: Card
+        var translation: CGSize
     }
 
     private struct IndexedCard: Identifiable {

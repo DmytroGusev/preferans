@@ -43,7 +43,11 @@ public struct TableLayoutModel: Equatable {
     }
 
     public var bannerPosition: CGPoint {
-        CGPoint(x: bounds.width * 0.5, y: bounds.height * 0.50)
+        // Just above the center-felt panels: the auction panel / prikup
+        // title tops out around y ≈ 0.47, so the toast floats in the open
+        // band between the opponent fans and the panel instead of landing
+        // on the panel's header text.
+        CGPoint(x: bounds.width * 0.5, y: bounds.height * 0.42)
     }
 
     /// Returns the play-area frame for the current opponents. When at

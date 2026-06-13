@@ -98,12 +98,14 @@ public struct ActionBarView: View {
                     Image(systemName: icon)
                         .font(.caption)
                 }
+                Text(label.text)
+                    .fontWeight(.semibold)
+                // Tricks before suit ("6♠"), matching the auction pills,
+                // the contract strip, and standard bid notation.
                 if let suit = label.suit {
                     Text(suit.symbol)
                         .foregroundStyle(suit.color(on: .felt))
                 }
-                Text(label.text)
-                    .fontWeight(.semibold)
             }
             .frame(minWidth: 82, minHeight: 24)
         }
@@ -162,34 +164,63 @@ public struct ActionBarView: View {
     }
 
     private var whistRow: some View {
-        HStack(spacing: 8) {
-            ForEach(projection.legal.whistCalls, id: \.self) { call in
-                Button { onSend(.whist(player: projection.viewer, call: call)) } label: {
-                    Text(Localized.whistCall(call))
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
+        let calls = projection.legal.whistCalls
+        return VStack(spacing: 10) {
+            actionSectionTitle("Your call")
+            // The Stalingrad convention (6♠) makes whisting obligatory —
+            // the engine offers no pass. Without a word of explanation a
+            // lone "Whist" button reads like a broken screen, so name the
+            // rule right where the missing button would be.
+            if calls == [.whist] {
+                Text("Whist is obligatory against 6♠")
+                    .font(.caption)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+            }
+            HStack(spacing: 8) {
+                ForEach(calls, id: \.self) { call in
+                    Button { onSend(.whist(player: projection.viewer, call: call)) } label: {
+                        Text(Localized.whistCall(call))
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(whistStyle(for: call))
+                    .accessibilityIdentifier(UIIdentifiers.whistButton(call))
                 }
-                .buttonStyle(call == .whist ? .feltPrimary : .feltDim)
-                .accessibilityIdentifier(UIIdentifiers.whistButton(call))
             }
         }
     }
 
+    /// Whist is the headline choice; half-whist is a real (priced) middle
+    /// option, not a decline — give it the secondary tier so only pass
+    /// reads as the quiet way out.
+    private func whistStyle(for call: WhistCall) -> FeltButtonStyle {
+        switch call {
+        case .whist:     return .feltPrimary
+        case .halfWhist: return .feltSecondary
+        case .pass:      return .feltDim
+        }
+    }
+
     private var defenderRow: some View {
-        HStack(spacing: 8) {
-            ForEach(projection.legal.defenderModes, id: \.self) { mode in
-                Button {
-                    onSend(.chooseDefenderMode(player: projection.viewer, mode: mode))
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: mode == .open ? "eye" : "eye.slash")
-                        Text(Localized.defenderMode(mode))
-                            .fontWeight(.semibold)
+        VStack(spacing: 10) {
+            actionSectionTitle("Defend open or closed?")
+            HStack(spacing: 8) {
+                ForEach(projection.legal.defenderModes, id: \.self) { mode in
+                    Button {
+                        onSend(.chooseDefenderMode(player: projection.viewer, mode: mode))
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: mode == .open ? "eye" : "eye.slash")
+                            Text(Localized.defenderMode(mode))
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
+                    // Two equal choices — neither gets the gold "the one
+                    // thing to do" treatment.
+                    .buttonStyle(.feltSecondary)
+                    .accessibilityIdentifier(UIIdentifiers.defenderModeButton(mode))
                 }
-                .buttonStyle(.feltPrimary)
-                .accessibilityIdentifier(UIIdentifiers.defenderModeButton(mode))
             }
         }
     }
@@ -239,7 +270,16 @@ public struct ActionBarView: View {
             .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
         } else {
             HStack(spacing: 8) {
-                if let actor = currentActorName {
+                if !projection.legal.playableCards.isEmpty {
+                    // The viewer is on lead: say what to do instead of
+                    // repeating the header's "Trick N: <name>" line.
+                    Image(systemName: "hand.tap.fill")
+                        .font(.caption)
+                        .foregroundStyle(TableTheme.goldBright)
+                    Text("Your turn — play a card")
+                        .font(.subheadline)
+                        .foregroundStyle(TableTheme.inkCream)
+                } else if let actor = currentActorName {
                     Image(systemName: "hourglass")
                         .font(.caption)
                         .foregroundStyle(TableTheme.inkCreamSoft)

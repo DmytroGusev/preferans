@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Resolve the freshest screenshot run — and REFUSE if it is stale.
+#
+# "Stale" means any Swift source under Preferans/ is newer than the newest
+# rendered frame. This is the guard against critiquing month-old pixels: a
+# design review or screen iteration must look at frames rendered from the
+# code as it stands now, not whatever happens to be left in bin/.screens.
+#
+# On success: prints the absolute path to the freshest run dir to stdout.
+# Exit codes:
+#   0  a fresh run exists; its path was printed
+#   2  no runs exist yet            -> run `bin/screens`
+#   3  newest run is older than src -> run `bin/screens` to re-render
+#
+# Usage:
+#   dir="$(bin/screens-latest)" || bin/screens   # render if missing/stale
+#   bin/screens-latest --quiet                   # path only, no diagnostics
+set -euo pipefail
+
+source "$(dirname "$0")/lib/xcode-sim.sh"
+preferans_cd_repo_root
+
+QUIET=0
+[[ "${1:-}" == "--quiet" ]] && QUIET=1
+warn() { [[ "$QUIET" -eq 1 ]] || echo "$@" >&2; }
+
+OUT_ROOT="bin/.screens"
+
+# Newest mtime among rendered PNGs in a directory (0 if none).
+newest_png_mtime() {
+  find "$1" -name '*.png' -print0 2>/dev/null \
+    | xargs -0 stat -f '%m' 2>/dev/null | sort -rn | head -1
+}
+
+# Freshest run dir = the run directory holding the most recently written PNG.
+LATEST_DIR=""
+LATEST_MTIME=0
+if [[ -d "$OUT_ROOT" ]]; then
+  while IFS= read -r d; do
+    [[ -d "$d" ]] || continue
+    m="$(newest_png_mtime "$d")"
+    [[ -z "$m" ]] && continue
+    if [[ "$m" -gt "$LATEST_MTIME" ]]; then LATEST_MTIME="$m"; LATEST_DIR="$d"; fi
+  done < <(find "$OUT_ROOT" -mindepth 1 -maxdepth 1 -type d)
+fi
+
+if [[ -z "$LATEST_DIR" ]]; then
+  warn "[screens-latest] no rendered screenshots found under $OUT_ROOT"
+  warn "[screens-latest] run: bin/screens"
+  exit 2
+fi
+
+# Newest Swift source under Preferans/ (the app target the frames depict).
+SRC_MTIME="$(find Preferans -name '*.swift' -print0 \
+  | xargs -0 stat -f '%m' | sort -rn | head -1)"
+
+if [[ "$SRC_MTIME" -gt "$LATEST_MTIME" ]]; then
+  warn "[screens-latest] STALE: source is newer than the latest screenshots."
+  warn "[screens-latest]   latest run : $LATEST_DIR"
+  warn "[screens-latest]   newest src : $(find Preferans -name '*.swift' -print0 \
+        | xargs -0 stat -f '%m %N' | sort -rn | head -1 | cut -d' ' -f2-)"
+  warn "[screens-latest] re-render with: bin/screens"
+  exit 3
+fi
+
+echo "$(pwd)/$LATEST_DIR"

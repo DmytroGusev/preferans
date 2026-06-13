@@ -71,6 +71,7 @@
 		E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A048 /* RedesignScreenshotTests.swift */; };
 		E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000A04A /* AccessibilityContractTests.swift */; };
 		E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */; };
+		E0000000000000000000AFB0 /* OnlineScreensScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0000000000000000000AFB1 /* OnlineScreensScreenshotTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -161,6 +162,7 @@
 		E0000000000000000000A048 /* RedesignScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedesignScreenshotTests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A04A /* AccessibilityContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityContractTests.swift; sourceTree = "<group>"; };
 		E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineWaitingRoomUITests.swift; sourceTree = "<group>"; };
+		E0000000000000000000AFB1 /* OnlineScreensScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineScreensScreenshotTests.swift; sourceTree = "<group>"; };
 		EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FakeGameArchiveStore.swift; path = Preferans/Support/FakeGameArchiveStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -284,6 +286,7 @@
 				E0000000000000000000A048 /* RedesignScreenshotTests.swift */,
 				E0000000000000000000A04A /* AccessibilityContractTests.swift */,
 				E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */,
+				E0000000000000000000AFB1 /* OnlineScreensScreenshotTests.swift */,
 			);
 			path = PreferansUITests;
 			sourceTree = "<group>";
@@ -459,6 +462,7 @@
 				E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */,
 				E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */,
 				E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */,
+				E0000000000000000000AFB0 /* OnlineScreensScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

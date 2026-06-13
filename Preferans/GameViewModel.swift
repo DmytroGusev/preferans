@@ -286,8 +286,11 @@ public final class GameViewModel: ObservableObject {
             // directly and bypasses this hook.
             break
         case .followsActor:
-            if let actor = currentActor(), actor != selectedViewer {
-                selectedViewer = actor
+            if let actor = currentActor() {
+                let viewer = engine.controllingActor(of: actor)
+                if viewer != selectedViewer {
+                    selectedViewer = viewer
+                }
             }
         }
     }

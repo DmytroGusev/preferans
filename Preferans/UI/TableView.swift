@@ -48,6 +48,11 @@ public struct TableView: View {
     public var idleHintActive: Bool
     /// Presentation-only suit order for face-up table hands.
     public var cardSuitOrder: CardSuitDisplayOrder
+    /// Currently selected card in a playable hand. Selection is visual only;
+    /// double-tap or drag commits the play.
+    public var selectedPlayCard: Card?
+    public var onSelectPlayCard: ((Card) -> Void)?
+    public var onPlayCard: ((PlayerID, Card) -> Void)?
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
     @State private var showInitialHands = false
@@ -66,6 +71,9 @@ public struct TableView: View {
         pendingAdvance: PendingAdvance? = nil,
         idleHintActive: Bool = false,
         cardSuitOrder: CardSuitDisplayOrder = .default,
+        selectedPlayCard: Card? = nil,
+        onSelectPlayCard: ((Card) -> Void)? = nil,
+        onPlayCard: ((PlayerID, Card) -> Void)? = nil,
         onTapToAdvance: (() -> Void)? = nil
     ) {
         self.projection = projection
@@ -81,6 +89,9 @@ public struct TableView: View {
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = idleHintActive
         self.cardSuitOrder = cardSuitOrder
+        self.selectedPlayCard = selectedPlayCard
+        self.onSelectPlayCard = onSelectPlayCard
+        self.onPlayCard = onPlayCard
         self.onTapToAdvance = onTapToAdvance
     }
 
@@ -92,7 +103,8 @@ public struct TableView: View {
             if renderOpponentsAtTop {
                 VStack(spacing: 4) {
                     DealStateStrip(projection: projection)
-                    tableLayout(active: active, sittingOut: sittingOut)
+                    sittingOutBand(sittingOut)
+                    tableLayout(active: active)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
@@ -102,6 +114,36 @@ public struct TableView: View {
             }
         }
         .overlay { tapToAdvanceOverlay }
+    }
+
+    /// Sitting-out 4-player dealer(s) as a dedicated, centered row above the
+    /// felt. Giving them their own band — instead of floating a chip into the
+    /// opponent layout — is the only placement that can't overlap an active
+    /// seat, since the two active seats span nearly the full width.
+    @ViewBuilder
+    private func sittingOutBand(_ seats: [SeatProjection]) -> some View {
+        if !seats.isEmpty {
+            HStack(spacing: 8) {
+                ForEach(seats) { seat in
+                    OpponentSeatView(
+                        seat: seat,
+                        orientation: .top,
+                        cardSuitOrder: cardSuitOrder,
+                        contractBid: projection.activeContractBid(for: seat.player),
+                        lastAction: nil,
+                        roleBadge: nil,
+                        seatOrder: seatOrderNumber(for: seat.player),
+                        showsTrickCount: showsTrickCount(for: seat),
+                        playableCards: playableCards(for: seat.player),
+                        selectedCards: selectedCards(for: seat.player),
+                        onSelectCard: cardSelectHandler(for: seat.player),
+                        onPlayCard: cardPlayHandler(for: seat.player),
+                        onDragCard: cardPlayHandler(for: seat.player)
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
     }
 
     /// Felt-wide tap target shown while the table is paused between card-play beats.
@@ -170,7 +212,7 @@ public struct TableView: View {
     /// with a player who isn't dealing in this hand; the sitting-out seat
     /// collapses to a small corner chip so the user still sees who's at
     /// the table.
-    private func tableLayout(active: [SeatProjection], sittingOut: [SeatProjection]) -> some View {
+    private func tableLayout(active: [SeatProjection]) -> some View {
         GeometryReader { geo in
             let layout = TableLayoutModel(bounds: geo.size)
             let bounds = layout.bounds
@@ -202,7 +244,13 @@ public struct TableView: View {
                         isDeemphasized: isDeemphasized,
                         lastAction: seatActions[slot.seat.player],
                         roleBadge: seatRoleBadges[slot.seat.player],
-                        seatOrder: seatOrderNumber(for: slot.seat.player)
+                        seatOrder: seatOrderNumber(for: slot.seat.player),
+                        showsTrickCount: showsTrickCount(for: slot.seat),
+                        playableCards: playableCards(for: slot.seat.player),
+                        selectedCards: selectedCards(for: slot.seat.player),
+                        onSelectCard: cardSelectHandler(for: slot.seat.player),
+                        onPlayCard: cardPlayHandler(for: slot.seat.player),
+                        onDragCard: cardPlayHandler(for: slot.seat.player)
                     )
                     .frame(width: slotSize.width,
                            height: slotSize.height)
@@ -212,34 +260,24 @@ public struct TableView: View {
 
                 // Centered action banner (transient toast). Sits above the
                 // play area but ignores hit testing so it never blocks
-                // taps on the trick or the deal-summary CTA.
-                CenterActionBanner(
-                    action: bannerAction,
-                    displayName: { projection.displayName(for: $0) }
-                )
-                .position(layout.bannerPosition)
-
-                // Sitting-out dealer(s) tucked into the top-right corner
-                // as compact chips so they don't claim a full opponent
-                // slot. The chip itself is rendered by OpponentSeatView's
-                // sitting-out branch.
-                if !sittingOut.isEmpty {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        ForEach(sittingOut) { seat in
-                            OpponentSeatView(
-                                seat: seat,
-                                orientation: .top,
-                                cardSuitOrder: cardSuitOrder,
-                                contractBid: projection.activeContractBid(for: seat.player),
-                                lastAction: nil,
-                                roleBadge: nil,
-                                seatOrder: seatOrderNumber(for: seat.player)
-                            )
-                        }
-                    }
-                    .padding(.top, 4)
-                    .padding(.trailing, 6)
+                // taps on the trick or the deal-summary CTA. Suppressed
+                // wherever the center surface already narrates the same
+                // event: the auction panel's per-seat pills during
+                // bidding, and the deal-summary / game-over cards at the
+                // end of a deal.
+                if showsActionBanner {
+                    CenterActionBanner(
+                        action: bannerAction,
+                        displayName: { projection.displayName(for: $0) }
+                    )
+                    .position(layout.bannerPosition)
                 }
+
+                // Sitting-out dealer(s) are rendered as a dedicated band above
+                // this layout (see `sittingOutBand`), not floated here: the two
+                // active opponents are ~181 pt wide and nearly meet at center,
+                // so any floating chip — corner or center — collided with a
+                // seat (the "AgentSmith…OUT" overlap). A reserved row can't.
             }
             .frame(width: bounds.width, height: bounds.height)
         }
@@ -291,7 +329,11 @@ public struct TableView: View {
     @ViewBuilder
     private func phaseContext() -> some View {
         switch projection.phase {
-        case .awaitingDiscard:
+        case .awaitingDiscard where !projection.legal.canDiscard:
+            // Observers see the revealed prikup on the felt. The declarer
+            // doesn't: those two cards are already merged into their hand
+            // fan with "P" badges, so a center copy would show the same
+            // cards twice on one screen.
             talonContext()
         case .playing(_, _, kind: .allPass) where shouldShowPublicTalon:
             talonContext(title: "Talon")
@@ -361,14 +403,6 @@ public struct TableView: View {
         let isCurrent = seat.isCurrentActor
         return VStack(spacing: 4) {
             HStack(spacing: 4) {
-                if let seatOrder = seatOrderNumber(for: seat.player) {
-                    SeatOrderBadge(
-                        number: seatOrder,
-                        player: seat.player,
-                        isCurrentActor: isCurrent,
-                        diameter: 20
-                    )
-                }
                 Text(seat.player == projection.viewer ? "You" : seat.displayName)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(seat.player == projection.viewer ? TableTheme.inkCream : TableTheme.inkCreamSoft)
@@ -663,14 +697,19 @@ public struct TableView: View {
     /// the card regardless of seat orientation so the eye reads the table
     /// consistently — no upside-down text for the top opponent.
     private func trickPlayMarker(play: CardPlay, isWinner: Bool) -> some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 4) {
+            // The played trick is the point of the screen — render it at the
+            // largest card size so it reads as the centerpiece instead of a
+            // small cluster lost in the felt. The winner keeps a gold ring:
+            // it's a transient end-of-trick highlight, not persistent chrome,
+            // and gold is the only accent that pops on a white card face.
             CardView(
                 card: .known(play.card),
-                size: .standard,
+                size: .large,
                 region: .trick(seat: play.player)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 9)
                     .strokeBorder(
                         isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
                         lineWidth: isWinner ? 2 : 0
@@ -679,19 +718,16 @@ public struct TableView: View {
             .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
                     radius: isWinner ? 12 : 0)
             Text(trickPlayCaption(for: play.player))
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
-                .padding(.horizontal, 4)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCream)
+                .padding(.horizontal, 5)
                 .padding(.vertical, 1)
-                .background(isWinner ? TableTheme.goldBright : Color.black.opacity(0.45), in: Capsule())
+                .background(isWinner ? TableTheme.goldBright : Color.black.opacity(0.55), in: Capsule())
                 .lineLimit(1)
         }
     }
 
     private func trickPlayCaption(for player: PlayerID) -> String {
-        if let order = seatOrderNumber(for: player) {
-            return "\(order) \(projection.displayName(for: player))"
-        }
         return projection.displayName(for: player)
     }
 
@@ -707,7 +743,15 @@ public struct TableView: View {
     /// the trick-card dimensions so the layout still works if `CardView.Size`
     /// is ever retuned (or if we drop in a `.compact` trick on small phones).
     private func positionForPlay(player: PlayerID, opponents: [PlayerID]) -> CGSize {
-        TableLayoutModel.trickOffset(for: player, viewer: projection.viewer, opponents: opponents)
+        // Offsets are expressed in multiples of the trick-card size, so the
+        // spread has to use the same `.large` size the markers now render at
+        // or the bigger cards would overlap.
+        TableLayoutModel.trickOffset(
+            for: player,
+            viewer: projection.viewer,
+            opponents: opponents,
+            cardSize: .large
+        )
     }
 
     /// Every seat except the viewer's in clockwise table order, including
@@ -724,7 +768,50 @@ public struct TableView: View {
         projection.players.firstIndex(of: player).map { $0 + 1 }
     }
 
+    private func playableCards(for player: PlayerID) -> Set<Card> {
+        guard projection.legal.playableCardsOwner == player else { return [] }
+        return Set(projection.legal.playableCards)
+    }
+
+    private func selectedCards(for player: PlayerID) -> Set<Card> {
+        guard projection.legal.playableCardsOwner == player,
+              let selectedPlayCard else { return [] }
+        return [selectedPlayCard]
+    }
+
+    private func cardSelectHandler(for player: PlayerID) -> ((Card) -> Void)? {
+        guard !playableCards(for: player).isEmpty else { return nil }
+        return { card in onSelectPlayCard?(card) }
+    }
+
+    private func cardPlayHandler(for player: PlayerID) -> ((Card) -> Void)? {
+        guard !playableCards(for: player).isEmpty else { return nil }
+        return { card in onPlayCard?(player, card) }
+    }
+
     private func isOpenHand(_ seat: SeatProjection) -> Bool {
         seat.hand.contains { $0.knownCard != nil }
+    }
+
+    /// False while the center felt is occupied by a surface that already
+    /// narrates the latest action: the auction panel (per-seat call pills)
+    /// or the deal-summary / game-over cards.
+    private var showsActionBanner: Bool {
+        switch projection.phase {
+        case .bidding, .awaitingContract, .dealFinished, .gameOver:
+            return false
+        default:
+            return true
+        }
+    }
+
+    /// Mirror of the viewer name-plate rule: trick tallies only mean
+    /// something once trick play has started (or a count is already on the
+    /// board) — "0 tricks" under every seat during the deal wait and the
+    /// auction is noise.
+    private func showsTrickCount(for seat: SeatProjection) -> Bool {
+        if seat.trickCount > 0 { return true }
+        if case .playing = projection.phase { return true }
+        return false
     }
 }

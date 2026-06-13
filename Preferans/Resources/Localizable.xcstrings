@@ -2,6 +2,174 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "Start a table" : {
+      "comment" : "Lobby online panel title for the host path (variant/seats/create-invite).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a table"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать стол"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Створити стіл"
+          }
+        }
+      }
+    },
+    "Add your name above to create a table." : {
+      "comment" : "Quiet hint under the disabled create-invite CTA when the display name is missing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add your name above to create a table."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Укажите имя выше, чтобы создать стол."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вкажіть ім'я вище, щоб створити стіл."
+          }
+        }
+      }
+    },
+    "Tap the code to copy it, or read it to your friends." : {
+      "comment" : "Waiting room caption under the room code when there is no share link.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap the code to copy it, or read it to your friends."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите на код, чтобы скопировать, или продиктуйте его друзьям."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Натисніть на код, щоб скопіювати, або продиктуйте його друзям."
+          }
+        }
+      }
+    },
+    "Copied" : {
+      "comment" : "Transient confirmation after copying the room code.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copied"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопійовано"
+          }
+        }
+      }
+    },
+    "Copy code %@" : {
+      "comment" : "Live-table overflow menu action: copy the room code to the clipboard.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy code %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать код %@"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопіювати код %@"
+          }
+        }
+      }
+    },
+    "Copies the room code" : {
+      "comment" : "Accessibility hint on the waiting-room code chip.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copies the room code"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копирует код комнаты"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копіює код кімнати"
+          }
+        }
+      }
+    },
+    "Final pool scores" : {
+      "comment" : "Section label above the per-player rows in the finished-game sheet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Final pool scores"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Итоговая пулька"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Підсумкова пулька"
+          }
+        }
+      }
+    },
     "Play online" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2596,6 +2764,30 @@
         }
       }
     },
+    "Split": {
+      "comment": "Settlement composer title verb — split the remaining tricks between the declarer and defense.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разделить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розділити"
+          }
+        }
+      }
+    },
     "Sitting out": {
       "comment": "Seat badge — sitting out this deal (4-player).",
       "extractionState": "manual",
@@ -3750,6 +3942,30 @@
           "stringUnit": {
             "state" : "translated",
             "value": "%@ — світла чи темна?"
+          }
+        }
+      }
+    },
+    "Trick": {
+      "comment": "Short table-strip label for the current trick number.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trick"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взятка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взятка"
           }
         }
       }
