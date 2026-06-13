@@ -684,7 +684,8 @@ public struct PreferansEngine: Sendable {
     /// Returns the events the caller should append (always `dealScored`,
     /// optionally followed by `matchEnded`).
     mutating func finalize(_ result: DealResult) -> EngineTransition {
-        score.apply(result.scoreDelta)
+        let appliedDelta = score.apply(result.scoreDelta, closingAtPoolTarget: match.poolTarget)
+        let result = result.replacingScoreDelta(appliedDelta)
         dealsPlayed += 1
         var events: [PreferansEvent] = [.dealScored(result)]
         let totalPool = score.pool.values.reduce(0, +)

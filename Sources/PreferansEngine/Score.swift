@@ -89,13 +89,7 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
     }
 
     public mutating func apply(_ delta: ScoreDelta) {
-        do {
-            try delta.validate(players: players)
-        } catch let violation as InvariantViolation {
-            preconditionFailure(violation.message)
-        } catch {
-            preconditionFailure("unexpected score delta validation error: \(error)")
-        }
+        validateForApply(delta)
         for (player, points) in delta.pool where points != 0 {
             pool[player]! += points
         }
@@ -107,6 +101,44 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
                 whists[writer, default: [:]][target, default: 0] += points
             }
         }
+    }
+
+    /// Applies a deal delta with pulka closure. If the total target cleanly
+    /// implies a per-player limit, surplus pool first fills the earner, then
+    /// aids the highest open opponent and writes equivalent whists back to the
+    /// earner. Once everyone is closed, leftover value reduces the earner's
+    /// mountain so final equal pool totals can be ignored.
+    @discardableResult
+    mutating func apply(_ delta: ScoreDelta, closingAtPoolTarget totalPoolTarget: Int) -> ScoreDelta {
+        guard let perPlayerTarget = individualPoolTarget(totalPoolTarget: totalPoolTarget) else {
+            apply(delta)
+            return delta
+        }
+
+        validateForApply(delta)
+        var applied = ScoreDelta(players: players)
+
+        for player in players {
+            let points = delta.mountain[player] ?? 0
+            guard points != 0 else { continue }
+            mountain[player]! += points
+            applied.addMountain(points, to: player)
+        }
+
+        for writer in players {
+            for (target, points) in delta.whists[writer] ?? [:] where points != 0 {
+                whists[writer, default: [:]][target, default: 0] += points
+                applied.addWhists(points, writer: writer, on: target)
+            }
+        }
+
+        for player in players {
+            let points = delta.pool[player] ?? 0
+            guard points != 0 else { continue }
+            applyPool(points, earnedBy: player, perPlayerTarget: perPlayerTarget, appliedDelta: &applied)
+        }
+
+        return applied
     }
 
     public func whistsWritten(by writer: PlayerID, on target: PlayerID) -> Int {
@@ -152,6 +184,80 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
     private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {
         if !condition {
             throw InvariantViolation(message: message())
+        }
+    }
+
+    private mutating func applyPool(
+        _ points: Int,
+        earnedBy earner: PlayerID,
+        perPlayerTarget: Int,
+        appliedDelta: inout ScoreDelta
+    ) {
+        guard points > 0 else {
+            pool[earner]! += points
+            appliedDelta.addPool(points, to: earner)
+            return
+        }
+
+        var remaining = points
+        let ownRoom = max(0, perPlayerTarget - (pool[earner] ?? 0))
+        let ownCredit = min(remaining, ownRoom)
+        if ownCredit > 0 {
+            pool[earner]! += ownCredit
+            appliedDelta.addPool(ownCredit, to: earner)
+            remaining -= ownCredit
+        }
+
+        while remaining > 0, let recipient = americanAidRecipient(excluding: earner, perPlayerTarget: perPlayerTarget) {
+            let room = max(0, perPlayerTarget - (pool[recipient] ?? 0))
+            let aid = min(remaining, room)
+            guard aid > 0 else { break }
+            pool[recipient]! += aid
+            whists[earner, default: [:]][recipient, default: 0] += aid * 10
+            appliedDelta.addPool(aid, to: recipient)
+            appliedDelta.addWhists(aid * 10, writer: earner, on: recipient)
+            remaining -= aid
+        }
+
+        if remaining > 0 {
+            mountain[earner]! -= remaining
+            appliedDelta.addMountain(-remaining, to: earner)
+        }
+    }
+
+    private func americanAidRecipient(excluding earner: PlayerID, perPlayerTarget: Int) -> PlayerID? {
+        var best: PlayerID?
+        for candidate in players where candidate != earner && (pool[candidate] ?? 0) < perPlayerTarget {
+            guard let currentBest = best else {
+                best = candidate
+                continue
+            }
+            if (pool[candidate] ?? 0) > (pool[currentBest] ?? 0) {
+                best = candidate
+            }
+        }
+        return best
+    }
+
+    private func individualPoolTarget(totalPoolTarget: Int) -> Int? {
+        guard totalPoolTarget != .max,
+              totalPoolTarget > 0,
+              !players.isEmpty,
+              totalPoolTarget.isMultiple(of: players.count)
+        else {
+            return nil
+        }
+        let target = totalPoolTarget / players.count
+        return target > 0 ? target : nil
+    }
+
+    private func validateForApply(_ delta: ScoreDelta) {
+        do {
+            try delta.validate(players: players)
+        } catch let violation as InvariantViolation {
+            preconditionFailure(violation.message)
+        } catch {
+            preconditionFailure("unexpected score delta validation error: \(error)")
         }
     }
 }

@@ -8,9 +8,12 @@ import Foundation
 /// configures *one deal*; ``MatchSettings`` configures the match those deals
 /// are accumulating into.
 public struct MatchSettings: Hashable, Codable, Sendable {
-    /// Pulka closes when ``ScoreSheet/pool`` summed across all players reaches
-    /// or exceeds this value. ``unbounded`` (`Int.max`) keeps the engine in
-    /// the legacy "play deals forever" mode.
+    /// Total table pulka target. The UI stores a per-player limit multiplied
+    /// by player count, so a 3-player short pulka of 11 is represented as 33.
+    /// When this value divides evenly by the player count, score application
+    /// uses that quotient as the per-player closure limit and moves surplus
+    /// pool through American aid. ``unbounded`` (`Int.max`) keeps the engine
+    /// in the legacy "play deals forever" mode.
     public var poolTarget: Int
     public var raspasy: RaspasyPolicy
     public var totus: TotusPolicy

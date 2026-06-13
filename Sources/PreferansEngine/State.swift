@@ -493,8 +493,9 @@ public struct DealResult: Equatable, Codable, Sendable {
     }
 
     /// Result for a deal that ended before any card was played — `passedOut`
-    /// (auction-won by default-grant) and `halfWhist`. No trick was taken
-    /// by anyone, so `trickCounts` is zeroed and `completedTricks` empty.
+    /// (auction-won by default-grant), `withoutThree`, and `halfWhist`.
+    /// No trick was taken by anyone, so `trickCounts` is zeroed and
+    /// `completedTricks` empty.
     static func unplayed(
         kind: DealResultKind,
         activePlayers: [PlayerID],
@@ -508,6 +509,18 @@ public struct DealResult: Equatable, Codable, Sendable {
             completedTricks: [],
             scoreDelta: scoreDelta,
             initialHands: initialHands
+        )
+    }
+
+    func replacingScoreDelta(_ scoreDelta: ScoreDelta) -> DealResult {
+        DealResult(
+            kind: kind,
+            activePlayers: activePlayers,
+            trickCounts: trickCounts,
+            completedTricks: completedTricks,
+            scoreDelta: scoreDelta,
+            initialHands: initialHands,
+            settlement: settlement
         )
     }
 }
