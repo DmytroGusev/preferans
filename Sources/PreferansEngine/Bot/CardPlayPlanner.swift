@@ -22,8 +22,8 @@ public struct CardPlayPlanner: Sendable {
             return nil
         }
         // The card legally comes from `currentActor`'s hand — which may be
-        // a passer the viewer is controlling. Roll out plays speak for
-        // the seat that owns the card, not the bot's own seat.
+        // an open dummy hand the viewer is controlling. Rollout plays speak
+        // for the seat that owns the card, not the bot's own seat.
         let actingFor = currentActor
         let legal = engine.legalCards(for: viewer)
         if legal.count <= 1 { return legal.first }
@@ -73,7 +73,8 @@ public struct CardPlayPlanner: Sendable {
         }
         while case let .playing(p) = engine.state {
             let actor = p.currentPlayer
-            let legal = engine.legalCards(for: actor)
+            let controller = engine.controllingActor(of: actor)
+            let legal = engine.legalCards(for: controller)
             guard !legal.isEmpty else { break }
             let move = greedyChoice(legal: legal, playing: p, actor: actor)
             do {
@@ -215,7 +216,7 @@ public struct CardPlayPlanner: Sendable {
         case .allPass:
             let own = counts[viewer] ?? 0
             return Double(-own * 2) + (own == 0 ? 3 : 0)
-        case .passedOut, .halfWhist:
+        case .passedOut, .withoutThree, .halfWhist:
             return 0
         }
     }

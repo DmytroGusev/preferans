@@ -151,8 +151,8 @@ enum BotTestDriver {
                 return BotDriveResult(steps: steps, stalled: false, illegalActionAttempts: 0)
             }
             // The seat authorized to decide may differ from the seat
-            // whose turn it physically is — in single-whist greedy
-            // play the lone whister pulls the passer's cards, so the
+            // whose turn it physically is — in open single-whist greedy
+            // play the lone whister pulls the passer's dummy hand, so the
             // strategy is queried for the whister's perspective.
             let decider = engine.controllingActor(of: actor)
             guard let action = await strategy.decide(snapshot: engine.snapshot, viewer: decider) else {

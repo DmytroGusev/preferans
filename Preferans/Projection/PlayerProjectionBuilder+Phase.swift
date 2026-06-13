@@ -161,30 +161,19 @@ extension PlayerProjectionBuilder {
         frame.completedTrickCount = state.completedTricks.count
         frame.trickCounts = state.trickCounts
         frame.legal.playableCards = engine.legalCards(for: viewer)
-        // When the viewer is controlling another seat (lone whister
-        // pulling the passer's cards), the playable cards belong to that
-        // seat, not the viewer's. The UI uses this to render the
-        // controlled seat's hand as tappable instead of the viewer's.
+        // When the viewer is controlling another seat (open single-whist
+        // dummy play), the playable cards belong to that seat, not the
+        // viewer's. The UI uses this to render the controlled seat's hand
+        // as tappable instead of the viewer's.
         if let controlled = engine.controlledSeat(by: viewer) {
             frame.legal.playableCardsOwner = controlled
+            frame.revealHandOwners.insert(controlled)
         }
         frame.legal.settlementOptions = engine.legalSettlements(for: viewer)
         frame.legal.pendingSettlement = state.pendingSettlement
         frame.legal.canAcceptSettlement = engine.canAcceptSettlement(player: viewer)
         frame.legal.canRejectSettlement = engine.canRejectSettlement(player: viewer)
         applyPlayRolesAndVisibility(state.kind, activePlayers: frame.activePlayers, policy: policy, to: &frame)
-        // In open single-whist greedy play the lone whister also controls
-        // the passer's hand, so that hand is face-up to the whister. A
-        // closed game keeps both defender hands private and self-controlled.
-        if case let .game(context) = state.kind,
-           context.whisters.count == 1,
-           context.defenders.count > 1,
-           context.defenderPlayMode == .open,
-           engine.rules.singleWhistScoring == .greedy,
-           let whister = context.whisters.first,
-           viewer == whister {
-            for defender in context.defenders { frame.revealHandOwners.insert(defender) }
-        }
         markActiveRoles(frame.activePlayers, into: &frame.roleMap)
         return frame
     }

@@ -41,7 +41,7 @@ public struct OpponentSeatView: View {
     /// or the auction is noise with no decision behind it.
     public var showsTrickCount: Bool
     /// Legal cards for this open opponent hand when the viewer is allowed
-    /// to control it, e.g. the lone whister pulling the passer's cards.
+    /// to control it, e.g. the lone whister pulling the passer's dummy hand.
     public var playableCards: Set<Card>
     public var selectedCards: Set<Card>
     public var onSelectCard: ((Card) -> Void)?

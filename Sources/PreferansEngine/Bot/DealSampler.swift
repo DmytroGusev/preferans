@@ -33,9 +33,9 @@ public struct DealSampler {
 
         let voids = inferredVoids(in: playing)
         // Hands the viewer can legitimately see: their own and any seat
-        // they're currently controlling (the lone whister can read the
-        // passer's hand). Everything else stays in the hidden pool that
-        // the sampler scrambles.
+        // they're currently controlling (open single-whist dummy play).
+        // Everything else stays in the hidden pool that the sampler
+        // scrambles.
         var visibleSeats: Set<PlayerID> = [viewer]
         for seat in playing.activePlayers where seat != viewer {
             if playing.controllingActor(of: seat, rules: snapshot.rules) == viewer {

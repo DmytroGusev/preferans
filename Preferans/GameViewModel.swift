@@ -314,8 +314,8 @@ public final class GameViewModel: ObservableObject {
         }
         // In open single-whist greedy play the lone whister speaks for
         // the passer — so when the passer's turn comes up we look up the
-        // whister's strategy, not the passer's. In a closed game each
-        // defender's bot plays only its own hand.
+        // whister's strategy, not the passer's. For every other phase
+        // the controller resolves to the actor itself.
         let decider = engine.controllingActor(of: actor)
         guard let strategy = botStrategies[decider] else {
             pendingBotTask = nil

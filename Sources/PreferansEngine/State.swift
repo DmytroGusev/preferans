@@ -365,14 +365,14 @@ public struct PlayingState: Equatable, Codable, Sendable {
     public let kind: PlayKind
     public var pendingSettlement: TrickSettlementProposal?
 
-    /// In an open single-whist greedy game, the lone whister plays both
-    /// defender hands — the passer becomes a dummy whose cards are pulled
-    /// by the whister. A closed game always keeps each defender in control
-    /// of their own hand. Returns the seat authorized to act on `player`'s
-    /// behalf, which is `player` itself in every other context (multi-whister
-    /// games, misère, all-pass, declarer's own hand). The rules dependency
-    /// is explicit so the engine can pass it through and bot/UI/host code
-    /// share a single resolver.
+    /// In open single-whist greedy play, the lone whister plays both
+    /// defender hands — the passer becomes a visible dummy whose cards are
+    /// pulled by the whister. Closed single-whist keeps the passer in charge
+    /// of their own hidden hand. Returns the seat authorized to act on
+    /// `player`'s behalf, which is `player` itself in every other context
+    /// (closed/multi-whister games, misère, all-pass, declarer's own hand).
+    /// The rules dependency is explicit so the engine can pass it through
+    /// and bot/UI/host code share a single resolver.
     ///
     /// The control transfer applies only to card play — settlement
     /// proposals are individual agreements, so a pending settlement
@@ -452,6 +452,7 @@ public struct PlayingState: Equatable, Codable, Sendable {
 
 public enum DealResultKind: Equatable, Codable, Sendable {
     case passedOut
+    case withoutThree(declarer: PlayerID, bid: ContractBid)
     case halfWhist(declarer: PlayerID, contract: GameContract, halfWhister: PlayerID)
     case game(declarer: PlayerID, contract: GameContract, whisters: [PlayerID])
     case misere(declarer: PlayerID)
@@ -518,6 +519,7 @@ public enum PreferansEvent: Equatable, Codable, Sendable {
     case allPassed
     case talonExchanged(declarer: PlayerID, talon: [Card], discard: [Card])
     case contractDeclared(declarer: PlayerID, contract: GameContract)
+    case contractConcededWithoutThree(declarer: PlayerID, bid: ContractBid)
     case whistAccepted(WhistCallRecord)
     case defenderModeChosen(whister: PlayerID, mode: DefenderPlayMode)
     case playStarted(PlayKind)
@@ -536,6 +538,7 @@ public enum PreferansAction: Equatable, Codable, Sendable {
     case bid(player: PlayerID, call: BidCall)
     case discard(player: PlayerID, cards: [Card])
     case declareContract(player: PlayerID, contract: GameContract)
+    case concedeWithoutThree(player: PlayerID)
     case whist(player: PlayerID, call: WhistCall)
     case chooseDefenderMode(player: PlayerID, mode: DefenderPlayMode)
     case playCard(player: PlayerID, card: Card)
@@ -554,6 +557,7 @@ public enum PreferansAction: Equatable, Codable, Sendable {
         case let .bid(player, _),
              let .discard(player, _),
              let .declareContract(player, _),
+             let .concedeWithoutThree(player),
              let .whist(player, _),
              let .chooseDefenderMode(player, _),
              let .playCard(player, _),

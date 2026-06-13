@@ -93,6 +93,8 @@ public struct PreferansEngine: Sendable {
             return try reduceDiscard(player: player, cards: cards)
         case let .declareContract(player, contract):
             return try reduceDeclareContract(player: player, contract: contract)
+        case let .concedeWithoutThree(player):
+            return try reduceConcedeWithoutThree(player: player)
         case let .whist(player, call):
             return try reduceWhist(player: player, call: call)
         case let .chooseDefenderMode(player, mode):
@@ -139,8 +141,8 @@ public struct PreferansEngine: Sendable {
     }
 
     /// Resolves the seat authorized to send actions for `player`. When a
-    /// passer's turn comes up in an open single-whist greedy game, the
-    /// lone whister speaks for them; otherwise the seat speaks for itself.
+    /// passer's turn comes up in an open single-whist greedy game, the lone
+    /// whister speaks for them; otherwise the seat speaks for itself.
     /// Used by the host actor (sender validation), the bot dispatcher
     /// (deciding when to act for another seat), and the projection (who
     /// gets the playable-cards affordance).
@@ -392,7 +394,7 @@ public struct PreferansEngine: Sendable {
         guard whist.defenders.contains(player), whist.currentPlayer == player else {
             return []
         }
-        if requiresForcedWhist(for: whist.contract) {
+        if isStalingradContract(whist.contract) {
             return [.whist]
         }
 
@@ -412,20 +414,8 @@ public struct PreferansEngine: Sendable {
         }
     }
 
-    private func requiresForcedWhist(for contract: GameContract) -> Bool {
+    private func isStalingradContract(_ contract: GameContract) -> Bool {
         contract == GameContract(6, .suit(.spades))
-            || (contract.tricks == 10
-                && (rules.requireWhistOnTenTrickContracts || match.totus.requireWhistOnTenTricks))
-    }
-
-    func requiresWhistRound(for contract: GameContract, finalBid: ContractBid) -> Bool {
-        // Dedicated totus is a separate, immediate-play convention. Its
-        // `requireWhist` setting belongs to the standard 10-trick ladder;
-        // it must not turn a declared totus into a normal whist round.
-        if finalBid == .totus {
-            return false
-        }
-        return contract.tricks < 10 || requiresForcedWhist(for: contract)
     }
 
     /// Active rotation for a deal with the given dealer. In 3-player matches
@@ -682,6 +672,10 @@ public struct PreferansEngine: Sendable {
 
     mutating func scoreHalfWhist(_ whist: WhistState, halfWhister: PlayerID) -> EngineTransition {
         finalize(scoring.halfWhist(whist, halfWhister: halfWhister))
+    }
+
+    mutating func scoreWithoutThree(_ declaration: ContractDeclarationState) -> EngineTransition {
+        finalize(scoring.withoutThree(declaration))
     }
 
     /// Applies the deal's score delta, increments the deal counter, and
@@ -951,14 +945,14 @@ public struct PreferansEngine: Sendable {
                     !ctx.defenders.contains(ctx.declarer),
                     "playing declarer \(ctx.declarer) ∈ defenders"
                 )
-                // Single-whist greedy scoring is the canonical "whister
-                // pulls the passer's cards" arrangement. The control
-                // resolver requires a unique whister to act on the
-                // passer's behalf — there are exactly two defenders
-                // and exactly one is the whister, so the controller is
-                // unambiguous. This invariant pins that down so a
-                // future bug in the whist reducer can't quietly produce
-                // a single-whister state with no defender to control.
+                // Open single-whist greedy play is the canonical "whister
+                // pulls the passer's dummy hand" arrangement. The control
+                // resolver requires a unique whister to act on the passer's
+                // behalf — there are exactly two defenders and exactly one
+                // is the whister, so the controller is unambiguous. This
+                // invariant pins that down so a future bug in the whist
+                // reducer can't quietly produce a single-whister state with
+                // no defender to control.
                 if ctx.whisters.count == 1, ctx.defenders.count == 2 {
                     let whister = ctx.whisters[0]
                     try require(
