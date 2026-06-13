@@ -222,6 +222,8 @@ public struct OpponentSeatView: View {
             return String(localized: "Half-whist")
         case let .declared(contract):
             return "\(String(localized: "Declared")) \(Localized.renderedGameContract(contract))"
+        case let .withoutThree(bid):
+            return "\(String(localized: "Without 3")) \(Localized.renderedContractBid(bid))"
         case .discarded:
             return String(localized: "Discarded")
         case let .defenderMode(mode):

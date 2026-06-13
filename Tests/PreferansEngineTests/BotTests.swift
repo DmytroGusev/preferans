@@ -12,7 +12,7 @@ final class BotTests: XCTestCase {
         let outcome = try await playOneDeal(strategy: strategy, deck: makeDeck(.strongSpades))
         XCTAssertNotNil(outcome.result)
         switch outcome.result?.kind {
-        case .game, .halfWhist, .passedOut, .misere:
+        case .game, .halfWhist, .passedOut, .withoutThree, .misere:
             break
         default:
             XCTFail("Unexpected deal result: \(String(describing: outcome.result?.kind))")

@@ -33,6 +33,17 @@ struct PreferansScoring {
         )
     }
 
+    func withoutThree(_ declaration: ContractDeclarationState) -> DealResult {
+        var delta = ScoreDelta(players: players)
+        delta.addMountain(declaration.finalBid.value * 3, to: declaration.declarer)
+        return .unplayed(
+            kind: .withoutThree(declarer: declaration.declarer, bid: declaration.finalBid),
+            activePlayers: declaration.activePlayers,
+            scoreDelta: delta,
+            initialHands: openingHands(from: declaration)
+        )
+    }
+
     func completedPlay(_ playing: PlayingState, settlement: TrickSettlement? = nil) -> DealResult {
         switch playing.kind {
         case let .game(context):
@@ -242,6 +253,17 @@ struct PreferansScoring {
             hands: &hands
         )
         return validOpeningHands(hands, activePlayers: whist.activePlayers)
+    }
+
+    private func openingHands(from declaration: ContractDeclarationState) -> [PlayerID: [Card]]? {
+        var hands = declaration.hands
+        restoreDeclarerOpeningHand(
+            declarer: declaration.declarer,
+            talon: declaration.talon,
+            discard: declaration.discard,
+            hands: &hands
+        )
+        return validOpeningHands(hands, activePlayers: declaration.activePlayers)
     }
 
     private func openingHands(from playing: PlayingState) -> [PlayerID: [Card]]? {

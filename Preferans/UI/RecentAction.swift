@@ -26,6 +26,7 @@ public struct RecentAction: Equatable, Identifiable {
         case halfWhist
         case whistPass
         case declared(GameContract)
+        case withoutThree(ContractBid)
         case discarded
         case defenderMode(DefenderPlayMode)
     }
@@ -119,6 +120,8 @@ public enum RecentActionFeed {
             }
         case let .contractDeclared(declarer, contract):
             return Resolved(player: declarer, label: .declared(contract))
+        case let .contractConcededWithoutThree(declarer, bid):
+            return Resolved(player: declarer, label: .withoutThree(bid))
         case let .talonExchanged(declarer, _, _):
             return Resolved(player: declarer, label: .discarded)
         case let .defenderModeChosen(whister, mode):
@@ -235,6 +238,12 @@ public enum ActivityLogFeed {
                 nil,
                 .contract
             )
+        case let .contractConcededWithoutThree(declarer, bid):
+            return (
+                String(localized: "\(displayName(declarer)) conceded without three"),
+                String(localized: "\(Localized.renderedContractBid(bid)); no whists"),
+                .contract
+            )
         case let .whistAccepted(record):
             switch record.call {
             case .pass:
@@ -321,6 +330,8 @@ public enum ActivityLogFeed {
         switch result.kind {
         case .passedOut:
             return String(localized: "Defenders passed")
+        case let .withoutThree(declarer, bid):
+            return String(localized: "\(displayName(declarer)) conceded \(Localized.renderedContractBid(bid)) without three; no whists")
         case let .halfWhist(declarer, contract, halfWhister):
             return String(localized: "\(displayName(declarer)) scores \(Localized.renderedGameContract(contract)); \(displayName(halfWhister)) half-whists")
         case let .game(declarer, contract, whisters):
@@ -343,14 +354,7 @@ public enum ActivityLogFeed {
     }
 
     private static func renderedBid(_ bid: ContractBid) -> String {
-        switch bid {
-        case let .game(contract):
-            return Localized.renderedGameContract(contract)
-        case .misere:
-            return String(localized: "Misère")
-        case .totus:
-            return String(localized: "Totus")
-        }
+        Localized.renderedContractBid(bid)
     }
 
     private static func renderedDefenderMode(_ mode: DefenderPlayMode) -> String {
@@ -393,6 +397,9 @@ extension RecentAction.Label {
                 .foregroundStyle(emphasis.dimColor)
         case let .declared(contract):
             BidGlyph(bid: .game(contract), emphasis: emphasis, prefix: "Declared")
+        case .withoutThree:
+            Text("Without 3")
+                .foregroundStyle(emphasis.dimColor)
         case .discarded:
             Text("Discarded")
                 .foregroundStyle(emphasis.bodyColor)

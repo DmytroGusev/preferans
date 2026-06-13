@@ -192,6 +192,42 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(result.initialHands, initialHands)
     }
 
+    func testDeclarerCanConcedeWithoutThreeBeforeNamingContract() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+        let initialHands = try initialHands(in: engine)
+
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.clubs))))))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("Expected discard.")
+        }
+        let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
+        _ = try engine.apply(.discard(player: "east", cards: discard))
+
+        let events = try engine.apply(.concedeWithoutThree(player: "east"))
+
+        XCTAssertTrue(events.contains(.contractConcededWithoutThree(
+            declarer: "east",
+            bid: .game(GameContract(6, .suit(.clubs)))
+        )))
+        guard case let .dealFinished(result) = engine.state,
+              case let .withoutThree(declarer, bid) = result.kind else {
+            return XCTFail("Expected without-three result.")
+        }
+        XCTAssertEqual(declarer, "east")
+        XCTAssertEqual(bid, .game(GameContract(6, .suit(.clubs))))
+        XCTAssertEqual(engine.score.mountain["east"], GameContract(6, .suit(.clubs)).value * 3)
+        XCTAssertEqual(engine.score.pool["east"], 0)
+        XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 0)
+        XCTAssertEqual(engine.score.whistsWritten(by: "south", on: "east"), 0)
+        XCTAssertEqual(result.trickCounts, ["north": 0, "east": 0, "south": 0])
+        XCTAssertEqual(result.completedTricks, [])
+        XCTAssertEqual(result.initialHands, initialHands)
+    }
+
     func testDealResultKeepsOpeningHandsAfterDeclarerKeepsPrikupCards() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)
@@ -259,9 +295,14 @@ final class PreferansEngineTests: XCTestCase {
 
         XCTAssertEqual(restored.snapshot, engine.snapshot)
 
-        let action = PreferansAction.bid(player: "east", call: .pass)
-        let encodedAction = try JSONEncoder().encode(action)
-        XCTAssertEqual(try JSONDecoder().decode(PreferansAction.self, from: encodedAction), action)
+        let actions: [PreferansAction] = [
+            .bid(player: "east", call: .pass),
+            .concedeWithoutThree(player: "east"),
+        ]
+        for action in actions {
+            let encodedAction = try JSONEncoder().encode(action)
+            XCTAssertEqual(try JSONDecoder().decode(PreferansAction.self, from: encodedAction), action)
+        }
     }
 
     private func initialHands(in engine: PreferansEngine) throws -> [PlayerID: [Card]] {

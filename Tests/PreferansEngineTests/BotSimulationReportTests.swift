@@ -109,6 +109,7 @@ private struct SimReport {
         let key: String
         switch result.kind {
         case .passedOut: key = "passedOut"
+        case .withoutThree: key = "withoutThree"
         case .allPass: key = "allPass"
         case .halfWhist: key = "halfWhist"
         case .misere: key = "misere"

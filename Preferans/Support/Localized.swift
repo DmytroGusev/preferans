@@ -133,6 +133,8 @@ public enum Localized {
             return made
                 ? Text("\(declarerName) made \(contractLabel) — \(tricks) tricks. Whisting: \(names)")
                 : Text("\(declarerName) went down on \(contractLabel) — \(tricks) tricks. Whisting: \(names)")
+        case let .withoutThree(declarer, bid):
+            return Text("\(displayName(declarer)) conceded \(renderedContractBid(bid)) without three — no whists")
         case let .misere(declarer):
             let tricks = result.trickCounts[declarer] ?? 0
             let declarerName = displayName(declarer)
@@ -203,6 +205,17 @@ public enum Localized {
             return "\(contract.tricks)\(suit.symbol)"
         case .noTrump:
             return "\(contract.tricks)\(String(localized: "NT", comment: "Strain — no trump."))"
+        }
+    }
+
+    public static func renderedContractBid(_ bid: ContractBid) -> String {
+        switch bid {
+        case let .game(contract):
+            return renderedGameContract(contract)
+        case .misere:
+            return String(localized: "Misère")
+        case .totus:
+            return String(localized: "Totus")
         }
     }
 }

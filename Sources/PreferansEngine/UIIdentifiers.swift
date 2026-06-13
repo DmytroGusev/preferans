@@ -237,6 +237,7 @@ public enum UIIdentifiers {
     public static let buttonCancelSettlement   = "button.cancelSettlement"
     public static let buttonAcceptSettlement   = "button.acceptSettlement"
     public static let buttonRejectSettlement   = "button.rejectSettlement"
+    public static let buttonConcedeWithoutThree = "button.concedeWithoutThree"
     public static let buttonTakeTalon          = "button.takeTalon"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }
@@ -321,6 +322,8 @@ public extension UIIdentifiers {
         switch kind {
         case .passedOut:
             return "passedOut"
+        case let .withoutThree(declarer, bid):
+            return "withoutThree.\(declarer.rawValue).\(encode(bid))"
         case let .halfWhist(declarer, contract, halfWhister):
             return "halfWhist.\(declarer.rawValue).\(encode(contract)).\(halfWhister.rawValue)"
         case let .game(declarer, contract, whisters):

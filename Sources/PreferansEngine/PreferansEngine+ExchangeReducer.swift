@@ -128,4 +128,20 @@ extension PreferansEngine {
             events: [.contractDeclared(declarer: player, contract: contract)]
         )
     }
+
+    mutating func reduceConcedeWithoutThree(player: PlayerID) throws -> EngineTransition {
+        guard case let .awaitingContract(declaration) = state else {
+            throw PreferansError.invalidState(expected: "awaitingContract", actual: state.description)
+        }
+        try validateCurrent(player, expected: declaration.declarer)
+        guard declaration.finalBid != .misere else {
+            throw PreferansError.invalidContract("Misere does not support without-three concession.")
+        }
+
+        let transition = scoreWithoutThree(declaration)
+        return EngineTransition(
+            state: transition.state,
+            events: [.contractConcededWithoutThree(declarer: player, bid: declaration.finalBid)] + transition.events
+        )
+    }
 }

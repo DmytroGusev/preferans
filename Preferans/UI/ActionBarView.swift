@@ -134,6 +134,17 @@ public struct ActionBarView: View {
                     .buttonStyle(.feltSecondary)
                     .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
                 }
+                if canConcedeWithoutThree {
+                    Button {
+                        onSend(.concedeWithoutThree(player: projection.viewer))
+                    } label: {
+                        Label("Without 3", systemImage: "flag.slash")
+                            .fontWeight(.semibold)
+                            .frame(minWidth: 112, minHeight: 24)
+                    }
+                    .buttonStyle(.feltDim)
+                    .accessibilityIdentifier(UIIdentifiers.buttonConcedeWithoutThree)
+                }
             }
         }
     }
@@ -480,6 +491,18 @@ public struct ActionBarView: View {
             return finalBid == .totus
         }
         return false
+    }
+
+    private var canConcedeWithoutThree: Bool {
+        guard !projection.legal.contractOptions.isEmpty,
+              case let .awaitingContract(declarer, finalBid) = projection.phase,
+              declarer == projection.viewer else {
+            return false
+        }
+        switch finalBid {
+        case .game, .totus: return true
+        case .misere:       return false
+        }
     }
 
     private var currentActorName: String? {

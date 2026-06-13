@@ -720,6 +720,7 @@ public struct TableView: View {
         case let .game(declarer, _, _):           return declarer
         case let .misere(declarer):               return declarer
         case let .halfWhist(declarer, _, _):      return declarer
+        case let .withoutThree(declarer, _):      return declarer
         case .passedOut, .allPass:                return nil
         }
     }
