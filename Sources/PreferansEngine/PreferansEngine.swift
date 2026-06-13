@@ -56,6 +56,16 @@ public struct PreferansEngine: Sendable {
         )
     }
 
+    public var canStartDeal: Bool {
+        switch state {
+        case .waitingForDeal, .dealFinished:
+            return true
+        case .bidding, .awaitingDiscard, .awaitingContract, .awaitingWhist,
+             .awaitingDefenderMode, .playing, .gameOver:
+            return false
+        }
+    }
+
     @discardableResult
     public mutating func startDeal(dealer: PlayerID? = nil, deck: [Card]? = nil) throws -> [PreferansEvent] {
         try apply(.startDeal(dealer: dealer, deck: deck))

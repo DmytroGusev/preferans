@@ -75,6 +75,9 @@ public final class GameViewModel: ObservableObject {
     }
 
     public func send(_ action: PreferansAction) {
+        if case .startDeal = action, !engine.canStartDeal {
+            return
+        }
         do {
             // Snapshot the projection before applying so we can later
             // override the displayed phase when the engine moves past

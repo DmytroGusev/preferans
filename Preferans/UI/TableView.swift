@@ -403,12 +403,16 @@ public struct TableView: View {
         let isCurrent = seat.isCurrentActor
         return VStack(spacing: 4) {
             HStack(spacing: 4) {
-                Text(seat.player == projection.viewer ? "You" : seat.displayName)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(seat.player == projection.viewer ? TableTheme.inkCream : TableTheme.inkCreamSoft)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                if seat.player == projection.viewer {
+                    Text("You")
+                } else {
+                    Text(verbatim: seat.displayName)
+                }
             }
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(seat.player == projection.viewer ? TableTheme.inkCream : TableTheme.inkCreamSoft)
+            .lineLimit(1)
+            .minimumScaleFactor(0.62)
             Group {
                 if let action {
                     action.label.glyph(emphasis: .banner)

@@ -37,7 +37,7 @@ public final class GameCenterService: NSObject, ObservableObject, @preconcurrenc
                     return
                 }
                 if let error {
-                    self.statusText = String(localized: "Game Center error: \(error.localizedDescription)")
+                    self.statusText = "Game Center error: \(error.localizedDescription)"
                     self.isAuthenticated = false
                     return
                 }

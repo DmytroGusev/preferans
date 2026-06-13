@@ -5,19 +5,7 @@ final class LocalizationCatalogTests: XCTestCase {
     private let supportedLanguages = ["en", "ru", "uk"]
 
     func testStringCatalogIsCompleteForSupportedLanguages() throws {
-        let catalogURL = projectRoot
-            .appending(path: "Preferans")
-            .appending(path: "Resources")
-            .appending(path: "Localizable.xcstrings")
-        let data = try Data(contentsOf: catalogURL)
-        let root = try XCTUnwrap(
-            JSONSerialization.jsonObject(with: data) as? [String: Any],
-            "Localizable.xcstrings should be a JSON object."
-        )
-        let strings = try XCTUnwrap(
-            root["strings"] as? [String: Any],
-            "Localizable.xcstrings should contain a top-level strings object."
-        )
+        let strings = try catalogStrings()
 
         var failures: [String] = []
         for key in strings.keys.sorted() {
@@ -60,6 +48,20 @@ final class LocalizationCatalogTests: XCTestCase {
         }
     }
 
+    func testDiagnosticErrorsAreNotLocalized() throws {
+        let strings = try catalogStrings()
+        let forbiddenKeys = [
+            "Invalid state. Expected %@, got %@.",
+            "Game Center error: %@",
+            "CloudKit table save failed: %@",
+            "CloudKit archive failed: %@"
+        ]
+
+        for key in forbiddenKeys {
+            XCTAssertNil(strings[key], "Diagnostic error strings should stay raw, not catalog-localized.")
+        }
+    }
+
     private var projectRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -71,6 +73,22 @@ final class LocalizationCatalogTests: XCTestCase {
         var path: String
         var state: String
         var value: String
+    }
+
+    private func catalogStrings() throws -> [String: Any] {
+        let catalogURL = projectRoot
+            .appending(path: "Preferans")
+            .appending(path: "Resources")
+            .appending(path: "Localizable.xcstrings")
+        let data = try Data(contentsOf: catalogURL)
+        let root = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any],
+            "Localizable.xcstrings should be a JSON object."
+        )
+        return try XCTUnwrap(
+            root["strings"] as? [String: Any],
+            "Localizable.xcstrings should contain a top-level strings object."
+        )
     }
 
     private func stringUnits(in value: Any, path: String = "") -> [StringUnit] {

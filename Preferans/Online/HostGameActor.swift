@@ -272,6 +272,9 @@ public actor HostGameActor {
         guard !appliedNonces.contains(envelope.clientNonce) else {
             throw HostGameError.duplicateClientNonce(envelope.clientNonce)
         }
+        if shouldIgnoreStaleStartDeal(envelope) {
+            return makeUpdate(events: [], validatedAction: nil)
+        }
 
         let authoritativeAction = makeAuthoritative(envelope.action)
         let events = try engine.apply(authoritativeAction)
@@ -292,6 +295,11 @@ public actor HostGameActor {
         )
         actionLog.append(record)
         return makeUpdate(events: events, validatedAction: record)
+    }
+
+    private func shouldIgnoreStaleStartDeal(_ envelope: ClientActionEnvelope) -> Bool {
+        guard case .startDeal = envelope.action, !engine.canStartDeal else { return false }
+        return envelope.baseHostSequence < sequence
     }
 
     public func projection(for viewer: PlayerID) throws -> PlayerGameProjection {

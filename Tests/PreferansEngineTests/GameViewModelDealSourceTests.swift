@@ -36,6 +36,20 @@ final class GameViewModelDealSourceTests: AppTestCase {
         XCTAssertEqual(state.currentPlayer, "north")
     }
 
+    func testDuplicateStartDealIsIgnoredWithoutConsumingAnotherDeck() throws {
+        let scripted = CountingDealSource(decks: [Deck.standard32])
+        let model = try makeModel(dealSource: scripted)
+
+        model.startDeal()
+        model.startDeal()
+
+        XCTAssertNil(model.lastError)
+        XCTAssertEqual(scripted.requestCount, 1)
+        guard case .bidding = model.engine.state else {
+            return XCTFail("Duplicate startDeal should leave the first deal in bidding.")
+        }
+    }
+
     func testTwoModelsWithSameSeedReachIdenticalBiddingStateAfterDeal() throws {
         let modelA = try makeModel(dealSource: SeededDealSource(seed: 4242))
         let modelB = try makeModel(dealSource: SeededDealSource(seed: 4242))

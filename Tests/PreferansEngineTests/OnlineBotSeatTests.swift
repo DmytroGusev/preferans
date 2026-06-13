@@ -67,6 +67,44 @@ final class OnlineBotSeatTests: XCTestCase {
         XCTAssertFalse(movedOn, "After an action the previously captured state is stale.")
     }
 
+    func testHostActorIgnoresStaleDuplicateStartDealWithoutConsumingDeck() async throws {
+        let seats = ["north", "east", "south"].map {
+            PlayerIdentity(playerID: PlayerID($0), gamePlayerID: $0, displayName: $0.capitalized)
+        }
+        let source = CountingDealSource(decks: [Deck.standard32])
+        let actor = try HostGameActor(
+            tableID: UUID(),
+            hostPlayerID: "north",
+            seats: seats,
+            dealSource: source
+        )
+
+        let first = ClientActionEnvelope(
+            tableID: actor.tableID,
+            actor: "north",
+            action: .startDeal(dealer: nil, deck: nil),
+            baseHostSequence: 0
+        )
+        let duplicate = ClientActionEnvelope(
+            tableID: actor.tableID,
+            actor: "north",
+            action: .startDeal(dealer: nil, deck: nil),
+            baseHostSequence: 0
+        )
+
+        let firstUpdate = try await actor.applyClientAction(first, sender: "north")
+        let duplicateUpdate = try await actor.applyClientAction(duplicate, sender: "north")
+
+        XCTAssertEqual(firstUpdate.sequence, 1)
+        XCTAssertEqual(duplicateUpdate.sequence, 1)
+        XCTAssertTrue(duplicateUpdate.events.isEmpty)
+        XCTAssertNil(duplicateUpdate.validatedAction)
+        XCTAssertEqual(source.requestCount, 1)
+        guard case .bidding = duplicateUpdate.snapshot.state else {
+            return XCTFail("Stale duplicate startDeal should leave the first deal in bidding.")
+        }
+    }
+
     // MARK: - Waiting-room roster
 
     func testRosterAndCanHostStartReflectOccupancyAndConversion() async throws {

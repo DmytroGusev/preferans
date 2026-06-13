@@ -350,6 +350,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             errorText = "No active online table."
             return
         }
+        if case .startDeal = action, projection?.legal.canStartDeal != true {
+            return
+        }
         refreshPeersFromTransport()
         // The envelope's `actor` is the seat the action speaks for. For
         // most actions this equals the local seat, but in single-whist
@@ -855,7 +858,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         do {
             try await cloudStore.upsertTableSummary(summary, latestPublicProjection: projection)
         } catch {
-            errorText = String(localized: "CloudKit table save failed: \(error.localizedDescription)")
+            errorText = "CloudKit table save failed: \(error.localizedDescription)"
         }
     }
 
@@ -890,7 +893,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 )
             }
         } catch {
-            errorText = String(localized: "CloudKit archive failed: \(error.localizedDescription)")
+            errorText = "CloudKit archive failed: \(error.localizedDescription)"
         }
     }
 

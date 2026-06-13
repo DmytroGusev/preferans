@@ -2956,6 +2956,30 @@
         }
       }
     },
+    "Talon": {
+      "comment": "Centre-of-felt label — public talon cards during all-pass play.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Talon"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Талон"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Талон"
+          }
+        }
+      }
+    },
     "Prikup exchange": {
       "comment": "Phase title — declarer takes prikup and discards two cards.",
       "extractionState": "manual",
@@ -4973,6 +4997,30 @@
         }
       }
     },
+    "Choosing": {
+      "comment": "Auction panel status — the current bidder is choosing their call.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choosing"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбирает"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вибирає"
+          }
+        }
+      }
+    },
     "OUT": {
       "extractionState": "manual",
       "localizations": {
@@ -5880,30 +5928,6 @@
         }
       }
     },
-    "Game Center error: %@": {
-      "comment": "Game Center status line with system error text.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Game Center error: %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state" : "translated",
-            "value": "Ошибка Game Center: %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state" : "translated",
-            "value": "Помилка Game Center: %@"
-          }
-        }
-      }
-    },
     "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.": {
       "comment": "Online waiting-room validation message shown when open invite seats block starting the game.",
       "extractionState": "manual",
@@ -5972,54 +5996,6 @@
           "stringUnit": {
             "state" : "translated",
             "value": "Game Center недоступний"
-          }
-        }
-      }
-    },
-    "CloudKit table save failed: %@": {
-      "comment": "CloudKit error shown in the lobby/status area. %@ is the system error.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CloudKit table save failed: %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state" : "translated",
-            "value": "Не удалось сохранить стол в CloudKit: %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state" : "translated",
-            "value": "Не вдалося зберегти стіл у CloudKit: %@"
-          }
-        }
-      }
-    },
-    "CloudKit archive failed: %@": {
-      "comment": "CloudKit error shown in the lobby/status area. %@ is the system error.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "CloudKit archive failed: %@"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state" : "translated",
-            "value": "Не удалось сохранить архив CloudKit: %@"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state" : "translated",
-            "value": "Не вдалося зберегти архів CloudKit: %@"
           }
         }
       }

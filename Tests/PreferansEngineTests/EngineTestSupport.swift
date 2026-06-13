@@ -7,6 +7,25 @@ struct EngineTestError: Error, CustomStringConvertible {
     init(_ description: String) { self.description = description }
 }
 
+final class CountingDealSource: DealSource, @unchecked Sendable {
+    private let decks: [[Card]]
+    private var index = 0
+    private(set) var requestCount = 0
+
+    init(decks: [[Card]]) {
+        precondition(!decks.isEmpty, "CountingDealSource requires at least one deck")
+        self.decks = decks
+    }
+
+    func nextDeck() -> [Card] {
+        defer {
+            index += 1
+            requestCount += 1
+        }
+        return decks[index % decks.count]
+    }
+}
+
 enum EnginePlayPolicy {
     case lowestLegal
     case highestLegal

@@ -35,6 +35,21 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertTrue(northSeat.hand.allSatisfy { $0.knownCard == nil })
     }
 
+    func testRapidDuplicateStartDealDoesNotSurfaceInvalidState() async throws {
+        let fixture = try await makeFixture()
+        let host = try XCTUnwrap(fixture.coordinators["north"])
+
+        host.send(.startDeal(dealer: nil, deck: nil))
+        host.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { fixture.allProjectionsAre(at: 1) })
+
+        XCTAssertNil(host.errorText)
+        XCTAssertEqual(host.projection?.sequence, 1)
+        guard let phase = host.projection?.phase, case .bidding = phase else {
+            return XCTFail("Duplicate startDeal should leave the first deal in bidding.")
+        }
+    }
+
     func testLateCloudflareJoinRefreshesPeerRouteBeforeHostPublishes() async throws {
         let hostPeer = peers[0]
         let pendingEast = OnlinePeer(
