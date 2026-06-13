@@ -69,6 +69,7 @@ public struct CardFanView: View {
                     let isTalon = known.map { talonCards.contains($0) } ?? false
                     let drag = known.flatMap(dragTranslation(for:)) ?? .zero
                     let isDragging = known.map { dragState?.card == $0 } ?? false
+                    let restingOpacity = dimsUnplayable && known != nil && !isPlayable ? 0.55 : 1.0
                     let region: UIIdentifiers.CardRegion = isTalon ? .discardSelect : .hand(seat: seat)
                     let isInteractive = known != nil && onTap != nil
                     ZStack(alignment: .topLeading) {
@@ -80,8 +81,28 @@ public struct CardFanView: View {
                             isSelected: isSelected,
                             exposesAccessibility: !isInteractive
                         )
-                        .opacity(dimsUnplayable && known != nil && !isPlayable ? 0.55 : 1)
+                        .opacity(isDragging ? restingOpacity * 0.20 : restingOpacity)
                         .allowsHitTesting(!isInteractive)
+
+                        if isDragging {
+                            // Keep the gesture source anchored; drag a visual clone
+                            // so matched geometry and hit testing do not chase it.
+                            cardView(
+                                projected,
+                                index: index,
+                                known: known,
+                                isPlayable: isPlayable,
+                                isSelected: isSelected,
+                                exposesAccessibility: false,
+                                usesMatchedGeometry: false
+                            )
+                            .offset(drag)
+                            .opacity(restingOpacity)
+                            .allowsHitTesting(false)
+                            .transaction { transaction in
+                                transaction.animation = nil
+                            }
+                        }
 
                         if let known, let onTap {
                             Button {
@@ -102,7 +123,7 @@ public struct CardFanView: View {
                             .simultaneousGesture(dragGesture(for: known))
                         }
                     }
-                        .offset(x: startX + step * CGFloat(index) + drag.width, y: drag.height)
+                        .offset(x: startX + step * CGFloat(index), y: 0)
                         .zIndex(Double(index) + (isDragging ? 300 : (isSelected || isPlayable ? 100 : 0)))
                 }
             }
@@ -128,7 +149,8 @@ public struct CardFanView: View {
         known: Card?,
         isPlayable: Bool,
         isSelected: Bool,
-        exposesAccessibility: Bool = true
+        exposesAccessibility: Bool = true,
+        usesMatchedGeometry: Bool = true
     ) -> some View {
         let isTalon = known.map { talonCards.contains($0) } ?? false
         let region: UIIdentifiers.CardRegion = isTalon ? .discardSelect : .hand(seat: seat)
@@ -146,7 +168,7 @@ public struct CardFanView: View {
         // SwiftUI was preserving multiple geometry copies of the same Card
         // across the talon-merge re-render and surfacing 5 duplicate AX
         // nodes for one visual element.
-        if let ns = animationNamespace, let known, talonCards.isEmpty {
+        if usesMatchedGeometry, let ns = animationNamespace, let known, talonCards.isEmpty {
             view.matchedGeometryEffect(id: known, in: ns)
         } else {
             view
