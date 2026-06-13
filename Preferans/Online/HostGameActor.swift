@@ -85,7 +85,7 @@ public struct ValidatedActionRecord: Codable, Sendable, Equatable, Identifiable 
     }
 
     public static func summaries(for events: [PreferansEvent]) -> [String] {
-        events.map { String(describing: $0) }
+        ActivityLogFeed.summaries(for: events)
     }
 }
 

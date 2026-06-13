@@ -84,7 +84,7 @@ public final class GameViewModel: ObservableObject {
             let preProjection = projection(revealAll: true)
             let authoritativeAction = makeAuthoritative(action)
             let events = try engine.apply(authoritativeAction)
-            eventLog.append(contentsOf: events.map { String(describing: $0) })
+            eventLog.append(contentsOf: ActivityLogFeed.summaries(for: events))
             recentEvents.append(contentsOf: events)
             if recentEvents.count > 120 {
                 recentEvents.removeFirst(recentEvents.count - 120)

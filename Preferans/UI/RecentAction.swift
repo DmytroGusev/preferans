@@ -140,6 +140,234 @@ public enum RecentActionFeed {
     }
 }
 
+// MARK: - Activity log
+
+public struct ActivityLogEntry: Equatable, Identifiable {
+    public var id: Int
+    public var title: String
+    public var detail: String?
+    public var kind: Kind
+
+    public enum Kind: Equatable {
+        case deal
+        case auction
+        case contract
+        case defense
+        case play
+        case settlement
+        case scoring
+
+        var label: String {
+            switch self {
+            case .deal:       return String(localized: "Deal")
+            case .auction:    return String(localized: "Auction")
+            case .contract:   return String(localized: "Contract")
+            case .defense:    return String(localized: "Defense")
+            case .play:       return String(localized: "Play")
+            case .settlement: return String(localized: "Settlement")
+            case .scoring:    return String(localized: "Score")
+            }
+        }
+    }
+}
+
+public enum ActivityLogFeed {
+    public static func entries(
+        from events: [PreferansEvent],
+        displayName: (PlayerID) -> String
+    ) -> [ActivityLogEntry] {
+        events.enumerated().map { offset, event in
+            let summary = summary(for: event, displayName: displayName)
+            return ActivityLogEntry(
+                id: offset,
+                title: summary.title,
+                detail: summary.detail,
+                kind: summary.kind
+            )
+        }
+    }
+
+    public static func summaries(for events: [PreferansEvent]) -> [String] {
+        events.map { event in
+            let summary = summary(for: event) { $0.rawValue }
+            if let detail = summary.detail {
+                return "\(summary.title) · \(detail)"
+            }
+            return summary.title
+        }
+    }
+
+    private static func summary(
+        for event: PreferansEvent,
+        displayName: (PlayerID) -> String
+    ) -> (title: String, detail: String?, kind: ActivityLogEntry.Kind) {
+        switch event {
+        case let .dealStarted(dealer, activePlayers):
+            return (
+                String(localized: "\(displayName(dealer)) deals"),
+                String(localized: "Playing: \(playerList(activePlayers, displayName: displayName))"),
+                .deal
+            )
+        case let .bidAccepted(call):
+            switch call.call {
+            case .pass:
+                return (String(localized: "\(displayName(call.player)) passed"), nil, .auction)
+            case let .bid(bid):
+                return (String(localized: "\(displayName(call.player)) bid \(renderedBid(bid))"), nil, .auction)
+            }
+        case let .auctionWon(declarer, bid):
+            return (
+                String(localized: "\(displayName(declarer)) won the auction"),
+                renderedBid(bid),
+                .auction
+            )
+        case .allPassed:
+            return (String(localized: "Everyone passed"), String(localized: "Raspasy"), .auction)
+        case let .talonExchanged(declarer, _, _):
+            return (
+                String(localized: "\(displayName(declarer)) took the prikup"),
+                String(localized: "Discard hidden"),
+                .contract
+            )
+        case let .contractDeclared(declarer, contract):
+            return (
+                String(localized: "\(displayName(declarer)) declared \(Localized.renderedGameContract(contract))"),
+                nil,
+                .contract
+            )
+        case let .whistAccepted(record):
+            switch record.call {
+            case .pass:
+                return (String(localized: "\(displayName(record.player)) passed whist"), nil, .defense)
+            case .whist:
+                return (String(localized: "\(displayName(record.player)) whisted"), nil, .defense)
+            case .halfWhist:
+                return (String(localized: "\(displayName(record.player)) half-whisted"), nil, .defense)
+            }
+        case let .defenderModeChosen(whister, mode):
+            return (
+                String(localized: "\(displayName(whister)) chose \(renderedDefenderMode(mode)) defense"),
+                nil,
+                .defense
+            )
+        case let .playStarted(kind):
+            return playStartedSummary(kind, displayName: displayName)
+        case let .cardPlayed(play):
+            return (
+                String(localized: "\(displayName(play.player)) played \(play.card.description)"),
+                nil,
+                .play
+            )
+        case let .trickCompleted(trick):
+            return (
+                String(localized: "\(displayName(trick.winner)) took the trick"),
+                String(localized: "\(trick.plays.count) cards played"),
+                .play
+            )
+        case let .settlementProposed(proposal):
+            return (
+                String(localized: "\(displayName(proposal.proposer)) proposed a settlement"),
+                String(localized: "\(displayName(proposal.settlement.target)) takes \(proposal.settlement.targetTricks) tricks"),
+                .settlement
+            )
+        case let .settlementAccepted(player):
+            return (String(localized: "\(displayName(player)) accepted the settlement"), nil, .settlement)
+        case let .settlementRejected(player):
+            return (String(localized: "\(displayName(player)) rejected the settlement"), nil, .settlement)
+        case let .playSettled(settlement):
+            return (
+                String(localized: "Settlement agreed"),
+                String(localized: "\(displayName(settlement.target)) takes \(settlement.targetTricks) tricks"),
+                .settlement
+            )
+        case let .dealScored(result):
+            return (String(localized: "Deal scored"), dealResultSummary(result, displayName: displayName), .scoring)
+        case let .matchEnded(summary):
+            if let winner = summary.standings.first?.player {
+                return (String(localized: "Match over"), String(localized: "\(displayName(winner)) wins"), .scoring)
+            }
+            return (String(localized: "Match over"), nil, .scoring)
+        }
+    }
+
+    private static func playStartedSummary(
+        _ kind: PlayKind,
+        displayName: (PlayerID) -> String
+    ) -> (title: String, detail: String?, kind: ActivityLogEntry.Kind) {
+        switch kind {
+        case let .game(context):
+            let detail: String
+            if context.whisters.isEmpty {
+                detail = String(localized: "\(displayName(context.declarer)) plays \(Localized.renderedGameContract(context.contract)), uncontested")
+            } else {
+                detail = String(localized: "\(displayName(context.declarer)) plays \(Localized.renderedGameContract(context.contract)); whist: \(playerList(context.whisters, displayName: displayName))")
+            }
+            return (String(localized: "Play started"), detail, .play)
+        case let .misere(context):
+            return (
+                String(localized: "Play started"),
+                String(localized: "\(displayName(context.declarer)) plays misère"),
+                .play
+            )
+        case .allPass:
+            return (String(localized: "Raspasy started"), nil, .play)
+        }
+    }
+
+    private static func dealResultSummary(
+        _ result: DealResult,
+        displayName: (PlayerID) -> String
+    ) -> String {
+        switch result.kind {
+        case .passedOut:
+            return String(localized: "Defenders passed")
+        case let .halfWhist(declarer, contract, halfWhister):
+            return String(localized: "\(displayName(declarer)) scores \(Localized.renderedGameContract(contract)); \(displayName(halfWhister)) half-whists")
+        case let .game(declarer, contract, whisters):
+            let tricks = result.trickCounts[declarer] ?? 0
+            let outcome = tricks >= contract.tricks
+                ? String(localized: "\(displayName(declarer)) made \(Localized.renderedGameContract(contract))")
+                : String(localized: "\(displayName(declarer)) went down on \(Localized.renderedGameContract(contract))")
+            if whisters.isEmpty {
+                return String(localized: "\(outcome) with \(tricks) tricks")
+            }
+            return String(localized: "\(outcome) with \(tricks) tricks; whist: \(playerList(whisters, displayName: displayName))")
+        case let .misere(declarer):
+            let tricks = result.trickCounts[declarer] ?? 0
+            return tricks == 0
+                ? String(localized: "\(displayName(declarer)) made misère")
+                : String(localized: "\(displayName(declarer)) broke misère with \(tricks) tricks")
+        case .allPass:
+            return String(localized: "Raspasy scored")
+        }
+    }
+
+    private static func renderedBid(_ bid: ContractBid) -> String {
+        switch bid {
+        case let .game(contract):
+            return Localized.renderedGameContract(contract)
+        case .misere:
+            return String(localized: "Misère")
+        case .totus:
+            return String(localized: "Totus")
+        }
+    }
+
+    private static func renderedDefenderMode(_ mode: DefenderPlayMode) -> String {
+        switch mode {
+        case .open:   return String(localized: "open")
+        case .closed: return String(localized: "closed")
+        }
+    }
+
+    private static func playerList(
+        _ players: [PlayerID],
+        displayName: (PlayerID) -> String
+    ) -> String {
+        players.map(displayName).joined(separator: ", ")
+    }
+}
+
 // MARK: - Rendering
 
 extension RecentAction.Label {
