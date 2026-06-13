@@ -44,6 +44,43 @@ final class SingleWhistControlTests: AppTestCase {
         XCTAssertTrue(engine.legalCards(for: "south").isEmpty, "passer cannot tap their own cards while controlled")
     }
 
+    func testWhisterCanPlayThePassersFinalCard() throws {
+        let whister: PlayerID = "east"
+        let passer: PlayerID = "south"
+        var engine = try makeSingleWhistPlayingEngine(whister: whister, passer: passer)
+
+        var safety = 40
+        while case let .playing(playing) = engine.state, safety > 0 {
+            if playing.currentPlayer == passer,
+               let hand = playing.hands[passer],
+               hand.count == 1,
+               let passersLastCard = hand.first {
+                XCTAssertEqual(engine.controllingActor(of: passer), whister)
+                XCTAssertEqual(engine.legalCards(for: passer), [],
+                               "the controlled passer still cannot act for themselves")
+                XCTAssertEqual(engine.legalCards(for: whister), [passersLastCard],
+                               "the whister must be offered the passer's final card")
+
+                let events = try engine.apply(.playCard(player: passer, card: passersLastCard))
+                XCTAssertTrue(events.contains { event in
+                    if case let .cardPlayed(play) = event {
+                        return play.player == passer && play.card == passersLastCard
+                    }
+                    return false
+                })
+                return
+            }
+
+            let actor = playing.currentPlayer
+            let controller = engine.controllingActor(of: actor)
+            let card = try XCTUnwrap(engine.legalCards(for: controller).min())
+            _ = try engine.apply(.playCard(player: actor, card: card))
+            safety -= 1
+        }
+
+        XCTFail("Could not reach the passer's final controlled card.")
+    }
+
     func testGreedyScoringIsRequiredForControlTransfer() throws {
         var engine = try makeSingleWhistPlayingEngine(
             whister: "east",

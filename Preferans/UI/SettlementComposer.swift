@@ -79,7 +79,7 @@ struct SettlementComposer: View {
     private var header: some View {
         HStack(spacing: 10) {
             Rectangle().fill(TableTheme.gold.opacity(0.30)).frame(height: 0.5)
-            Text("Split \(remaining) \(remaining == 1 ? "trick" : "tricks")")
+            (Text("Split") + Text(" ") + Text("\(remaining) tricks"))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(TableTheme.goldBright)
                 .fixedSize()

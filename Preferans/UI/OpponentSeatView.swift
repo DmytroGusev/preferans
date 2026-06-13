@@ -36,6 +36,17 @@ public struct OpponentSeatView: View {
     /// 1-based engine seat order. Displayed as a compact badge so the
     /// player order is visible even when display names are similar.
     public var seatOrder: Int?
+    /// Whether the "N tricks" pill renders under the fan. The screen passes
+    /// false outside trick play — a row of "0 tricks" during the deal wait
+    /// or the auction is noise with no decision behind it.
+    public var showsTrickCount: Bool
+    /// Legal cards for this open opponent hand when the viewer is allowed
+    /// to control it, e.g. the lone whister pulling the passer's cards.
+    public var playableCards: Set<Card>
+    public var selectedCards: Set<Card>
+    public var onSelectCard: ((Card) -> Void)?
+    public var onPlayCard: ((Card) -> Void)?
+    public var onDragCard: ((Card) -> Void)?
 
     public enum Orientation: Equatable {
         case top
@@ -51,7 +62,13 @@ public struct OpponentSeatView: View {
         isDeemphasized: Bool = false,
         lastAction: RecentAction? = nil,
         roleBadge: SeatRoleBadge? = nil,
-        seatOrder: Int? = nil
+        seatOrder: Int? = nil,
+        showsTrickCount: Bool = true,
+        playableCards: Set<Card> = [],
+        selectedCards: Set<Card> = [],
+        onSelectCard: ((Card) -> Void)? = nil,
+        onPlayCard: ((Card) -> Void)? = nil,
+        onDragCard: ((Card) -> Void)? = nil
     ) {
         self.seat = seat
         self.orientation = orientation
@@ -61,6 +78,12 @@ public struct OpponentSeatView: View {
         self.lastAction = lastAction
         self.roleBadge = roleBadge
         self.seatOrder = seatOrder
+        self.showsTrickCount = showsTrickCount
+        self.playableCards = playableCards
+        self.selectedCards = selectedCards
+        self.onSelectCard = onSelectCard
+        self.onPlayCard = onPlayCard
+        self.onDragCard = onDragCard
     }
 
     public var body: some View {
@@ -70,7 +93,7 @@ public struct OpponentSeatView: View {
             VStack(spacing: isDeemphasized ? 4 : 6) {
                 nameChip
                 fan
-                if !isDeemphasized {
+                if !isDeemphasized, showsTrickCount {
                     trickCounter
                 }
             }
@@ -95,14 +118,6 @@ public struct OpponentSeatView: View {
     /// table can tuck into a corner.
     private var sittingOutChip: some View {
         HStack(spacing: 5) {
-            if let seatOrder {
-                SeatOrderBadge(
-                    number: seatOrder,
-                    player: seat.player,
-                    isCurrentActor: seat.isCurrentActor,
-                    diameter: 18
-                )
-            }
             Text(seat.displayName)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(TableTheme.inkCreamSoft)
@@ -138,18 +153,6 @@ public struct OpponentSeatView: View {
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             HStack(spacing: 6) {
-                if let seatOrder {
-                    SeatOrderBadge(
-                        number: seatOrder,
-                        player: seat.player,
-                        isCurrentActor: seat.isCurrentActor,
-                        diameter: isDeemphasized ? 18 : 22
-                    )
-                }
-                Image(systemName: "person.crop.circle.fill")
-                    .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
-                    .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCreamSoft)
-                    .accessibilityHidden(true)
                 Text(seat.displayName)
                     .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
                     .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
@@ -335,15 +338,21 @@ public struct OpponentSeatView: View {
     /// hands get two readable rows, bigger cards, and a wider step so every
     /// rank+pip remains visible without claiming four rows of vertical space.
     private var openFan: some View {
-        let dims = CardView.Size.large.dimensions
+        let cardSize: CardView.Size = .standard
+        let dims = cardSize.dimensions
         let rows = openHandRows(seat.hand)
         let rowHeight = dims.height + 12
         return VStack(spacing: -rowHeight * 0.55) {
             ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                 CardFanView(
                     cards: row,
+                    playableCards: playableCards,
+                    selectedCards: selectedCards,
                     seat: seat.player,
-                    size: .large
+                    size: cardSize,
+                    onTap: onSelectCard,
+                    onDoubleTap: onPlayCard,
+                    onDragEnded: onDragCard
                 )
             }
         }
@@ -422,14 +431,19 @@ public struct SeatOrderBadge: View {
     public var body: some View {
         Text("\(number)")
             .font(.system(size: max(9, diameter * 0.48), weight: .heavy).monospacedDigit())
-            .foregroundStyle(isCurrentActor ? TableTheme.feltDeep : TableTheme.goldBright)
+            // Only the seat whose turn it is gets gold; every other seat
+            // number is quiet cream so bright gold reads as "act now", not
+            // "here is a number".
+            .foregroundStyle(isCurrentActor ? TableTheme.feltDeep : TableTheme.inkCream)
             .frame(width: diameter, height: diameter)
             .background(
                 Circle().fill(isCurrentActor ? TableTheme.goldBright : Color.black.opacity(0.34))
             )
             .overlay(
                 Circle().strokeBorder(
-                    TableTheme.goldBright.opacity(isCurrentActor ? 0.95 : 0.68),
+                    isCurrentActor
+                        ? TableTheme.goldBright.opacity(0.95)
+                        : TableTheme.inkCream.opacity(0.22),
                     lineWidth: isCurrentActor ? 1.2 : 0.8
                 )
             )

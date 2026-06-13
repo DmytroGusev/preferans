@@ -2596,6 +2596,30 @@
         }
       }
     },
+    "Split": {
+      "comment": "Settlement composer title verb — split the remaining tricks between the declarer and defense.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Split"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Разделить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Розділити"
+          }
+        }
+      }
+    },
     "Sitting out": {
       "comment": "Seat badge — sitting out this deal (4-player).",
       "extractionState": "manual",
@@ -3750,6 +3774,30 @@
           "stringUnit": {
             "state" : "translated",
             "value": "%@ — світла чи темна?"
+          }
+        }
+      }
+    },
+    "Trick": {
+      "comment": "Short table-strip label for the current trick number.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trick"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взятка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взятка"
           }
         }
       }

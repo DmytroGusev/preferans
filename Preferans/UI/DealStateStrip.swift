@@ -13,15 +13,16 @@ public struct DealStateStrip: View {
 
     public var body: some View {
         if shouldRender {
-            VStack(alignment: .leading, spacing: 5) {
-                primaryRow
-                trickCountRow
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .feltSurface(.chip, radius: TableTheme.Radius.sm)
-            .padding(.horizontal, 8)
+            // One line only: contract / phase on the left, contract progress
+            // on the right. Per-seat trick counts used to live on a second
+            // line here, but they duplicated the seat pills (opponents) and
+            // the viewer plate, so the eye read the same tallies three times.
+            primaryRow
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .feltSurface(.chip, radius: TableTheme.Radius.sm)
+                .padding(.horizontal, 8)
         }
     }
 
@@ -75,16 +76,24 @@ public struct DealStateStrip: View {
     @ViewBuilder
     private var trailingSummary: some View {
         if let progress = contractProgress() {
-            Text("Tricks \(progress.taken)/\(progress.target)")
-                .font(.caption.weight(.bold).monospacedDigit())
-                .foregroundStyle(progressColor(progress.state))
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
+            HStack(spacing: 4) {
+                Text("strip.contract.tricks")
+                Text("\(progress.taken)/\(progress.target)")
+                    .monospacedDigit()
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(progressColor(progress.state))
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
         } else if isTrickPlay {
-            Text("Trick \(min(10, projection.completedTrickCount + 1))")
-                .font(.caption.weight(.bold).monospacedDigit())
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .lineLimit(1)
+            HStack(spacing: 4) {
+                Text("Trick")
+                Text("\(min(10, projection.completedTrickCount + 1))")
+                    .monospacedDigit()
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(TableTheme.inkCreamSoft)
+            .lineLimit(1)
         } else {
             Localized.statusText(projection)
                 .font(.caption.weight(.semibold))
@@ -94,27 +103,12 @@ public struct DealStateStrip: View {
         }
     }
 
-    private var trickCountRow: some View {
-        Text(trickCountSummary)
-            .font(.caption2.weight(.semibold).monospacedDigit())
-            .foregroundStyle(TableTheme.inkCreamSoft)
-            .lineLimit(1)
-            .minimumScaleFactor(0.62)
-            .accessibilityLabel(trickCountSummary)
-    }
-
-    private var trickCountSummary: String {
-        activeSeats
-            .map { "\(seatOrderNumber(for: $0.player)) \($0.displayName) \($0.trickCount)" }
-            .joined(separator: " · ")
-    }
-
     private func phaseLabel(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.caption.weight(.bold))
             .tracking(0.8)
             .textCase(.uppercase)
-            .foregroundStyle(TableTheme.goldBright)
+            .foregroundStyle(TableTheme.inkCream)
             .lineLimit(1)
     }
 
@@ -135,19 +129,11 @@ public struct DealStateStrip: View {
             }
         case .misere:
             Text("Misère")
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(TableTheme.inkCream)
         case .totus:
             Text("Totus")
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(TableTheme.inkCream)
         }
-    }
-
-    private var activeSeats: [SeatProjection] {
-        projection.seats.filter { $0.role != .sittingOut }
-    }
-
-    private func seatOrderNumber(for player: PlayerID) -> Int {
-        (projection.players.firstIndex(of: player) ?? 0) + 1
     }
 
     private var isTrickPlay: Bool {
@@ -190,7 +176,9 @@ public struct DealStateStrip: View {
 
     private func progressColor(_ state: ContractProgress.State) -> Color {
         switch state {
-        case .met:    return TableTheme.goldBright
+        // "Met" is good news but it isn't an action — keep it cream so bright
+        // gold stays reserved for whose-turn / the viewer's controls.
+        case .met:    return TableTheme.inkCream
         case .live:   return TableTheme.inkCream
         case .behind: return Color(red: 1.0, green: 0.55, blue: 0.50)
         }
