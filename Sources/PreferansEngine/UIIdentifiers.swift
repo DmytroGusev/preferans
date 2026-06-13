@@ -235,6 +235,7 @@ public enum UIIdentifiers {
     public static let buttonCancelSettlement   = "button.cancelSettlement"
     public static let buttonAcceptSettlement   = "button.acceptSettlement"
     public static let buttonRejectSettlement   = "button.rejectSettlement"
+    public static let buttonTakeTalon          = "button.takeTalon"
 
     public static func bidButton(_ call: BidCall) -> String  { "bid.\(encode(call))" }
     public static func contractButton(_ c: GameContract) -> String { "contract.\(encode(c))" }

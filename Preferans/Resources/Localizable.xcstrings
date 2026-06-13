@@ -2980,6 +2980,30 @@
         }
       }
     },
+    "Take prikup": {
+      "comment": "Button on the center talon cards; declarer taps it to move the prikup into their hand before choosing discards.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take prikup"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взять прикуп"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Взяти прикуп"
+          }
+        }
+      }
+    },
     "Prikup exchange": {
       "comment": "Phase title — declarer takes prikup and discards two cards.",
       "extractionState": "manual",

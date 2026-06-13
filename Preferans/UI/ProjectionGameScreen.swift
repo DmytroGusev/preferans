@@ -38,6 +38,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     @State private var selectedDiscard: Set<Card> = []
     @State private var selectedPlayCard: Card?
+    @State private var talonTakenSequence: Int?
     @State private var activeSheet: Sheet?
     @State private var showLeaveConfirm = false
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
@@ -126,6 +127,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         .onChange(of: projection.sequence) { _, _ in
             // Game-over rendering is now inline on the felt — see
             // `TableView.gameOverCard`. No modal auto-presentation here.
+            reconcileTalonTakeState()
             reconcileDiscardSelection()
             reconcilePlaySelection()
         }
@@ -250,10 +252,12 @@ public struct ProjectionGameScreen<Menu: View>: View {
             bannerAction: bannerAction,
             pendingAdvance: pendingAdvance,
             idleHintActive: idleHintActive,
+            isTalonTakePending: isTalonTakePending,
             cardSuitOrder: cardSuitDisplayOrder,
             selectedPlayCard: selectedPlayCard,
             onSelectPlayCard: selectPlayCard,
             onPlayCard: { owner, card in playCard(card, from: owner) },
+            onTakeTalon: takeTalon,
             onTapToAdvance: onTapToAdvance
         )
     }
@@ -334,6 +338,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var shouldShowActionBar: Bool {
         if isDealFinishedPhase { return false }
         if shouldShowCenterDealCTA { return false }
+        if isTalonTakePending { return false }
         if case .gameOver = projection.phase { return false }
         return true
     }
@@ -535,12 +540,22 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var viewerHandFan: some View {
         if let seat = activeHandSeat {
             let isDiscardPhase = projection.legal.canDiscard
+            let canSelectDiscard = isDiscardPhase && !isTalonTakePending
             let playable: Set<Card> = isDiscardPhase ? [] : playableCards(for: seat.player)
-            let selected: Set<Card> = isDiscardPhase ? selectedDiscard : selectedCards(for: seat.player)
-            let talonKnown: [Card] = isDiscardPhase ? projection.talon.compactMap(\.knownCard) : []
-            let cards: [ProjectedCard] = isDiscardPhase
+            let selected: Set<Card> = isDiscardPhase
+                ? (canSelectDiscard ? selectedDiscard : [])
+                : selectedCards(for: seat.player)
+            let talonKnown: [Card] = canSelectDiscard ? projection.talon.compactMap(\.knownCard) : []
+            let cards: [ProjectedCard] = canSelectDiscard
                 ? sortedHandFan(seat.hand + projection.talon)
                 : sortedHandFan(seat.hand)
+            let onCardTap: ((Card) -> Void)? = isTalonTakePending ? nil : { card in
+                if isDiscardPhase {
+                    toggleDiscardSelection(card)
+                } else {
+                    selectPlayCard(card)
+                }
+            }
             VStack(spacing: 0) {
                 ZStack(alignment: .topLeading) {
                     CardFanView(
@@ -551,13 +566,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                         seat: seat.player,
                         size: horizontalSizeClass == .compact ? .standard : .large,
                         animationNamespace: cardNamespace,
-                        onTap: { card in
-                            if isDiscardPhase {
-                                toggleDiscardSelection(card)
-                            } else {
-                                selectPlayCard(card)
-                            }
-                        },
+                        onTap: onCardTap,
                         onDoubleTap: isDiscardPhase ? nil : { card in
                             playCard(card, from: seat.player)
                         },
@@ -805,6 +814,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     }
 
     private func toggleDiscardSelection(_ card: Card) {
+        guard !isTalonTakePending else { return }
         if selectedDiscard.contains(card) {
             selectedDiscard.remove(card)
         } else if selectedDiscard.count < 2 {
@@ -812,8 +822,30 @@ public struct ProjectionGameScreen<Menu: View>: View {
         }
     }
 
-    private func reconcileDiscardSelection() {
+    private var isTalonTakePending: Bool {
+        projection.legal.canDiscard && talonTakenSequence != projection.sequence
+    }
+
+    private func takeTalon() {
+        guard projection.legal.canDiscard else { return }
+        withAnimation(.easeInOut(duration: 0.22)) {
+            talonTakenSequence = projection.sequence
+            selectedDiscard.removeAll()
+        }
+    }
+
+    private func reconcileTalonTakeState() {
         guard projection.legal.canDiscard else {
+            talonTakenSequence = nil
+            return
+        }
+        if talonTakenSequence != projection.sequence {
+            selectedDiscard.removeAll()
+        }
+    }
+
+    private func reconcileDiscardSelection() {
+        guard projection.legal.canDiscard, !isTalonTakePending else {
             selectedDiscard.removeAll()
             return
         }

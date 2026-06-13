@@ -46,6 +46,10 @@ public struct TableView: View {
     /// True once the pause has been up long enough that the table should
     /// escalate the hint into a more prominent "Waiting for you" pulse.
     public var idleHintActive: Bool
+    /// Presentation gate for the declarer's discard turn: the prikup stays
+    /// on the felt until the player taps it, then the screen merges it into
+    /// the selectable 12-card discard fan.
+    public var isTalonTakePending: Bool
     /// Presentation-only suit order for face-up table hands.
     public var cardSuitOrder: CardSuitDisplayOrder
     /// Currently selected card in a playable hand. Selection is visual only;
@@ -53,6 +57,8 @@ public struct TableView: View {
     public var selectedPlayCard: Card?
     public var onSelectPlayCard: ((Card) -> Void)?
     public var onPlayCard: ((PlayerID, Card) -> Void)?
+    /// Called when the declarer taps the visible prikup before discard.
+    public var onTakeTalon: (() -> Void)?
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
     @State private var showInitialHands = false
@@ -70,10 +76,12 @@ public struct TableView: View {
         bannerAction: RecentAction? = nil,
         pendingAdvance: PendingAdvance? = nil,
         idleHintActive: Bool = false,
+        isTalonTakePending: Bool = false,
         cardSuitOrder: CardSuitDisplayOrder = .default,
         selectedPlayCard: Card? = nil,
         onSelectPlayCard: ((Card) -> Void)? = nil,
         onPlayCard: ((PlayerID, Card) -> Void)? = nil,
+        onTakeTalon: (() -> Void)? = nil,
         onTapToAdvance: (() -> Void)? = nil
     ) {
         self.projection = projection
@@ -88,10 +96,12 @@ public struct TableView: View {
         self.bannerAction = bannerAction
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = idleHintActive
+        self.isTalonTakePending = isTalonTakePending
         self.cardSuitOrder = cardSuitOrder
         self.selectedPlayCard = selectedPlayCard
         self.onSelectPlayCard = onSelectPlayCard
         self.onPlayCard = onPlayCard
+        self.onTakeTalon = onTakeTalon
         self.onTapToAdvance = onTapToAdvance
     }
 
@@ -329,11 +339,12 @@ public struct TableView: View {
     @ViewBuilder
     private func phaseContext() -> some View {
         switch projection.phase {
+        case .awaitingDiscard where isTalonTakePending:
+            talonContext(action: onTakeTalon)
         case .awaitingDiscard where !projection.legal.canDiscard:
             // Observers see the revealed prikup on the felt. The declarer
-            // doesn't: those two cards are already merged into their hand
-            // fan with "P" badges, so a center copy would show the same
-            // cards twice on one screen.
+            // sees it here first, then taps to merge it into their hand fan
+            // with "P" badges for discard selection.
             talonContext()
         case .playing(_, _, kind: .allPass) where shouldShowPublicTalon:
             talonContext(title: "Talon")
@@ -453,11 +464,9 @@ public struct TableView: View {
         let hasKnownCards = projection.talon.contains { $0.knownCard != nil }
         switch projection.phase {
         case .awaitingDiscard:
-            // The declarer's hand fan already contains the two prikup cards
-            // with badges during discard selection. Keep the center-table
-            // copy for observers only so the acting player does not see a
-            // confusing duplicate 12-card hand plus table talon.
-            return hasKnownCards && !projection.legal.canDiscard
+            // Keep the center-table copy for observers, and for the
+            // declarer until they explicitly take it into the discard fan.
+            return hasKnownCards && (isTalonTakePending || !projection.legal.canDiscard)
         case .playing(_, _, kind: .allPass):
             return hasKnownCards
                 && projection.rules.allPassTalonPolicy == .leadSuitOnly
@@ -467,8 +476,13 @@ public struct TableView: View {
         }
     }
 
-    private func talonContext(title: LocalizedStringKey = "Prikup", size: CardView.Size = .standard) -> some View {
-        VStack(spacing: 8) {
+    @ViewBuilder
+    private func talonContext(
+        title: LocalizedStringKey = "Prikup",
+        size: CardView.Size = .standard,
+        action: (() -> Void)? = nil
+    ) -> some View {
+        let content = VStack(spacing: 8) {
             Text(title)
                 .font(.caption.weight(.bold))
                 .tracking(1.2)
@@ -479,8 +493,38 @@ public struct TableView: View {
                     CardView(card: card, size: size, region: .talon)
                 }
             }
+            if action != nil {
+                Label("Take prikup", systemImage: "hand.tap.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(TableTheme.feltDeep)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(TableTheme.goldBright, in: Capsule())
+            }
         }
         .multilineTextAlignment(.center)
+
+        if let action {
+            Button {
+                action()
+            } label: {
+                content
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
+                            .fill(Color.black.opacity(0.20))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
+                            .strokeBorder(TableTheme.goldBright.opacity(0.65), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier(UIIdentifiers.buttonTakeTalon)
+        } else {
+            content
+        }
     }
 
     /// Centered Deal CTA shown on the empty felt during the pre-first-deal
