@@ -134,6 +134,8 @@ public enum UIIdentifiers {
     public static let conventionLegendSheet    = "lobby.conventionLegend"
     public static let onlineIdentityMode       = "online.identityMode"
     public static let onlineRegisterWithApple  = "online.registerWithApple"
+    public static let onlineDeleteAccount      = "online.deleteAccount"
+    public static let trackingPermissionRequest = "privacy.tracking.request"
     public static let onlineAccountEmail       = "online.accountEmail"
     public static let onlineLocalSeatPicker    = "online.localSeat"
     public static let onlineCreateRoom         = "online.createRoom"

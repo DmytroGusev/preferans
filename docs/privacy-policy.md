@@ -4,7 +4,7 @@ title: Privacy Policy
 
 # Privacy Policy
 
-Last updated: May 1, 2026
+Last updated: July 3, 2026
 
 This Privacy Policy explains how Preferans handles information when you use the iOS app.
 
@@ -16,7 +16,6 @@ When you use online play, the app may process:
 
 - Your Sign in with Apple user identifier.
 - Your display name.
-- Your email address if Apple provides it during Sign in with Apple, or if you enter an email address for the in-app email/Gmail test profile.
 - Room codes, room participation details, game state, bids, cards, turns, and score data needed to run an online game.
 - Basic timestamps such as when a room or game event was created or updated.
 
@@ -34,11 +33,11 @@ We use information only to:
 
 Preferans does not sell your personal information and does not use your information for third-party advertising.
 
+If tracking features are enabled in a submitted build, Preferans asks for permission through Apple's App Tracking Transparency prompt before accessing tracking data. You can decline tracking and continue using the app.
+
 ## Apple Services
 
 Preferans uses Apple services, including Sign in with Apple and iCloud CloudKit, to support account identity and online multiplayer. Information handled by Apple services is also subject to Apple's privacy practices.
-
-The in-app email/Gmail test profile does not use Google OAuth in the current build. It uses the email address you type only as a stable player identifier for online rooms.
 
 Online room and game records may be stored in Apple's iCloud infrastructure through CloudKit so that invited players can access the same room.
 
@@ -66,6 +65,7 @@ You can:
 
 - Use local play without joining online rooms.
 - Sign out in the app to remove the locally stored online profile.
+- Use Delete account data in Settings to remove the locally stored online identity, display name, and anonymous room account from your device.
 - Delete the app to remove local app data from your device.
 - Contact us to request help with privacy questions.
 

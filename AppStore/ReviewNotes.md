@@ -7,14 +7,15 @@ Preferans is a card game for 3 to 4 players. The submitted build supports local 
 ## Reviewer Instructions
 
 1. Launch the app.
-2. On the lobby screen, choose 3 Players or 4 Players.
-3. Optionally create a mock invite link from the Online section.
-4. Tap Start Hand.
-5. Use the bidding controls to choose trump or pass.
-6. Take the talon when prompted.
-7. Play cards from the hand to complete tricks.
+2. Choose Online mode.
+3. Enter any display name in the You section. Sign in with Apple is optional.
+4. Tap Create invite link to create an online room, or paste an invite code/link and tap Join.
+5. To verify account deletion, open Settings from the gear button, then use Account → Delete account data and confirm.
+6. To verify tracking permission, open Settings from the gear button, then use Privacy → Request tracking permission. This displays the App Tracking Transparency prompt when iOS status is not determined.
+7. For local gameplay, choose Local mode, tap Start Hand, bid or pass, take the talon when prompted, and play cards from the hand to complete tricks.
 
 ## Notes
 
-- If the build submitted for review includes real multiplayer, replace these notes with exact reviewer steps, any test accounts, and expected invite flow behavior.
-- If online mode remains mock-only, remove any storefront language implying live internet gameplay.
+- If App Privacy is configured with tracking enabled, the App Tracking Transparency request is available at Settings → Privacy → Request tracking permission.
+- Online room identity is used only for multiplayer room participation.
+- Account deletion is available in-app from Settings → Account → Delete account data.

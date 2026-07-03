@@ -1,4 +1,14 @@
 import SwiftUI
+import PreferansEngine
+#if canImport(AppTrackingTransparency)
+import AppTrackingTransparency
+#endif
+#if canImport(AdSupport)
+import AdSupport
+#endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Single home for admin/user preferences. Game-config items (seat count,
 /// roster, bot speed) live in the lobby because they're per-table; this
@@ -7,16 +17,23 @@ public struct SettingsScreen: View {
     @AppStorage(SettingsKeys.revealAllHands) private var revealAllHands = false
     @AppStorage(SettingsKeys.appLanguage) private var appLanguageRaw: String = AppLanguage.default.rawValue
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
+    @AppStorage(SettingsKeys.trackingPermissionRequested) private var trackingPermissionRequested = false
     @Environment(\.dismiss) private var dismiss
 
     @State private var pendingLanguage: AppLanguage?
     @State private var showRelaunchPrompt = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var accountStatusText = Self.accountStatusText()
+    @State private var trackingStatusText = TrackingPermissionCenter.statusText
+    @State private var canRequestTrackingPermission = TrackingPermissionCenter.canRequestPermission
 
     public init() {}
 
     public var body: some View {
         NavigationStack {
             Form {
+                accountSection
+                privacySection
                 languageSection
                 tableSection
                 #if DEBUG
@@ -54,6 +71,68 @@ public struct SettingsScreen: View {
             } message: {
                 Text("Language will switch on next launch.")
             }
+            .confirmationDialog(
+                "Delete account data?",
+                isPresented: $showDeleteAccountConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete account data", role: .destructive) {
+                    Self.deleteAccountData()
+                    refreshAccountStatus()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This removes the saved online identity, display name, anonymous room account, and pending room code from this device. You can create a new identity later.")
+            }
+            .onAppear {
+                refreshAccountStatus()
+                refreshTrackingStatus()
+            }
+        }
+    }
+
+    private var accountSection: some View {
+        Section {
+            LabeledContent("Online account", value: accountStatusText)
+            Button(role: .destructive) {
+                showDeleteAccountConfirm = true
+            } label: {
+                Label("Delete account data", systemImage: "trash")
+            }
+            .accessibilityIdentifier(UIIdentifiers.onlineDeleteAccount)
+        } header: {
+            Text("Account")
+        } footer: {
+            Text("Deletes the locally stored online identity used for invite rooms. This app does not keep a separate server-side profile database.")
+                .font(.footnote)
+        }
+    }
+
+    private var privacySection: some View {
+        Section {
+            LabeledContent("Tracking permission", value: trackingStatusText)
+            Button {
+                Task { await requestTrackingPermission() }
+            } label: {
+                Label("Request tracking permission", systemImage: "hand.raised")
+            }
+            .disabled(!canRequestTrackingPermission)
+            .accessibilityIdentifier(UIIdentifiers.trackingPermissionRequest)
+
+            #if canImport(UIKit)
+            if !canRequestTrackingPermission {
+                Button {
+                    UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
+                } label: {
+                    Label("Open Privacy Settings", systemImage: "gear")
+                }
+            }
+            #endif
+        } header: {
+            Text("Privacy")
+        } footer: {
+            Text("If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites.")
+                .font(.footnote)
         }
     }
 
@@ -98,5 +177,89 @@ public struct SettingsScreen: View {
         let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "—"
         return "\(version) (\(build))"
+    }
+
+    private func requestTrackingPermission() async {
+        trackingPermissionRequested = true
+        await TrackingPermissionCenter.requestPermission()
+        refreshTrackingStatus()
+    }
+
+    private func refreshTrackingStatus() {
+        trackingStatusText = TrackingPermissionCenter.statusText
+        canRequestTrackingPermission = TrackingPermissionCenter.canRequestPermission
+    }
+
+    private func refreshAccountStatus() {
+        accountStatusText = Self.accountStatusText()
+    }
+
+    private static func accountStatusText() -> String {
+        if UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount) != nil {
+            return "Signed in with Apple"
+        }
+        if let name = UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName),
+           !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Display name saved"
+        }
+        if UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID) != nil {
+            return "Anonymous room account saved"
+        }
+        return "No saved account"
+    }
+
+    private static func deleteAccountData() {
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
+    }
+}
+
+@MainActor
+private enum TrackingPermissionCenter {
+    static var canRequestPermission: Bool {
+        #if canImport(AppTrackingTransparency)
+        if #available(iOS 14, macCatalyst 14, tvOS 14, *) {
+            return ATTrackingManager.trackingAuthorizationStatus == .notDetermined
+        }
+        #endif
+        return false
+    }
+
+    static var statusText: String {
+        #if canImport(AppTrackingTransparency)
+        if #available(iOS 14, macCatalyst 14, tvOS 14, *) {
+            switch ATTrackingManager.trackingAuthorizationStatus {
+            case .notDetermined: return "Not requested"
+            case .restricted: return "Restricted"
+            case .denied: return "Denied"
+            case .authorized: return "Authorized"
+            @unknown default: return "Unknown"
+            }
+        }
+        #endif
+        return "Unavailable"
+    }
+
+    static func requestPermission() async {
+        #if canImport(AppTrackingTransparency)
+        if #available(iOS 14, macCatalyst 14, tvOS 14, *) {
+            await withCheckedContinuation { continuation in
+                ATTrackingManager.requestTrackingAuthorization { _ in
+                    continuation.resume()
+                }
+            }
+        }
+        #endif
+    }
+
+    static var advertisingIdentifierForTracking: UUID? {
+        #if canImport(AppTrackingTransparency) && canImport(AdSupport)
+        if #available(iOS 14, macCatalyst 14, tvOS 14, *),
+           ATTrackingManager.trackingAuthorizationStatus == .authorized {
+            return ASIdentifierManager.shared().advertisingIdentifier
+        }
+        #endif
+        return nil
     }
 }

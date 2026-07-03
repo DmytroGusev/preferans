@@ -47,6 +47,10 @@ public enum SettingsKeys {
     /// House-rule variant selected for online rooms.
     public static let onlineVariant = "settings.onlineVariant"
 
+    /// Local audit flag noting that the user explicitly opened the ATT prompt.
+    /// The actual tracking authorization state remains owned by iOS.
+    public static let trackingPermissionRequested = "settings.trackingPermissionRequested"
+
     /// Per-player pulka preset selected for newly-created local and online tables.
     public static let pulkaLimit = "settings.pulkaLimit"
 
