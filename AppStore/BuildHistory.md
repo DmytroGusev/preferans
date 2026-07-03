@@ -1,0 +1,60 @@
+# Build History
+
+This file records App Store/TestFlight build provenance and review-facing changes.
+
+## 1.0 (20) - App Store Connect
+
+- Date: 2026-07-03
+- Git tag: `appstore/1.0-build-20`
+- Git commit: `a529b54 Fix launch crash for App Store build 20`
+- Repository author recorded by Git: `DmytroGusev <dmytro.gusev@gmail.com>`
+- Operational change made by: Codex in the App Store review-fix session
+- Source base: build `1.0 (19)`, commit `32c0389`
+- App Store upload: uploaded successfully; package processing started in App Store Connect
+
+Changes:
+
+- Fixed launch crash found after App Review rejected build `1.0 (19)`.
+- Removed the unused launch-time `HostedOnlineGameCoordinator` from `PreferansApp`.
+- This prevents `defaultCloudStore()` and `CloudKitGameArchiveStore` from creating a `CKContainer` during initial app launch.
+- Kept online room functionality lazy through the lobby/session flow instead of constructing CloudKit-backed online state before the first screen.
+- Bumped `CURRENT_PROJECT_VERSION` from `19` to `20`.
+
+Verification:
+
+- `swift test --filter LobbyViewModelTests/testOnlinePlayerNameIsRequiredBeforeCreateJoinOrDebugRoom`
+- `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+- Cold launch on iPad simulator after uninstall/reinstall.
+- `xcodebuild archive` for iOS Release.
+- `xcodebuild -exportArchive` upload to App Store Connect succeeded.
+
+## 1.0 (19) - App Store Connect
+
+- Date: 2026-07-03
+- Git tag: `appstore/1.0-build-19`
+- Git commit: `32c0389 Prepare App Store build 19 privacy compliance`
+- Repository author recorded by Git: `DmytroGusev <dmytro.gusev@gmail.com>`
+- Operational change made by: Codex in the App Store privacy-compliance session
+- Source base: build `1.0 (18)`, commit `e5d88e8`
+- App Store upload: uploaded successfully, but later rejected by automated App Review launch-crash check
+
+Changes:
+
+- Added App Tracking Transparency permission flow in `Settings -> Privacy -> Request tracking permission`.
+- Added `NSUserTrackingUsageDescription`.
+- Added in-app account deletion flow in `Settings -> Account -> Delete account data`.
+- Updated App Store review notes, privacy checklist, and privacy policy.
+- Bumped `CURRENT_PROJECT_VERSION` from `18` to `19`.
+
+## 1.0 (18) - TestFlight Baseline
+
+- Date: 2026-06-13
+- Git tag: `testflight/1.0-build-18`
+- Git commit: `e5d88e8 Prepare TestFlight build 18`
+- Repository author recorded by Git: `DmytroGusev <dmytro.gusev@gmail.com>`
+- Notable prior contributor commits included before this baseline: `ontofractal <v@ontofractal.com>` commits through `3f4e593 Calculate pulka settings per player`
+
+Notes:
+
+- Build `1.0 (18)` is the baseline used for the build `19` privacy-compliance update.
+- Build `1.0 (20)` is the current App Store candidate after fixing the launch crash.
