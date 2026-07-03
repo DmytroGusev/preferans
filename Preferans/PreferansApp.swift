@@ -8,7 +8,6 @@ import UIKit
 struct PreferansApp: App {
     #if canImport(GameKit) && canImport(UIKit)
     @StateObject private var gameCenter = GameCenterService()
-    @StateObject private var online = HostedOnlineGameCoordinator(cloudStore: defaultCloudStore())
     #endif
 
     private let animationsDisabled: Bool
@@ -61,7 +60,6 @@ struct PreferansApp: App {
                 }
                 #if canImport(GameKit) && canImport(UIKit)
                 .environmentObject(gameCenter)
-                .environmentObject(online)
                 // Game Center authentication is intentionally deferred to
                 // an explicit user tap on the lobby's "Sign in to Game
                 // Center" button. Auto-authenticating at launch would
