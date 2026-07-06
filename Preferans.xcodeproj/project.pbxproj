@@ -21,6 +21,7 @@
 		B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000033 /* CloudKitGameArchiveStore.swift */; };
 		B00000000000000000000004 /* CloudKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000034 /* CloudKitModels.swift */; };
 		B00000000000000000000005 /* CloudKitRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000035 /* CloudKitRecords.swift */; };
+		B00000000000000000000D10 /* TrackingPermissionCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000D11 /* TrackingPermissionCenter.swift */; };
 		B00000000000000000000007 /* GameCenterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* GameCenterService.swift */; };
 		B00000000000000000000009 /* GameWireMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000039 /* GameWireMessage.swift */; };
 		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
@@ -121,6 +122,7 @@
 		B0000000000000000000003E /* PlayerProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Projection/PlayerProjection.swift; sourceTree = "<group>"; };
 		B0000000000000000000003F /* AppEngineSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppEngineSnapshot.swift; sourceTree = "<group>"; };
 		B00000000000000000000040 /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppIdentifiers.swift; sourceTree = "<group>"; };
+		B00000000000000000000D11 /* TrackingPermissionCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/TrackingPermissionCenter.swift; sourceTree = "<group>"; };
 		B00000000000000000000041 /* PlayerIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/PlayerIdentity.swift; sourceTree = "<group>"; };
 		B00000000000000000000042 /* PreferansEngine+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PreferansEngine+UI.swift"; sourceTree = "<group>"; };
 		B00000000000000000000043 /* PreferansGameStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/PreferansGameStatus.swift; sourceTree = "<group>"; };
@@ -227,6 +229,7 @@
 				B0000000000000000000003E /* PlayerProjection.swift */,
 				B0000000000000000000003F /* AppEngineSnapshot.swift */,
 				B00000000000000000000040 /* AppIdentifiers.swift */,
+				B00000000000000000000D11 /* TrackingPermissionCenter.swift */,
 				B00000000000000000000041 /* PlayerIdentity.swift */,
 				B00000000000000000000042 /* PreferansEngine+UI.swift */,
 				B00000000000000000000043 /* PreferansGameStatus.swift */,
@@ -415,6 +418,7 @@
 				B0000000000000000000000E /* PlayerProjection.swift in Sources */,
 				B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */,
 				B00000000000000000000010 /* AppIdentifiers.swift in Sources */,
+				B00000000000000000000D10 /* TrackingPermissionCenter.swift in Sources */,
 				B00000000000000000000011 /* PlayerIdentity.swift in Sources */,
 				B00000000000000000000012 /* PreferansEngine+UI.swift in Sources */,
 				B00000000000000000000013 /* PreferansGameStatus.swift in Sources */,
@@ -576,7 +580,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -611,7 +615,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 20;
+				CURRENT_PROJECT_VERSION = 21;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Preferans;

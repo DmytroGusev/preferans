@@ -31,7 +31,7 @@ We use information only to:
 - Restore your signed-in profile on your device.
 - Provide support if you contact us.
 
-Preferans does not sell your personal information, does not use your information for third-party advertising, and does not track you across apps or websites owned by other companies.
+Preferans does not sell your personal information. If tracking or attribution features are enabled, Preferans asks for permission through Apple's App Tracking Transparency prompt before accessing tracking data. You can decline tracking and continue using the app.
 
 ## Apple Services
 

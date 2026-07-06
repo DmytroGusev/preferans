@@ -2,6 +2,23 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0 (21) - App Store Connect
+
+- Date: 2026-07-06
+- Git commit: `4eda06c Request ATT permission on first launch for build 21`
+- Operational change made by: Codex in the App Store privacy-compliance session
+- Source base: build `1.0 (20)`, commit `9dd7b2a`
+
+Changes:
+
+- Added a first-launch App Tracking Transparency request path so the system permission sheet appears automatically when iOS tracking status is not determined.
+- Kept the Settings -> Privacy status and manual request button for reviewers and users who inspect privacy controls later.
+- Bumped `CURRENT_PROJECT_VERSION` from `20` to `21`.
+
+Verification:
+
+- `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+
 ## 1.0 (20) - App Store Connect
 
 - Date: 2026-07-03

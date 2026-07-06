@@ -4,14 +4,14 @@ Use this file when filling in App Store Connect privacy answers.
 
 ## Current shipping assumption
 
-The current shipping app supports local play and online rooms through Sign in with Apple, anonymous room identity, Cloudflare room sync, and optional Apple/iCloud capabilities. It does not include advertising, analytics, attribution, crash reporting, or data broker SDKs.
+The current shipping app supports local play and online rooms through Sign in with Apple, anonymous room identity, Cloudflare room sync, and optional Apple/iCloud capabilities. Build 21 requests App Tracking Transparency on first launch when iOS tracking status is not determined.
 
-For the current build, configure App Store Connect App Privacy as **No Tracking**. Do not mark data as "used to track the user" unless a future build adds third-party advertising, attribution, analytics, or data broker sharing.
+Only mark data as "used to track the user" in App Store Connect if the submitted build actually collects that category for tracking, advertising attribution, third-party analytics, or data broker sharing. Do not mark categories that are not collected by the app.
 
 ## Likely answers for the current codebase
 
-- Tracking: No
-- Data used to track the user: None
+- Tracking: Yes only if App Store Connect privacy labels intentionally declare tracking for advertising attribution or similar tracking use.
+- Data used to track the user: Only the categories actually collected for tracking after ATT authorization.
 - Contact Info: Email address is not requested or stored by the app.
 - Health & Fitness: Not collected
 - Financial Info: Not collected
@@ -33,9 +33,9 @@ For the current build, configure App Store Connect App Privacy as **No Tracking*
 
 ## ATT implementation
 
-The current app does not track users, does not access IDFA during normal gameplay, and does not share collected data with advertisers or data brokers. ATT is therefore not required for the current App Store privacy configuration.
+Build 21 requests App Tracking Transparency automatically on first launch before future tracking data can be accessed. The permission status and manual request button are also available in **Settings → Privacy**.
 
-If a future build adds tracking, update this checklist, request App Tracking Transparency permission before collecting tracking data, and update App Store Connect privacy labels before submission.
+Code may access the advertising identifier only through `TrackingPermissionCenter.advertisingIdentifierForTracking`, which returns a value only after `ATTrackingManager.trackingAuthorizationStatus == .authorized`.
 
 ## Account deletion
 

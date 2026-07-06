@@ -18,20 +18,20 @@ Apple says the App Store Connect privacy answers currently indicate that the app
 
 ## Code Audit Finding
 
-The current repository does not include advertising, analytics, attribution, crash reporting, or data broker SDKs.
+Build 21 adds a first-launch App Tracking Transparency request. The current repository does not include advertising, analytics, attribution, crash reporting, or data broker SDKs.
 
 No Firebase, Google Analytics, Facebook, AppsFlyer, Amplitude, Mixpanel, or similar tracking SDK was found.
 
 Online room data is used for app functionality: player identity, display names, room codes, room participation, game state, bids, turns, cards, and scores.
 
-The app privacy policy already states that Preferans does not sell personal information and does not use information for third-party advertising.
+The app privacy policy states that Preferans does not sell personal information and that tracking or attribution features require App Tracking Transparency permission first.
 
 ## Required App Store Connect Fix
 
-For the current build, App Store Connect App Privacy should be configured as:
+For build 21, App Store Connect App Privacy should be configured only with data categories the app actually collects:
 
-- Tracking: No
-- Data used to track the user: None
+- Tracking: Yes only if you intentionally declare tracking for advertising attribution or similar tracking use
+- Data used to track the user: Only categories actually collected after ATT authorization
 - Email Address: Not collected
 - Advertising Data: Not collected
 - Product Interaction: Not collected
@@ -72,4 +72,3 @@ The App Privacy answers in App Store Connect were too broad and incorrectly mark
 Account deletion is available in the app from Settings -> Account -> Delete account data.
 
 Please review the updated submission.
-
