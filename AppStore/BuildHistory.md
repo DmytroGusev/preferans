@@ -5,7 +5,7 @@ This file records App Store/TestFlight build provenance and review-facing change
 ## 1.0 (23) - App Store Connect
 
 - Date: 2026-07-06
-- Git commit: 
+- Git commit: `5c0e570 Request ATT from active app lifecycle for build 23`
 - Operational change made by: Codex in the ATT prompt fix session
 - Source base: build `1.0 (22)`, commit `d2cb285`
 
