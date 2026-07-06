@@ -6,6 +6,10 @@ import UIKit
 
 @main
 struct PreferansApp: App {
+    #if canImport(UIKit)
+    @UIApplicationDelegateAdaptor(AppLifecycleDelegate.self) private var appLifecycleDelegate
+    #endif
+
     #if canImport(GameKit) && canImport(UIKit)
     @StateObject private var gameCenter = GameCenterService()
     #endif
@@ -54,7 +58,6 @@ struct PreferansApp: App {
     var body: some Scene {
         WindowGroup {
             rootContent
-                .requestTrackingConsentOnFirstLaunch()
                 .environment(\.locale, Locale(identifier: AppLanguage.current.rawValue))
                 .transaction { transaction in
                     if animationsDisabled { transaction.animation = nil }

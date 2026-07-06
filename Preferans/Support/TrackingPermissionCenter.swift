@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(AppTrackingTransparency)
 import AppTrackingTransparency
 #endif
@@ -56,41 +59,27 @@ enum TrackingPermissionCenter {
     }
 }
 
-struct TrackingConsentPromptModifier: ViewModifier {
-    @Environment(\.scenePhase) private var scenePhase
-    @AppStorage(SettingsKeys.trackingPermissionRequested) private var trackingPermissionRequested = false
-    @State private var requestStarted = false
+#if canImport(UIKit)
+final class AppLifecycleDelegate: NSObject, UIApplicationDelegate {
+    private var trackingRequestStarted = false
 
-    func body(content: Content) -> some View {
-        content
-            .onAppear {
-                scheduleRequestIfNeeded()
-            }
-            .onChange(of: scenePhase) { _, phase in
-                guard phase == .active else { return }
-                scheduleRequestIfNeeded()
-            }
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        requestTrackingAuthorizationOnFirstActiveLaunch()
     }
 
-    private func scheduleRequestIfNeeded() {
-        guard scenePhase == .active else { return }
-        guard !requestStarted else { return }
+    private func requestTrackingAuthorizationOnFirstActiveLaunch() {
+        guard !trackingRequestStarted else { return }
         guard TrackingPermissionCenter.canRequestPermission else { return }
 
-        requestStarted = true
+        trackingRequestStarted = true
         Task { @MainActor in
-            // Let the first screen settle before iOS presents the system ATT sheet.
-            try? await Task.sleep(nanoseconds: 700_000_000)
+            // ATT must be requested after the app is active and visible.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
             guard TrackingPermissionCenter.canRequestPermission else { return }
-            trackingPermissionRequested = true
+            UserDefaults.standard.set(true, forKey: SettingsKeys.trackingPermissionRequested)
             await TrackingPermissionCenter.requestPermission()
         }
     }
 }
-
-extension View {
-    func requestTrackingConsentOnFirstLaunch() -> some View {
-        modifier(TrackingConsentPromptModifier())
-    }
-}
+#endif

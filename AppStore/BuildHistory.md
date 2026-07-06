@@ -2,6 +2,23 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0 (23) - App Store Connect
+
+- Date: 2026-07-06
+- Git commit: 
+- Operational change made by: Codex in the ATT prompt fix session
+- Source base: build `1.0 (22)`, commit `d2cb285`
+
+Changes:
+
+- Moved the automatic App Tracking Transparency request from a SwiftUI scene-phase modifier to a UIKit `UIApplicationDelegate.applicationDidBecomeActive` hook.
+- Kept a one-second delay after active launch so the system prompt is requested only after the first screen is visible.
+- Bumped `CURRENT_PROJECT_VERSION` from `22` to `23`.
+
+Verification:
+
+- `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+
 ## 1.0 (22) - App Store Connect
 
 - Date: 2026-07-06
