@@ -4,7 +4,7 @@ title: Privacy Policy
 
 # Privacy Policy
 
-Last updated: July 3, 2026
+Last updated: July 6, 2026
 
 This Privacy Policy explains how Preferans handles information when you use the iOS app.
 
@@ -31,9 +31,7 @@ We use information only to:
 - Restore your signed-in profile on your device.
 - Provide support if you contact us.
 
-Preferans does not sell your personal information and does not use your information for third-party advertising.
-
-If tracking features are enabled in a submitted build, Preferans asks for permission through Apple's App Tracking Transparency prompt before accessing tracking data. You can decline tracking and continue using the app.
+Preferans does not sell your personal information, does not use your information for third-party advertising, and does not track you across apps or websites owned by other companies.
 
 ## Apple Services
 

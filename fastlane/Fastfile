@@ -43,7 +43,7 @@ platform :ios do
       first_name: ENV.fetch("APP_REVIEW_FIRST_NAME", "Dmytro"),
       last_name: ENV.fetch("APP_REVIEW_LAST_NAME", "Gusev"),
       email_address: ENV.fetch("APP_REVIEW_EMAIL", "dmytro.gusev@gmail.com"),
-      notes: "Please test local play and online rooms. Online play uses Sign in with Apple and room codes. No demo account is required."
+      notes: "Please test local play and online rooms. Online play uses Sign in with Apple, display names, and room codes. No demo account is required.\n\nPrivacy: this build does not track users across apps or websites and does not include advertising, analytics, attribution, crash reporting, or data broker SDKs. App Privacy should be configured as No Tracking.\n\nAccount deletion: open Settings from the app, then Account -> Delete account data, and confirm."
     }
     review_phone = ENV["APP_REVIEW_PHONE"].to_s.strip
     review_info[:phone_number] = review_phone unless review_phone.empty?

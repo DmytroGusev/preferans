@@ -4,33 +4,38 @@ Use this file when filling in App Store Connect privacy answers.
 
 ## Current shipping assumption
 
-The app supports local play and online rooms through Sign in with Apple, anonymous room identity, Cloudflare room sync, and optional Apple/iCloud capabilities. The app includes an App Tracking Transparency permission flow in Settings so tracking can be enabled only after the user grants iOS permission.
+The current shipping app supports local play and online rooms through Sign in with Apple, anonymous room identity, Cloudflare room sync, and optional Apple/iCloud capabilities. It does not include advertising, analytics, attribution, crash reporting, or data broker SDKs.
+
+For the current build, configure App Store Connect App Privacy as **No Tracking**. Do not mark data as "used to track the user" unless a future build adds third-party advertising, attribution, analytics, or data broker sharing.
 
 ## Likely answers for the current codebase
 
-- Tracking: Yes, only if you intentionally configure App Store Connect privacy labels for tracking and only after the user grants App Tracking Transparency permission.
-- Data used to track the user: Only collect tracking data after ATT authorization. Do not collect IDFA or cross-app/cross-website tracking data before permission.
-- Contact Info: Email address is not requested by the app. If Apple provides relay email information in the future, update this answer before submission.
+- Tracking: No
+- Data used to track the user: None
+- Contact Info: Email address is not requested or stored by the app.
 - Health & Fitness: Not collected
 - Financial Info: Not collected
 - Location: Not collected
 - Sensitive Info: Not collected
 - Contacts: Not collected
-- User Content: Gameplay room data is processed for online multiplayer, but no public user-generated content feature is provided
+- User Content: Gameplay room data is processed for online multiplayer, but no public user-generated content feature is provided.
 - Browsing History: Not collected
 - Search History: Not collected
-- Identifiers: Sign in with Apple user identifier or anonymous room identifier may be used for account identity and online room participation
+- Identifiers: Sign in with Apple user identifier or anonymous room identifier may be collected, linked to the user, and used only for app functionality and online room participation.
+- Name: Display name may be collected, linked to the user, and used only for app functionality so other room participants can identify seats.
 - Purchases: Not collected
-- Usage Data: Not collected unless analytics SDKs are added
-- Diagnostics: Not collected unless crash/analytics SDKs are added
+- Usage Data: Not collected
+- Product Interaction: Not collected
+- Diagnostics: Not collected
+- Crash Data: Not collected
+- Performance Data: Not collected
+- Advertising Data: Not collected
 
 ## ATT implementation
 
-The tracking permission request is available in the app at **Settings → Privacy → Request tracking permission**.
+The current app does not track users, does not access IDFA during normal gameplay, and does not share collected data with advertisers or data brokers. ATT is therefore not required for the current App Store privacy configuration.
 
-The generated Info.plist includes `NSUserTrackingUsageDescription`.
-
-Code may access the advertising identifier only through `TrackingPermissionCenter.advertisingIdentifierForTracking`, which returns a value only after `ATTrackingManager.trackingAuthorizationStatus == .authorized`.
+If a future build adds tracking, update this checklist, request App Tracking Transparency permission before collecting tracking data, and update App Store Connect privacy labels before submission.
 
 ## Account deletion
 
