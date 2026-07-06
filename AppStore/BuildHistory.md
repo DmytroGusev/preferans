@@ -8,6 +8,7 @@ This file records App Store/TestFlight build provenance and review-facing change
 - Git commit: `fda2fa4 Add first launch onboarding and ATT prompt path for build 24`
 - Operational change made by: Codex in the onboarding and ATT reliability session
 - Source base: build `1.0 (23)`, commit `b37c4c1`
+- App Store upload: uploaded successfully; package processed as `VALID` and attached to version `1.0`
 
 Changes:
 
@@ -19,6 +20,9 @@ Changes:
 Verification:
 
 - `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+- `xcodebuild archive -project Preferans.xcodeproj -scheme Preferans -configuration Release -destination 'generic/platform=iOS'`
+- `xcodebuild -exportArchive` with App Store Connect API key upload
+- App Store Connect API check: version `1.0`, state `PREPARE_FOR_SUBMISSION`, attached build `24`
 
 ## 1.0 (23) - App Store Connect
 
