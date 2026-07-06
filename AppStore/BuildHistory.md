@@ -5,7 +5,7 @@ This file records App Store/TestFlight build provenance and review-facing change
 ## 1.0 (24) - App Store Connect
 
 - Date: 2026-07-06
-- Git commit: pending
+- Git commit: `fda2fa4 Add first launch onboarding and ATT prompt path for build 24`
 - Operational change made by: Codex in the onboarding and ATT reliability session
 - Source base: build `1.0 (23)`, commit `b37c4c1`
 
