@@ -5,7 +5,7 @@ This file records App Store/TestFlight build provenance and review-facing change
 ## 1.0 (22) - App Store Connect
 
 - Date: 2026-07-06
-- Git commit: pending
+- Git commit: `d1b7849 Fix first launch ATT prompt gating for build 22`
 - Operational change made by: Codex in the ATT prompt fix session
 - Source base: build `1.0 (21)`, commit `3ec23d5`
 
@@ -17,7 +17,7 @@ Changes:
 
 Verification:
 
-- Pending.
+- `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
 
 ## 1.0 (21) - App Store Connect
 
