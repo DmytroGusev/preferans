@@ -57,24 +57,35 @@ enum TrackingPermissionCenter {
 }
 
 struct TrackingConsentPromptModifier: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage(SettingsKeys.trackingPermissionRequested) private var trackingPermissionRequested = false
+    @State private var requestStarted = false
 
     func body(content: Content) -> some View {
         content
-            .task {
-                await requestOnFirstLaunchIfNeeded()
+            .onAppear {
+                scheduleRequestIfNeeded()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                scheduleRequestIfNeeded()
             }
     }
 
-    private func requestOnFirstLaunchIfNeeded() async {
-        guard !trackingPermissionRequested else { return }
+    private func scheduleRequestIfNeeded() {
+        guard scenePhase == .active else { return }
+        guard !requestStarted else { return }
         guard TrackingPermissionCenter.canRequestPermission else { return }
 
-        // Let the first screen settle before iOS presents the system ATT sheet.
-        try? await Task.sleep(nanoseconds: 700_000_000)
-        guard !Task.isCancelled else { return }
-        trackingPermissionRequested = true
-        await TrackingPermissionCenter.requestPermission()
+        requestStarted = true
+        Task { @MainActor in
+            // Let the first screen settle before iOS presents the system ATT sheet.
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            guard !Task.isCancelled else { return }
+            guard TrackingPermissionCenter.canRequestPermission else { return }
+            trackingPermissionRequested = true
+            await TrackingPermissionCenter.requestPermission()
+        }
     }
 }
 

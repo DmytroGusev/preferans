@@ -2,6 +2,23 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0 (22) - App Store Connect
+
+- Date: 2026-07-06
+- Git commit: pending
+- Operational change made by: Codex in the ATT prompt fix session
+- Source base: build `1.0 (21)`, commit `3ec23d5`
+
+Changes:
+
+- Changed first-launch ATT request logic to use the real iOS `ATTrackingManager.trackingAuthorizationStatus` instead of suppressing the prompt with the app's local `trackingPermissionRequested` audit flag.
+- Moved the automatic request to the active scene phase so iOS can present the system prompt after the first screen is visible.
+- Bumped `CURRENT_PROJECT_VERSION` from `21` to `22`.
+
+Verification:
+
+- Pending.
+
 ## 1.0 (21) - App Store Connect
 
 - Date: 2026-07-06
