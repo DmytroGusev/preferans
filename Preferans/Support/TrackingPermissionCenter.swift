@@ -48,6 +48,12 @@ enum TrackingPermissionCenter {
         #endif
     }
 
+    static func requestPermissionIfNeeded() async {
+        guard canRequestPermission else { return }
+        UserDefaults.standard.set(true, forKey: SettingsKeys.trackingPermissionRequested)
+        await requestPermission()
+    }
+
     static var advertisingIdentifierForTracking: UUID? {
         #if canImport(AppTrackingTransparency) && canImport(AdSupport)
         if #available(iOS 14, macCatalyst 14, tvOS 14, *),
@@ -76,9 +82,7 @@ final class AppLifecycleDelegate: NSObject, UIApplicationDelegate {
             // ATT must be requested after the app is active and visible.
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             guard !Task.isCancelled else { return }
-            guard TrackingPermissionCenter.canRequestPermission else { return }
-            UserDefaults.standard.set(true, forKey: SettingsKeys.trackingPermissionRequested)
-            await TrackingPermissionCenter.requestPermission()
+            await TrackingPermissionCenter.requestPermissionIfNeeded()
         }
     }
 }

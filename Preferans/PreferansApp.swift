@@ -48,10 +48,10 @@ struct PreferansApp: App {
         if ProcessInfo.processInfo.arguments.contains("-previewSettlement") {
             SettlementPreviewGallery()
         } else {
-            LobbyView()
+            RootLaunchView()
         }
         #else
-        LobbyView()
+        RootLaunchView()
         #endif
     }
 

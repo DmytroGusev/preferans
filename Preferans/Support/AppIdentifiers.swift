@@ -51,6 +51,10 @@ public enum SettingsKeys {
     /// The actual tracking authorization state remains owned by iOS.
     public static let trackingPermissionRequested = "settings.trackingPermissionRequested"
 
+    /// First-run product tour completion flag. Keeping this separate from
+    /// privacy state lets testers reset ATT independently from onboarding.
+    public static let firstLaunchOnboardingCompleted = "settings.firstLaunchOnboardingCompleted"
+
     /// Per-player pulka preset selected for newly-created local and online tables.
     public static let pulkaLimit = "settings.pulkaLimit"
 

@@ -2,6 +2,24 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0 (24) - App Store Connect
+
+- Date: 2026-07-06
+- Git commit: pending
+- Operational change made by: Codex in the onboarding and ATT reliability session
+- Source base: build `1.0 (23)`, commit `b37c4c1`
+
+Changes:
+
+- Added a first-run four-slide onboarding experience with native SwiftUI illustrations for cards, table play, online room invites, and pulka scoring.
+- Added a persistent onboarding completion flag so the flow appears only after a fresh install/reset.
+- Added an explicit onboarding-level ATT request path: the app asks automatically after onboarding appears, and retries on onboarding completion if iOS status is still `notDetermined`.
+- Bumped `CURRENT_PROJECT_VERSION` from `23` to `24`.
+
+Verification:
+
+- `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+
 ## 1.0 (23) - App Store Connect
 
 - Date: 2026-07-06

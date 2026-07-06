@@ -35,6 +35,7 @@
 		B00000000000000000000013 /* PreferansGameStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000043 /* PreferansGameStatus.swift */; };
 		B00000000000000000000014 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000044 /* CardView.swift */; };
 		B00000000000000000000015 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000045 /* LobbyView.swift */; };
+		B0000000000000000000C210 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C211 /* OnboardingView.swift */; };
 		B00000000000000000000016 /* LocalGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000046 /* LocalGameScreen.swift */; };
 		B00000000000000000000018 /* ProjectionGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000048 /* ProjectionGameScreen.swift */; };
 		B00000000000000000000019 /* ScoreBoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000049 /* ScoreBoardView.swift */; };
@@ -128,6 +129,7 @@
 		B00000000000000000000043 /* PreferansGameStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/PreferansGameStatus.swift; sourceTree = "<group>"; };
 		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CardView.swift; sourceTree = "<group>"; };
 		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyView.swift; sourceTree = "<group>"; };
+		B0000000000000000000C211 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OnboardingView.swift; sourceTree = "<group>"; };
 		B00000000000000000000046 /* LocalGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LocalGameScreen.swift; sourceTree = "<group>"; };
 		B00000000000000000000048 /* ProjectionGameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ProjectionGameScreen.swift; sourceTree = "<group>"; };
 		B00000000000000000000049 /* ScoreBoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ScoreBoardView.swift; sourceTree = "<group>"; };
@@ -236,6 +238,7 @@
 				B0000000000000000000004A /* TestHarness.swift */,
 				B00000000000000000000044 /* CardView.swift */,
 				B00000000000000000000045 /* LobbyView.swift */,
+				B0000000000000000000C211 /* OnboardingView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
 				B0000000000000000000B005 /* OnlineRoomGameScreen.swift */,
 				B0000000000000000000BFA1 /* OnlineWaitingRoomView.swift */,
@@ -425,6 +428,7 @@
 				B0000000000000000000001A /* TestHarness.swift in Sources */,
 				B00000000000000000000014 /* CardView.swift in Sources */,
 				B00000000000000000000015 /* LobbyView.swift in Sources */,
+				B0000000000000000000C210 /* OnboardingView.swift in Sources */,
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
 				B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */,
 				B0000000000000000000BFA0 /* OnlineWaitingRoomView.swift in Sources */,
@@ -580,7 +584,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -615,7 +619,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 23;
+				CURRENT_PROJECT_VERSION = 24;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Preferans;
