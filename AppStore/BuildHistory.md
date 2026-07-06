@@ -5,9 +5,10 @@ This file records App Store/TestFlight build provenance and review-facing change
 ## 1.0 (21) - App Store Connect
 
 - Date: 2026-07-06
-- Git commit: `4eda06c Request ATT permission on first launch for build 21`
+- Git commit: `ffa2419 Request ATT permission on first launch for build 21`
 - Operational change made by: Codex in the App Store privacy-compliance session
 - Source base: build `1.0 (20)`, commit `9dd7b2a`
+- App Store upload: uploaded successfully; package processed as `VALID` and attached to version `1.0`
 
 Changes:
 
@@ -18,6 +19,9 @@ Changes:
 Verification:
 
 - `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+- `xcodebuild archive -project Preferans.xcodeproj -scheme Preferans -configuration Release -destination 'generic/platform=iOS'`
+- `xcodebuild -exportArchive` with App Store Connect API key upload
+- App Store Connect API check: version `1.0`, state `PREPARE_FOR_SUBMISSION`, attached build `21`
 
 ## 1.0 (20) - App Store Connect
 
