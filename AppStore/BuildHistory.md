@@ -8,6 +8,7 @@ This file records App Store/TestFlight build provenance and review-facing change
 - Git commit: `5c0e570 Request ATT from active app lifecycle for build 23`
 - Operational change made by: Codex in the ATT prompt fix session
 - Source base: build `1.0 (22)`, commit `d2cb285`
+- App Store upload: uploaded successfully; package processed as `VALID` and attached to version `1.0`
 
 Changes:
 
@@ -18,6 +19,9 @@ Changes:
 Verification:
 
 - `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+- `xcodebuild archive -project Preferans.xcodeproj -scheme Preferans -configuration Release -destination 'generic/platform=iOS'`
+- `xcodebuild -exportArchive` with App Store Connect API key upload
+- App Store Connect API check: version `1.0`, state `PREPARE_FOR_SUBMISSION`, attached build `23`
 
 ## 1.0 (22) - App Store Connect
 
