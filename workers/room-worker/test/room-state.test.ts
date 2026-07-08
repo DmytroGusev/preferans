@@ -4,6 +4,7 @@ import {
   applyStateReport,
   createInitialRoom,
   fillOpenSeatsWithBots,
+  isHostAccount,
   isHumanAccount,
   joinRoom,
   normalizeGameStatus,
@@ -203,6 +204,28 @@ test("relay records are sequenced and capped", () => {
   assert.equal(room.relaySequence, 205);
   assert.equal(room.recentMessages.length, 200);
   assert.equal(room.recentMessages[0].serverSequence, 6);
+});
+
+test("a returning host account is recognized; guests and placeholder seats are not", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  const joined = joinRoom(room, {
+    playerID: { rawValue: "east" },
+    accountID: "apple:guest",
+    provider: "apple",
+    displayName: "Guest"
+  });
+
+  // The creator's account holds the host seat — even after rejoining from a
+  // new device (same account), /join hands the host secret back so a resumed
+  // host can keep reporting state and filling bot seats.
+  const rejoined = joinRoom(joined, { ...north, displayName: "North's new phone" });
+  assert.equal(isHostAccount(rejoined, north.accountID), true);
+
+  // A guest never matches the host seat, and pending/bot prefixes can never
+  // impersonate one.
+  assert.equal(isHostAccount(rejoined, "apple:guest"), false);
+  assert.equal(isHostAccount(rejoined, "pending:north"), false);
+  assert.equal(isHostAccount(rejoined, "bot:north"), false);
 });
 
 test("mints a host secret that publicRoom never exposes", () => {

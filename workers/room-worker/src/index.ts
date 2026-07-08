@@ -9,6 +9,7 @@ import {
   createInitialRoom,
   fillOpenSeatsWithBots,
   generateRoomCode,
+  isHostAccount,
   isHumanAccount,
   joinRoom,
   normalizePeer,
@@ -231,12 +232,21 @@ export class PreferansRoom {
       if (request.method === "POST" && url.pathname === "/join") {
         const body = await readJSON<JoinRoomBody>(request);
         const room = await this.loadRequiredRoom();
-        const updated = joinRoom(room, body.localPeer);
+        const joiner = normalizePeer(body.localPeer);
+        const updated = joinRoom(room, joiner);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
         await this.broadcastPresence(updated);
         // A join changes the roster — refresh every participant's library entry
         // (and seed the new joiner's) so the game shows up under "Your games".
         await this.fanOutToLibraries(updated);
+        // A returning host regains its authority credential. Resume rejoins via
+        // /join, and without the secret a resumed host could relay moves but
+        // never push state reports or fill bot seats — the durable snapshot
+        // would freeze at the pre-resume state. Guests never match the host
+        // seat, so the secret still never reaches them.
+        if (isHostAccount(updated, joiner.accountID)) {
+          return json({ ...publicRoom(updated), hostSecret: updated.hostSecret });
+        }
         return json(publicRoom(updated));
       }
 

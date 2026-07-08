@@ -78,7 +78,11 @@ resume an unfinished table from any device. Two pieces back this:
 
 ### State report (host-only)
 
-The host pushes progress after each validated action. The snapshot is stored
+The host pushes progress after each validated action, authenticated with the
+host secret. The secret is minted at `/create`, and `/join` hands it back when
+the joining account holds the host seat — so a host that resumes a game (same
+account, any device) regains its authority instead of silently losing the
+ability to report state and fill bot seats. The snapshot is stored
 monotonically (a late, lower-sequence report can't clobber a newer snapshot),
 and only material changes (status/deal/phase) trigger a presence push + library
 fan-out — per-action snapshot refreshes are silent.

@@ -72,9 +72,10 @@ export interface RoomState {
   schemaVersion: number;
   roomCode: string;
   hostPlayerID: string;
-  /// Secret minted at creation and handed back only in the `/create` response.
-  /// Required to authenticate host-only mutations. Never included in `publicRoom`,
-  /// so it is never broadcast to guests over presence/summary/join.
+  /// Secret minted at creation, handed back in the `/create` response and again
+  /// on `/join` when the joiner's account holds the host seat (a resuming host).
+  /// Required to authenticate host-only mutations. Never included in
+  /// `publicRoom`, so it is never broadcast to guests over presence/summary.
   hostSecret: string;
   peers: OnlinePeer[];
   maxPlayers: number;
@@ -446,6 +447,18 @@ export function normalizeGameSummary(value: unknown): GameSummary | undefined {
 /// reserved-but-unclaimed (`pending:`) seat nor a host-driven bot (`bot:`).
 export function isHumanAccount(accountID: string): boolean {
   return !accountID.startsWith(PENDING_ACCOUNT_PREFIX) && !accountID.startsWith(BOT_ACCOUNT_PREFIX);
+}
+
+/// True when `accountID` holds the room's host seat. `/join` uses this to hand
+/// the host secret back to a returning host (resuming on the same or a new
+/// device); a guest's account never matches the host seat, so the secret still
+/// never reaches guests.
+export function isHostAccount(room: RoomState, accountID: string): boolean {
+  if (!isHumanAccount(accountID)) {
+    return false;
+  }
+  const hostSeat = room.peers.find((peer) => peerID(peer) === room.hostPlayerID);
+  return hostSeat !== undefined && hostSeat.accountID === accountID;
 }
 
 export function humanPeers(room: RoomState): OnlinePeer[] {

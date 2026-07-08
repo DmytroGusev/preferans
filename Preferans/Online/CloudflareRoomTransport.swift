@@ -11,9 +11,11 @@ public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
     public var updatedAt: String
     public var relaySequence: Int
     public var websocketURL: URL?
-    /// Returned only in the `/create` response — the secret the room's host must
-    /// present to perform host-only mutations (e.g. filling open seats with bots).
-    /// Absent (`nil`) on join/summary/presence payloads, so guests never see it.
+    /// The secret the room's host must present to perform host-only mutations
+    /// (e.g. filling open seats with bots, reporting state). Returned in the
+    /// `/create` response, and again on `/join` when the joining account holds
+    /// the host seat — so a resuming host regains its authority. Absent (`nil`)
+    /// on guest join/summary/presence payloads, so guests never see it.
     public var hostSecret: String?
 }
 
