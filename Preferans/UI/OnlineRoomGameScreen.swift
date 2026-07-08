@@ -129,35 +129,13 @@ public struct OnlineRoomGameScreen: View {
     }
 
     private func onlineFlowState(projection: PlayerGameProjection) -> some View {
-        Text("room=\(roomCode) viewer=\(projection.viewer.rawValue) sequence=\(projection.sequence) phase=\(phaseToken(projection.phase))")
+        Text("room=\(roomCode) viewer=\(projection.viewer.rawValue) sequence=\(projection.sequence) phase=\(projection.phase.token)")
             .font(.caption2)
             .frame(width: 1, height: 1)
             .opacity(0.01)
             .accessibilityIdentifier(UIIdentifiers.onlineFlowState)
             .accessibilityLabel("Online flow state")
-            .accessibilityValue("room \(roomCode), viewer \(projection.viewer.rawValue), sequence \(projection.sequence), phase \(phaseToken(projection.phase))")
+            .accessibilityValue("room \(roomCode), viewer \(projection.viewer.rawValue), sequence \(projection.sequence), phase \(projection.phase.token)")
     }
 
-    private func phaseToken(_ phase: ProjectedPhase) -> String {
-        switch phase {
-        case .waitingForDeal:
-            return "waitingForDeal"
-        case .bidding:
-            return "bidding"
-        case .awaitingDiscard:
-            return "awaitingDiscard"
-        case .awaitingContract:
-            return "awaitingContract"
-        case .awaitingWhist:
-            return "awaitingWhist"
-        case .awaitingDefenderMode:
-            return "awaitingDefenderMode"
-        case .playing:
-            return "playing"
-        case .dealFinished:
-            return "dealFinished"
-        case .gameOver:
-            return "gameOver"
-        }
-    }
 }

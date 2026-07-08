@@ -33,6 +33,21 @@ public struct RecentAction: Equatable, Identifiable {
 }
 
 public enum RecentActionFeed {
+    /// Rolling window kept by both table stacks (the local `GameViewModel`
+    /// and the online `RoomOnlineGameCoordinator`). Shared here so the
+    /// window size — and therefore how far back the action banner and
+    /// per-seat badges can see — cannot drift between local and online play.
+    public static let windowSize = 120
+
+    /// Append `events` to a rolling event window, trimming to ``windowSize``.
+    public static func append(_ events: [PreferansEvent], to window: inout [PreferansEvent]) {
+        guard !events.isEmpty else { return }
+        window.append(contentsOf: events)
+        if window.count > windowSize {
+            window.removeFirst(window.count - windowSize)
+        }
+    }
+
     /// Most recent banner-worthy action since the last deal started.
     /// Card plays are excluded — the card landing on the felt already
     /// serves as the banner. Trick-completion / deal-scored / match

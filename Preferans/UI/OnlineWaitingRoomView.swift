@@ -87,11 +87,18 @@ public struct OnlineWaitingRoomView: View {
                 Text("Waiting room")
                     .font(.title3.bold())
                     .foregroundStyle(TableTheme.inkCream)
-                Text(coordinator.isHost
-                     ? "Invite friends, then start when everyone's seated."
-                     : "You're in. Hang tight for the host.")
-                    .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                // Two separate Text literals: a ternary inside Text() types as
+                // String, not LocalizedStringKey, and silently opts the copy
+                // out of localization.
+                Group {
+                    if coordinator.isHost {
+                        Text("Invite friends, then start when everyone's seated.")
+                    } else {
+                        Text("You're in. Hang tight for the host.")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(TableTheme.inkCreamDim)
             }
             Spacer(minLength: 0)
             Button {

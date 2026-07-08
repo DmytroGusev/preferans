@@ -190,16 +190,16 @@ public struct SettingsScreen: View {
 
     private static func accountStatusText() -> String {
         if UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount) != nil {
-            return "Signed in with Apple"
+            return String(localized: "Signed in with Apple")
         }
         if let name = UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName),
            !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Display name saved"
+            return String(localized: "Display name saved")
         }
         if UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID) != nil {
-            return "Anonymous room account saved"
+            return String(localized: "Anonymous room account saved")
         }
-        return "No saved account"
+        return String(localized: "No saved account")
     }
 
     private static func deleteAccountData() {

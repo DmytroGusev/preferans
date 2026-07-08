@@ -48,6 +48,10 @@ public struct CenterActionBanner: View {
         .accessibilityIdentifier(UIIdentifiers.actionBanner)
         .onChange(of: action?.id) { _, _ in handle(action) }
         .onAppear { handle(action) }
+        // Without this the auto-dismiss task outlives the banner: harmless in
+        // effect (it only clears @State), but it keeps a sleeping task alive
+        // past the view's lifetime.
+        .onDisappear { dismissTask?.cancel() }
     }
 
     private func pill(for action: RecentAction) -> some View {

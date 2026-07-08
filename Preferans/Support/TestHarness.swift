@@ -20,6 +20,18 @@ import PreferansEngine
 public enum TestHarness {
     public typealias Flag = UITestFlags
 
+    /// True when the app was launched by the XCUITest harness — detected by
+    /// any `-uiTest…` launch argument (every UI-test launch path passes at
+    /// least one). Gates the invisible automation affordances so they exist
+    /// only under automation: in a shipping build they were still in the
+    /// accessibility tree, and a VoiceOver user could land on an unlabeled
+    /// 1×1 button that started a real table or online room.
+    public static func isUIAutomation(
+        in arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        arguments.contains { $0.hasPrefix("-uiTest") }
+    }
+
     public static func disableAnimations(in arguments: [String]) -> Bool {
         arguments.contains(Flag.disableAnimations)
     }

@@ -7,6 +7,10 @@ import AuthenticationServices
 public struct LobbyView: View {
     @StateObject private var viewModel = LobbyViewModel()
     @StateObject private var gameLibrary = OnlineGameLibrary()
+    /// The invisible 1×1 automation affordances exist only under XCUITest —
+    /// in a shipping build they were VoiceOver-reachable unlabeled buttons
+    /// that could start a real table or online room.
+    private let isUIAutomation = TestHarness.isUIAutomation()
     @State private var showingSettings = false
     @State private var showingWatchBotsConfirm = false
     @State private var showingConventionLegend = false
@@ -121,11 +125,11 @@ public struct LobbyView: View {
                 modeSegment
                 if viewModel.lobbyMode == .local {
                     localTableCard
-                    onlineHiddenAffordances
+                    if isUIAutomation { onlineHiddenAffordances }
                 } else {
                     yourGamesSection
                     onlineSetupCard
-                    localHiddenAffordances
+                    if isUIAutomation { localHiddenAffordances }
                 }
                 if let infoText = viewModel.infoText {
                     Label(infoText, systemImage: "checkmark.seal.fill")
@@ -310,7 +314,7 @@ public struct LobbyView: View {
                         seatRow(index: index)
                     }
                 }
-                legacySeatCountAccessibilityButtons
+                if isUIAutomation { legacySeatCountAccessibilityButtons }
 
                 botSpeedPicker
                 pulkaLimitPicker
@@ -345,11 +349,13 @@ public struct LobbyView: View {
                 // SwiftUI elides zero-frame / fully-transparent views from the
                 // accessibility tree, which is why this uses a 1×1 frame and
                 // a near-zero (but non-zero) opacity.
-                Button { viewModel.quickPlayVsBots() } label: { Color.clear }
-                    .frame(width: 1, height: 1)
-                    .opacity(0.001)
-                    .allowsHitTesting(true)
-                    .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
+                if isUIAutomation {
+                    Button { viewModel.quickPlayVsBots() } label: { Color.clear }
+                        .frame(width: 1, height: 1)
+                        .opacity(0.001)
+                        .allowsHitTesting(true)
+                        .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
+                }
 
                 // Spectator-only "watch bots" lives below the roster as a
                 // secondary affordance. The main "Sit down" CTA starts from
@@ -952,7 +958,7 @@ public struct LobbyView: View {
         onlinePanel(title: "Join a table", icon: "ticket.fill") {
             if let pendingCode = viewModel.pendingJoinRoomCode {
                 readyToJoinRow(code: pendingCode)
-            } else {
+            } else if isUIAutomation {
                 // Keep the join automation root alive while no code is
                 // pending — same 1×1 idiom as the other hidden affordances.
                 Button { viewModel.joinCloudflareOnlineRoom() } label: { Color.clear }
@@ -1073,11 +1079,13 @@ public struct LobbyView: View {
     @ViewBuilder
     private var hiddenLocalTestRoomButton: some View {
         #if DEBUG
-        Button { viewModel.startInMemoryOnlineRoom() } label: { Color.clear }
-            .frame(width: 1, height: 1)
-            .opacity(0.001)
-            .allowsHitTesting(true)
-            .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
+        if isUIAutomation {
+            Button { viewModel.startInMemoryOnlineRoom() } label: { Color.clear }
+                .frame(width: 1, height: 1)
+                .opacity(0.001)
+                .allowsHitTesting(true)
+                .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
+        }
         #endif
     }
 
@@ -1298,16 +1306,26 @@ enum LobbyFormat {
         }
     }
 
-    /// "2m ago"-style relative time from a worker ISO-8601 timestamp (which
-    /// carries fractional seconds), falling back to the plain form.
-    static func relativeTime(_ iso: String) -> String {
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let plain = ISO8601DateFormatter()
-        guard let date = fractional.date(from: iso) ?? plain.date(from: iso) else { return "" }
+    // Formatters are expensive to construct; shared statics keep the games
+    // list from allocating three per row per render. Main-actor isolated
+    // because formatters aren't Sendable and every caller is a view body.
+    @MainActor private static let fractionalISO: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    @MainActor private static let plainISO = ISO8601DateFormatter()
+    @MainActor private static let relative: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return formatter
+    }()
+
+    /// "2m ago"-style relative time from a worker ISO-8601 timestamp (which
+    /// carries fractional seconds), falling back to the plain form.
+    @MainActor static func relativeTime(_ iso: String) -> String {
+        guard let date = fractionalISO.date(from: iso) ?? plainISO.date(from: iso) else { return "" }
+        return relative.localizedString(for: date, relativeTo: Date())
     }
 }
 

@@ -88,10 +88,7 @@ public final class GameViewModel: ObservableObject {
             let authoritativeAction = makeAuthoritative(action)
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: ActivityLogFeed.summaries(for: events))
-            recentEvents.append(contentsOf: events)
-            if recentEvents.count > 120 {
-                recentEvents.removeFirst(recentEvents.count - 120)
-            }
+            RecentActionFeed.append(events, to: &recentEvents)
             lastError = nil
             lastErrorCategory = nil
             applyViewerPolicy()
@@ -159,6 +156,11 @@ public final class GameViewModel: ObservableObject {
     /// Skipped for mid-trick bot cards: bot pacing gives those cards a
     /// visible beat, while the completed trick provides the single tap that
     /// prevents the last card from vanishing.
+    ///
+    /// Online counterpart: `RoomOnlineGameCoordinator.beginTrickResultHoldIfNeeded`
+    /// builds the same `PendingAdvance` but clears it on a timer (no tap, no
+    /// idle hint) so one distracted player can't stall the table. If you
+    /// change what a hold freezes here, mirror it there.
     private func makePendingAdvance(events: [PreferansEvent], preProjection: PlayerGameProjection) -> PendingAdvance? {
         guard tapToAdvanceEnabled else { return nil }
         // Watch-bots demo / all-bot table: no human to tap, just cascade.

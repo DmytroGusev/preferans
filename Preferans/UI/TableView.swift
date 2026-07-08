@@ -610,10 +610,15 @@ public struct TableView: View {
                     showInitialHands.toggle()
                 }
             } label: {
-                Label(
-                    showInitialHands ? "Hide opening hands" : "Show opening hands",
-                    systemImage: showInitialHands ? "eye.slash.fill" : "eye.fill"
-                )
+                // Two literals, not a ternary: a ternary inside Label() types
+                // as String and silently opts the copy out of localization.
+                Group {
+                    if showInitialHands {
+                        Label("Hide opening hands", systemImage: "eye.slash.fill")
+                    } else {
+                        Label("Show opening hands", systemImage: "eye.fill")
+                    }
+                }
                 .font(.caption.weight(.semibold))
                 .frame(maxWidth: 220)
             }

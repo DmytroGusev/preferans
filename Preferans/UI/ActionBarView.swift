@@ -375,7 +375,7 @@ public struct ActionBarView: View {
     }
 
     private func defenseName(for defenders: [PlayerID]) -> String {
-        defenders.count == 1 ? projection.displayName(for: defenders[0]) : "Defense"
+        defenders.count == 1 ? projection.displayName(for: defenders[0]) : String(localized: "Defense")
     }
 
     private var settlementContext: SettlementContext? {
@@ -512,7 +512,7 @@ public struct ActionBarView: View {
     private func settlementHeadline(_ settlement: TrickSettlement, proposer: PlayerID) -> String {
         let proposerName = projection.displayName(for: proposer)
         let targetName = projection.displayName(for: settlement.target)
-        return "\(proposerName) offers: \(targetName) takes \(settlement.targetTricks)"
+        return String(localized: "\(proposerName) offers: \(targetName) takes \(settlement.targetTricks)")
     }
 
     private func settlementCountsSummary(_ settlement: TrickSettlement) -> String {

@@ -68,15 +68,17 @@ public struct ProjectionGameScreen<Menu: View>: View {
         self.onLeaveTable = onLeaveTable
         self.onRematch = onRematch
         self.extraMenu = extraMenu()
+        // Stored, not computed: both derive by scanning the recent-event ring
+        // buffer (up to 120 entries), and body reads them once per seat. As
+        // computed properties that scan re-ran on every access; here it runs
+        // once per view construction.
+        self.seatActions = RecentActionFeed.perSeat(from: recentEvents)
+        self.bannerAction = RecentActionFeed.banner(from: recentEvents)
     }
 
-    private var seatActions: [PlayerID: RecentAction] {
-        RecentActionFeed.perSeat(from: recentEvents)
-    }
+    private let seatActions: [PlayerID: RecentAction]
 
-    private var bannerAction: RecentAction? {
-        RecentActionFeed.banner(from: recentEvents)
-    }
+    private let bannerAction: RecentAction?
 
     private var activityEntries: [ActivityLogEntry] {
         ActivityLogFeed.entries(from: recentEvents, displayName: projection.displayName(for:))

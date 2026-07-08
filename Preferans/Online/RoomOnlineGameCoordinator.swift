@@ -347,7 +347,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     public func send(_ action: PreferansAction) {
         guard let tableID, let localSeat else {
-            errorText = "No active online table."
+            errorText = String(localized: "No active online table.")
             return
         }
         if case .startDeal = action, projection?.legal.canStartDeal != true {
@@ -374,7 +374,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             }
         } else {
             guard let hostPeer, let transport else {
-                errorText = "No host connection."
+                errorText = String(localized: "No host connection.")
                 return
             }
             Task { [weak self, hostPeer, transport] in
@@ -413,6 +413,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         refreshPeersFromTransport()
         guard allExpectedOnlinePlayersConnected() else {
             errorText = String(localized: "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
+            return
+        }
+        // Surface the not-ready case instead of falling into send(_:)'s
+        // silent duplicate-startDeal guard: the waiting room disables its
+        // Start button until an error or a deal arrives, so a silent no-op
+        // would wedge the host behind a disabled button.
+        guard projection?.legal.canStartDeal == true else {
+            errorText = String(localized: "The table isn't ready to deal yet — try again in a moment.")
             return
         }
         send(.startDeal(dealer: nil, deck: nil))
@@ -860,7 +868,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     events: update.events
                 )
                 try await transport.send(.projection(envelope), to: [peer], reliably: true)
-                logOnlineFlow("event=sendProjection recipient=\(viewer.rawValue) sequence=\(projection.sequence) phase=\(phaseToken(projection.phase))")
+                logOnlineFlow("event=sendProjection recipient=\(viewer.rawValue) sequence=\(projection.sequence) phase=\(projection.phase.token)")
             } catch {
                 errorText = error.localizedDescription
             }
@@ -1005,13 +1013,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func appendRecentEvents(_ events: [PreferansEvent]) {
-        guard !events.isEmpty else { return }
-        recentEvents.append(contentsOf: events)
-        if recentEvents.count > 120 {
-            recentEvents.removeFirst(recentEvents.count - 120)
-        }
+        RecentActionFeed.append(events, to: &recentEvents)
     }
 
+    /// Online counterpart of the local `GameViewModel.makePendingAdvance`
+    /// tap-to-advance gate. The two hold policies are intentionally
+    /// different — local play waits for the human's tap (with an idle hint),
+    /// while online tables clear the hold on a timer so one distracted
+    /// player can't stall three others — but both freeze the same
+    /// `PendingAdvance` descriptor through `applyingAdvanceFreeze`. If you
+    /// change what a hold freezes here, mirror it there.
     private func beginTrickResultHoldIfNeeded(events: [PreferansEvent], projection: PlayerGameProjection) {
         guard let trick = events.compactMap({ event -> Trick? in
             if case let .trickCompleted(trick) = event { return trick }
@@ -1215,7 +1226,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func logOnlineFlowProjection(_ projection: PlayerGameProjection, source: String) {
         logOnlineFlow(
-            "event=projection source=\(source) local=\(localSeat?.rawValue ?? "unknown") viewer=\(projection.viewer.rawValue) sequence=\(projection.sequence) phase=\(phaseToken(projection.phase)) tableID=\(projection.tableID.uuidString)"
+            "event=projection source=\(source) local=\(localSeat?.rawValue ?? "unknown") viewer=\(projection.viewer.rawValue) sequence=\(projection.sequence) phase=\(projection.phase.token) tableID=\(projection.tableID.uuidString)"
         )
     }
 
@@ -1227,28 +1238,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func phaseToken(_ phase: ProjectedPhase) -> String {
-        switch phase {
-        case .waitingForDeal:
-            return "waitingForDeal"
-        case .bidding:
-            return "bidding"
-        case .awaitingDiscard:
-            return "awaitingDiscard"
-        case .awaitingContract:
-            return "awaitingContract"
-        case .awaitingWhist:
-            return "awaitingWhist"
-        case .awaitingDefenderMode:
-            return "awaitingDefenderMode"
-        case .playing:
-            return "playing"
-        case .dealFinished:
-            return "dealFinished"
-        case .gameOver:
-            return "gameOver"
-        }
-    }
 }
 
 @MainActor

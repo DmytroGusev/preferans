@@ -76,6 +76,23 @@ public enum ProjectedPhase: Codable, Sendable, Equatable {
     case playing(currentPlayer: PlayerID, leader: PlayerID, kind: ProjectedPlayKind)
     case dealFinished(result: DealResult)
     case gameOver(summary: MatchSummary)
+
+    /// Stable machine-readable label, used by the online-flow log lines and
+    /// the UI-test flow-state probe (which parse it back out of accessibility
+    /// values) — do not localize or rename cases without updating those.
+    public var token: String {
+        switch self {
+        case .waitingForDeal: return "waitingForDeal"
+        case .bidding: return "bidding"
+        case .awaitingDiscard: return "awaitingDiscard"
+        case .awaitingContract: return "awaitingContract"
+        case .awaitingWhist: return "awaitingWhist"
+        case .awaitingDefenderMode: return "awaitingDefenderMode"
+        case .playing: return "playing"
+        case .dealFinished: return "dealFinished"
+        case .gameOver: return "gameOver"
+        }
+    }
 }
 
 /// Typed status describing what the table is doing right now. Each case
