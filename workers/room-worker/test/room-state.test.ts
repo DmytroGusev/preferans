@@ -192,8 +192,9 @@ test("recipient routing excludes the sender and unknown seats", () => {
   assert.deepEqual(routeRecipients(room, "north", [{ rawValue: "south" }, { rawValue: "ghost" }]), ["south"]);
 });
 
-test("relay records are sequenced and capped", () => {
+test("relay entries are sequenced and the room stores no message history", () => {
   let room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  let lastEntry;
   for (let index = 0; index < 205; index += 1) {
     const result = recordRelay(room, {
       senderPlayerID: "north",
@@ -201,11 +202,14 @@ test("relay records are sequenced and capped", () => {
       message: { ping: { tableID: null, sentAt: "2026-05-04T00:00:00.000Z" } }
     });
     room = result.room;
+    lastEntry = result.entry;
   }
 
   assert.equal(room.relaySequence, 205);
-  assert.equal(room.recentMessages.length, 200);
-  assert.equal(room.recentMessages[0].serverSequence, 6);
+  assert.equal(lastEntry?.serverSequence, 205);
+  // Deliberately no stored history: nothing ever read it back, and keeping
+  // it meant every relayed frame rewrote a room blob holding 200 projections.
+  assert.ok(!("recentMessages" in room) || (room as Record<string, unknown>).recentMessages === undefined);
 });
 
 test("seat tokens: minted for claimed human seats, never exposed publicly", () => {
@@ -340,6 +344,14 @@ test("a seat converted to a bot can no longer be claimed by a late joiner", () =
 
 test("accepts raw string player IDs for HTTP query parameters", () => {
   assert.equal(playerIDValue("north"), "north");
+});
+
+test("an oversized display name is truncated on the way in", () => {
+  const room = createInitialRoom({
+    roomCode: "ROOM1",
+    localPeer: { ...north, displayName: "N".repeat(500) }
+  });
+  assert.equal(room.peers[0].displayName.length, 60);
 });
 
 test("a fresh room starts in the lobby and exposes status, never the snapshot", () => {

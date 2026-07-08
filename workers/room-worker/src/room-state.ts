@@ -1,6 +1,13 @@
 export const ROOM_SCHEMA_VERSION = 1;
 export const DEFAULT_MAX_PLAYERS = 4;
-export const MAX_RECENT_MESSAGES = 200;
+/// Longest accepted display name; anything longer is truncated on the way in
+/// so a client can't grow the stored room (and every presence broadcast)
+/// without bound.
+export const MAX_DISPLAY_NAME_LENGTH = 60;
+/// Largest accepted relay frame. Projections are a few KB; the resume
+/// snapshot travels over HTTP `/state`, never the socket — so anything this
+/// large is abuse, not gameplay.
+export const MAX_SOCKET_MESSAGE_BYTES = 128 * 1024;
 
 /// Account-ID prefix the host stamps on a seat it has reserved but nobody has
 /// claimed yet. `joinRoom` binds a joiner to the first such seat. Kept in sync
@@ -88,7 +95,6 @@ export interface RoomState {
   createdAt: string;
   updatedAt: string;
   relaySequence: number;
-  recentMessages: RelayEntry[];
   /// Lifecycle status, host-reported. Defaults to `lobby` at creation.
   status: GameStatus;
   /// Latest host-reported progress metadata (worker-readable). `undefined`
@@ -227,7 +233,8 @@ export function normalizePeer(input: unknown): OnlinePeer {
   const id = playerID.rawValue;
   const accountID = String(input.accountID ?? `dev:${id}`).trim();
   const provider = isOnlineAccountProvider(input.provider) ? input.provider : "dev";
-  const displayName = String(input.displayName ?? id).trim() || id;
+  const displayName =
+    (String(input.displayName ?? id).trim() || id).slice(0, MAX_DISPLAY_NAME_LENGTH);
 
   return {
     playerID,
@@ -296,7 +303,6 @@ export function createInitialRoom({
     createdAt: now,
     updatedAt: now,
     relaySequence: 0,
-    recentMessages: [],
     status: "lobby"
   };
 }
@@ -384,6 +390,10 @@ export function routeRecipients(room: RoomState, senderPlayerID: unknown, recipi
     .filter((id) => known.has(id));
 }
 
+/// Sequence a relayed message. The entry is delivered to live sockets and then
+/// discarded — the room deliberately stores no message history. It used to keep
+/// the last 200 entries (each carrying a full projection JSON) that nothing
+/// ever read back, so every relayed frame rewrote a megabyte-class room blob.
 export function recordRelay(room: RoomState, { senderPlayerID, recipientPlayerIDs, message }: RelayInput, now = new Date().toISOString()): { room: RoomState; entry: RelayEntry } {
   const serverSequence = (room.relaySequence ?? 0) + 1;
   const entry = {
@@ -397,8 +407,7 @@ export function recordRelay(room: RoomState, { senderPlayerID, recipientPlayerID
     room: {
       ...room,
       relaySequence: serverSequence,
-      updatedAt: now,
-      recentMessages: [...(room.recentMessages ?? []), entry].slice(-MAX_RECENT_MESSAGES)
+      updatedAt: now
     },
     entry
   };

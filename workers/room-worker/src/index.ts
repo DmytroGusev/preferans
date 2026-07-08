@@ -4,6 +4,7 @@ import {
   type PublicRoom,
   type RoomState,
   type WirePlayerID,
+  MAX_SOCKET_MESSAGE_BYTES,
   RoomStateError,
   applyStateReport,
   authorizeSeat,
@@ -656,6 +657,12 @@ function parseSocketPayload(rawMessage: string | ArrayBuffer): ClientSocketEnvel
   const text = typeof rawMessage === "string"
     ? rawMessage
     : new TextDecoder().decode(rawMessage);
+  // Reject oversized frames before parsing: relayed messages are persisted
+  // work for every recipient, and no legitimate wire message approaches this
+  // size (snapshots travel over HTTP /state, not the socket).
+  if (text.length > MAX_SOCKET_MESSAGE_BYTES) {
+    throw new RoomStateError("message_too_large", "Socket message exceeds the size limit.", 413);
+  }
   try {
     return JSON.parse(text) as ClientSocketEnvelope;
   } catch {
