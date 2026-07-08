@@ -82,7 +82,12 @@ struct EngineGenerativeTests {
 
         case let .playing(state):
             if let proposal = state.pendingSettlement {
-                let pending = state.activePlayers.filter { !proposal.acceptedBy.contains($0) }
+                // Only settlement parties respond to a proposal — a passed-out
+                // defender in an open game is never consulted, and sending
+                // accept/reject for one is an invalidPlayer error.
+                let pending = state.activePlayers.filter {
+                    state.settlementParties.contains($0) && !proposal.acceptedBy.contains($0)
+                }
                 if let responder = pending.first {
                     return Bool.random(using: &rng)
                         ? .acceptSettlement(player: responder)
@@ -91,7 +96,25 @@ struct EngineGenerativeTests {
                 return nil
             }
 
-            let cards = engine.legalCards(for: state.currentPlayer)
+            // Occasionally offer a settlement so the propose/accept/reject and
+            // early-scoring paths get generative coverage alongside card play.
+            if Int.random(in: 0..<6, using: &rng) == 0 {
+                for player in state.activePlayers.shuffled(using: &rng) {
+                    let offers = engine.legalSettlements(for: player)
+                    if !offers.isEmpty {
+                        return .proposeSettlement(
+                            player: player,
+                            settlement: try choose(offers, rng: &rng, context: "settlement offers")
+                        )
+                    }
+                }
+            }
+
+            // In open single-whist greedy play the lone whister controls the
+            // passer's dummy hand, so the playable cards are exposed to the
+            // controller, not to the seat itself.
+            let controller = engine.controllingActor(of: state.currentPlayer)
+            let cards = engine.legalCards(for: controller)
             return .playCard(player: state.currentPlayer, card: try choose(cards, rng: &rng, context: "legal cards"))
         }
     }

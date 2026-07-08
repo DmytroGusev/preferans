@@ -9,6 +9,15 @@ public struct PreferansEngine: Sendable {
     public private(set) var nextDealer: PlayerID
     public private(set) var dealsPlayed: Int
 
+    /// Whether a declared 10-trick contract goes through the whist phase (with
+    /// both defenders forced to whist) instead of starting play unwhisted.
+    /// Either surface switches it on: the rules variant
+    /// (``PreferansRules/requireWhistOnTenTrickContracts``, e.g. Wien) or the
+    /// match's totus policy (``TotusPolicy``'s `requireWhist`).
+    var requiresWhistOnTenTricks: Bool {
+        rules.requireWhistOnTenTrickContracts || match.totus.requireWhistOnTenTricks
+    }
+
     public init(
         players: [PlayerID],
         rules: PreferansRules = .sochi,
@@ -395,6 +404,12 @@ public struct PreferansEngine: Sendable {
             return []
         }
         if isStalingradContract(whist.contract) {
+            return [.whist]
+        }
+        // A 10-trick contract only ever reaches the whist phase when the
+        // require-whist rule is on (see ``reduceDeclareContract``), and that
+        // rule makes the whist mandatory for both defenders.
+        if whist.contract.tricks == 10 {
             return [.whist]
         }
 

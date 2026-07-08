@@ -141,9 +141,18 @@ final class HandRecipeTests: XCTestCase {
         _ = try engine.apply(.bid(player: "south", call: .pass))
 
         try EngineTestDriver.discardTalon(engine: &engine, declarer: "north")
-        let events = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
-        XCTAssertTrue(events.contains { if case .playStarted = $0 { return true } else { return false } },
-                      "Totus should skip whist/pass and start play immediately.")
+        _ = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
+
+        // The dedicated policy carries requireWhist, so the ten-game routes
+        // through the whist phase with both defenders forced to whist.
+        var forcedWhists = 0
+        while case let .awaitingWhist(whist) = engine.state {
+            XCTAssertEqual(engine.legalWhistCalls(for: whist.currentPlayer), [.whist],
+                           "requireWhist makes whisting mandatory — no pass or half-whist.")
+            _ = try engine.apply(.whist(player: whist.currentPlayer, call: .whist))
+            forcedWhists += 1
+        }
+        XCTAssertEqual(forcedWhists, 2, "Both defenders must whist before play starts.")
         try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
 
         guard case let .dealFinished(result) = engine.state, case .game = result.kind else {

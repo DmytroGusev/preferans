@@ -262,6 +262,10 @@ private extension DealScript {
             auction: [.bid(.totus), .pass, .pass],
             discardChoice: .talon,
             contractDeclaration: contract,
+            // Both fixtures run with `requireWhist: true`, which forces the
+            // defenders through the whist phase; the driver skips these calls
+            // when a fixture opts out of the requirement.
+            whists: [.whist, .whist],
             cardPlay: .greedyForDeclarer(declarer: declarer)
         )
     }

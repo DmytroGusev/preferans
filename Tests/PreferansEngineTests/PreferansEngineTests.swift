@@ -192,6 +192,79 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(result.initialHands, initialHands)
     }
 
+    func testTenTrickContractSkipsWhistByDefault() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+        try driveToTenTrickDeclaration(engine: &engine)
+
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(10, .suit(.spades))))
+
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Expected play to start immediately, got \(engine.state.description).")
+        }
+        XCTAssertTrue(context.whisters.isEmpty, "Default rules play a 10-trick contract unwhisted.")
+    }
+
+    func testTenTrickContractForcesBothDefendersToWhistWhenRuleIsOn() throws {
+        var engine = try PreferansEngine(
+            players: ["north", "east", "south"],
+            rules: PreferansRules(requireWhistOnTenTrickContracts: true),
+            firstDealer: "north"
+        )
+        try engine.startDeal(deck: Deck.standard32)
+        try driveToTenTrickDeclaration(engine: &engine)
+
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(10, .suit(.spades))))
+
+        // The rule routes the ten-game through the whist phase, and whisting
+        // is mandatory: passing (and half-whist) are not offered.
+        guard case .awaitingWhist = engine.state else {
+            return XCTFail("Expected the whist phase, got \(engine.state.description).")
+        }
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
+        _ = try engine.apply(.whist(player: "south", call: .whist))
+        XCTAssertEqual(engine.legalWhistCalls(for: "north"), [.whist])
+        XCTAssertThrowsError(try engine.apply(.whist(player: "north", call: .pass)))
+        _ = try engine.apply(.whist(player: "north", call: .whist))
+
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Expected play after forced whists, got \(engine.state.description).")
+        }
+        XCTAssertEqual(context.whisters, ["south", "north"])
+    }
+
+    func testTotusPolicyRequireWhistForcesWhistWithoutRulesFlag() throws {
+        var engine = try PreferansEngine(
+            players: ["north", "east", "south"],
+            rules: .sochi,
+            match: MatchSettings(totus: .asTenTrickGame(requireWhist: true)),
+            firstDealer: "north"
+        )
+        try engine.startDeal(deck: Deck.standard32)
+        try driveToTenTrickDeclaration(engine: &engine)
+
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(10, .suit(.spades))))
+
+        guard case .awaitingWhist = engine.state else {
+            return XCTFail("The totus policy alone must force the whist phase, got \(engine.state.description).")
+        }
+    }
+
+    /// Auction: east wins with a 10♠ bid, then discards, leaving the engine
+    /// at the contract declaration for a ten-trick game.
+    private func driveToTenTrickDeclaration(engine: inout PreferansEngine) throws {
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(10, .suit(.spades))))))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            throw EngineTestError("Expected discard, got \(engine.state.description).")
+        }
+        let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
+        _ = try engine.apply(.discard(player: "east", cards: discard))
+    }
+
     func testDeclarerCanConcedeWithoutThreeBeforeNamingContract() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)

@@ -249,16 +249,22 @@ final class MatchSettingsTests: XCTestCase {
         XCTAssertTrue(options.allSatisfy { $0.tricks == 10 },
                       "Totus declaration is constrained to 10-trick contracts.")
 
-        let declareEvents = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
+        _ = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
 
-        XCTAssertTrue(declareEvents.contains { if case .playStarted = $0 { return true } else { return false } },
-                      "Dedicated totus must skip whist/pass and start play immediately.")
+        // The dedicated policy carries requireWhist, so both defenders are
+        // routed through a mandatory whist before play starts.
+        var whisters: [PlayerID] = []
+        while case let .awaitingWhist(whist) = engine.state {
+            XCTAssertEqual(engine.legalWhistCalls(for: whist.currentPlayer), [.whist])
+            whisters.append(whist.currentPlayer)
+            _ = try engine.apply(.whist(player: whist.currentPlayer, call: .whist))
+        }
         guard case let .playing(playing) = engine.state,
               case let .game(context) = playing.kind else {
-            return XCTFail("Totus declaration should enter card play.")
+            return XCTFail("Totus declaration should enter card play after the forced whists.")
         }
-        XCTAssertEqual(context.whisters, [])
-        XCTAssertTrue(engine.legalWhistCalls(for: "east").isEmpty)
+        XCTAssertEqual(context.whisters, whisters)
+        XCTAssertEqual(whisters.count, 2)
 
         try EngineTestDriver.playOut(engine: &engine, policy: .declarerHighestDefendersLowest(declarer: "north"))
 
@@ -269,6 +275,10 @@ final class MatchSettingsTests: XCTestCase {
         // Contract value (10-5)*2 = 10; bonus = 5; total = 15.
         XCTAssertEqual(engine.score.pool["north"], 15,
                        "Declarer must receive contract value plus totus bonus on a played win.")
+        // Responsible whist at requirement 1: the defense took no trick, so
+        // the second whister owes one trick's value on the mountain.
+        XCTAssertEqual(engine.score.mountain[whisters[1]], 10,
+                       "requireWhist carries the 1-trick responsibility quota.")
     }
 
     func testTotusOrderingPlacesItDirectlyAboveMisere() {

@@ -40,7 +40,10 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
 
 public enum TotusPolicy: Hashable, Codable, Sendable {
     /// Totus is just the 10-trick game contract in the standard ladder.
-    /// ``requireWhist`` flips ``PreferansRules/requireWhistOnTenTrickContracts``.
+    /// When `requireWhist` is true (or the rules variant sets
+    /// ``PreferansRules/requireWhistOnTenTrickContracts``), a declared 10-trick
+    /// contract goes through the whist phase with both defenders forced to
+    /// whist, and the defense owes a 1-trick whist quota at scoring.
     case asTenTrickGame(requireWhist: Bool)
 
     /// Totus is its own bid sitting above misère. Declarer takes the talon,
