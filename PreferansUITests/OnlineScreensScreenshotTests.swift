@@ -122,7 +122,9 @@ final class OnlineScreensScreenshotTests: XCTestCase {
         let overflow = app.buttons[UIIdentifiers.overflowMenu]
         if overflow.waitForExistence(timeout: 3) {
             overflow.tap()
-            usleep(300_000)
+            // Wait for a known menu entry instead of sleeping — returns as
+            // soon as the menu has actually rendered.
+            _ = app.buttons[UIIdentifiers.onlineShareInvite].waitForExistence(timeout: 2)
             recorder.capture(name: "04-live-table-menu", force: true)
         }
     }

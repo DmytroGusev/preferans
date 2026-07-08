@@ -12,12 +12,20 @@ import XCTest
 final class BotSimulationReportTests: XCTestCase {
     private let players: [PlayerID] = ["N", "E", "S"]
 
-    /// Single hero scenario: 50 random 3-player matches to pool target = 6.
+    /// The bulk sim (50 + 20 matches) costs ~55 s — the bulk of the whole
+    /// suite's runtime. Every `swift test` still plays a small smoke batch so
+    /// the path can't rot; export `PREF_SIM_FULL=1` for the full statistical
+    /// run (nightly / pre-release / after strategy changes).
+    private var fullSim: Bool {
+        ProcessInfo.processInfo.environment["PREF_SIM_FULL"] == "1"
+    }
+
+    /// Single hero scenario: random 3-player matches to pool target = 6.
     func testFiftyThreePlayerMatchesAgainstBots() async throws {
         let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4, rolloutsPerSample: 1))
         var report = SimReport()
         var rng = SystemRandomNumberGenerator()
-        let matchCount = 50
+        let matchCount = fullSim ? 50 : 5
         for matchIndex in 0..<matchCount {
             let match = MatchSettings(poolTarget: 6, raspasy: .singleShot)
             var engine = try PreferansEngine(players: players, match: match)
@@ -38,7 +46,7 @@ final class BotSimulationReportTests: XCTestCase {
         let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4, rolloutsPerSample: 1))
         var report = SimReport()
         var rng = SystemRandomNumberGenerator()
-        let matchCount = 20
+        let matchCount = fullSim ? 20 : 3
         let four: [PlayerID] = ["N", "E", "S", "W"]
         for matchIndex in 0..<matchCount {
             let match = MatchSettings(poolTarget: 6, raspasy: .singleShot)

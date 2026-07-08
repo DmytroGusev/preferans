@@ -124,7 +124,18 @@ final class RedesignScreenshotTests: XCTestCase {
             if robot.discardFirstTwoVisibleCards() { continue }
             if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) { continue }
 
-            usleep(700_000)
+            // Nothing actionable — a bot is on the clock. Wait for the phase
+            // label to move instead of sleeping blindly: same worst-case
+            // bound, but returns the moment the bot acts.
+            let phaseElement = app.staticTexts[UIIdentifiers.phaseTitle]
+            let phaseBefore = robot.labelIfExists(UIIdentifiers.phaseTitle)
+            _ = XCTWaiter().wait(
+                for: [XCTNSPredicateExpectation(
+                    predicate: NSPredicate(format: "label != %@", phaseBefore),
+                    object: phaseElement
+                )],
+                timeout: 0.7
+            )
         }
 
         recorder.capture(name: "99-final")

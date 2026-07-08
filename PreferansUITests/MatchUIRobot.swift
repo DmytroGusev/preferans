@@ -42,18 +42,6 @@ final class MatchUIRobot {
         button.tap()
     }
 
-    func setPlayerName(at index: Int, to name: String) {
-        let field = app.textFields[UIIdentifiers.lobbyPlayerNameField(index: index)]
-        assertExists(field, "Lobby's player-name field [\(index)] never appeared.")
-        field.tap()
-        field.press(forDuration: 1.2)
-        // Select-all then type — most reliable cross-iOS-version replacement.
-        if let selectAll = app.menuItems["Select All"].firstMatch as XCUIElement?, selectAll.exists {
-            selectAll.tap()
-        }
-        field.typeText(name)
-    }
-
     // MARK: - In-game actions
 
     func bid(_ call: BidCall) {
@@ -70,13 +58,6 @@ final class MatchUIRobot {
 
     func declareContract(_ contract: GameContract) {
         tapButton(id: UIIdentifiers.contractButton(contract), descriptor: "declare \(contract)")
-    }
-
-    func declareTotusStrain(_ strain: Strain) {
-        // Totus declarations reuse the contract button identifier with a
-        // 10-trick contract in the picked strain.
-        tapButton(id: UIIdentifiers.contractButton(GameContract(10, strain)),
-                  descriptor: "declare totus strain \(strain)")
     }
 
     func whist(_ call: WhistCall) {
@@ -139,48 +120,6 @@ final class MatchUIRobot {
         return false
     }
 
-    /// Tries visible hand cards in order and returns after the first accepted
-    /// play. Success is detected by the tapped identifier leaving the hand row.
-    @discardableResult
-    func playFirstAcceptedHandCard(for seat: PlayerID, acceptanceTimeout: TimeInterval = 0.25) -> Bool {
-        let prefix = "card.hand.\(seat.rawValue)."
-        let playable = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH %@ AND value == %@", prefix, "Playable")
-        )
-        let playableCandidates = playable.allElementsBoundByIndex
-        if !playableCandidates.isEmpty {
-            for card in playableCandidates {
-                guard let coordinate = cardTapCoordinate(card) else { continue }
-                let id = card.identifier
-                coordinate.doubleTap()
-                let gone = NSPredicate(format: "exists == false")
-                let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
-                if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
-                    return true
-                }
-            }
-            return false
-        }
-
-        let predicate = NSPredicate(format: "identifier BEGINSWITH %@", prefix)
-        let cards = app.buttons.matching(predicate)
-        let count = cards.count
-        guard count > 0 else { return false }
-        for index in 0..<count {
-            let card = cards.element(boundBy: index)
-            guard let coordinate = cardTapCoordinate(card) else { continue }
-            let id = card.identifier
-            coordinate.doubleTap()
-
-            let gone = NSPredicate(format: "exists == false")
-            let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
-            if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
-                return true
-            }
-        }
-        return false
-    }
-
     // MARK: - Reading state
 
     /// Current phase title (e.g. "Bidding", "Prikup", "Game over").
@@ -188,28 +127,6 @@ final class MatchUIRobot {
         let element = app.staticTexts[UIIdentifiers.phaseTitle]
         assertExists(element, "Phase title never appeared.")
         return element.label
-    }
-
-    /// Structured online validation probe exposed only as an accessibility
-    /// value. It lets tests assert room/viewer/sequence/phase without
-    /// relying on pixels or localized visible copy.
-    func onlineFlowState() -> String {
-        let element = app.staticTexts[UIIdentifiers.onlineFlowState]
-        assertExists(element, "Online flow state probe never appeared.")
-        return element.value as? String ?? element.label
-    }
-
-    func waitForOnlineFlowState(containing expected: String, timeout: TimeInterval? = nil) {
-        let element = app.staticTexts[UIIdentifiers.onlineFlowState]
-        let predicate = NSPredicate { _, _ in
-            guard element.exists else { return false }
-            let value = element.value as? String ?? element.label
-            return value.contains(expected)
-        }
-        let waitTime = timeout ?? defaultTimeout
-        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: nil)], timeout: waitTime)
-        XCTAssertEqual(result, .completed,
-                       "Online flow state never contained \"\(expected)\" within \(waitTime)s. Current: \"\(onlineFlowState())\".")
     }
 
     /// Current phase message (the secondary line under the title).
@@ -229,16 +146,6 @@ final class MatchUIRobot {
         return PlayerID(String(label.dropFirst(prefix.count)))
     }
 
-    /// Pool value for a player (parsed from the score cell).
-    func pool(of player: PlayerID) -> Int {
-        scoreSnapshot(for: [player])[player]?.pool ?? 0
-    }
-
-    /// Mountain value for a player.
-    func mountain(of player: PlayerID) -> Int {
-        scoreSnapshot(for: [player])[player]?.mountain ?? 0
-    }
-
     /// Pool/mountain values for the given players. On compact layouts the
     /// scoresheet lives in a toolbar sheet, so read all requested cells in
     /// one visit instead of opening the sheet per assertion.
@@ -251,21 +158,6 @@ final class MatchUIRobot {
                 )
             }
         }
-    }
-
-    /// Trick count displayed on a player's seat.
-    func trickCount(of player: PlayerID) -> Int {
-        let element = app.staticTexts[UIIdentifiers.seatTrickCount(player)]
-        guard exists(element, timeout: optionalReadTimeout) else { return 0 }
-        return firstInteger(in: element.label) ?? 0
-    }
-
-    /// Encoded result of the most recent finished deal (e.g. `game.east.6S.south+west`).
-    /// `nil` when the deal-finished panel isn't visible.
-    func dealResultKind() -> String? {
-        let element = app.staticTexts[UIIdentifiers.dealResultKind]
-        guard element.exists else { return nil }
-        return element.label
     }
 
     /// Match-summary winner shown on the game-over panel.
@@ -350,20 +242,6 @@ final class MatchUIRobot {
         assertExists(element, timeout: timeout, "Element \"\(identifier)\" never appeared.")
     }
 
-    /// Blocks until the integer value at a score cell crosses `target` from
-    /// below. Useful for asserting "east's pool reached at least 10".
-    func waitForPoolAtLeast(_ target: Int, of player: PlayerID, timeout: TimeInterval? = nil) {
-        let element = app.staticTexts[UIIdentifiers.scorePool(player)]
-        let predicate = NSPredicate { _, _ in
-            Int(element.label) ?? 0 >= target
-        }
-        let exp = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        let waitTime = timeout ?? defaultTimeout
-        let result = XCTWaiter().wait(for: [exp], timeout: waitTime)
-        XCTAssertEqual(result, .completed,
-                       "Pool for \(player) never reached \(target) (final: \(element.label)).")
-    }
-
     // MARK: - Internal helpers
 
     private func tapButton(id: String, descriptor: String) {
@@ -434,15 +312,6 @@ final class MatchUIRobot {
             doneButton.tap()
         }
         return value
-    }
-
-    /// Open the in-game overflow menu (`…`). The Scoresheet, Settings, and
-    /// View-as entries all live inside it, so reads of any of those are
-    /// gated on the menu being expanded first.
-    private func openOverflowMenu() {
-        let menuButton = app.buttons[UIIdentifiers.overflowMenu]
-        assertExists(menuButton, "Overflow menu never appeared.")
-        menuButton.tap()
     }
 
     @discardableResult
