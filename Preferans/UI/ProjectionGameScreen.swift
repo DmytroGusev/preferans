@@ -29,9 +29,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// this closure (resets the engine and starts a new match with the same
     /// roster).
     public var onRematch: (() -> Void)?
-    private let extraMenu: Menu
+    let extraMenu: Menu
 
-    private enum Sheet: String, Identifiable {
+    enum Sheet: String, Identifiable {
         case score, log, settings, lastTrick
         var id: String { rawValue }
     }
@@ -39,8 +39,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
     @State private var selectedDiscard: Set<Card> = []
     @State private var selectedPlayCard: Card?
     @State private var talonTakenSequence: Int?
-    @State private var activeSheet: Sheet?
-    @State private var showLeaveConfirm = false
+    @State var activeSheet: Sheet?
+    @State var showLeaveConfirm = false
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -244,23 +244,27 @@ public struct ProjectionGameScreen<Menu: View>: View {
         return TableView(
             projection: projection,
             animationNamespace: cardNamespace,
-            onAdvance: advance,
-            onStartDeal: shouldShowCenterDealCTA ? advance : nil,
-            onLeaveTable: onLeaveTable,
-            onRematch: onRematch,
-            renderOpponentsAtTop: renderOpponentsAtTop,
+            handlers: TableHandlers(
+                onAdvance: advance,
+                onStartDeal: shouldShowCenterDealCTA ? advance : nil,
+                onLeaveTable: onLeaveTable,
+                onRematch: onRematch,
+                onSelectPlayCard: selectPlayCard,
+                onPlayCard: { owner, card in playCard(card, from: owner) },
+                onTakeTalon: takeTalon,
+                onTapToAdvance: onTapToAdvance
+            ),
+            display: TableDisplayState(
+                renderOpponentsAtTop: renderOpponentsAtTop,
+                idleHintActive: idleHintActive,
+                isTalonTakePending: isTalonTakePending
+            ),
             seatActions: seatActions,
             seatRoleBadges: seatRoleBadges,
             bannerAction: bannerAction,
             pendingAdvance: pendingAdvance,
-            idleHintActive: idleHintActive,
-            isTalonTakePending: isTalonTakePending,
             cardSuitOrder: cardSuitDisplayOrder,
-            selectedPlayCard: selectedPlayCard,
-            onSelectPlayCard: selectPlayCard,
-            onPlayCard: { owner, card in playCard(card, from: owner) },
-            onTakeTalon: takeTalon,
-            onTapToAdvance: onTapToAdvance
+            selectedPlayCard: selectedPlayCard
         )
     }
 
@@ -328,7 +332,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// True when the screen should put a single, centered Deal CTA on the
     /// felt (pre-first-deal idle state). When this is true, the action bar
     /// hides its own start-deal row to avoid two CTAs for the same intent.
-    private var shouldShowCenterDealCTA: Bool {
+    var shouldShowCenterDealCTA: Bool {
         guard projection.legal.canStartDeal else { return false }
         if case .waitingForDeal = projection.phase { return true }
         return false
@@ -361,179 +365,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     private func advanceToNextDeal() {
         onSend(.startDeal(dealer: nil, deck: nil))
-    }
-
-    // MARK: - Header strip
-    //
-    // Replaces both the old phaseStatusBar and the toolbar pill. One row:
-    // a small phase chip on the left, a single overflow menu on the right.
-    // Score / event log / settings / View-as all live behind that one
-    // ellipsis button instead of competing for top-of-screen real estate.
-
-    private var headerStrip: some View {
-        HStack(alignment: .center, spacing: 8) {
-            phaseChip
-            Spacer(minLength: 8)
-            // The icons own their spacing via 40 pt hit frames; extra
-            // HStack spacing here would push the phase chip into
-            // truncation on compact widths.
-            HStack(spacing: 0) {
-                if projection.lastCompletedTrick != nil {
-                    lastTrickButton
-                }
-                scoresheetButton
-                if onLeaveTable != nil {
-                    leaveButton
-                }
-                overflowMenu
-            }
-        }
-        .confirmationDialog(
-            "Leave this table?",
-            isPresented: $showLeaveConfirm,
-            titleVisibility: .visible
-        ) {
-            Button("Leave table", role: .destructive) {
-                onLeaveTable?()
-            }
-            Button("Stay", role: .cancel) {}
-        } message: {
-            Text("Your current match will be discarded.")
-        }
-    }
-
-    /// Shared hit-target treatment for the header's icon buttons. The
-    /// glyphs render at ~22 pt; without this the tappable area is the
-    /// glyph itself (~31 pt), well under the 44 pt HIG minimum. 40 pt is
-    /// the compromise that still fits four buttons plus the phase chip on
-    /// a compact phone.
-    private func headerIconTarget<Glyph: View>(_ glyph: Glyph) -> some View {
-        glyph
-            .frame(width: 40, height: 40)
-            .contentShape(Rectangle())
-    }
-
-    private var lastTrickButton: some View {
-        Button {
-            activeSheet = .lastTrick
-        } label: {
-            headerIconTarget(
-                Image(systemName: "arrow.counterclockwise.circle.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.goldBright, Color.black.opacity(0.30))
-                    .font(.title3)
-            )
-        }
-        .accessibilityLabel("Last trick")
-        .accessibilityIdentifier(UIIdentifiers.buttonLastTrick)
-    }
-
-    /// One-tap exit from the live table. Always reachable so the user is
-    /// never trapped — confirms before tearing down the match so a
-    /// mistapped exit doesn't lose the deal.
-    private var leaveButton: some View {
-        Button {
-            showLeaveConfirm = true
-        } label: {
-            headerIconTarget(
-                Image(systemName: "xmark.circle.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
-                    .font(.title3)
-            )
-        }
-        .accessibilityLabel("Leave table")
-        .accessibilityIdentifier(UIIdentifiers.buttonLeaveTable)
-    }
-
-    /// Surfaces the scoresheet directly in the header instead of burying it
-    /// in the overflow menu — it's the most-wanted info during a match.
-    private var scoresheetButton: some View {
-        Button {
-            activeSheet = .score
-        } label: {
-            headerIconTarget(
-                Image(systemName: "tablecells.fill")
-                    .foregroundStyle(TableTheme.inkCream)
-                    .font(.subheadline.weight(.semibold))
-                    .padding(6)
-                    .background(Color.black.opacity(0.30), in: Capsule())
-            )
-        }
-        .accessibilityLabel("Scoresheet")
-        .accessibilityIdentifier(UIIdentifiers.buttonScoreSheet)
-    }
-
-    private var phaseChip: some View {
-        HStack(spacing: 6) {
-            Text(Localized.phaseTitle(projection.phase))
-                .font(.caption.weight(.bold))
-                // Phase name is orientation, not an action — cream, not gold.
-                .foregroundStyle(TableTheme.inkCream)
-                .lineLimit(1)
-                .accessibilityIdentifier(UIIdentifiers.phaseTitle)
-            if !shouldShowCenterDealCTA {
-                Text("·")
-                    .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
-                Localized.statusText(projection)
-                    .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
-                    .accessibilityIdentifier(UIIdentifiers.phaseMessage)
-            } else {
-                // Idle state: the centered Deal CTA already says everything
-                // the message would. Keep the AX node so XCUI tests that
-                // sample phase.message in idle still find a label, but make
-                // it invisible so the chip stays compact.
-                Localized.statusText(projection)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .frame(width: 0, height: 0)
-                    .clipped()
-                    .opacity(0)
-                    .accessibilityIdentifier(UIIdentifiers.phaseMessage)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .feltSurface(.chip, radius: TableTheme.Radius.pill)
-    }
-
-    private var overflowMenu: some View {
-        SwiftUI.Menu {
-            extraMenu
-
-            Button {
-                activeSheet = .log
-            } label: {
-                Label("Activity log", systemImage: "scroll")
-            }
-            Divider()
-            Button {
-                activeSheet = .settings
-            } label: {
-                Label("Settings", systemImage: "gearshape")
-            }
-            if onLeaveTable != nil {
-                Divider()
-                Button(role: .destructive) {
-                    showLeaveConfirm = true
-                } label: {
-                    Label("Leave table", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            }
-        } label: {
-            headerIconTarget(
-                Image(systemName: "ellipsis.circle.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
-                    .font(.title3)
-            )
-            .accessibilityLabel("Menu")
-        }
-        .accessibilityIdentifier(UIIdentifiers.overflowMenu)
     }
 
     // MARK: - Viewer hand
@@ -898,199 +729,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
         let visiblePlayable = Set(projection.legal.playableCards)
         if !visiblePlayable.contains(selectedPlayCard) {
             self.selectedPlayCard = nil
-        }
-    }
-}
-
-private struct ActivityLogSheet: View {
-    var entries: [ActivityLogEntry]
-    var onDone: () -> Void
-
-    private var newestFirst: [ActivityLogEntry] {
-        Array(entries.reversed())
-    }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if entries.isEmpty {
-                    ActivityLogEmptyState()
-                } else {
-                    List {
-                        Section {
-                            ForEach(newestFirst) { entry in
-                                ActivityLogRow(entry: entry)
-                                    .listRowInsets(.init(top: 6, leading: 14, bottom: 6, trailing: 14))
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                                    .accessibilityIdentifier(UIIdentifiers.eventLogEntry(index: entry.id))
-                            }
-                        } header: {
-                            Text("Latest activity")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(TableTheme.inkCreamSoft)
-                                .textCase(.uppercase)
-                        }
-                    }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .environment(\.defaultMinListRowHeight, 1)
-                }
-            }
-            .background {
-                TableTheme.feltGradient
-                    .ignoresSafeArea()
-            }
-            .navigationTitle("Activity log")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Done") { onDone() }
-                        .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(UIIdentifiers.Panel.eventLog.rawValue)
-        }
-    }
-}
-
-private struct ActivityLogRow: View {
-    var entry: ActivityLogEntry
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(entry.kind.tint.opacity(0.18))
-                Image(systemName: entry.kind.iconName)
-                    .font(.footnote.weight(.bold))
-                    .foregroundStyle(entry.kind.tint)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(verbatim: entry.title)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCream)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let detail = entry.detail {
-                    Text(verbatim: detail)
-                        .font(.caption)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            Text(verbatim: entry.kind.label)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(entry.kind.tint)
-                .lineLimit(1)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 3)
-                .background(entry.kind.tint.opacity(0.13), in: Capsule())
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .feltSurface(.chip, radius: TableTheme.Radius.xs)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct ActivityLogEmptyState: View {
-    var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "scroll")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(TableTheme.goldBright)
-                .frame(width: 48, height: 48)
-                .background(TableTheme.gold.opacity(0.14), in: Circle())
-            Text("No activity yet")
-                .font(.headline.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCream)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-private extension ActivityLogEntry.Kind {
-    var iconName: String {
-        switch self {
-        case .deal:       return "rectangle.stack.fill"
-        case .auction:    return "hand.raised.fill"
-        case .contract:   return "checkmark.seal.fill"
-        case .defense:    return "shield.fill"
-        case .play:       return "suit.club.fill"
-        case .settlement: return "text.bubble.fill"
-        case .scoring:    return "chart.bar.fill"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .deal:       return TableTheme.inkCreamSoft
-        case .auction:    return TableTheme.goldBright
-        case .contract:   return Color(red: 0.58, green: 0.82, blue: 0.96)
-        case .defense:    return Color(red: 0.72, green: 0.86, blue: 0.62)
-        case .play:       return Color(red: 0.96, green: 0.78, blue: 0.54)
-        case .settlement: return Color(red: 0.84, green: 0.72, blue: 0.96)
-        case .scoring:    return TableTheme.gold
-        }
-    }
-}
-
-private struct LastTrickView: View {
-    var projection: PlayerGameProjection
-    var trick: Trick
-
-    var body: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 6) {
-                Text("\(projection.displayName(for: trick.winner)) won")
-                    .font(.headline.weight(.heavy))
-                    .foregroundStyle(TableTheme.goldBright)
-                    .multilineTextAlignment(.center)
-                Text("Last trick")
-                    .font(.caption.weight(.bold))
-                    .tracking(1.1)
-                    .textCase(.uppercase)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-            }
-            HStack(alignment: .bottom, spacing: 12) {
-                ForEach(Array(trick.plays.enumerated()), id: \.offset) { _, play in
-                    trickPlayColumn(play)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 18)
-        .feltSurface(.card, radius: TableTheme.Radius.md)
-    }
-
-    private func trickPlayColumn(_ play: CardPlay) -> some View {
-        let isWinner = play.player == trick.winner
-        return VStack(spacing: 8) {
-            CardView(
-                card: .known(play.card),
-                size: .standard,
-                region: .trick(seat: play.player)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
-                                  lineWidth: isWinner ? 2 : 0)
-            )
-            .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
-                    radius: isWinner ? 12 : 0)
-            Text(projection.displayName(for: play.player))
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(isWinner ? TableTheme.goldBright : TableTheme.inkCreamSoft)
-                .lineLimit(1)
-                .minimumScaleFactor(0.62)
         }
     }
 }

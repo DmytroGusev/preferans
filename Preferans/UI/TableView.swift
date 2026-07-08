@@ -1,13 +1,62 @@
 import SwiftUI
 import PreferansEngine
 
+/// Groups the callbacks `TableView` forwards to the screen above it. Each
+/// closure mirrors the stored property of the same name on `TableView`.
+public struct TableHandlers {
+    public var onAdvance: (() -> Void)?
+    public var onStartDeal: (() -> Void)?
+    public var onLeaveTable: (() -> Void)?
+    public var onRematch: (() -> Void)?
+    public var onSelectPlayCard: ((Card) -> Void)?
+    public var onPlayCard: ((PlayerID, Card) -> Void)?
+    public var onTakeTalon: (() -> Void)?
+    public var onTapToAdvance: (() -> Void)?
+
+    public init(
+        onAdvance: (() -> Void)? = nil,
+        onStartDeal: (() -> Void)? = nil,
+        onLeaveTable: (() -> Void)? = nil,
+        onRematch: (() -> Void)? = nil,
+        onSelectPlayCard: ((Card) -> Void)? = nil,
+        onPlayCard: ((PlayerID, Card) -> Void)? = nil,
+        onTakeTalon: (() -> Void)? = nil,
+        onTapToAdvance: (() -> Void)? = nil
+    ) {
+        self.onAdvance = onAdvance
+        self.onStartDeal = onStartDeal
+        self.onLeaveTable = onLeaveTable
+        self.onRematch = onRematch
+        self.onSelectPlayCard = onSelectPlayCard
+        self.onPlayCard = onPlayCard
+        self.onTakeTalon = onTakeTalon
+        self.onTapToAdvance = onTapToAdvance
+    }
+}
+
+/// Groups `TableView`'s boolean display flags. Each flag mirrors the stored
+/// property of the same name on `TableView`.
+public struct TableDisplayState {
+    public var renderOpponentsAtTop: Bool
+    public var idleHintActive: Bool
+    public var isTalonTakePending: Bool
+
+    public init(
+        renderOpponentsAtTop: Bool = true,
+        idleHintActive: Bool = false,
+        isTalonTakePending: Bool = false
+    ) {
+        self.renderOpponentsAtTop = renderOpponentsAtTop
+        self.idleHintActive = idleHintActive
+        self.isTalonTakePending = isTalonTakePending
+    }
+}
+
 /// The central play area. Each opponent has a fixed slot above the felt;
 /// the viewer's slot is at the bottom. The current trick cards land on
 /// their owner's slot. During talon exchange the talon sits in the
 /// middle of the felt for the declarer to pick from.
 public struct TableView: View {
-    private static let auctionStatusPillHeight: CGFloat = 34
-
     public var projection: PlayerGameProjection
     public var animationNamespace: Namespace.ID
     /// Tap handler for the deal-summary card's "Next deal" button.
@@ -61,48 +110,39 @@ public struct TableView: View {
     public var onTakeTalon: (() -> Void)?
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
-    @State private var showInitialHands = false
+    @State var showInitialHands = false
 
     public init(
         projection: PlayerGameProjection,
         animationNamespace: Namespace.ID,
-        onAdvance: (() -> Void)? = nil,
-        onStartDeal: (() -> Void)? = nil,
-        onLeaveTable: (() -> Void)? = nil,
-        onRematch: (() -> Void)? = nil,
-        renderOpponentsAtTop: Bool = true,
+        handlers: TableHandlers = TableHandlers(),
+        display: TableDisplayState = TableDisplayState(),
         seatActions: [PlayerID: RecentAction] = [:],
         seatRoleBadges: [PlayerID: SeatRoleBadge] = [:],
         bannerAction: RecentAction? = nil,
         pendingAdvance: PendingAdvance? = nil,
-        idleHintActive: Bool = false,
-        isTalonTakePending: Bool = false,
         cardSuitOrder: CardSuitDisplayOrder = .default,
-        selectedPlayCard: Card? = nil,
-        onSelectPlayCard: ((Card) -> Void)? = nil,
-        onPlayCard: ((PlayerID, Card) -> Void)? = nil,
-        onTakeTalon: (() -> Void)? = nil,
-        onTapToAdvance: (() -> Void)? = nil
+        selectedPlayCard: Card? = nil
     ) {
         self.projection = projection
         self.animationNamespace = animationNamespace
-        self.onAdvance = onAdvance
-        self.onStartDeal = onStartDeal
-        self.onLeaveTable = onLeaveTable
-        self.onRematch = onRematch
-        self.renderOpponentsAtTop = renderOpponentsAtTop
+        self.onAdvance = handlers.onAdvance
+        self.onStartDeal = handlers.onStartDeal
+        self.onLeaveTable = handlers.onLeaveTable
+        self.onRematch = handlers.onRematch
+        self.renderOpponentsAtTop = display.renderOpponentsAtTop
         self.seatActions = seatActions
         self.seatRoleBadges = seatRoleBadges
         self.bannerAction = bannerAction
         self.pendingAdvance = pendingAdvance
-        self.idleHintActive = idleHintActive
-        self.isTalonTakePending = isTalonTakePending
+        self.idleHintActive = display.idleHintActive
+        self.isTalonTakePending = display.isTalonTakePending
         self.cardSuitOrder = cardSuitOrder
         self.selectedPlayCard = selectedPlayCard
-        self.onSelectPlayCard = onSelectPlayCard
-        self.onPlayCard = onPlayCard
-        self.onTakeTalon = onTakeTalon
-        self.onTapToAdvance = onTapToAdvance
+        self.onSelectPlayCard = handlers.onSelectPlayCard
+        self.onPlayCard = handlers.onPlayCard
+        self.onTakeTalon = handlers.onTakeTalon
+        self.onTapToAdvance = handlers.onTapToAdvance
     }
 
     public var body: some View {
@@ -355,108 +395,6 @@ public struct TableView: View {
         }
     }
 
-    /// Bidding-phase center cluster. One pill per active seat showing
-    /// the latest call (bid / pass) or a quiet "…" while the seat is
-    /// still pending. The current caller's pill is ringed in gold so
-    /// the eye lands on whose turn it is. Replaces the small
-    /// auction-trail row at the top of the strip as the primary read
-    /// of "where is the auction".
-    private func biddingContext() -> some View {
-        let active = projection.tableClockwiseAuctionSeats
-        return VStack(spacing: 14) {
-            auctionPanelTitle
-            HStack(spacing: 0) {
-                ForEach(Array(active.enumerated()), id: \.element.player) { index, seat in
-                    auctionSeatPill(seat: seat)
-                        .frame(maxWidth: .infinity)
-                    if index < active.count - 1 {
-                        Rectangle()
-                            .fill(TableTheme.gold.opacity(0.22))
-                            .frame(width: 0.5, height: 70)
-                            .padding(.horizontal, 8)
-                    }
-                }
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 16)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                .fill(Color.black.opacity(0.16))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                .strokeBorder(TableTheme.gold.opacity(0.34), lineWidth: 0.75)
-        )
-        .multilineTextAlignment(.center)
-    }
-
-    private var auctionPanelTitle: some View {
-        HStack(spacing: 10) {
-            Rectangle()
-                .fill(TableTheme.gold.opacity(0.38))
-                .frame(height: 0.6)
-            Text("Auction")
-                .font(.caption.weight(.bold))
-                .tracking(1.4)
-                .textCase(.uppercase)
-                .foregroundStyle(TableTheme.goldBright)
-                .fixedSize()
-            Rectangle()
-                .fill(TableTheme.gold.opacity(0.38))
-                .frame(height: 0.6)
-        }
-    }
-
-    private func auctionSeatPill(seat: SeatProjection) -> some View {
-        let action = seatActions[seat.player]
-        let isCurrent = seat.isCurrentActor
-        return VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                if seat.player == projection.viewer {
-                    Text("You")
-                } else {
-                    Text(verbatim: seat.displayName)
-                }
-            }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(seat.player == projection.viewer ? TableTheme.inkCream : TableTheme.inkCreamSoft)
-            .lineLimit(1)
-            .minimumScaleFactor(0.62)
-            Group {
-                if let action {
-                    action.label.glyph(emphasis: .banner)
-                        .font(.subheadline.weight(.heavy))
-                } else if isCurrent {
-                    Text("Choosing")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.goldBright)
-                } else {
-                    Text("—")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCreamDim)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: Self.auctionStatusPillHeight)
-            .background(
-                RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
-                    .fill(isCurrent ? Color.black.opacity(0.36) : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
-                    .strokeBorder(isCurrent ? TableTheme.goldBright.opacity(0.85) : Color.clear,
-                                  lineWidth: isCurrent ? 1 : 0)
-            )
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-        }
-        .frame(minHeight: 84)
-        .shadow(color: isCurrent ? TableTheme.goldBright.opacity(0.35) : .clear,
-                radius: isCurrent ? 8 : 0)
-    }
-
     /// Talon exchange: observers see the two prikup cards centered on the
     /// felt. The declarer sees those cards inside their 12-card discard fan
     /// with "P" badges instead, so they do not appear duplicated.
@@ -547,187 +485,6 @@ public struct TableView: View {
             .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Deal-summary card
-
-    /// Rich centered card shown when a deal has just been scored. Replaces
-    /// the empty "Deal complete" placeholder with the outcome headline,
-    /// per-player trick tally, and a prominent "Next deal" CTA so the user
-    /// has something to look at and a clear action without dismissing a
-    /// modal sheet.
-    private func dealSummaryCard(result: DealResult) -> some View {
-        VStack(spacing: 14) {
-            VStack(spacing: 6) {
-                Text("Deal complete")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(TableTheme.goldBright)
-                    .tracking(1.4)
-                    .textCase(.uppercase)
-                Localized.dealResultHeadline(result, in: projection)
-                    .font(.headline)
-                    .foregroundStyle(TableTheme.inkCream)
-                    .multilineTextAlignment(.center)
-                    .accessibilityIdentifier(UIIdentifiers.dealResultKind)
-                Text(UIIdentifiers.encode(result.kind))
-                    .opacity(0)
-                    .frame(width: 0, height: 0)
-                    .accessibilityHidden(true)
-            }
-            trickTallyGrid(result: result)
-            if let initialHands = result.initialHands, !initialHands.isEmpty {
-                openingHandsDisclosure(hands: initialHands, activePlayers: result.activePlayers)
-            }
-            if let onAdvance, projection.legal.canStartDeal {
-                Button {
-                    onAdvance()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "play.fill")
-                        Text("Next deal")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: 220)
-                }
-                .buttonStyle(.feltPrimary)
-                .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .background(dealSummaryBackground)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    private func openingHandsDisclosure(
-        hands: [PlayerID: [Card]],
-        activePlayers: [PlayerID]
-    ) -> some View {
-        VStack(spacing: 8) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    showInitialHands.toggle()
-                }
-            } label: {
-                // Two literals, not a ternary: a ternary inside Label() types
-                // as String and silently opts the copy out of localization.
-                Group {
-                    if showInitialHands {
-                        Label("Hide opening hands", systemImage: "eye.slash.fill")
-                    } else {
-                        Label("Show opening hands", systemImage: "eye.fill")
-                    }
-                }
-                .font(.caption.weight(.semibold))
-                .frame(maxWidth: 220)
-            }
-            .buttonStyle(.feltSecondary)
-            .accessibilityIdentifier("dealResult.initialHands.toggle")
-
-            if showInitialHands {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(activePlayers, id: \.self) { player in
-                            openingHandRow(player: player, cards: hands[player] ?? [])
-                        }
-                    }
-                    .padding(.vertical, 2)
-                }
-                .frame(maxHeight: 250)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-    }
-
-    private func openingHandRow(player: PlayerID, cards: [Card]) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(projection.displayName(for: player))
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(player == projection.viewer ? TableTheme.goldBright : TableTheme.inkCreamSoft)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(openingHandRows(cards).enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: 4) {
-                        ForEach(row, id: \.self) { card in
-                            CardView(
-                                card: .known(card),
-                                size: .compact,
-                                region: .hand(seat: player)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("dealResult.initialHand.\(player.rawValue)")
-    }
-
-    private func openingHandRows(_ cards: [Card]) -> [[Card]] {
-        let sorted = cards.sortedForTableDisplay(order: cardSuitOrder)
-        guard sorted.count > 5 else { return [sorted] }
-        return [
-            Array(sorted.prefix(5)),
-            Array(sorted.dropFirst(5))
-        ]
-    }
-
-    private var dealSummaryBackground: some View {
-        RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-            .fill(TableTheme.surfaceFill(.card))
-            .overlay(
-                RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                    .strokeBorder(TableTheme.surfaceBorder(.card), lineWidth: 1)
-            )
-    }
-
-    /// Compact tricks-per-active-player grid. Sitting-out seats are excluded
-    /// (they took zero tricks by definition); the declarer is highlighted in
-    /// gold so the user can see at a glance whether the contract was met.
-    private func trickTallyGrid(result: DealResult) -> some View {
-        let players = result.activePlayers
-        let declarer = declarer(for: result)
-        return HStack(spacing: 8) {
-            ForEach(players, id: \.self) { player in
-                let isDeclarer = player == declarer
-                VStack(spacing: 3) {
-                    Text(projection.displayName(for: player))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Text("\(result.trickCounts[player] ?? 0)")
-                        .font(.title3.bold().monospacedDigit())
-                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
-                        .accessibilityIdentifier(UIIdentifiers.seatTrickCount(player))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
-                        .fill(Color.black.opacity(isDeclarer ? 0.32 : 0.18))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
-                        .strokeBorder(
-                            isDeclarer ? TableTheme.goldBright.opacity(0.55) : TableTheme.inkCream.opacity(0.06),
-                            lineWidth: isDeclarer ? 1 : 0.5
-                        )
-                )
-            }
-        }
-    }
-
-    private func declarer(for result: DealResult) -> PlayerID? {
-        switch result.kind {
-        case let .game(declarer, _, _):           return declarer
-        case let .misere(declarer):               return declarer
-        case let .halfWhist(declarer, _, _):      return declarer
-        case let .withoutThree(declarer, _):      return declarer
-        case .passedOut, .allPass:                return nil
-        }
     }
 
     /// Played cards from the current trick, each anchored to its owner's
@@ -869,3 +626,4 @@ public struct TableView: View {
         return false
     }
 }
+

@@ -64,6 +64,16 @@
 		B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B00B /* PreferansInviteLink.swift */; };
 		B0000000000000000000BD00 /* OnlineGameLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000BD01 /* OnlineGameLibrary.swift */; };
 		B0000000000000000000C220 /* OnlineSeatCredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C221 /* OnlineSeatCredentialStore.swift */; };
+		B0000000000000000000C230 /* BotPacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C231 /* BotPacing.swift */; };
+		B0000000000000000000C300 /* ConventionLegendSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C301 /* ConventionLegendSheet.swift */; };
+		B0000000000000000000C302 /* OnlineGameSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C303 /* OnlineGameSummarySheet.swift */; };
+		B0000000000000000000C304 /* LobbyYourGamesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C305 /* LobbyYourGamesSection.swift */; };
+		B0000000000000000000C306 /* LobbyOnlineSetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C307 /* LobbyOnlineSetupCard.swift */; };
+		B0000000000000000000C308 /* ActivityLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C309 /* ActivityLogSheet.swift */; };
+		B0000000000000000000C30A /* LastTrickView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C30B /* LastTrickView.swift */; };
+		B0000000000000000000C30C /* GameHeaderStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C30D /* GameHeaderStrip.swift */; };
+		B0000000000000000000C30E /* DealSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C30F /* DealSummaryCard.swift */; };
+		B0000000000000000000C310 /* AuctionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C311 /* AuctionPanel.swift */; };
 		B182FEDEF8F1C8AC3A81F85C /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = DA899D375EB0CF2E0EE45608 /* PreferansEngine */; };
 		BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
@@ -159,6 +169,16 @@
 		B0000000000000000000B00B /* PreferansInviteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/PreferansInviteLink.swift; sourceTree = "<group>"; };
 		B0000000000000000000BD01 /* OnlineGameLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/OnlineGameLibrary.swift; sourceTree = "<group>"; };
 		B0000000000000000000C221 /* OnlineSeatCredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/OnlineSeatCredentialStore.swift; sourceTree = "<group>"; };
+		B0000000000000000000C231 /* BotPacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/BotPacing.swift; sourceTree = "<group>"; };
+		B0000000000000000000C301 /* ConventionLegendSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ConventionLegendSheet.swift; sourceTree = "<group>"; };
+		B0000000000000000000C303 /* OnlineGameSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OnlineGameSummarySheet.swift; sourceTree = "<group>"; };
+		B0000000000000000000C305 /* LobbyYourGamesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyYourGamesSection.swift; sourceTree = "<group>"; };
+		B0000000000000000000C307 /* LobbyOnlineSetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyOnlineSetupCard.swift; sourceTree = "<group>"; };
+		B0000000000000000000C309 /* ActivityLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ActivityLogSheet.swift; sourceTree = "<group>"; };
+		B0000000000000000000C30B /* LastTrickView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LastTrickView.swift; sourceTree = "<group>"; };
+		B0000000000000000000C30D /* GameHeaderStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/GameHeaderStrip.swift; sourceTree = "<group>"; };
+		B0000000000000000000C30F /* DealSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/DealSummaryCard.swift; sourceTree = "<group>"; };
+		B0000000000000000000C311 /* AuctionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/AuctionPanel.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -231,6 +251,7 @@
 				B0000000000000000000B00B /* PreferansInviteLink.swift */,
 				B0000000000000000000BD01 /* OnlineGameLibrary.swift */,
 				B0000000000000000000C221 /* OnlineSeatCredentialStore.swift */,
+				B0000000000000000000C231 /* BotPacing.swift */,
 				B0000000000000000000003E /* PlayerProjection.swift */,
 				B0000000000000000000003F /* AppEngineSnapshot.swift */,
 				B00000000000000000000040 /* AppIdentifiers.swift */,
@@ -241,6 +262,15 @@
 				B0000000000000000000004A /* TestHarness.swift */,
 				B00000000000000000000044 /* CardView.swift */,
 				B00000000000000000000045 /* LobbyView.swift */,
+				B0000000000000000000C301 /* ConventionLegendSheet.swift */,
+				B0000000000000000000C303 /* OnlineGameSummarySheet.swift */,
+				B0000000000000000000C305 /* LobbyYourGamesSection.swift */,
+				B0000000000000000000C307 /* LobbyOnlineSetupCard.swift */,
+				B0000000000000000000C309 /* ActivityLogSheet.swift */,
+				B0000000000000000000C30B /* LastTrickView.swift */,
+				B0000000000000000000C30D /* GameHeaderStrip.swift */,
+				B0000000000000000000C30F /* DealSummaryCard.swift */,
+				B0000000000000000000C311 /* AuctionPanel.swift */,
 				B0000000000000000000C211 /* OnboardingView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
 				B0000000000000000000B005 /* OnlineRoomGameScreen.swift */,
@@ -422,6 +452,7 @@
 				B0000000000000000000B00A /* PreferansInviteLink.swift in Sources */,
 				B0000000000000000000BD00 /* OnlineGameLibrary.swift in Sources */,
 				B0000000000000000000C220 /* OnlineSeatCredentialStore.swift in Sources */,
+				B0000000000000000000C230 /* BotPacing.swift in Sources */,
 				B0000000000000000000000E /* PlayerProjection.swift in Sources */,
 				B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */,
 				B00000000000000000000010 /* AppIdentifiers.swift in Sources */,
@@ -432,6 +463,15 @@
 				B0000000000000000000001A /* TestHarness.swift in Sources */,
 				B00000000000000000000014 /* CardView.swift in Sources */,
 				B00000000000000000000015 /* LobbyView.swift in Sources */,
+				B0000000000000000000C300 /* ConventionLegendSheet.swift in Sources */,
+				B0000000000000000000C302 /* OnlineGameSummarySheet.swift in Sources */,
+				B0000000000000000000C304 /* LobbyYourGamesSection.swift in Sources */,
+				B0000000000000000000C306 /* LobbyOnlineSetupCard.swift in Sources */,
+				B0000000000000000000C308 /* ActivityLogSheet.swift in Sources */,
+				B0000000000000000000C30A /* LastTrickView.swift in Sources */,
+				B0000000000000000000C30C /* GameHeaderStrip.swift in Sources */,
+				B0000000000000000000C30E /* DealSummaryCard.swift in Sources */,
+				B0000000000000000000C310 /* AuctionPanel.swift in Sources */,
 				B0000000000000000000C210 /* OnboardingView.swift in Sources */,
 				B00000000000000000000016 /* LocalGameScreen.swift in Sources */,
 				B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */,
