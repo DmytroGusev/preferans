@@ -276,6 +276,127 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         south.detach()
     }
 
+    func testClientIgnoresForgedHostMessagesAndStaleProjections() async throws {
+        let room = StallableRoom(peers: peers, hostPlayerID: "north")
+        let hostTransport = room.transport(for: "north")
+        let clientTransport = room.transport(for: "east")
+        let southTransport = room.transport(for: "south")
+
+        let host = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        let client = RoomOnlineGameCoordinator(heartbeat: .disabled)
+        let south = RoomOnlineGameCoordinator(heartbeat: .disabled)
+
+        await host.attach(transport: hostTransport)
+        await client.attach(transport: clientTransport)
+        await south.attach(transport: southTransport)
+
+        host.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { client.projection?.sequence == 1 })
+
+        let tableID = try XCTUnwrap(client.tableID)
+        let northPeer = try XCTUnwrap(peers.first { $0.playerID == "north" })
+        let southPeer = try XCTUnwrap(peers.first { $0.playerID == "south" })
+        let genuine = try XCTUnwrap(client.projection)
+
+        // A seated guest forges the three host-only message kinds at east. The
+        // relay routes by recipient, not authority, so only the client's own
+        // host-sender check stands in the way of a seat hijack, a fabricated
+        // game state, and a fake error banner.
+        clientTransport.receive(ReceivedRoomMessage(
+            message: .seatAssignment(SeatAssignmentEnvelope(
+                tableID: tableID,
+                hostPlayerID: "south",
+                seats: peers.map(\.playerIdentity),
+                rules: .sochi,
+                match: .unbounded
+            )),
+            sender: southPeer
+        ))
+        var forgedProjection = genuine
+        forgedProjection.sequence = 99
+        clientTransport.receive(ReceivedRoomMessage(
+            message: .projection(ProjectionEnvelope(
+                tableID: tableID,
+                sequence: 99,
+                viewer: "east",
+                projection: forgedProjection,
+                eventSummaries: ["forged"]
+            )),
+            sender: southPeer
+        ))
+        clientTransport.receive(ReceivedRoomMessage(
+            message: .hostError(HostErrorEnvelope(
+                tableID: tableID,
+                sequence: 99,
+                recipient: "east",
+                clientNonce: nil,
+                message: "forged error"
+            )),
+            sender: southPeer
+        ))
+
+        // A genuine action still flows: had the forged assignment rebound the
+        // host seat, north's next projection would be rejected; had the forged
+        // sequence-99 projection applied, sequence 2 would be dropped as stale.
+        let bidder = try currentBidder(in: genuine)
+        fixtureLessSend(.bid(player: bidder, call: .pass), from: bidder, host: host, client: client, south: south)
+        await pump(until: { client.projection?.sequence == 2 })
+        XCTAssertNil(client.errorText, "A forged host error must never surface to the player.")
+
+        // A stale projection from the *real* host (an out-of-order resync
+        // response) must not roll the client back. The sentinel host error
+        // proves the stale frame was already processed when we assert.
+        clientTransport.receive(ReceivedRoomMessage(
+            message: .projection(ProjectionEnvelope(
+                tableID: tableID,
+                sequence: genuine.sequence,
+                viewer: "east",
+                projection: genuine,
+                eventSummaries: []
+            )),
+            sender: northPeer
+        ))
+        clientTransport.receive(ReceivedRoomMessage(
+            message: .hostError(HostErrorEnvelope(
+                tableID: tableID,
+                sequence: 2,
+                recipient: "east",
+                clientNonce: nil,
+                message: "sentinel"
+            )),
+            sender: northPeer
+        ))
+        await pump(until: { client.errorText == "sentinel" })
+        XCTAssertEqual(
+            client.projection?.sequence,
+            2,
+            "An out-of-order older projection must never regress the client's state."
+        )
+
+        host.detach()
+        client.detach()
+        south.detach()
+    }
+
+    /// Route an action from whichever coordinator owns the seat, mirroring
+    /// `apply(_:from:in:)` for tests that build coordinators without a fixture.
+    private func fixtureLessSend(
+        _ action: PreferansAction,
+        from player: PlayerID,
+        host: RoomOnlineGameCoordinator,
+        client: RoomOnlineGameCoordinator,
+        south: RoomOnlineGameCoordinator
+    ) {
+        switch player {
+        case "north": host.send(action)
+        case "east": client.send(action)
+        default: south.send(action)
+        }
+    }
+
     func testHostPersistsThroughArchiveStoreProtocol() async throws {
         let archiveStore = FakeGameArchiveStore()
         let fixture = try await makeFixture(hostArchiveStore: archiveStore)

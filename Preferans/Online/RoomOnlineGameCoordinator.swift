@@ -695,10 +695,20 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
+    /// True when a wire message came from the seat this client elected as host
+    /// at attach (the worker-pinned `hostPlayerID`). Seat assignments,
+    /// projections, and host errors are only ever legitimate from that seat —
+    /// the relay routes by recipient, not authority, so any seated peer could
+    /// otherwise forge them (and a forged message must not count as host
+    /// contact for liveness either).
+    private func isFromHost(_ sender: OnlinePeer) -> Bool {
+        sender.playerID == hostPeer?.playerID
+    }
+
     private func handle(_ received: ReceivedRoomMessage) async {
         switch received.message {
         case let .seatAssignment(assignment):
-            guard !isHost else { return }
+            guard !isHost, isFromHost(received.sender) else { return }
             noteHostContact()
             tableID = assignment.tableID
             rules = assignment.rules
@@ -747,9 +757,18 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             }
 
         case let .projection(envelope):
-            guard !isHost else { return }
+            guard !isHost, isFromHost(received.sender) else { return }
             noteHostContact()
             guard envelope.viewer == localSeat else { return }
+            // Projections can arrive out of order across a reconnect (a resync
+            // response racing a newer live update). Within the same table the
+            // sequence must never go backwards; a new table (rematch) starts a
+            // fresh sequence and is always adopted.
+            if envelope.tableID == tableID,
+               let currentSequence = projection?.sequence,
+               envelope.projection.sequence < currentSequence {
+                return
+            }
             tableID = envelope.tableID
             projection = envelope.projection
             beginTrickResultHoldIfNeeded(events: envelope.events, projection: envelope.projection)
@@ -759,6 +778,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             state = .connectedAsClient
 
         case let .hostError(error):
+            // The host reports its own failures directly, so a wire host-error
+            // is only ever legitimate on a client, from the host's seat.
+            guard !isHost, isFromHost(received.sender) else { return }
             noteHostContact()
             if error.recipient == nil || error.recipient == localSeat {
                 errorText = error.message
