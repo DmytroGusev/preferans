@@ -192,6 +192,113 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(result.initialHands, initialHands)
     }
 
+    func testFirstDefenderMayRevokePassByWhistingOverHalfWhist() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.clubs))))))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "east")
+        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(6, .suit(.clubs))))
+
+        _ = try engine.apply(.whist(player: "south", call: .pass))
+        _ = try engine.apply(.whist(player: "north", call: .halfWhist))
+        guard case let .awaitingWhist(secondChance) = engine.state,
+              secondChance.currentPlayer == "south",
+              case .firstDefenderSecondChance(halfWhister: "north") = secondChance.flow else {
+            return XCTFail("Expected first defender second chance; got \(engine.state.description).")
+        }
+
+        // South revokes the earlier pass by whisting over north's half-whist.
+        let events = try engine.apply(.whist(player: "south", call: .whist))
+
+        XCTAssertTrue(events.contains { if case .playStarted = $0 { return true }; return false })
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Expected closed game play; got \(engine.state.description).")
+        }
+        // Play starts with both defenders whisting: the revoking first
+        // defender, then the half-whister.
+        XCTAssertEqual(context.whisters, ["south", "north"])
+        XCTAssertEqual(context.defenderPlayMode, .closed)
+
+        try EngineTestDriver.playOut(engine: &engine, policy: .lowestLegal)
+        guard case let .dealFinished(result) = engine.state,
+              case let .game(declarer, contract, whisters) = result.kind else {
+            return XCTFail("Expected dealFinished.game; got \(engine.state.description).")
+        }
+        XCTAssertEqual(declarer, "east")
+        XCTAssertEqual(contract, GameContract(6, .suit(.clubs)))
+        XCTAssertEqual(whisters, ["south", "north"])
+        // Deterministic lowest-legal play of the unshuffled standard deck:
+        // east (trump clubs) takes only 3 of the 6 contracted tricks.
+        XCTAssertEqual(result.trickCounts, ["east": 3, "south": 1, "north": 6])
+        // Failed by 3 undertricks: no pool, east mountains value 2 * 3 = 6.
+        XCTAssertEqual(engine.score.pool["east"], 0)
+        XCTAssertEqual(engine.score.mountain["east"], 6)
+        // Each whister writes consolation 2 * 3 = 6 plus their own tricks:
+        // south 6 + 2 * 1 = 8, north 6 + 2 * 6 = 18.
+        XCTAssertEqual(engine.score.whistsWritten(by: "south", on: "east"), 8)
+        XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 18)
+        // Responsible whist quota for a 6-contract is 4, split 2 per
+        // whister: north met it (6 tricks); south took 1 of 2, mountaining
+        // 1 missing * value 2 = 2.
+        XCTAssertEqual(engine.score.mountain["south"], 2)
+        XCTAssertEqual(engine.score.mountain["north"], 0)
+    }
+
+    func testSeniorHandMayHoldEqualBidAndJuniorMustRaise() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+
+        // Rotation for dealer north is [east, south, north]; east is senior.
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.clubs))))))
+        _ = try engine.apply(.bid(player: "south", call: .bid(.game(GameContract(6, .suit(.diamonds))))))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+
+        // Two live bidders remain and south holds the highest bid (6♦);
+        // the senior hand (east) may hold at the same level.
+        let holdBid = BidCall.bid(.game(GameContract(6, .suit(.diamonds))))
+        XCTAssertTrue(engine.legalBidCalls(for: "east").contains(holdBid),
+                      "Senior hand must be offered the equal-bid hold.")
+        _ = try engine.apply(.bid(player: "east", call: holdBid))
+
+        // The junior hand may never hold — it must raise or pass.
+        let southCalls = engine.legalBidCalls(for: "south")
+        XCTAssertFalse(southCalls.contains(holdBid),
+                       "Junior hand must not be offered the equal-bid hold.")
+        XCTAssertTrue(southCalls.contains(.bid(.game(GameContract(6, .suit(.hearts))))))
+        XCTAssertTrue(southCalls.contains(.pass))
+        XCTAssertThrowsError(try engine.apply(.bid(player: "south", call: holdBid)))
+
+        let events = try engine.apply(.bid(player: "south", call: .pass))
+        XCTAssertTrue(events.contains(.auctionWon(declarer: "east", bid: .game(GameContract(6, .suit(.diamonds))))))
+    }
+
+    func testHoldBidDisabledForcesSeniorHandToRaiseOrPass() throws {
+        var engine = try PreferansEngine(
+            players: ["north", "east", "south"],
+            rules: PreferansRules(allowSeniorHandHoldBid: false),
+            firstDealer: "north"
+        )
+        try engine.startDeal(deck: Deck.standard32)
+
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.clubs))))))
+        _ = try engine.apply(.bid(player: "south", call: .bid(.game(GameContract(6, .suit(.diamonds))))))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+
+        // With the hold rule off, even the senior hand cannot repeat the
+        // highest bid — only a raise or a pass is on offer.
+        let holdBid = BidCall.bid(.game(GameContract(6, .suit(.diamonds))))
+        let eastCalls = engine.legalBidCalls(for: "east")
+        XCTAssertFalse(eastCalls.contains(holdBid),
+                       "allowSeniorHandHoldBid: false must remove the equal-bid hold.")
+        XCTAssertTrue(eastCalls.contains(.bid(.game(GameContract(6, .suit(.hearts))))))
+        XCTAssertTrue(eastCalls.contains(.pass))
+        XCTAssertThrowsError(try engine.apply(.bid(player: "east", call: holdBid)))
+    }
+
     func testTenTrickContractSkipsWhistByDefault() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)
@@ -299,6 +406,73 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(result.trickCounts, ["north": 0, "east": 0, "south": 0])
         XCTAssertEqual(result.completedTricks, [])
         XCTAssertEqual(result.initialHands, initialHands)
+    }
+
+    func testConcedeWithoutThreeIsRejectedForMisere() throws {
+        // Misère never reaches awaitingContract through normal play (the
+        // exchange reducer routes it straight to playing), so rehydrate the
+        // defensive state from a snapshot to pin the reducer's guard.
+        let activePlayers: [PlayerID] = ["east", "south", "north"]
+        let deal = DealDeckLayout.deal(deck: Deck.standard32, activePlayers: activePlayers)
+        let declaration = ContractDeclarationState(
+            dealer: "north",
+            activePlayers: activePlayers,
+            hands: deal.hands,
+            talon: deal.talon,
+            // Declarer kept the dealt ten and dropped the talon.
+            discard: deal.talon,
+            declarer: "east",
+            finalBid: .misere,
+            auction: []
+        )
+        let snapshot = PreferansSnapshot(
+            players: ["north", "east", "south"],
+            rules: .sochi,
+            state: .awaitingContract(declaration),
+            score: ScoreSheet(players: ["north", "east", "south"]),
+            nextDealer: "east"
+        )
+        var engine = try PreferansEngine(snapshot: snapshot)
+
+        XCTAssertThrowsError(try engine.apply(.concedeWithoutThree(player: "east"))) { error in
+            guard case PreferansError.invalidContract = error else {
+                return XCTFail("Expected invalidContract; got \(error).")
+            }
+        }
+        guard case .awaitingContract = engine.state else {
+            return XCTFail("Rejected concession must not change state; got \(engine.state.description).")
+        }
+    }
+
+    func testWithoutThreeInFourPlayerDealScoresDeclarerTripleAndDealerNothing() throws {
+        var engine = try PreferansEngine(players: ["north", "east", "south", "west"], firstDealer: "north")
+        try engine.startDeal(deck: Deck.standard32)
+
+        // North deals and sits out; rotation is [east, south, west].
+        try EngineTestDriver.driveAuctionWinning(
+            engine: &engine,
+            declarer: "east",
+            bid: .game(GameContract(6, .suit(.clubs)))
+        )
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "east")
+
+        _ = try engine.apply(.concedeWithoutThree(player: "east"))
+
+        guard case let .dealFinished(result) = engine.state,
+              case let .withoutThree(declarer, bid) = result.kind else {
+            return XCTFail("Expected without-three result; got \(engine.state.description).")
+        }
+        XCTAssertEqual(declarer, "east")
+        XCTAssertEqual(bid, .game(GameContract(6, .suit(.clubs))))
+        XCTAssertEqual(result.activePlayers, ["east", "south", "west"])
+        // Declarer mountains bid value * 3 = 2 * 3 = 6; everyone else —
+        // including the sitting-out dealer — writes nothing.
+        XCTAssertEqual(engine.score.mountain, ["north": 0, "east": 6, "south": 0, "west": 0])
+        XCTAssertEqual(engine.score.pool, ["north": 0, "east": 0, "south": 0, "west": 0])
+        XCTAssertEqual(result.scoreDelta.mountain, ["north": 0, "east": 6, "south": 0, "west": 0])
+        XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 0)
+        XCTAssertEqual(engine.score.whistsWritten(by: "south", on: "east"), 0)
+        XCTAssertEqual(engine.score.whistsWritten(by: "west", on: "east"), 0)
     }
 
     func testDealResultKeepsOpeningHandsAfterDeclarerKeepsPrikupCards() throws {

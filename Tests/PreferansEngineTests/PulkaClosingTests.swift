@@ -35,6 +35,85 @@ final class PulkaClosingTests: XCTestCase {
         XCTAssertEqual(applied.whists["north"]?["south"], 30)
     }
 
+    func testAidRecipientTieBreaksTowardEarlierSeatOrder() {
+        var score = makeScore(pool: ["north": 10, "east": 5, "south": 5])
+        var delta = ScoreDelta(players: players)
+        delta.addPool(3, to: "north")
+
+        let applied = score.apply(delta, closingAtPoolTarget: 33)
+
+        // Per-player target 33 / 3 = 11. North has room for 1 (11 - 10);
+        // the surplus 2 aids the highest open opponent — east and south tie
+        // at 5, so the earlier seat in player order (east) receives all of
+        // it, with 2 * 10 = 20 whists written back to north.
+        XCTAssertEqual(score.pool, ["north": 11, "east": 7, "south": 5])
+        XCTAssertEqual(score.whistsWritten(by: "north", on: "east"), 20)
+        XCTAssertEqual(score.whistsWritten(by: "north", on: "south"), 0)
+        XCTAssertEqual(applied.pool, ["north": 1, "east": 2, "south": 0])
+        XCTAssertEqual(applied.whists["north"]?["east"], 20)
+    }
+
+    func testNonDivisiblePoolTargetFallsBackToPlainApplication() {
+        var score = makeScore(pool: ["north": 9, "east": 0, "south": 0])
+        var delta = ScoreDelta(players: players)
+        delta.addPool(5, to: "north")
+
+        // 10 does not divide by 3 players, so no per-player closure limit
+        // can be derived — the delta applies verbatim: no cap on north's
+        // pool, no American aid, no whists, no mountain relief.
+        let applied = score.apply(delta, closingAtPoolTarget: 10)
+
+        XCTAssertEqual(score.pool, ["north": 14, "east": 0, "south": 0])
+        XCTAssertEqual(score.mountain, ["north": 0, "east": 0, "south": 0])
+        XCTAssertEqual(score.whistsWritten(by: "north", on: "east"), 0)
+        XCTAssertEqual(score.whistsWritten(by: "north", on: "south"), 0)
+        XCTAssertEqual(applied, delta)
+    }
+
+    func testFourPlayerMatchClosesAndAidsSittingOutDealer() throws {
+        let players4: [PlayerID] = ["north", "east", "south", "west"]
+        let score = ScoreSheet(
+            uncheckedPlayers: players4,
+            pool: ["north": 1, "east": 2, "south": 2, "west": 2],
+            mountain: players4.dictionary(filledWith: 0),
+            whists: players4.dictionary(filledWith: [:])
+        )
+        let snapshot = PreferansSnapshot(
+            players: players4,
+            rules: .sochi,
+            match: MatchSettings(poolTarget: 8), // per-player target 8 / 4 = 2
+            state: .waitingForDeal,
+            score: score,
+            nextDealer: "north"
+        )
+        var engine = try PreferansEngine(snapshot: snapshot)
+        try engine.startDeal(deck: Deck.standard32)
+
+        // North deals and sits out; rotation is [east, south, west].
+        let contract = GameContract(6, .suit(.clubs))
+        try EngineTestDriver.driveAuctionWinning(engine: &engine, declarer: "east", bid: .game(contract))
+        try EngineTestDriver.discardTalon(engine: &engine, declarer: "east")
+        _ = try engine.apply(.declareContract(player: "east", contract: contract))
+        _ = try engine.apply(.whist(player: "south", call: .pass))
+        let events = try engine.apply(.whist(player: "west", call: .pass))
+
+        // Passed out: +2 pool to east. East is already closed at 2, so the
+        // whole surplus aids the only open player — the sitting-out dealer
+        // north — who has room for 1 (whists 1 * 10 = 10 back to east); the
+        // final leftover 1 reduces east's mountain. Total pool 8 >= 8 closes
+        // the match.
+        XCTAssertTrue(events.contains { if case .matchEnded = $0 { return true } else { return false } })
+        guard case let .gameOver(summary) = engine.state else {
+            return XCTFail("Expected the 4-player pulka to close; got \(engine.state.description).")
+        }
+        XCTAssertEqual(engine.score.pool, ["north": 2, "east": 2, "south": 2, "west": 2])
+        XCTAssertEqual(engine.score.mountain, ["north": 0, "east": -1, "south": 0, "west": 0])
+        XCTAssertEqual(engine.score.whistsWritten(by: "east", on: "north"), 10)
+        XCTAssertEqual(summary.standings.count, 4)
+        XCTAssertEqual(Set(summary.standings.map(\.player)), Set(players4))
+        XCTAssertEqual(summary.finalScore, engine.score)
+    }
+
     func testEngineDealAppliesPulkaClosingToDealResultAndMatchSummary() throws {
         var engine = try makeEngine(
             pool: ["north": 10, "east": 10, "south": 10],
