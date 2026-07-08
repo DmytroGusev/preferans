@@ -39,6 +39,9 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         self.variantTag = variantTag
         self.resume = resume
         self.localCoordinator = coordinator ?? RoomOnlineGameCoordinator(botMoveDelay: botMoveDelay)
+        // Persist this seat's credential so lobby flows without a live
+        // transport (abandon, a later resume) can still prove seat ownership.
+        OnlineSeatCredentialStore.store(transport.seatToken, roomCode: transport.roomCode)
     }
 
     public static func createRoom(
@@ -128,7 +131,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             let payload = try await CloudflareRoomTransport.fetchSnapshot(
                 baseURL: baseURL,
                 roomCode: normalizedCode,
-                playerID: transport.localPeer.playerID
+                playerID: transport.localPeer.playerID,
+                seatToken: transport.seatToken ?? OnlineSeatCredentialStore.token(for: normalizedCode)
             )
             if let snapshot = payload.decodedSnapshot {
                 resume = OnlineResumeContext(snapshot: snapshot, sequence: payload.lastSnapshotSequence)

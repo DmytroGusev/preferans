@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyStateReport,
+  authorizeSeat,
   createInitialRoom,
   fillOpenSeatsWithBots,
   isHostAccount,
@@ -9,6 +10,7 @@ import {
   joinRoom,
   normalizeGameStatus,
   type OnlinePeer,
+  peerID,
   playerIDValue,
   publicRoom,
   recordRelay,
@@ -204,6 +206,73 @@ test("relay records are sequenced and capped", () => {
   assert.equal(room.relaySequence, 205);
   assert.equal(room.recentMessages.length, 200);
   assert.equal(room.recentMessages[0].serverSequence, 6);
+});
+
+test("seat tokens: minted for claimed human seats, never exposed publicly", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, openSouth] });
+
+  // Claimed human seats are born with a credential; the open seat waits for
+  // its claimant.
+  const seat = (id: string) => room.peers.find((peer: OnlinePeer) => peer.playerID.rawValue === id);
+  assert.ok((seat("north")?.seatToken?.length ?? 0) >= 16);
+  assert.ok((seat("east")?.seatToken?.length ?? 0) >= 16);
+  assert.equal(seat("south")?.seatToken, undefined);
+
+  // The credential must never ride along on join/summary/presence payloads.
+  for (const peer of publicRoom(room).peers) {
+    assert.ok(!("seatToken" in peer), `public peer ${peer.playerID.rawValue} leaks a seatToken`);
+  }
+});
+
+test("seat tokens: a fresh claim mints one, a rejoin keeps it", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  const guest = { playerID: { rawValue: "east" }, accountID: "apple:guest", provider: "apple" as const, displayName: "Guest" };
+
+  const joined = joinRoom(room, guest);
+  const minted = joined.peers.find((peer: OnlinePeer) => peer.accountID === "apple:guest")?.seatToken;
+  assert.ok((minted?.length ?? 0) >= 16);
+
+  // Rejoining (same account, e.g. a new device) keeps the same credential, so
+  // both the account's devices stay authorized.
+  const rejoined = joinRoom(joined, { ...guest, displayName: "Guest again" });
+  assert.equal(rejoined.peers.find((peer: OnlinePeer) => peer.accountID === "apple:guest")?.seatToken, minted);
+});
+
+test("seat authorization: wrong token always rejected, legacy seats pass, enforcement gates missing tokens", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  const token = room.peers[0].seatToken;
+  assert.ok(token);
+
+  // The matching token passes at either enforcement level.
+  assert.equal(peerID(authorizeSeat(room, "north", token, true)), "north");
+  assert.equal(peerID(authorizeSeat(room, "north", token, false)), "north");
+
+  // A wrong token is rejected even while enforcement is off — a caller never
+  // downgrades a bad credential into legacy access.
+  assert.throws(() => authorizeSeat(room, "north", "forged-token", false), /does not match/);
+
+  // A missing token passes only during the compatibility window.
+  assert.equal(peerID(authorizeSeat(room, "north", undefined, false)), "north");
+  assert.throws(() => authorizeSeat(room, "north", undefined, true), /required/);
+
+  // An unknown seat is rejected regardless.
+  assert.throws(() => authorizeSeat(room, "ghost", token, false), /has not joined/);
+
+  // A legacy seat (no stored token — room created before tokens shipped)
+  // passes even under strict enforcement: there is nothing to demand.
+  const legacy = {
+    ...room,
+    peers: room.peers.map((peer: OnlinePeer) => ({ ...peer, seatToken: undefined }))
+  };
+  assert.equal(peerID(authorizeSeat(legacy, "north", undefined, true)), "north");
+});
+
+test("converting an open seat to a bot leaves it without a credential", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  const filled = fillOpenSeatsWithBots(room);
+  const bot = filled.peers.find((peer: OnlinePeer) => peer.accountID === "bot:east");
+  assert.ok(bot);
+  assert.equal(bot?.seatToken, undefined);
 });
 
 test("a returning host account is recognized; guests and placeholder seats are not", () => {

@@ -102,13 +102,33 @@ curl -s "http://127.0.0.1:8787/my-games?accountID=apple:north"
 
 ### Fetch the resume snapshot (seated participant only)
 
-The snapshot reveals hidden hands, so it is gated on presenting a seat the
-caller actually holds (a `pending:`/`bot:` seat is rejected).
+The snapshot reveals hidden hands, so it is gated on proving ownership of a
+human seat (a `pending:`/`bot:` seat is rejected) via the seat token.
 
 ```sh
-curl -s "http://127.0.0.1:8787/rooms/ABC123/snapshot?playerID=north"
+curl -s "http://127.0.0.1:8787/rooms/ABC123/snapshot?playerID=north&seatToken=<from /create or /join>"
 # → { "roomCode", "status", "summary", "lastSnapshotSequence", "snapshot" }
 ```
+
+## Seat tokens
+
+Every claimed human seat carries a server-minted `seatToken`, returned only to
+the seat's owner in its `/create`/`/join` response and never included in any
+broadcast payload. It proves seat ownership on three surfaces:
+
+- **WebSocket connect** — always enforced. The socket URL is server-built and
+  embeds the token, so every client (including pre-token builds, which treat
+  the URL as opaque) presents it. Without this, the room code alone let anyone
+  attach as any seat and act as that player.
+- **`GET /rooms/{code}/snapshot`** and **`POST /rooms/{code}/abandon`** —
+  a wrong token is always rejected; a *missing* token is tolerated until the
+  `REQUIRE_SEAT_TOKENS` var (wrangler.toml) flips to `"true"`, closing the
+  compatibility window for clients that predate tokens.
+
+Room codes, host secrets, and seat tokens are all generated from the platform
+CSPRNG. A `/create` that collides with an existing room code retries with a
+fresh code — it never replies with (or leaks the credentials of) the existing
+room.
 
 ## Launch Boundary
 

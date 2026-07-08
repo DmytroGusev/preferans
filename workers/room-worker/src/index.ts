@@ -6,6 +6,7 @@ import {
   type WirePlayerID,
   RoomStateError,
   applyStateReport,
+  authorizeSeat,
   createInitialRoom,
   fillOpenSeatsWithBots,
   generateRoomCode,
@@ -56,6 +57,11 @@ export interface Env {
   /// Per-account game index, keyed by `accountID`. Rooms fan their summaries
   /// into it so the lobby can list a player's games with a single read.
   ACCOUNTS: DurableObjectNamespace;
+  /// "true" once pre-seat-token clients have aged out: flips `/snapshot` and
+  /// `/abandon` from "reject only a wrong token" to "require the token". The
+  /// WebSocket path enforces unconditionally — its URL is server-built, so
+  /// every client, old or new, already carries its token there.
+  REQUIRE_SEAT_TOKENS?: string;
 }
 
 interface CreateRoomBody {
@@ -81,18 +87,22 @@ interface StateReportBody {
 }
 
 /// A seated participant gives up an unfinished game. Authorized by holding the
-/// seat (`playerID`), not the host secret — abandoning is any participant's
-/// right, and the originating host may be long gone.
+/// seat (`playerID` + its `seatToken`), not the host secret — abandoning is any
+/// participant's right, and the originating host may be long gone.
 interface AbandonBody {
   playerID?: unknown;
+  seatToken?: unknown;
 }
 
-/// A `PublicRoom` plus the host secret — only ever produced by `/create`.
-type RoomWithSecret = PublicRoom & { hostSecret?: string };
+/// A `PublicRoom` plus the caller's own credentials: the seat token minted for
+/// the seat the caller holds (`/create` and `/join`), and the host secret
+/// (`/create`, or `/join` when the joiner is the returning host account).
+type RoomWithSecret = PublicRoom & { hostSecret?: string; seatToken?: string };
 
 interface RoomWithSocketURL extends PublicRoom {
   websocketURL: string;
   hostSecret?: string;
+  seatToken?: string;
 }
 
 interface ClientSocketEnvelope {
@@ -138,12 +148,28 @@ export default {
 
       if (request.method === "POST" && url.pathname === "/rooms") {
         const body = await readJSON<CreateRoomBody>(request);
-        const roomCode = generateRoomCode();
-        const room = await roomFetch(env, roomCode, "/create", {
-          ...body,
-          roomCode
-        });
-        return json(withSocketURL(request, room, body.localPeer));
+        // A code collision (~1 in a billion per attempt, but inevitable at
+        // scale) retries with a fresh code instead of replying with the
+        // existing room — the old idempotent reply handed a stranger that
+        // room's host secret.
+        let collision: RoomStateError | undefined;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const roomCode = generateRoomCode();
+          try {
+            const room = await roomFetch(env, roomCode, "/create", {
+              ...body,
+              roomCode
+            });
+            return json(withSocketURL(request, room, body.localPeer));
+          } catch (error: unknown) {
+            if (error instanceof RoomStateError && error.code === "room_exists") {
+              collision = error;
+              continue;
+            }
+            throw error;
+          }
+        }
+        throw collision ?? new RoomStateError("room_exists", "Could not allocate a room code.", 503);
       }
 
       const fillBotsMatch = url.pathname.match(/^\/rooms\/([A-Za-z0-9-]+)\/seats\/fill-bots$/);
@@ -180,9 +206,15 @@ export default {
       }
 
       if (action === "snapshot" && request.method === "GET") {
-        // Forward the participant's seat as a query param; the DO authorizes it.
+        // Forward the participant's seat + token as query params; the DO
+        // authorizes them.
         const playerID = url.searchParams.get("playerID") ?? "";
-        return roomStubFetch(env, roomCode, `/snapshot?playerID=${encodeURIComponent(playerID)}`);
+        const seatToken = url.searchParams.get("seatToken") ?? "";
+        return roomStubFetch(
+          env,
+          roomCode,
+          `/snapshot?playerID=${encodeURIComponent(playerID)}&seatToken=${encodeURIComponent(seatToken)}`
+        );
       }
 
       if (action === "abandon" && request.method === "POST") {
@@ -213,6 +245,12 @@ export class PreferansRoom {
     this.env = env;
   }
 
+  /// Whether `/snapshot` and `/abandon` demand the seat token outright, or only
+  /// reject a mismatched one (the compatibility window for pre-token clients).
+  private get requireSeatTokens(): boolean {
+    return this.env.REQUIRE_SEAT_TOKENS === "true";
+  }
+
   async fetch(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
@@ -221,7 +259,10 @@ export class PreferansRoom {
         const body = await readJSON<CreateRoomInput>(request);
         const existing = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
         if (existing) {
-          return json(createResult(existing));
+          // Never reply with the existing room: this caller is a stranger who
+          // happened to draw the same code, and the create payload carries the
+          // room's credentials. The worker retries with a fresh code.
+          throw new RoomStateError("room_exists", "Room code is already in use.", 409);
         }
         const room = createInitialRoom(body);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
@@ -239,15 +280,18 @@ export class PreferansRoom {
         // A join changes the roster — refresh every participant's library entry
         // (and seed the new joiner's) so the game shows up under "Your games".
         await this.fanOutToLibraries(updated);
-        // A returning host regains its authority credential. Resume rejoins via
-        // /join, and without the secret a resumed host could relay moves but
-        // never push state reports or fill bot seats — the durable snapshot
-        // would freeze at the pre-resume state. Guests never match the host
-        // seat, so the secret still never reaches them.
+        // The joiner gets its own seat credential back — and, when the joining
+        // account holds the host seat (a resuming host), the host secret too.
+        // Without the secret a resumed host could relay moves but never push
+        // state reports or fill bot seats — the durable snapshot would freeze
+        // at the pre-resume state. Guests never match the host seat, so the
+        // secret still never reaches them.
+        const seat = updated.peers.find((peer) => peer.accountID === joiner.accountID);
+        const result: RoomWithSecret = { ...publicRoom(updated), seatToken: seat?.seatToken };
         if (isHostAccount(updated, joiner.accountID)) {
-          return json({ ...publicRoom(updated), hostSecret: updated.hostSecret });
+          result.hostSecret = updated.hostSecret;
         }
-        return json(publicRoom(updated));
+        return json(result);
       }
 
       if (request.method === "POST" && url.pathname === "/seats/fill-bots") {
@@ -292,9 +336,11 @@ export class PreferansRoom {
       if (request.method === "POST" && url.pathname === "/abandon") {
         const body = await readJSON<AbandonBody>(request);
         const room = await this.loadRequiredRoom();
-        const playerID = playerIDValue(body.playerID);
-        const peer = room.peers.find((candidate) => peerID(candidate) === playerID);
-        if (!peer || !isHumanAccount(peer.accountID)) {
+        // Kills the game for everyone, so it takes the seat token (strict once
+        // REQUIRE_SEAT_TOKENS flips) — otherwise the room code alone was
+        // enough to grief any table.
+        const peer = authorizeSeat(room, body.playerID, body.seatToken, this.requireSeatTokens);
+        if (!isHumanAccount(peer.accountID)) {
           throw new RoomStateError("forbidden", "Only a seated player can abandon this game.", 403);
         }
         const { room: updated, changed } = applyStateReport(room, { status: "abandoned" });
@@ -327,11 +373,12 @@ export class PreferansRoom {
 
     const room = await this.loadRequiredRoom();
     const url = new URL(request.url);
-    const playerID = playerIDValue(url.searchParams.get("playerID"));
-    const peer = room.peers.find((candidate) => peerID(candidate) === playerID);
-    if (!peer) {
-      throw new RoomStateError("unknown_player", "Player has not joined this room.", 403);
-    }
+    // Always enforced: the socket URL is server-built (see `withSocketURL`),
+    // so every client — including pre-token builds — already carries its seat
+    // token here. Without this check, the room code alone let an attacker
+    // attach as any seat and act as that player.
+    const peer = authorizeSeat(room, url.searchParams.get("playerID"), url.searchParams.get("seatToken"), true);
+    const playerID = peerID(peer);
 
     const pair = new WebSocketPair();
     const client = pair[0];
@@ -416,13 +463,18 @@ export class PreferansRoom {
   }
 
   /// The resume payload for a seated participant: the opaque authoritative
-  /// snapshot plus the worker-readable status/summary. Gated on the caller
-  /// presenting a seat they actually hold — the snapshot reveals hidden hands,
-  /// so a non-participant must not be able to read it from the room code alone.
+  /// snapshot plus the worker-readable status/summary. The snapshot reveals
+  /// every hidden hand, so the caller must prove seat ownership with its seat
+  /// token (strict once `REQUIRE_SEAT_TOKENS` flips; until then a wrong token
+  /// is still rejected, and pre-token clients pass on the seat alone).
   resumePayload(room: RoomState, url: URL): Record<string, unknown> {
-    const playerID = playerIDValue(url.searchParams.get("playerID"));
-    const peer = room.peers.find((candidate) => peerID(candidate) === playerID);
-    if (!peer || !isHumanAccount(peer.accountID)) {
+    const peer = authorizeSeat(
+      room,
+      url.searchParams.get("playerID"),
+      url.searchParams.get("seatToken"),
+      this.requireSeatTokens
+    );
+    if (!isHumanAccount(peer.accountID)) {
       throw new RoomStateError("forbidden", "Only a seated player can fetch the resume snapshot.", 403);
     }
     return {
@@ -550,20 +602,25 @@ async function roomStubFetch(env: Env, roomCode: string, pathname: string): Prom
   return stub.fetch(`https://room${pathname}`);
 }
 
-/// The `/create` response: the public room plus the host secret. This is the one
-/// and only payload that carries the secret — every other surface uses
-/// `publicRoom`, which omits it.
+/// The `/create` response: the public room plus the creator's credentials (host
+/// secret + the host seat's token). `/join` hands back the joiner's seat token
+/// the same way; every broadcast surface uses `publicRoom`, which omits both.
 function createResult(room: RoomState): RoomWithSecret {
-  return { ...publicRoom(room), hostSecret: room.hostSecret };
+  const hostSeat = room.peers.find((peer) => peerID(peer) === room.hostPlayerID);
+  return { ...publicRoom(room), hostSecret: room.hostSecret, seatToken: hostSeat?.seatToken };
 }
 
 function withSocketURL(request: Request, room: RoomWithSecret, localPeer: unknown): RoomWithSocketURL {
   const url = new URL(request.url);
   const protocol = url.protocol === "https:" ? "wss:" : "ws:";
   const playerID = assignedSeatID(room, localPeer);
+  // Embed the caller's seat token so the socket authenticates for every
+  // client: the app treats this URL as opaque, so even pre-token builds
+  // present the credential.
+  const token = room.seatToken ? `&seatToken=${encodeURIComponent(room.seatToken)}` : "";
   return {
     ...room,
-    websocketURL: `${protocol}//${url.host}/rooms/${room.roomCode}/socket?playerID=${encodeURIComponent(playerID)}`
+    websocketURL: `${protocol}//${url.host}/rooms/${room.roomCode}/socket?playerID=${encodeURIComponent(playerID)}${token}`
   };
 }
 

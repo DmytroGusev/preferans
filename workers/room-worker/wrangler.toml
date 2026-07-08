@@ -3,6 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2026-04-07"
 workers_dev = true
 
+[vars]
+# Flip to "true" once pre-seat-token clients (App Store builds <= 24) have aged
+# out. Until then /snapshot and /abandon accept a token-less call for a seat
+# (legacy clients), while a *wrong* token is always rejected and the WebSocket
+# always requires the token (its URL is server-built, so old clients carry it).
+REQUIRE_SEAT_TOKENS = "false"
+
 [[durable_objects.bindings]]
 name = "ROOMS"
 class_name = "PreferansRoom"

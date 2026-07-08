@@ -21,6 +21,7 @@ export const BOT_ACCOUNT_PREFIX = "bot:";
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const HOST_SECRET_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+const SEAT_TOKEN_ALPHABET = HOST_SECRET_ALPHABET;
 const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "dev"]);
 const GAME_STATUSES = new Set<GameStatus>(["lobby", "playing", "finished", "abandoned"]);
 
@@ -66,6 +67,11 @@ export interface OnlinePeer {
   accountID: string;
   provider: OnlineAccountProvider;
   displayName: string;
+  /// Server-minted credential proving the caller owns this seat. Present on
+  /// every claimed human seat; handed to exactly one caller (the seat's owner,
+  /// in its `/create` or `/join` response) and stripped from every public
+  /// payload by `normalizePeer` — see the `publicRoom` seat-token test.
+  seatToken?: string;
 }
 
 export interface RoomState {
@@ -148,7 +154,17 @@ export class RoomStateError extends Error {
   }
 }
 
-export function generateRoomCode(random: () => number = Math.random): string {
+/// Uniform random in [0, 1) from the platform CSPRNG. Room codes gate who can
+/// find a table and secrets/tokens gate who can act at it, so none of them may
+/// come from the predictable `Math.random`. Tests keep injecting deterministic
+/// generators through the `random` parameters below.
+function secureRandom(): number {
+  const buffer = new Uint32Array(1);
+  crypto.getRandomValues(buffer);
+  return buffer[0] / 2 ** 32;
+}
+
+export function generateRoomCode(random: () => number = secureRandom): string {
   let code = "";
   for (let index = 0; index < 6; index += 1) {
     const alphabetIndex = Math.floor(random() * ROOM_CODE_ALPHABET.length);
@@ -157,13 +173,22 @@ export function generateRoomCode(random: () => number = Math.random): string {
   return code;
 }
 
-export function generateHostSecret(random: () => number = Math.random): string {
+export function generateHostSecret(random: () => number = secureRandom): string {
   let secret = "";
   for (let index = 0; index < 24; index += 1) {
     const alphabetIndex = Math.floor(random() * HOST_SECRET_ALPHABET.length);
     secret += HOST_SECRET_ALPHABET[alphabetIndex] ?? HOST_SECRET_ALPHABET[0];
   }
   return secret;
+}
+
+export function generateSeatToken(random: () => number = secureRandom): string {
+  let token = "";
+  for (let index = 0; index < 24; index += 1) {
+    const alphabetIndex = Math.floor(random() * SEAT_TOKEN_ALPHABET.length);
+    token += SEAT_TOKEN_ALPHABET[alphabetIndex] ?? SEAT_TOKEN_ALPHABET[0];
+  }
+  return token;
 }
 
 export function normalizeRoomCode(value: unknown): string {
@@ -251,6 +276,16 @@ export function createInitialRoom({
     throw new RoomStateError("room_full", "Room has more seats than its maximum player count.");
   }
 
+  // Every claimed human seat gets its ownership credential at birth. Open
+  // (`pending:`) and bot seats get theirs when — if ever — a human claims them
+  // in `joinRoom`. Only the creator's own token leaves the server in the
+  // `/create` response; a pre-seated friend receives theirs on `/join`.
+  for (let index = 0; index < peers.length; index += 1) {
+    if (isHumanAccount(peers[index].accountID)) {
+      peers[index] = { ...peers[index], seatToken: generateSeatToken() };
+    }
+  }
+
   return {
     schemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: normalizedRoomCode,
@@ -281,7 +316,10 @@ export function fillOpenSeatsWithBots(room: RoomState, now = new Date().toISOStr
       ...peer,
       accountID: `${BOT_ACCOUNT_PREFIX}${peerID(peer)}`,
       provider: "dev" as OnlineAccountProvider,
-      displayName: `Bot ${index + 1}`
+      displayName: `Bot ${index + 1}`,
+      // A bot seat is driven by the host over the host's own socket; it never
+      // authenticates itself, so it carries no credential to steal.
+      seatToken: undefined
     };
   });
   if (!changed) {
@@ -301,11 +339,16 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
   // and letting the server own the seat token makes that impossible.
 
   // Rejoin: this account already holds a seat. Refresh its display fields but
-  // keep the seat it was assigned, so a reconnecting client lands back where it
-  // was instead of consuming a fresh slot.
+  // keep the seat it was assigned — and its seat token, so every device of the
+  // account keeps working — so a reconnecting client lands back where it was
+  // instead of consuming a fresh slot.
   const heldIndex = peers.findIndex((candidate) => candidate.accountID === peer.accountID);
   if (heldIndex >= 0) {
-    peers[heldIndex] = { ...peer, playerID: peers[heldIndex].playerID };
+    peers[heldIndex] = {
+      ...peer,
+      playerID: peers[heldIndex].playerID,
+      seatToken: peers[heldIndex].seatToken ?? generateSeatToken()
+    };
     return { ...room, peers, updatedAt: now };
   }
 
@@ -319,7 +362,9 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
   const requestedIndex = peers.findIndex((candidate) => isOpenSeat(candidate) && peerID(candidate) === declaredID);
   const openIndex = requestedIndex >= 0 ? requestedIndex : peers.findIndex(isOpenSeat);
   if (openIndex >= 0) {
-    peers[openIndex] = { ...peer, playerID: peers[openIndex].playerID };
+    // A fresh claim mints a fresh token: whatever placeholder credential the
+    // open seat may have carried never belonged to this account.
+    peers[openIndex] = { ...peer, playerID: peers[openIndex].playerID, seatToken: generateSeatToken() };
     return { ...room, peers, updatedAt: now };
   }
 
@@ -447,6 +492,43 @@ export function normalizeGameSummary(value: unknown): GameSummary | undefined {
 /// reserved-but-unclaimed (`pending:`) seat nor a host-driven bot (`bot:`).
 export function isHumanAccount(accountID: string): boolean {
   return !accountID.startsWith(PENDING_ACCOUNT_PREFIX) && !accountID.startsWith(BOT_ACCOUNT_PREFIX);
+}
+
+/// Authorize a caller claiming `playerID`'s seat, returning the seat on
+/// success. The rules, in order:
+///
+/// - an unknown seat is always rejected;
+/// - a presented token that does not match the seat's is always rejected —
+///   a caller never gets to "downgrade" a wrong credential into legacy access;
+/// - a seat with no token (a room created before seat tokens shipped) passes,
+///   preserving pre-token rooms;
+/// - a missing token is rejected only when `enforce` is set. The WebSocket
+///   path always enforces (its URL is server-built, so even old clients carry
+///   the token); `/snapshot` and `/abandon` enforce behind the
+///   `REQUIRE_SEAT_TOKENS` flag until pre-token clients age out.
+export function authorizeSeat(
+  room: RoomState,
+  playerID: unknown,
+  token: unknown,
+  enforce: boolean
+): OnlinePeer {
+  const id = playerIDValue(playerID);
+  const peer = room.peers.find((candidate) => peerID(candidate) === id);
+  if (!peer) {
+    throw new RoomStateError("unknown_player", "Player has not joined this room.", 403);
+  }
+  const expected = peer.seatToken;
+  const presented = typeof token === "string" && token.length > 0 ? token : undefined;
+  if (expected === undefined) {
+    return peer;
+  }
+  if (presented !== undefined && presented !== expected) {
+    throw new RoomStateError("forbidden", "Seat token does not match this seat.", 403);
+  }
+  if (enforce && presented === undefined) {
+    throw new RoomStateError("forbidden", "A seat token is required.", 403);
+  }
+  return peer;
 }
 
 /// True when `accountID` holds the room's host seat. `/join` uses this to hand

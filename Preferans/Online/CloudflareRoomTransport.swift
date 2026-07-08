@@ -17,6 +17,12 @@ public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
     /// the host seat — so a resuming host regains its authority. Absent (`nil`)
     /// on guest join/summary/presence payloads, so guests never see it.
     public var hostSecret: String?
+    /// Server-minted proof that this caller owns its seat. Returned by `/create`
+    /// and `/join` (each caller only ever sees its own), embedded by the server
+    /// in `websocketURL`, and required by `/snapshot` and `/abandon` once the
+    /// worker's compatibility window for pre-token clients closes. Absent on
+    /// summary/presence payloads.
+    public var seatToken: String?
 }
 
 public enum CloudflareRoomTransportError: LocalizedError {
@@ -54,9 +60,13 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 
     private let socketURL: URL
     private let session: URLSession
-    /// The host secret from the `/create` response; required to authenticate
-    /// host-only mutations. `nil` on a joined (guest) transport.
+    /// The host secret from the `/create` response (or a host's rejoin);
+    /// required to authenticate host-only mutations. `nil` on a guest transport.
     private let hostSecret: String?
+    /// This seat's ownership credential from the `/create`/`/join` response.
+    /// Exposed so the session can persist it for lobby flows (resume-snapshot
+    /// fetch, abandon) that run without a live transport.
+    public let seatToken: String?
     private var socketTask: URLSessionWebSocketTask?
     private var connectionTask: Task<Void, Never>?
     private var isClosed = false
@@ -77,6 +87,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.hostPlayerID = summary.hostPlayerID
         self.socketURL = socketURL
         self.hostSecret = summary.hostSecret
+        self.seatToken = summary.seatToken
         self.session = session
     }
 
@@ -218,13 +229,18 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         roomCode: String,
         playerID: PlayerID,
+        seatToken: String? = nil,
         session: URLSession = .shared
     ) async throws -> ResumeSnapshotPayload {
         var components = URLComponents(
             url: endpoint(baseURL, "rooms", roomCode, "snapshot"),
             resolvingAgainstBaseURL: false
         )
-        components?.queryItems = [URLQueryItem(name: "playerID", value: playerID.rawValue)]
+        var queryItems = [URLQueryItem(name: "playerID", value: playerID.rawValue)]
+        if let seatToken {
+            queryItems.append(URLQueryItem(name: "seatToken", value: seatToken))
+        }
+        components?.queryItems = queryItems
         guard let url = components?.url else {
             throw CloudflareRoomTransportError.invalidHTTPResponse
         }
@@ -252,12 +268,13 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         roomCode: String,
         playerID: PlayerID,
+        seatToken: String? = nil,
         session: URLSession = .shared
     ) async throws {
         var request = URLRequest(url: endpoint(baseURL, "rooms", roomCode, "abandon"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.httpBody = try PreferansJSONCoder.encoder.encode(AbandonRequest(playerID: playerID))
+        request.httpBody = try PreferansJSONCoder.encoder.encode(AbandonRequest(playerID: playerID, seatToken: seatToken))
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -458,6 +475,7 @@ private struct StateReportRequest: Encodable {
 
 private struct AbandonRequest: Encodable {
     var playerID: PlayerID
+    var seatToken: String?
 }
 
 private struct RoomServerError: Decodable {

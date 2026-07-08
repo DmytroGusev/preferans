@@ -359,13 +359,16 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     /// Give up an unfinished online game from the list (best-effort). The worker
-    /// authorizes by the seat the account holds, so no host secret is needed.
+    /// authorizes by the seat the account holds — proven by the stored seat
+    /// token — so no host secret is needed.
     public func abandonOnlineGame(_ summary: OnlineGameSummary) async {
         do {
             try await CloudflareRoomTransport.abandon(
                 roomCode: summary.roomCode,
-                playerID: summary.youSeat
+                playerID: summary.youSeat,
+                seatToken: OnlineSeatCredentialStore.token(for: summary.roomCode)
             )
+            OnlineSeatCredentialStore.remove(roomCode: summary.roomCode)
         } catch {
             errorText = error.localizedDescription
         }
