@@ -259,32 +259,6 @@ public enum BidCall: Hashable, Codable, Sendable, CustomStringConvertible {
     }
 }
 
-public enum Contract: Hashable, Codable, Sendable, CustomStringConvertible {
-    case game(GameContract)
-    case misere
-
-    public var value: Int {
-        switch self {
-        case let .game(contract): return contract.value
-        case .misere: return 10
-        }
-    }
-
-    public var trumpSuit: Suit? {
-        switch self {
-        case let .game(contract): return contract.strain.suit
-        case .misere: return nil
-        }
-    }
-
-    public var description: String {
-        switch self {
-        case let .game(contract): return contract.description
-        case .misere: return "Misere"
-        }
-    }
-}
-
 public enum WhistCall: Hashable, Codable, Sendable, CustomStringConvertible {
     case pass
     case whist

@@ -264,6 +264,53 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(state, contains: "declarer")
     }
 
+    func testValidatorRejectsAwaitingWhistSnapshotWithSingleDefender() {
+        // The whist reducer indexes defenders[0] and defenders[1] without
+        // checking the count, so a corrupted snapshot carrying a lone
+        // defender must fail validation at rehydration instead of crashing
+        // on the first whist call.
+        let (hands, talon) = dealHands()
+        let contract = GameContract(6, .suit(.spades))
+        let state = DealState.awaitingWhist(WhistState(
+            dealer: north,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: Array(talon),
+            declarer: north,
+            contract: contract,
+            defenders: [east], // corrupted: south is missing
+            currentPlayer: east
+        ))
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: state,
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+        assertViolation(snapshot, contains: "defenders must be 2")
+    }
+
+    func testValidatorRejectsAwaitingDefenderModeWithSingleDefender() {
+        let (hands, talon) = dealHands()
+        let contract = GameContract(6, .suit(.spades))
+        let state = DealState.awaitingDefenderMode(DefenderModeState(
+            dealer: north,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: Array(talon),
+            declarer: north,
+            contract: contract,
+            defenders: [east], // corrupted: south is missing
+            whister: east,
+            whistCalls: [],
+            bonusPoolOnSuccess: 0
+        ))
+        assertViolation(state, contains: "defenders must be 2")
+    }
+
     // MARK: - Playing-state invariants
 
     func testValidatorRejectsPlayingWithMismatchedTrickCountsKeys() {

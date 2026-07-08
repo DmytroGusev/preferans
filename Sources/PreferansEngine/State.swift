@@ -547,6 +547,18 @@ public enum PreferansEvent: Equatable, Codable, Sendable {
 }
 
 public enum PreferansAction: Equatable, Codable, Sendable {
+    /// Request to start the next deal.
+    ///
+    /// **Wire foot-gun:** this case has ``actor`` `== nil` ("anyone may
+    /// request") and both payload fields arrive attacker-controllable over
+    /// the wire — a malicious client can name any dealer and supply a
+    /// stacked deck. The host layer MUST replace both fields
+    /// authoritatively before applying the action, as `HostGameActor`
+    /// does: it rewrites every incoming `startDeal` to
+    /// `.startDeal(dealer: engine.nextDealer, deck: dealSource.nextDeck())`
+    /// and never trusts the received values. Only pass a non-nil `dealer`
+    /// or `deck` from trusted code (the host's own deal source, tests,
+    /// fixtures).
     case startDeal(dealer: PlayerID?, deck: [Card]?)
     case bid(player: PlayerID, call: BidCall)
     case discard(player: PlayerID, cards: [Card])
@@ -582,6 +594,16 @@ public enum PreferansAction: Equatable, Codable, Sendable {
     }
 }
 
+/// Full-information snapshot of the engine — it contains **every player's
+/// hand, the talon, and the discard** inside ``state``.
+///
+/// It exists for host-side persistence, action-log replay, and rehydration
+/// via ``PreferansEngine/init(snapshot:)``.
+///
+/// **Wire foot-gun:** never send this type to clients raw. Any client that
+/// receives it can read all hidden cards. Client-facing state must go
+/// through the per-seat projection layer, which redacts the other hands
+/// and the talon before anything leaves the host.
 public struct PreferansSnapshot: Equatable, Codable, Sendable {
     public var players: [PlayerID]
     public var rules: PreferansRules

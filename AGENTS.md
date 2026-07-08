@@ -43,7 +43,7 @@ restructure before re-running:
 - Snapshot/screenshot dumps must dedupe — don't write 200 identical PNGs
   while waiting for a bot animation; key off (phase, viewer, deal#)
   transitions only.
-- Bot pacing constants live in `BotPacing` (Sources/PreferansEngine/BotPacing.swift):
+- Bot pacing constants live in `BotPacing` (Preferans/Support/BotPacing.swift):
   `BotPacing.interactive` (500ms, the production default), `BotPacing.testFast`
   (10ms, gated by the `-uiTestFastBotDelay` launch flag — UI tests only,
   never manual sim), and `BotPacing.instant` (0, the lobby's "Watch bots"

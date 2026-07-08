@@ -156,7 +156,6 @@ public enum HandRecipe: Hashable, Sendable {
         // Sanity check: the union of hands + talon is the full deck.
         precondition(Set(cleanerHand + firstDefenderHand + secondDefenderHand + talon) == Set(Deck.standard32),
                      "raspasy plan must be a permutation of the standard deck.")
-        _ = cleanerHand // silence unused warning under some toolchains
 
         return DeckPlan(hands: hands, talon: talon)
     }

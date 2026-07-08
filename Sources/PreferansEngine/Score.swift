@@ -88,7 +88,14 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         self.whists = whists
     }
 
-    public mutating func apply(_ delta: ScoreDelta) {
+    /// Adds `delta` to the sheet verbatim, with **no pulka-closing
+    /// redistribution**. Safe only as the fallback for matches whose pool
+    /// target doesn't imply a per-player limit (see
+    /// ``apply(_:closingAtPoolTarget:)``, the public entry point, which
+    /// delegates here in that case). Applying a delta through this method
+    /// in a closing match would let pool points overshoot the per-player
+    /// target and skip the american-aid write-back — hence `private`.
+    private mutating func applyRaw(_ delta: ScoreDelta) {
         validateForApply(delta)
         for (player, points) in delta.pool where points != 0 {
             pool[player]! += points
@@ -108,10 +115,15 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
     /// aids the highest open opponent and writes equivalent whists back to the
     /// earner. Once everyone is closed, leftover value reduces the earner's
     /// mountain so final equal pool totals can be ignored.
+    ///
+    /// This is the **only public mutator** for deal deltas: it owns pulka
+    /// closing, so external callers can't accidentally bypass it. Matches
+    /// without a clean per-player target fall back to the raw application
+    /// internally. Returns the delta as actually applied (post-closing).
     @discardableResult
-    mutating func apply(_ delta: ScoreDelta, closingAtPoolTarget totalPoolTarget: Int) -> ScoreDelta {
+    public mutating func apply(_ delta: ScoreDelta, closingAtPoolTarget totalPoolTarget: Int) -> ScoreDelta {
         guard let perPlayerTarget = individualPoolTarget(totalPoolTarget: totalPoolTarget) else {
-            apply(delta)
+            applyRaw(delta)
             return delta
         }
 
