@@ -1,8 +1,9 @@
 import Foundation
 import Testing
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
-@Suite("Engine generative walks")
+@Suite("Portable engine generative walks")
 struct EngineGenerativeTests {
     struct Config: CustomTestStringConvertible {
         let players: [PlayerID]

@@ -1,6 +1,7 @@
 import XCTest
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Covers the host-driven online bot model: the `bot:` seat marker, the host
 /// actor's bot-decision plan, the waiting-room roster, no-show conversion, and

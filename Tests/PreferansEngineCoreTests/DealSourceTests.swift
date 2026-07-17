@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 final class DealSourceTests: XCTestCase {
     func testSeededRandomNumberGeneratorIsDeterministicForSameSeed() {

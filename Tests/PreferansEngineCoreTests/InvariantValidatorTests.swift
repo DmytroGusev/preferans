@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Negative tests for ``PreferansEngine/validateInvariants(_:)``. Each test
 /// constructs a ``DealState`` with exactly one invariant violated and asserts

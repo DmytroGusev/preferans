@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Plays many full matches end-to-end with bots in every seat and reports
 /// statistics + anomalies. This is a "manual playthrough" stand-in: it

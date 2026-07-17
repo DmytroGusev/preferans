@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Each test drives the engine end-to-end against a recipe-built deck and
 /// asserts the recipe's named outcome is what actually happens. The deck is

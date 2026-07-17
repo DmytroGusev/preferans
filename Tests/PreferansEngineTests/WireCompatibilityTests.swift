@@ -1,6 +1,7 @@
 import XCTest
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 final class WireCompatibilityTests: XCTestCase {
     private let tableID = UUID(uuidString: "00000000-0000-0000-0000-000000000123")!

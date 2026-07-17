@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// End-to-end engine-level tests for the three canonical match scripts.
 /// Each test runs the script through `EngineMatchDriver`, asserts it ends in

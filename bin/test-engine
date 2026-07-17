@@ -2,27 +2,43 @@
 # Run the fast PreferansEngine test target via SwiftPM (no simulator).
 #
 # Usage:
-#   bin/test-engine                                # all engine tests
-#   bin/test-engine --filter ScenarioFlowTests     # one suite
+#   bin/test-engine                                # all portable engine tests
+#   bin/test-engine --filter EngineGenerativeTests # one suite
 #   WATCH=1 bin/test-engine                        # rerun on .swift change
 #                                                  # (requires watchexec)
 #
-# Engine tests prove correctness of bidding/play/scoring without booting a
-# simulator. Pair with bin/test-ui for the e2e UI surface; this script is the
-# inner loop while you're iterating on engine logic.
+# Portable engine tests prove seeded rules/invariants without compiling the
+# SwiftUI app or requiring XCTest. Pair with the default full SwiftPM/Xcode
+# suite for the remaining engine/app integration tests and bin/test-ui for the
+# end-to-end UI surface.
 
 set -euo pipefail
 
 source "$(dirname "$0")/lib/xcode-sim.sh"
 preferans_cd_repo_root
-preferans_require_xcode
+
+export PREFERANS_ENGINE_TESTS_ONLY=1
+export SWIFTPM_MODULECACHE_OVERRIDE="${SWIFTPM_MODULECACHE_OVERRIDE:-/tmp/preferans-swiftpm-module-cache}"
+active_developer_dir="$(xcode-select -p)"
+swift_test_args=()
+if [[ "$active_developer_dir" == */CommandLineTools ]]; then
+  swift_test_args+=(
+    -Xswiftc -plugin-path
+    -Xswiftc "$active_developer_dir/usr/lib/swift/host/plugins/testing"
+    -Xlinker -rpath
+    -Xlinker "$active_developer_dir/Library/Developer/Frameworks"
+    -Xlinker -rpath
+    -Xlinker "$active_developer_dir/Library/Developer/usr/lib"
+  )
+fi
+mkdir -p "$SWIFTPM_MODULECACHE_OVERRIDE"
 
 if [[ "${WATCH:-0}" == "1" ]]; then
   if ! command -v watchexec >/dev/null 2>&1; then
-    echo "WATCH=1 requires watchexec (brew install watchexec)" >&2
+    echo "WATCH=1 requires watchexec." >&2
     exit 1
   fi
-  exec watchexec --exts swift --restart -- swift test "$@"
+  exec watchexec --exts swift --restart -- swift test "${swift_test_args[@]}" "$@"
 fi
 
-exec swift test "$@"
+exec swift test "${swift_test_args[@]}" "$@"

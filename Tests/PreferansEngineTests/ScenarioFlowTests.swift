@@ -1,6 +1,7 @@
 import XCTest
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 @MainActor
 final class ScenarioFlowTests: AppTestCase {

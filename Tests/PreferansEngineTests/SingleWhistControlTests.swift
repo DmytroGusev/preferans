@@ -1,6 +1,7 @@
 import XCTest
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Verifies the single-whist control split: an open defender game makes the
 /// passing defender a visible dummy controlled by the lone whister, while a

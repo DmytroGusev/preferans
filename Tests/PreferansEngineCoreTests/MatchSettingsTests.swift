@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Engine-level tests for ``MatchSettings``: pool-target game-over transition,
 /// dedicated totus auction → declaration → bonus, and the legal-bid gating

@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Pins the scoring behaviour of the ``PreferansRules`` knobs that move away
 /// from the `.sochi` defaults: disabled failed-declarer consolation, disabled

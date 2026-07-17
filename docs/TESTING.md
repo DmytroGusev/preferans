@@ -3,13 +3,17 @@
 Preferans uses a layered test strategy. Keep fast, deterministic checks near
 the engine and reserve simulator runs for behavior that genuinely needs iOS.
 
-All current test targets import the SwiftUI app module. Full Xcode is therefore
-required even for `bin/test-engine`; the wrapper reports a concise prerequisite
-error when the active developer directory points at Command Line Tools only.
+`bin/test-engine` selects a dependency-free SwiftPM graph containing the rules
+engine, pure test support, and a portable Swift Testing suite. It runs 36
+seeded three- and four-player generative cases under Command Line Tools. The
+default `swift test` graph remains the complete graph: core XCTest plus
+projection/coordinator/app integration suites, which require full Xcode on this
+machine.
 
 ## Rules of engagement
 
-- Prefer XCTest/XCUIAutomation for app UI automation. MCP screenshots and
+- Prefer Swift Testing for portable engine coverage and XCTest/XCUIAutomation
+  for app and UI automation. MCP screenshots and
   snapshots are debugging aids only; they are not the source of truth for
   pass/fail validation.
 - Query UI through stable accessibility identifiers from `UIIdentifiers`.
@@ -42,14 +46,16 @@ References:
 
 ## Validation ladder
 
-1. Engine and coordinator unit tests:
+1. Portable seeded engine checks (no Xcode or simulator):
+   - `bin/test-engine`
+2. Full engine, projection, and coordinator unit tests (full Xcode):
    - `swift test --filter RoomOnlineGameCoordinatorTests`
    - `swift test --filter WireCompatibilityTests`
-2. UI accessibility contract:
+3. UI accessibility contract:
    - `xcodebuild test -project Preferans.xcodeproj -scheme Preferans -only-testing:PreferansUITests/AccessibilityContractTests/testLobbyAndGameExposeStableAutomationRoots`
-3. Deployed worker smoke:
+4. Deployed worker smoke:
    - From `workers/room-worker`: `bun scripts/smoke-live.ts`
-4. Multi-simulator invite flow:
+5. Multi-simulator invite flow:
    - Boot three or four iOS simulators.
    - Run `bin/verify-online-invite-flow HOST_SIM_UDID CLIENT_SIM_UDID CLIENT_SIM_UDID [CLIENT_SIM_UDID]`.
 

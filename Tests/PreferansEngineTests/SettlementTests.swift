@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 @Suite("Trick settlement")
 struct SettlementTests {

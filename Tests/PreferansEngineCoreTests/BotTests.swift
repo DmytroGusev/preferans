@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Verifies the bot can drive every phase of every contract variant from
 /// the dealt-cards state through to a scored result, without ever picking

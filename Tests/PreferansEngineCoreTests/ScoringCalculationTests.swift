@@ -1,5 +1,6 @@
 import XCTest
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 final class ScoringCalculationTests: XCTestCase {
     private let players: [PlayerID] = ["north", "east", "south"]

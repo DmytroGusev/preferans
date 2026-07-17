@@ -3,6 +3,7 @@ import SnapshotTesting
 import Testing
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Structural snapshots for important table screens. These are not pixel
 /// snapshots; they lock the table-screen contract that must not drift

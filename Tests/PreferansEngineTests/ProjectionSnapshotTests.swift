@@ -3,6 +3,7 @@ import SnapshotTesting
 import Testing
 @testable import PreferansApp
 @testable import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 /// Structural baselines for `PlayerGameProjection` at canonical engine
 /// states. Catches regressions to the projection shape — visibility,

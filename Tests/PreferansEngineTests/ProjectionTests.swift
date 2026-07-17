@@ -1,6 +1,7 @@
 import XCTest
 @testable import PreferansApp
 import PreferansEngine
+@testable import PreferansEngineTestSupport
 
 final class ProjectionTests: AppTestCase {
     func testBiddingProjectionDoesNotLeakOtherHandsOrTalon() throws {
