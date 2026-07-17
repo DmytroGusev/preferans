@@ -1,3 +1,5 @@
+import Clocks
+import Dependencies
 import XCTest
 @testable import PreferansApp
 import PreferansEngine
@@ -73,6 +75,33 @@ final class LobbyViewModelTests: AppTestCase {
         model.setOnlineDisplayName(" Ada ")
         XCTAssertNil(model.onlineIdentityValidationError)
         XCTAssertEqual(model.currentOnlineDisplayName, "Ada")
+    }
+
+    func testOnlineDisplayNamePersistenceIsDebounced() async {
+        resetOnlineIdentityDefaults()
+        let clock = TestClock()
+        let model = withDependencies {
+            $0.continuousClock = clock
+        } operation: {
+            LobbyViewModel()
+        }
+
+        model.setOnlineDisplayName(" A ")
+        model.setOnlineDisplayName(" Ada ")
+        await Task.yield()
+
+        XCTAssertNil(UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName))
+
+        await clock.advance(by: LobbyViewModel.onlineNamePersistenceDelay - .milliseconds(1))
+        await Task.yield()
+        XCTAssertNil(UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName))
+
+        await clock.advance(by: .milliseconds(1))
+        await Task.yield()
+        XCTAssertEqual(
+            UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName),
+            "Ada"
+        )
     }
 
     func testOnlineVariantDefaultsToOdesaAndPersists() {

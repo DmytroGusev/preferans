@@ -4,6 +4,8 @@ import PreferansEngine
 
 @MainActor
 public final class LobbyViewModel: ObservableObject {
+    @Dependency(\.continuousClock) private var clock
+
     /// Which path the lobby is showing. The two flows no longer share a roster:
     /// `.local` configures a solo-vs-bots table; `.online` configures an online
     /// room with its own identity + seat composition.
@@ -52,6 +54,8 @@ public final class LobbyViewModel: ObservableObject {
             UserDefaults.standard.set(customPulkaPerPlayer, forKey: SettingsKeys.customPulkaPerPlayer)
         }
     }
+    private var onlineNamePersistenceTask: Task<Void, Never>?
+    static let onlineNamePersistenceDelay: Duration = .milliseconds(300)
 
     public init() {
         let account = Self.loadRegisteredOnlineAccount()
@@ -62,6 +66,10 @@ public final class LobbyViewModel: ObservableObject {
         onlineVariant = Self.loadOnlineVariant()
         pulkaLimit = Self.loadPulkaLimit()
         customPulkaPerPlayer = Self.loadCustomPulkaPerPlayer()
+    }
+
+    deinit {
+        onlineNamePersistenceTask?.cancel()
     }
 
     public func setSeatCount(_ count: Int) {
@@ -252,10 +260,19 @@ public final class LobbyViewModel: ObservableObject {
     public func setOnlineDisplayName(_ name: String) {
         onlineDisplayName = name
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
-        } else {
-            UserDefaults.standard.set(trimmed, forKey: SettingsKeys.onlineDisplayName)
+        onlineNamePersistenceTask?.cancel()
+        let clock = self.clock
+        onlineNamePersistenceTask = Task { @MainActor [weak self] in
+            do {
+                try await clock.sleep(for: Self.onlineNamePersistenceDelay)
+            } catch {
+                return
+            }
+            guard let self,
+                  onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else {
+                return
+            }
+            Self.persistOnlineDisplayName(trimmed)
         }
     }
 
@@ -528,6 +545,14 @@ public final class LobbyViewModel: ObservableObject {
             return nil
         }
         return try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data)
+    }
+
+    private static func persistOnlineDisplayName(_ name: String) {
+        if name.isEmpty {
+            UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
+        } else {
+            UserDefaults.standard.set(name, forKey: SettingsKeys.onlineDisplayName)
+        }
     }
 
     private static func saveRegisteredOnlineAccount(_ account: RegisteredOnlineAccount) {
