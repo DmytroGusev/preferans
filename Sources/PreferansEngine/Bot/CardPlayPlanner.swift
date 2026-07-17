@@ -8,10 +8,16 @@ import Foundation
 public struct CardPlayPlanner: Sendable {
     public var samples: Int
     public var rolloutsPerSample: Int
+    public var samplingSeed: UInt64
 
-    public init(samples: Int = 24, rolloutsPerSample: Int = 1) {
+    public init(
+        samples: Int = 24,
+        rolloutsPerSample: Int = 1,
+        samplingSeed: UInt64 = 0x5052_4546_4552_414E
+    ) {
         self.samples = samples
         self.rolloutsPerSample = rolloutsPerSample
+        self.samplingSeed = samplingSeed
     }
 
     public func choose(snapshot: PreferansSnapshot, viewer: PlayerID) -> Card? {
@@ -29,7 +35,11 @@ public struct CardPlayPlanner: Sendable {
         if legal.count <= 1 { return legal.first }
 
         let sampler = DealSampler()
-        var rng = SystemRandomNumberGenerator()
+        // Recreate the generator for each decision so this planner remains a
+        // pure function of its snapshot, viewer, and configuration. Besides
+        // making tests reproducible, hosts that independently evaluate the
+        // same position cannot drift because of prior bot decisions.
+        var rng = SeededRandomNumberGenerator(seed: samplingSeed)
         let sampleSnapshots = sampler.samples(from: snapshot, viewer: viewer, count: samples, rng: &rng)
         // If sampling fails entirely (rare; only on contradictory void
         // inferences), fall back to the original snapshot — every hand is

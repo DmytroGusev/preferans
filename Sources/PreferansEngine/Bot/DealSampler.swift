@@ -17,6 +17,7 @@ public struct DealSampler {
         let kind: SlotKind
         var size: Int
         var allowed: Set<Suit>
+        let insertionOrdinal: Int
     }
 
     public init() {}
@@ -130,10 +131,20 @@ public struct DealSampler {
             let size = playing.hands[seat]?.count ?? 0
             guard size > 0 else { continue }
             let blocked = voids[seat] ?? []
-            slots.append(Slot(kind: .seat(seat), size: size, allowed: Set(Suit.allCases).subtracting(blocked)))
+            slots.append(Slot(
+                kind: .seat(seat),
+                size: size,
+                allowed: Set(Suit.allCases).subtracting(blocked),
+                insertionOrdinal: slots.count
+            ))
         }
         if !discardKnown {
-            slots.append(Slot(kind: .discard, size: playing.discard.count, allowed: Set(Suit.allCases)))
+            slots.append(Slot(
+                kind: .discard,
+                size: playing.discard.count,
+                allowed: Set(Suit.allCases),
+                insertionOrdinal: slots.count
+            ))
         }
 
         let demand = slots.reduce(0) { $0 + $1.size }
@@ -146,10 +157,16 @@ public struct DealSampler {
             if lhs.allowed.count != rhs.allowed.count {
                 return lhs.allowed.count < rhs.allowed.count
             }
-            return lhs.size > rhs.size
+            if lhs.size != rhs.size {
+                return lhs.size > rhs.size
+            }
+            return lhs.insertionOrdinal < rhs.insertionOrdinal
         }
 
-        var pool = Array(hidden)
+        // Set iteration order is intentionally unspecified. Canonicalize the
+        // pool before applying seeded randomness so equal seeds produce equal
+        // samples across process launches and platforms.
+        var pool = hidden.sorted()
         let maxAttempts = 32
         var assignment: [SlotKind: [Card]]?
         attemptLoop: for _ in 0..<maxAttempts {
@@ -162,11 +179,19 @@ public struct DealSampler {
                 var taken: [Card] = []
                 taken.reserveCapacity(slot.size)
                 while taken.count < slot.size {
-                    let candidateSuits = slot.allowed.filter { !(bySuit[$0]?.isEmpty ?? true) }
+                    let candidateSuits = Suit.allCases.filter {
+                        slot.allowed.contains($0) && !(bySuit[$0]?.isEmpty ?? true)
+                    }
                     if candidateSuits.isEmpty { continue attemptLoop }
                     // Pick the suit with the most remaining cards so the
-                    // residual pool stays balanced across suits.
-                    let suit = candidateSuits.max(by: { (bySuit[$0]?.count ?? 0) < (bySuit[$1]?.count ?? 0) })!
+                    // residual pool stays balanced across suits. Filtering
+                    // Suit.allCases gives equal counts a canonical tie-break.
+                    var suit = candidateSuits[0]
+                    for candidate in candidateSuits.dropFirst() {
+                        if (bySuit[candidate]?.count ?? 0) > (bySuit[suit]?.count ?? 0) {
+                            suit = candidate
+                        }
+                    }
                     taken.append(bySuit[suit]!.removeLast())
                 }
                 result[slot.kind] = taken
