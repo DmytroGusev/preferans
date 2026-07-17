@@ -102,21 +102,21 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 }
 
 
-/// Shared JSON encoder/decoder for every persistence and wire path
+/// JSON encoder/decoder factories for every persistence and wire path
 /// (CloudKit blobs, GameKit messages). Both use ISO-8601 dates so a record
-/// written by one can be read by the other. Each call site treats the
-/// instance as immutable after construction; concurrent encode/decode is
-/// fine, mutating the strategies after init is not.
+/// written by one can be read by the other. Returning a fresh coder for each
+/// access prevents mutable Foundation coder configuration from leaking across
+/// callers or crossing concurrency domains as shared state.
 public enum PreferansJSONCoder {
-    public static let encoder: JSONEncoder = {
+    public static var encoder: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
-    }()
+    }
 
-    public static let decoder: JSONDecoder = {
+    public static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
-    }()
+    }
 }

@@ -8,7 +8,7 @@ final class WireCompatibilityTests: XCTestCase {
     private let date = Date(timeIntervalSince1970: 1_714_000_000)
     private let players: [PlayerID] = ["north", "east", "south"]
 
-    func testEveryWireMessageRoundTripsThroughSharedJSONCoder() throws {
+    func testEveryWireMessageRoundTripsThroughConfiguredJSONCoder() throws {
         let projection = try makeProjection(sequence: 1)
         let messages: [GameWireMessage] = [
             .hello(HelloEnvelope(tableID: tableID, player: seats()[0], lastSeenSequence: 1)),
@@ -51,6 +51,31 @@ final class WireCompatibilityTests: XCTestCase {
             let decoded = try PreferansJSONCoder.decoder.decode(GameWireMessage.self, from: data)
             XCTAssertEqual(decoded, message)
         }
+    }
+
+    func testJSONCoderFactoriesIsolateMutableConfiguration() throws {
+        struct Timestamp: Codable, Equatable {
+            var value: Date
+        }
+
+        let mutatedEncoder = PreferansJSONCoder.encoder
+        mutatedEncoder.dateEncodingStrategy = .secondsSince1970
+        let freshEncoder = PreferansJSONCoder.encoder
+
+        XCTAssertFalse(mutatedEncoder === freshEncoder)
+        let data = try freshEncoder.encode(Timestamp(value: Date(timeIntervalSince1970: 0)))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(object["value"] as? String, "1970-01-01T00:00:00Z")
+
+        let mutatedDecoder = PreferansJSONCoder.decoder
+        mutatedDecoder.dateDecodingStrategy = .secondsSince1970
+        let freshDecoder = PreferansJSONCoder.decoder
+
+        XCTAssertFalse(mutatedDecoder === freshDecoder)
+        XCTAssertEqual(
+            try freshDecoder.decode(Timestamp.self, from: data),
+            Timestamp(value: Date(timeIntervalSince1970: 0))
+        )
     }
 
     func testLegacySeatAssignmentDecodesWithUnboundedMatch() throws {
@@ -104,7 +129,7 @@ final class WireCompatibilityTests: XCTestCase {
         XCTAssertEqual(decoded.events, [])
     }
 
-    func testPersistencePayloadsRoundTripThroughSharedJSONCoder() throws {
+    func testPersistencePayloadsRoundTripThroughConfiguredJSONCoder() throws {
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
         _ = try engine.startDeal(deck: Deck.standard32)
         let result = try finishPlayedSixSpades(engine: &engine)
