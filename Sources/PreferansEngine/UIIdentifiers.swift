@@ -81,6 +81,7 @@ public enum UIIdentifiers {
     // MARK: - Screen roots
 
     public static let appRoot                  = "app.root"
+    public static let screenOnboarding         = "screen.onboarding"
     public static let screenLobby              = "screen.lobby"
     public static let screenGame               = "screen.game"
     public static let screenOnlineRoom         = "screen.onlineRoom"
@@ -113,6 +114,11 @@ public enum UIIdentifiers {
             }
         }
     }
+
+    // MARK: - Onboarding
+
+    public static let onboardingSkip           = "onboarding.skip"
+    public static let onboardingContinue       = "onboarding.continue"
 
     // MARK: - Lobby
 
@@ -343,6 +349,10 @@ public extension UIIdentifiers {
 /// by the UI test target. Single source of truth so the producer (UI tests)
 /// and the consumer (running app) can't drift on a flag string.
 public enum UITestFlags {
+    /// Show the first-run tour regardless of persisted completion. UI tests
+    /// otherwise bypass onboarding so a clean simulator and a reused one
+    /// always launch into the same lobby state.
+    public static let showOnboarding     = "-uiTestShowOnboarding"
     public static let viewerFollowsActor = "-uiTestViewerFollowsActor"
     public static let firstDealer        = "-uiTestFirstDealer"
     public static let dealSeed           = "-uiTestDealSeed"

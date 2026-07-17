@@ -125,7 +125,7 @@ public struct OpponentSeatView: View {
                 .minimumScaleFactor(0.7)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
             Text("OUT")
-                .font(.system(size: 9, weight: .bold))
+                .font(.caption2.weight(.bold))
                 .tracking(0.5)
                 .foregroundStyle(TableTheme.feltDeep)
                 .padding(.horizontal, 5)
@@ -290,7 +290,7 @@ public struct OpponentSeatView: View {
     private var statusBadge: some View {
         if seat.role == .sittingOut {
             Text("OUT")
-                .font(.system(size: 9, weight: .bold))
+                .font(.caption2.weight(.bold))
                 .tracking(0.5)
                 .foregroundStyle(TableTheme.feltDeep)
                 .padding(.horizontal, 5)

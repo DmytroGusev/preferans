@@ -24,6 +24,40 @@ final class RedesignScreenshotTests: XCTestCase {
         return root.appendingPathComponent(bucket, isDirectory: true)
     }
 
+    /// Captures the first slide at both the default and largest accessibility
+    /// text sizes. This keeps the onboarding screen in the same fresh-render
+    /// audit path as the lobby, table, and online room.
+    func testCaptureOnboardingDynamicType() {
+        let defaultApp = XCUIApplication()
+        defaultApp.launchArguments += [
+            UITestFlags.showOnboarding,
+            UITestFlags.disableAnimations,
+        ]
+        defaultApp.pinTestLocaleEnglish()
+        defaultApp.launch()
+
+        let defaultRobot = MatchUIRobot(app: defaultApp)
+        defaultRobot.waitForElement(UIIdentifiers.screenOnboarding)
+        MatchScreenshotRecorder(testCase: self, app: defaultApp)
+            .capture(name: "onboarding-default", force: true)
+        defaultApp.terminate()
+
+        let accessibilityApp = XCUIApplication()
+        accessibilityApp.launchArguments += [
+            UITestFlags.showOnboarding,
+            UITestFlags.disableAnimations,
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        accessibilityApp.pinTestLocaleEnglish()
+        accessibilityApp.launch()
+
+        let accessibilityRobot = MatchUIRobot(app: accessibilityApp)
+        accessibilityRobot.waitForElement(UIIdentifiers.screenOnboarding)
+        MatchScreenshotRecorder(testCase: self, app: accessibilityApp)
+            .capture(name: "onboarding-accessibility-xxxl", force: true)
+    }
+
     /// Drives the lobby -> waiting-for-deal -> bidding -> talon-exchange flow,
     /// snapshotting at each state so a human can eyeball the felt redesign.
     func testCaptureRedesignScreens() {

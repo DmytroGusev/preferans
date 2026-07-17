@@ -98,7 +98,7 @@ extension LobbyView {
                     .foregroundStyle(TableTheme.inkCream)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("badge.you")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .tracking(0.6)
                     .foregroundStyle(TableTheme.feltDeep)
                     .padding(.horizontal, 6)

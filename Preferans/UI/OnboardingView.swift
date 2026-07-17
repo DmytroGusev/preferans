@@ -4,12 +4,12 @@ struct RootLaunchView: View {
     @AppStorage(SettingsKeys.firstLaunchOnboardingCompleted) private var onboardingCompleted = false
 
     var body: some View {
-        if onboardingCompleted {
-            LobbyView()
-        } else {
+        if TestHarness.shouldShowOnboarding(completed: onboardingCompleted) {
             OnboardingView {
                 onboardingCompleted = true
             }
+        } else {
+            LobbyView()
         }
     }
 }
@@ -37,7 +37,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 HStack {
                     Text("Preferans")
-                        .font(.system(size: 28, weight: .semibold, design: .serif))
+                        .font(.system(.title2, design: .serif, weight: .semibold))
                         .foregroundStyle(.white)
 
                     Spacer()
@@ -45,8 +45,9 @@ struct OnboardingView: View {
                     Button("Skip") {
                         completeOnboarding()
                     }
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.74))
+                    .accessibilityIdentifier(UIIdentifiers.onboardingSkip)
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 18)
@@ -81,7 +82,7 @@ struct OnboardingView: View {
                         }
                     } label: {
                         Text(selectedIndex == slides.count - 1 ? "Start playing" : "Continue")
-                            .font(.system(size: 18, weight: .bold))
+                            .font(.headline.weight(.bold))
                             .foregroundStyle(Color(red: 0.02, green: 0.13, blue: 0.10))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 17)
@@ -92,9 +93,10 @@ struct OnboardingView: View {
                             )
                     }
                     .padding(.horizontal, 24)
+                    .accessibilityIdentifier(UIIdentifiers.onboardingContinue)
 
                     Text("The iOS tracking permission may appear during first launch. You can continue even if you decline.")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.caption.weight(.medium))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(.white.opacity(0.62))
                         .padding(.horizontal, 28)
@@ -102,6 +104,7 @@ struct OnboardingView: View {
                 }
             }
         }
+        .accessibilityIdentifier(UIIdentifiers.screenOnboarding)
         .task {
             await requestTrackingAfterLaunchSettles()
         }
@@ -161,33 +164,45 @@ private struct OnboardingSlide: Equatable {
 
 private struct OnboardingSlideView: View {
     let slide: OnboardingSlide
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private var illustrationHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 210 : 330
+    }
 
     var body: some View {
-        VStack(spacing: 28) {
-            Spacer(minLength: 8)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 28) {
+                    Spacer(minLength: 8)
 
-            OnboardingIllustration(kind: slide.illustration)
-                .frame(maxWidth: 360)
-                .frame(height: 330)
-                .padding(.horizontal, 24)
+                    OnboardingIllustration(kind: slide.illustration)
+                        .frame(maxWidth: 360)
+                        .frame(height: illustrationHeight)
+                        .padding(.horizontal, 24)
+                        .accessibilityHidden(true)
 
-            VStack(spacing: 14) {
-                Text(slide.title)
-                    .font(.system(size: 32, weight: .bold, design: .serif))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white)
-                    .minimumScaleFactor(0.8)
+                    VStack(spacing: 14) {
+                        Text(slide.title)
+                            .font(.system(.largeTitle, design: .serif, weight: .bold))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.white)
 
-                Text(slide.subtitle)
-                    .font(.system(size: 17, weight: .medium))
-                    .lineSpacing(4)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.74))
-                    .padding(.horizontal, 8)
+                        Text(slide.subtitle)
+                            .font(.body.weight(.medium))
+                            .lineSpacing(4)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.white.opacity(0.74))
+                            .padding(.horizontal, 8)
+                    }
+                    .padding(.horizontal, 26)
+
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geometry.size.height)
             }
-            .padding(.horizontal, 26)
-
-            Spacer(minLength: 0)
+            .scrollIndicators(.hidden)
         }
     }
 }

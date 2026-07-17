@@ -233,7 +233,7 @@ public struct OnlineWaitingRoomView: View {
 
     private func occupancyPill(_ info: OccupancyInfo) -> some View {
         Text(info.pill)
-            .font(.system(size: 9, weight: .bold))
+            .font(.caption2.weight(.bold))
             .tracking(0.6)
             .textCase(.uppercase)
             .foregroundStyle(info.pillAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)

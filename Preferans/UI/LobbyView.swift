@@ -470,7 +470,7 @@ public struct LobbyView: View {
                 .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
             if isViewer {
                 Text("badge.you")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .tracking(0.6)
                     .foregroundStyle(TableTheme.feltDeep)
                     .padding(.horizontal, 6)
@@ -478,7 +478,7 @@ public struct LobbyView: View {
                     .background(TableTheme.goldBright, in: Capsule())
             } else {
                 Text("badge.bot")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.caption2.weight(.bold))
                     .tracking(0.6)
                     .foregroundStyle(TableTheme.inkCreamSoft)
                     .padding(.horizontal, 6)

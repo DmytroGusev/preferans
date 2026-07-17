@@ -32,6 +32,18 @@ public enum TestHarness {
         arguments.contains { $0.hasPrefix("-uiTest") }
     }
 
+    /// First-run routing must not depend on whatever UserDefaults happen to
+    /// remain on a reused simulator. Automation enters the lobby by default;
+    /// the dedicated onboarding test opts back into the tour explicitly.
+    public static func shouldShowOnboarding(
+        completed: Bool,
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> Bool {
+        if arguments.contains(Flag.showOnboarding) { return true }
+        if isUIAutomation(in: arguments) { return false }
+        return !completed
+    }
+
     public static func disableAnimations(in arguments: [String]) -> Bool {
         arguments.contains(Flag.disableAnimations)
     }

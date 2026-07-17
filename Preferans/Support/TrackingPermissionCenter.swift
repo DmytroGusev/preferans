@@ -49,6 +49,7 @@ enum TrackingPermissionCenter {
     }
 
     static func requestPermissionIfNeeded() async {
+        guard !TestHarness.isUIAutomation() else { return }
         guard canRequestPermission else { return }
         UserDefaults.standard.set(true, forKey: SettingsKeys.trackingPermissionRequested)
         await requestPermission()

@@ -30,6 +30,31 @@ final class PreferansUITests: XCTestCase {
         robot.waitForElement(UIIdentifiers.lobbyStartLocalTable)
     }
 
+    func testOnboardingRemainsNavigableAtAccessibilityTextSize() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestFlags.showOnboarding,
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.disableUITestAnimations()
+        app.launch()
+
+        let robot = MatchUIRobot(app: app)
+        robot.waitForElement(UIIdentifiers.screenOnboarding)
+
+        for _ in 0..<3 {
+            let continueButton = app.descendants(matching: .any)[UIIdentifiers.onboardingContinue]
+            XCTAssertTrue(continueButton.isHittable)
+            continueButton.tap()
+        }
+
+        let startButton = app.descendants(matching: .any)[UIIdentifiers.onboardingContinue]
+        XCTAssertTrue(startButton.isHittable)
+        startButton.tap()
+        robot.waitForElement(UIIdentifiers.lobbyTitle)
+    }
+
     func testStartLocalTableThenDeal() {
         let app = launchedApp()
         let robot = MatchUIRobot(app: app)

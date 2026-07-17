@@ -529,7 +529,7 @@ public struct TableView: View {
             .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
                     radius: isWinner ? 12 : 0)
             Text(trickPlayCaption(for: play.player))
-                .font(.system(size: 10, weight: .semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCream)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
@@ -626,4 +626,3 @@ public struct TableView: View {
         return false
     }
 }
-
