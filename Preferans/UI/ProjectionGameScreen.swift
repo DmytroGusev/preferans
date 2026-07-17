@@ -31,15 +31,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
     public var onRematch: (() -> Void)?
     let extraMenu: Menu
 
-    enum Sheet: String, Identifiable {
-        case score, log, settings, lastTrick
-        var id: String { rawValue }
-    }
-
     @State private var selectedDiscard: Set<Card> = []
     @State private var selectedPlayCard: Card?
     @State private var talonTakenSequence: Int?
-    @State var activeSheet: Sheet?
+    @State var activeSheet: GameSheetDestination?
     @State var showLeaveConfirm = false
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -119,11 +114,12 @@ public struct ProjectionGameScreen<Menu: View>: View {
         .toolbar(.hidden, for: .navigationBar)
         #endif
         .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .score:      scoreSheet
-            case .log:        logSheet
-            case .settings:   SettingsScreen()
-            case .lastTrick:  lastTrickSheet
+            GameDetailSheet(
+                destination: sheet,
+                projection: projection,
+                activityEntries: Array(activityEntries.suffix(60))
+            ) {
+                activeSheet = nil
             }
         }
         .onChange(of: projection.sequence) { _, _ in
@@ -571,62 +567,6 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var isPlayingPhase: Bool {
         if case .playing = projection.phase { return true }
         return false
-    }
-
-    // MARK: - Sheets
-
-    private var scoreSheet: some View {
-        NavigationStack {
-            ScrollView {
-                ScoreBoardView(score: projection.score, displayName: projection.displayName(for:))
-                    .padding()
-            }
-            .navigationTitle("Scoresheet")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Done") { activeSheet = nil }
-                        .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
-                }
-            }
-        }
-    }
-
-    private var logSheet: some View {
-        ActivityLogSheet(entries: Array(activityEntries.suffix(60))) {
-            activeSheet = nil
-        }
-    }
-
-    private var lastTrickSheet: some View {
-        NavigationStack {
-            Group {
-                if let trick = projection.lastCompletedTrick {
-                    LastTrickView(projection: projection, trick: trick)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 20)
-                } else {
-                    Text("Last trick")
-                        .font(.headline)
-                        .foregroundStyle(TableTheme.inkCream)
-                        .padding()
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .feltBackground()
-            .navigationTitle("Last trick")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .automatic) {
-                    Button("Done") { activeSheet = nil }
-                        .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
-                }
-            }
-        }
     }
 
     // MARK: - Helpers

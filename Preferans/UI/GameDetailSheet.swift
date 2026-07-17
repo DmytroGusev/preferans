@@ -1,0 +1,86 @@
+import SwiftUI
+import PreferansEngine
+
+enum GameSheetDestination: String, Identifiable {
+    case score
+    case log
+    case settings
+    case lastTrick
+
+    var id: String { rawValue }
+}
+
+/// Owns the modal surfaces reachable from the game header. Keeping their
+/// navigation stacks and dismissal chrome outside `ProjectionGameScreen`
+/// leaves the main screen responsible for table layout and interaction state.
+struct GameDetailSheet: View {
+    let destination: GameSheetDestination
+    let projection: PlayerGameProjection
+    let activityEntries: [ActivityLogEntry]
+    let onDismiss: () -> Void
+
+    @ViewBuilder
+    var body: some View {
+        switch destination {
+        case .score:
+            scoreSheet
+        case .log:
+            ActivityLogSheet(entries: activityEntries, onDone: onDismiss)
+        case .settings:
+            SettingsScreen()
+        case .lastTrick:
+            lastTrickSheet
+        }
+    }
+
+    private var scoreSheet: some View {
+        NavigationStack {
+            ScrollView {
+                ScoreBoardView(score: projection.score, displayName: projection.displayName(for:))
+                    .padding()
+            }
+            .navigationTitle("Scoresheet")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    dismissButton
+                }
+            }
+        }
+    }
+
+    private var lastTrickSheet: some View {
+        NavigationStack {
+            Group {
+                if let trick = projection.lastCompletedTrick {
+                    LastTrickView(projection: projection, trick: trick)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 20)
+                } else {
+                    Text("Last trick")
+                        .font(.headline)
+                        .foregroundStyle(TableTheme.inkCream)
+                        .padding()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .feltBackground()
+            .navigationTitle("Last trick")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .automatic) {
+                    dismissButton
+                }
+            }
+        }
+    }
+
+    private var dismissButton: some View {
+        Button("Done", action: onDismiss)
+            .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
+    }
+}

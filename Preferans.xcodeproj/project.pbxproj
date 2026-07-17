@@ -77,6 +77,7 @@
 		B0000000000000000000C312 /* LobbyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C313 /* LobbyModels.swift */; };
 		B0000000000000000000C314 /* RoomRealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C315 /* RoomRealtimeTransport.swift */; };
 		B0000000000000000000C316 /* InMemoryRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C317 /* InMemoryRoomTransport.swift */; };
+		B0000000000000000000C318 /* GameDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C319 /* GameDetailSheet.swift */; };
 		B182FEDEF8F1C8AC3A81F85C /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = DA899D375EB0CF2E0EE45608 /* PreferansEngine */; };
 		BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
@@ -185,6 +186,7 @@
 		B0000000000000000000C313 /* LobbyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyModels.swift; sourceTree = "<group>"; };
 		B0000000000000000000C315 /* RoomRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomRealtimeTransport.swift; sourceTree = "<group>"; };
 		B0000000000000000000C317 /* InMemoryRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/InMemoryRoomTransport.swift; sourceTree = "<group>"; };
+		B0000000000000000000C319 /* GameDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/GameDetailSheet.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -278,6 +280,7 @@
 				B0000000000000000000C309 /* ActivityLogSheet.swift */,
 				B0000000000000000000C30B /* LastTrickView.swift */,
 				B0000000000000000000C30D /* GameHeaderStrip.swift */,
+				B0000000000000000000C319 /* GameDetailSheet.swift */,
 				B0000000000000000000C30F /* DealSummaryCard.swift */,
 				B0000000000000000000C311 /* AuctionPanel.swift */,
 				B0000000000000000000C211 /* OnboardingView.swift */,
@@ -482,6 +485,7 @@
 				B0000000000000000000C308 /* ActivityLogSheet.swift in Sources */,
 				B0000000000000000000C30A /* LastTrickView.swift in Sources */,
 				B0000000000000000000C30C /* GameHeaderStrip.swift in Sources */,
+				B0000000000000000000C318 /* GameDetailSheet.swift in Sources */,
 				B0000000000000000000C30E /* DealSummaryCard.swift in Sources */,
 				B0000000000000000000C310 /* AuctionPanel.swift in Sources */,
 				B0000000000000000000C210 /* OnboardingView.swift in Sources */,
