@@ -75,6 +75,8 @@
 		B0000000000000000000C30E /* DealSummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C30F /* DealSummaryCard.swift */; };
 		B0000000000000000000C310 /* AuctionPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C311 /* AuctionPanel.swift */; };
 		B0000000000000000000C312 /* LobbyModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C313 /* LobbyModels.swift */; };
+		B0000000000000000000C314 /* RoomRealtimeTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C315 /* RoomRealtimeTransport.swift */; };
+		B0000000000000000000C316 /* InMemoryRoomTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C317 /* InMemoryRoomTransport.swift */; };
 		B182FEDEF8F1C8AC3A81F85C /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = DA899D375EB0CF2E0EE45608 /* PreferansEngine */; };
 		BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */; };
 		E00000000000000000000003 /* PreferansUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E00000000000000000000002 /* PreferansUITests.swift */; };
@@ -181,6 +183,8 @@
 		B0000000000000000000C30F /* DealSummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/DealSummaryCard.swift; sourceTree = "<group>"; };
 		B0000000000000000000C311 /* AuctionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/AuctionPanel.swift; sourceTree = "<group>"; };
 		B0000000000000000000C313 /* LobbyModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyModels.swift; sourceTree = "<group>"; };
+		B0000000000000000000C315 /* RoomRealtimeTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomRealtimeTransport.swift; sourceTree = "<group>"; };
+		B0000000000000000000C317 /* InMemoryRoomTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/InMemoryRoomTransport.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -247,6 +251,8 @@
 				B0000000000000000000003C /* HostGameActor.swift */,
 				B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */,
 				B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */,
+				B0000000000000000000C315 /* RoomRealtimeTransport.swift */,
+				B0000000000000000000C317 /* InMemoryRoomTransport.swift */,
 				B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */,
 				B0000000000000000000B007 /* CloudflareRoomTransport.swift */,
 				B0000000000000000000B009 /* CloudflareOnlineGameSession.swift */,
@@ -449,6 +455,8 @@
 				B0000000000000000000000C /* HostGameActor.swift in Sources */,
 				B0000000000000000000000D /* HostedOnlineGameCoordinator.swift in Sources */,
 				B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */,
+				B0000000000000000000C314 /* RoomRealtimeTransport.swift in Sources */,
+				B0000000000000000000C316 /* InMemoryRoomTransport.swift in Sources */,
 				B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */,
 				B0000000000000000000B006 /* CloudflareRoomTransport.swift in Sources */,
 				B0000000000000000000B008 /* CloudflareOnlineGameSession.swift in Sources */,
