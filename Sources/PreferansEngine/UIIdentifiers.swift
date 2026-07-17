@@ -130,6 +130,8 @@ public enum UIIdentifiers {
     public static let lobbyQuickPlayVsBots     = "button.quickPlayVsBots"
     public static let lobbyWatchBots           = "button.watchBots"
     public static let lobbySettingsButton      = "lobby.settings"
+    public static let screenSettings           = "screen.settings"
+    public static let settingsLanguagePicker   = "settings.language"
     public static let lobbyHouseConventions    = "lobby.houseConventions"
     public static let conventionLegendSheet    = "lobby.conventionLegend"
     public static let onlineIdentityMode       = "online.identityMode"

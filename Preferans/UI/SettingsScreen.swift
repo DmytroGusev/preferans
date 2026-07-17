@@ -14,7 +14,6 @@ public struct SettingsScreen: View {
     @AppStorage(SettingsKeys.trackingPermissionRequested) private var trackingPermissionRequested = false
     @Environment(\.dismiss) private var dismiss
 
-    @State private var pendingLanguage: AppLanguage?
     @State private var showRelaunchPrompt = false
     @State private var showDeleteAccountConfirm = false
     @State private var accountStatusText = Self.accountStatusText()
@@ -54,14 +53,7 @@ public struct SettingsScreen: View {
                 }
             }
             .alert("Restart required", isPresented: $showRelaunchPrompt) {
-                Button("Later", role: .cancel) {}
-                Button("Quit") {
-                    if let lang = pendingLanguage { AppLanguage.apply(lang) }
-                    // The user is the one who has to relaunch — iOS apps
-                    // can't relaunch themselves cleanly. Quit so the next
-                    // cold start picks up the new locale.
-                    exit(0)
-                }
+                Button("Done", role: .cancel) {}
             } message: {
                 Text("Language will switch on next launch.")
             }
@@ -82,6 +74,7 @@ public struct SettingsScreen: View {
                 refreshAccountStatus()
                 refreshTrackingStatus()
             }
+            .accessibilityIdentifier(UIIdentifiers.screenSettings)
         }
     }
 
@@ -155,9 +148,9 @@ public struct SettingsScreen: View {
             .onChange(of: appLanguageRaw) { _, newValue in
                 guard let lang = AppLanguage(rawValue: newValue) else { return }
                 AppLanguage.apply(lang)
-                pendingLanguage = lang
                 showRelaunchPrompt = true
             }
+            .accessibilityIdentifier(UIIdentifiers.settingsLanguagePicker)
         } header: {
             Text("Language")
         } footer: {

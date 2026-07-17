@@ -25,4 +25,19 @@ final class AccessibilityContractTests: XCTestCase {
         robot.waitForPhase("Ready")
         robot.waitForElement(UIIdentifiers.buttonStartDeal)
     }
+
+    func testSettingsExposeStableLanguageControl() {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+
+        robot.waitForElement(UIIdentifiers.screenLobby)
+        let settingsButton = app.buttons[UIIdentifiers.lobbySettingsButton]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 3))
+        settingsButton.tap()
+
+        robot.waitForElement(UIIdentifiers.screenSettings)
+        robot.waitForElement(UIIdentifiers.settingsLanguagePicker)
+    }
 }

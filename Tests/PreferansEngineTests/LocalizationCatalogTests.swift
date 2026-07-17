@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+@testable import PreferansApp
 
 final class LocalizationCatalogTests: XCTestCase {
     private let supportedLanguages = ["en", "ru", "uk"]
@@ -60,6 +61,29 @@ final class LocalizationCatalogTests: XCTestCase {
         for key in forbiddenKeys {
             XCTAssertNil(strings[key], "Diagnostic error strings should stay raw, not catalog-localized.")
         }
+    }
+
+    func testApplyingLanguagePersistsAppAndBundlePreferences() {
+        let defaults = UserDefaults.standard
+        let previousAppLanguage = defaults.string(forKey: SettingsKeys.appLanguage)
+        let previousAppleLanguages = defaults.stringArray(forKey: "AppleLanguages")
+        defer {
+            if let previousAppLanguage {
+                defaults.set(previousAppLanguage, forKey: SettingsKeys.appLanguage)
+            } else {
+                defaults.removeObject(forKey: SettingsKeys.appLanguage)
+            }
+            if let previousAppleLanguages {
+                defaults.set(previousAppleLanguages, forKey: "AppleLanguages")
+            } else {
+                defaults.removeObject(forKey: "AppleLanguages")
+            }
+        }
+
+        AppLanguage.apply(.en)
+
+        XCTAssertEqual(defaults.string(forKey: SettingsKeys.appLanguage), AppLanguage.en.rawValue)
+        XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), [AppLanguage.en.rawValue])
     }
 
     private var projectRoot: URL {
