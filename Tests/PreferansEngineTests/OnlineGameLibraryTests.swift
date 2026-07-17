@@ -15,6 +15,40 @@ private struct StubDirectory: OnlineGameDirectory {
     }
 }
 
+/// Holds requests until the test resolves them, allowing completion order to
+/// differ from invocation order without sleeps or scheduler polling.
+private actor ControlledDirectory: OnlineGameDirectory {
+    private typealias FetchContinuation = CheckedContinuation<[OnlineGameSummary], Error>
+
+    private var pending: [String: FetchContinuation] = [:]
+    private var observedAccounts: [String] = []
+    private var observationWaiters: [CheckedContinuation<String, Never>] = []
+
+    func fetchMyGames(accountID: String) async throws -> [OnlineGameSummary] {
+        try await withCheckedThrowingContinuation { continuation in
+            pending[accountID] = continuation
+            if observationWaiters.isEmpty {
+                observedAccounts.append(accountID)
+            } else {
+                observationWaiters.removeFirst().resume(returning: accountID)
+            }
+        }
+    }
+
+    func nextRequestedAccount() async -> String {
+        if !observedAccounts.isEmpty {
+            return observedAccounts.removeFirst()
+        }
+        return await withCheckedContinuation { continuation in
+            observationWaiters.append(continuation)
+        }
+    }
+
+    func succeed(accountID: String, with games: [OnlineGameSummary]) {
+        pending.removeValue(forKey: accountID)?.resume(returning: games)
+    }
+}
+
 @MainActor
 final class OnlineGameLibraryTests: XCTestCase {
     func testSplitsInProgressFromFinishedAndHidesAbandoned() async throws {
@@ -54,6 +88,44 @@ final class OnlineGameLibraryTests: XCTestCase {
 
         XCTAssertNotNil(library.loadError)
         XCTAssertTrue(library.hasLoaded)
+    }
+
+    func testOlderRefreshCannotOverwriteOrFinishNewerRefresh() async {
+        let directory = ControlledDirectory()
+        let library = OnlineGameLibrary(directory: directory)
+        let staleGame = summary(
+            "STALE1",
+            status: .playing,
+            updatedAt: "2026-06-04T09:00:00.000Z"
+        )
+        let currentGame = summary(
+            "NEW001",
+            status: .playing,
+            updatedAt: "2026-06-04T10:00:00.000Z"
+        )
+
+        let staleRefresh = Task { await library.refresh(accountID: "apple:old") }
+        let staleAccount = await directory.nextRequestedAccount()
+        XCTAssertEqual(staleAccount, "apple:old")
+
+        let currentRefresh = Task { await library.refresh(accountID: "apple:new") }
+        let currentAccount = await directory.nextRequestedAccount()
+        XCTAssertEqual(currentAccount, "apple:new")
+
+        await directory.succeed(accountID: "apple:old", with: [staleGame])
+        await staleRefresh.value
+
+        XCTAssertTrue(library.isLoading)
+        XCTAssertFalse(library.hasLoaded)
+        XCTAssertTrue(library.isEmpty)
+
+        await directory.succeed(accountID: "apple:new", with: [currentGame])
+        await currentRefresh.value
+
+        XCTAssertFalse(library.isLoading)
+        XCTAssertTrue(library.hasLoaded)
+        XCTAssertEqual(library.inProgress.map(\.roomCode), ["NEW001"])
+        XCTAssertNil(library.loadError)
     }
 
     func testRemoveLocallyDropsARoomFromBothLists() async throws {

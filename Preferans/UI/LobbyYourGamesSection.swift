@@ -71,6 +71,7 @@ struct LobbyYourGamesSection: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(TableTheme.gold)
+            .disabled(gameLibrary.isLoading)
             .accessibilityLabel("Refresh your games")
             .accessibilityIdentifier(UIIdentifiers.onlineGamesRefresh)
         }

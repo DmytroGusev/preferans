@@ -161,6 +161,11 @@ public final class OnlineGameLibrary: ObservableObject {
     @Published public private(set) var hasLoaded = false
 
     private let directory: OnlineGameDirectory
+    /// Monotonically identifies the refresh whose result is allowed to update
+    /// published state. Directory requests are not assumed to support
+    /// cancellation, so an older completion must be harmless even when it
+    /// arrives after the account or a manual refresh has changed.
+    private var refreshGeneration = 0
 
     public init(directory: OnlineGameDirectory = CloudflareGameDirectory()) {
         self.directory = directory
@@ -171,9 +176,13 @@ public final class OnlineGameLibrary: ObservableObject {
     /// Reload the list for `accountID`. A nil/empty account (a fresh install
     /// that never played online) clears the list without a network call.
     public func refresh(accountID: String?) async {
+        refreshGeneration &+= 1
+        let generation = refreshGeneration
+
         guard let accountID, !accountID.isEmpty else {
             inProgress = []
             finished = []
+            isLoading = false
             loadError = nil
             hasLoaded = true
             return
@@ -181,16 +190,20 @@ public final class OnlineGameLibrary: ObservableObject {
         isLoading = true
         loadError = nil
         defer {
-            isLoading = false
-            hasLoaded = true
+            if generation == refreshGeneration {
+                isLoading = false
+                hasLoaded = true
+            }
         }
         do {
             let games = try await directory.fetchMyGames(accountID: accountID)
+            guard generation == refreshGeneration else { return }
             // Most-recent-first order arrives from the worker; preserve it.
             inProgress = games.filter(\.isInProgress)
             finished = games.filter { $0.status == .finished }
             // `abandoned` games are intentionally surfaced nowhere.
         } catch {
+            guard generation == refreshGeneration else { return }
             loadError = error.localizedDescription
         }
     }
