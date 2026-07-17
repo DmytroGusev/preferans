@@ -280,7 +280,7 @@ public struct TableView: View {
                     .position(playFrame.position)
 
                 // Active opponent seats positioned around the felt edge.
-                ForEach(Array(layout.opponentSlots(opponents: active).enumerated()), id: \.offset) { _, slot in
+                ForEach(layout.opponentSlots(opponents: active)) { slot in
                     let slotSize = layout.slotFrameSize(for: slot)
                     let isDeemphasized = active.contains { $0.player != slot.seat.player && isOpenHand($0) }
                         && !isOpenHand(slot.seat)

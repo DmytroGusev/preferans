@@ -2,11 +2,12 @@ import SwiftUI
 import PreferansEngine
 
 public struct TableLayoutModel: Equatable {
-    public struct OpponentSlot: Equatable {
+    public struct OpponentSlot: Equatable, Identifiable {
         public var seat: SeatProjection
         public var position: CGPoint
         public var orientation: OpponentSeatView.Orientation
         public var kind: SlotKind
+        public var id: PlayerID { seat.player }
     }
 
     public enum SlotKind: Equatable {

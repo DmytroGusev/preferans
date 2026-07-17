@@ -113,6 +113,21 @@ final class TableLayoutModelTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(secondMinX, firstMaxX)
     }
 
+    func testOpponentSlotIdentityFollowsSeatAcrossRotatingDeals() {
+        let layout = TableLayoutModel(bounds: CGSize(width: 390, height: 700))
+        let firstDeal = layout.opponentSlots(opponents: [seat("east"), seat("south")])
+        let nextDeal = layout.opponentSlots(opponents: [seat("south"), seat("west")])
+
+        XCTAssertEqual(firstDeal.map(\.id), ["east", "south"])
+        XCTAssertEqual(nextDeal.map(\.id), ["south", "west"])
+        XCTAssertNotEqual(
+            firstDeal[0].id,
+            nextDeal[0].id,
+            "a reused visual position must not become a reused SwiftUI identity"
+        )
+        XCTAssertEqual(firstDeal[1].id, nextDeal[0].id)
+    }
+
     func testTrickOffsetsTrackViewerAndOpponentCount() {
         assertEqual(
             TableLayoutModel.trickOffset(for: "north", viewer: "north", opponents: ["east", "south"]),
