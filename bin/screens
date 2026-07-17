@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Run the screenshot suites (RedesignScreenshotTests + the online/multiplayer
-# OnlineScreensScreenshotTests) and dump the captured PNGs into a flat folder
-# so you can scroll through the frames without clicking attachments inside
-# the .xcresult bundle.
+# OnlineScreensScreenshotTests) and dump the captured PNGs into one timestamped
+# folder so you can review the attachment-based smoke states and the named
+# playthrough buckets without clicking through the .xcresult bundle.
 #
 # Output: bin/.screens/<run-id>/*.png  (always written, even on test failure)
 #
@@ -39,6 +39,11 @@ RUN_ID="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="$OUT_ROOT/$RUN_ID"
 RESULT_BUNDLE="$OUT_ROOT/$RUN_ID.xcresult"
 mkdir -p "$OUT_DIR"
+
+# File-based buckets are scratch output from the test runner. Clear them before
+# launching the suite so an early test-process failure cannot make this run
+# collect frames from a previous commit.
+find build -mindepth 1 -maxdepth 1 -type d -name 'screens*' -exec rm -rf {} +
 
 # Prune older runs (keep most recent KEEP_RUNS).
 if [[ -d "$OUT_ROOT" ]]; then
@@ -84,6 +89,17 @@ else
   echo "[screens] toolchain lacks 'export attachments' — open the .xcresult manually:"
   echo "          open $RESULT_BUNDLE"
 fi
+
+# The longer playthroughs write deduplicated reference frames directly to
+# build/screens* instead of adding hundreds of XCTest attachments. Collect
+# those buckets into this run as well so bin/screens-latest represents the
+# complete render pass, not only the attachment-based smoke states.
+while IFS= read -r bucket; do
+  bucket_name="$(basename "$bucket")"
+  bucket_out="$OUT_DIR/$bucket_name"
+  mkdir -p "$bucket_out"
+  find "$bucket" -maxdepth 1 -type f -name '*.png' -exec cp {} "$bucket_out/" \;
+done < <(find build -mindepth 1 -maxdepth 1 -type d -name 'screens*' -print)
 
 # Surface a flat, human-readable PNG list.
 COUNT="$(find "$OUT_DIR" -name '*.png' | wc -l | tr -d ' ')"

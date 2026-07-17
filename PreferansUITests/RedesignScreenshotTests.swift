@@ -108,7 +108,11 @@ final class RedesignScreenshotTests: XCTestCase {
 
         for i in 0..<60 {
             let phase = app.staticTexts[UIIdentifiers.phaseTitle].label
-            recorder.capture(name: String(format: "%02d-%@", i + 4, sanitize(phase)))
+            recorder.capture(
+                name: String(format: "%02d-%@", i + 4, sanitize(phase)),
+                key: robot.screenshotDeduplicationKey(dealNumber: 1),
+                attach: false
+            )
 
             if app.otherElements[UIIdentifiers.Panel.dealFinished.rawValue].exists ||
                app.otherElements[UIIdentifiers.Panel.gameOver.rawValue].exists {
@@ -208,17 +212,17 @@ final class RedesignScreenshotTests: XCTestCase {
         app.launch()
         let robot = MatchUIRobot(app: app)
         let recorder = MatchScreenshotRecorder(testCase: self, app: app, outputDirectory: screenDir, filePrefix: "match")
-        recorder.capture(name: "01-lobby", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
+        recorder.capture(name: "01-lobby", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
 
         // Switch lobby to 4 players, then start.
         let fourPlayers = app.buttons[UIIdentifiers.lobbyPlayerCountFour]
         XCTAssertTrue(fourPlayers.waitForExistence(timeout: 5))
         fourPlayers.tap()
-        recorder.capture(name: "02-lobby-4p", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
+        recorder.capture(name: "02-lobby-4p", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
         let startTable = app.buttons[UIIdentifiers.lobbyStartLocalTable]
         XCTAssertTrue(startTable.waitForExistence(timeout: 3))
         startTable.tap()
-        recorder.capture(name: "03-table-ready", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
+        recorder.capture(name: "03-table-ready", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
 
         // Drive the match: each loop iteration takes one human-side action
         // (or briefly waits for bots), and snapshots phase transitions.
@@ -238,12 +242,12 @@ final class RedesignScreenshotTests: XCTestCase {
                 print("[match-ui] \(progress)")
                 lastProgress = progress
             }
-            recorder.capture(name: "tick", key: robot.screenshotDeduplicationKey(), attach: false)
+            recorder.capture(name: "tick", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), attach: false)
 
             if app.otherElements[UIIdentifiers.Panel.gameOver.rawValue].exists ||
                app.staticTexts[UIIdentifiers.gameOverTitle].exists {
                 sawGameOver = true
-                recorder.capture(name: "match-over", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
+                recorder.capture(name: "match-over", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), force: true, attach: false)
                 break
             }
 
@@ -253,7 +257,7 @@ final class RedesignScreenshotTests: XCTestCase {
             // which surface is currently presenting it.
             if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) {
                 dealStartCount += 1
-                recorder.capture(name: "deal-\(dealStartCount)-started", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
+                recorder.capture(name: "deal-\(dealStartCount)-started", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), force: true, attach: false)
                 continue
             }
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
@@ -274,7 +278,7 @@ final class RedesignScreenshotTests: XCTestCase {
             usleep(40_000)
         }
 
-        recorder.capture(name: "99-final", key: robot.screenshotDeduplicationKey(), force: true, attach: false)
+        recorder.capture(name: "99-final", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), force: true, attach: false)
         XCTAssertTrue(sawGameOver, "Match never reached gameOver in \(stepLimit) ticks. Last progress: \(lastProgress)")
     }
 }

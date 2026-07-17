@@ -210,12 +210,15 @@ final class MatchUIRobot {
         return (try? element.snapshot().label) ?? ""
     }
 
-    func screenshotDeduplicationKey() -> String {
-        [
+    func screenshotDeduplicationKey(dealNumber: Int? = nil) -> String {
+        var components = [
             labelIfExists(UIIdentifiers.phaseTitle),
-            labelIfExists(UIIdentifiers.viewerLabel),
-            labelIfExists(UIIdentifiers.phaseMessage)
-        ].joined(separator: "|")
+            labelIfExists(UIIdentifiers.viewerLabel)
+        ]
+        if let dealNumber {
+            components.append("deal=\(dealNumber)")
+        }
+        return components.joined(separator: "|")
     }
 
     // MARK: - Synchronization

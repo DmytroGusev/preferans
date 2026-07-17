@@ -14,6 +14,10 @@ the engine and reserve simulator runs for behavior that genuinely needs iOS.
   structured test probes. Do not add sleeps to hide race conditions.
 - Attach screenshots only on failure or for redesign/reference artifacts.
   Do not use repeated screenshots as the main verifier for functional flows.
+- Run redesign/reference capture through `bin/screens`. It clears the prior
+  file-based buckets, gathers both XCTest attachments and deduplicated
+  `build/screens*` playthrough frames into one timestamped run, and makes that
+  run discoverable through `bin/screens-latest`.
 - Keep live-network validation small and bounded. The deployed worker smoke
   should prove 3-player and 4-player room creation, joining, and message
   delivery without playing a full match.
