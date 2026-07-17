@@ -5,18 +5,30 @@ import AuthenticationServices
 #endif
 
 public struct LobbyView: View {
-    @StateObject var viewModel = LobbyViewModel()
-    @StateObject private var gameLibrary = OnlineGameLibrary()
+    private enum Sheet: Identifiable {
+        case settings
+        case conventionLegend
+        case gameSummary(OnlineGameSummary)
+
+        var id: String {
+            switch self {
+            case .settings: return "settings"
+            case .conventionLegend: return "conventionLegend"
+            case let .gameSummary(game): return "gameSummary:\(game.id)"
+            }
+        }
+    }
+
     /// The invisible 1×1 automation affordances exist only under XCUITest —
     /// in a shipping build they were VoiceOver-reachable unlabeled buttons
     /// that could start a real table or online room.
-    let isUIAutomation = TestHarness.isUIAutomation()
-    @State private var showingSettings = false
+    private let isUIAutomation = TestHarness.isUIAutomation()
+
+    @StateObject var viewModel = LobbyViewModel()
+    @StateObject private var gameLibrary = OnlineGameLibrary()
+    @State private var activeSheet: Sheet?
     @State private var showingWatchBotsConfirm = false
-    @State private var showingConventionLegend = false
     @State private var didRunOnlineHarness = false
-    /// Finished game tapped for its result sheet.
-    @State private var historyGame: OnlineGameSummary?
 
     public init() {}
 
@@ -58,7 +70,7 @@ public struct LobbyView: View {
             .toolbar {
                 if viewModel.localModel == nil && viewModel.onlineSession == nil && viewModel.cloudOnlineSession == nil {
                     ToolbarItem(placement: .automatic) {
-                        Button { showingSettings = true } label: {
+                        Button { activeSheet = .settings } label: {
                             Image(systemName: "gearshape.fill")
                                 .foregroundStyle(TableTheme.goldBright)
                                 .accessibilityLabel("Settings")
@@ -67,11 +79,15 @@ public struct LobbyView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingSettings) {
-                SettingsScreen()
-            }
-            .sheet(isPresented: $showingConventionLegend) {
-                ConventionLegendSheet()
+            .sheet(item: $activeSheet) { sheet in
+                switch sheet {
+                case .settings:
+                    SettingsScreen()
+                case .conventionLegend:
+                    ConventionLegendSheet()
+                case let .gameSummary(game):
+                    OnlineGameSummarySheet(game: game)
+                }
             }
             .confirmationDialog(
                 "Watch the bots play?",
@@ -130,7 +146,7 @@ public struct LobbyView: View {
                     LobbyYourGamesSection(
                         viewModel: viewModel,
                         gameLibrary: gameLibrary,
-                        historyGame: $historyGame
+                        onSelectFinishedGame: { activeSheet = .gameSummary($0) }
                     )
                     onlineSetupCard
                     if isUIAutomation { localHiddenAffordances }
@@ -166,9 +182,6 @@ public struct LobbyView: View {
         .task(id: onlineGamesRefreshKey) {
             guard viewModel.lobbyMode == .online else { return }
             await gameLibrary.refresh(accountID: viewModel.currentOnlineAccountID)
-        }
-        .sheet(item: $historyGame) { game in
-            OnlineGameSummarySheet(game: game)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenLobby)
@@ -243,7 +256,7 @@ public struct LobbyView: View {
     /// full legend sheet.
     private var conventionsFooterLink: some View {
         Button {
-            showingConventionLegend = true
+            activeSheet = .conventionLegend
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle")

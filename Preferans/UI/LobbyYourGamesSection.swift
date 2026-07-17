@@ -10,8 +10,7 @@ import PreferansEngine
 struct LobbyYourGamesSection: View {
     @ObservedObject var viewModel: LobbyViewModel
     @ObservedObject var gameLibrary: OnlineGameLibrary
-    /// Finished game tapped for its result sheet.
-    @Binding var historyGame: OnlineGameSummary?
+    let onSelectFinishedGame: (OnlineGameSummary) -> Void
 
     @ViewBuilder
     var body: some View {
@@ -132,7 +131,7 @@ struct LobbyYourGamesSection: View {
 
     private func historyRow(_ game: OnlineGameSummary) -> some View {
         Button {
-            historyGame = game
+            onSelectFinishedGame(game)
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "flag.checkered")
