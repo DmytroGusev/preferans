@@ -110,8 +110,6 @@ public struct TableView: View {
     public var onTakeTalon: (() -> Void)?
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
-    @State var showInitialHands = false
-
     public init(
         projection: PlayerGameProjection,
         animationNamespace: Namespace.ID,
@@ -343,7 +341,12 @@ public struct TableView: View {
         if case let .gameOver(summary) = projection.phase {
             GameOverCard(summary: summary, displayName: projection.displayName(for:), onRematch: onRematch, onLeaveTable: onLeaveTable)
         } else if case let .dealFinished(result) = projection.phase {
-            dealSummaryCard(result: result)
+            DealSummaryCard(
+                result: result,
+                projection: projection,
+                cardSuitOrder: cardSuitOrder,
+                onAdvance: onAdvance
+            )
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
         } else if let onStartDeal, projection.legal.canStartDeal {

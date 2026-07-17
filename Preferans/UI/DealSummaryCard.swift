@@ -1,15 +1,23 @@
 import SwiftUI
 import PreferansEngine
 
-// MARK: - Deal-summary card
+/// Rich centered card shown when a deal has just been scored. Its disclosure
+/// state belongs to this deal-scoped surface, so leaving the phase destroys
+/// the state instead of leaking "show opening hands" into a later deal.
+struct DealSummaryCard: View {
+    let result: DealResult
+    let projection: PlayerGameProjection
+    let cardSuitOrder: CardSuitDisplayOrder
+    let onAdvance: (() -> Void)?
 
-extension TableView {
+    @State private var showInitialHands = false
+
     /// Rich centered card shown when a deal has just been scored. Replaces
     /// the empty "Deal complete" placeholder with the outcome headline,
     /// per-player trick tally, and a prominent "Next deal" CTA so the user
     /// has something to look at and a clear action without dismissing a
     /// modal sheet.
-    func dealSummaryCard(result: DealResult) -> some View {
+    var body: some View {
         VStack(spacing: 14) {
             VStack(spacing: 6) {
                 Text("Deal complete")
@@ -76,7 +84,7 @@ extension TableView {
                 .frame(maxWidth: 220)
             }
             .buttonStyle(.feltSecondary)
-            .accessibilityIdentifier("dealResult.initialHands.toggle")
+            .accessibilityIdentifier(UIIdentifiers.dealInitialHandsToggle)
 
             if showInitialHands {
                 ScrollView {
@@ -115,16 +123,11 @@ extension TableView {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("dealResult.initialHand.\(player.rawValue)")
+        .accessibilityIdentifier(UIIdentifiers.dealInitialHand(player))
     }
 
     private func openingHandRows(_ cards: [Card]) -> [[Card]] {
-        let sorted = cards.sortedForTableDisplay(order: cardSuitOrder)
-        guard sorted.count > 5 else { return [sorted] }
-        return [
-            Array(sorted.prefix(5)),
-            Array(sorted.dropFirst(5))
-        ]
+        DealSummaryPresentation.openingHandRows(cards, order: cardSuitOrder)
     }
 
     private var dealSummaryBackground: some View {
@@ -141,7 +144,7 @@ extension TableView {
     /// gold so the user can see at a glance whether the contract was met.
     private func trickTallyGrid(result: DealResult) -> some View {
         let players = result.activePlayers
-        let declarer = declarer(for: result)
+        let declarer = DealSummaryPresentation.declarer(in: result.kind)
         return HStack(spacing: 8) {
             ForEach(players, id: \.self) { player in
                 let isDeclarer = player == declarer
@@ -172,14 +175,28 @@ extension TableView {
             }
         }
     }
+}
 
-    private func declarer(for result: DealResult) -> PlayerID? {
-        switch result.kind {
+enum DealSummaryPresentation {
+    static func declarer(in kind: DealResultKind) -> PlayerID? {
+        switch kind {
         case let .game(declarer, _, _):           return declarer
         case let .misere(declarer):               return declarer
         case let .halfWhist(declarer, _, _):      return declarer
         case let .withoutThree(declarer, _):      return declarer
         case .passedOut, .allPass:                return nil
         }
+    }
+
+    static func openingHandRows(
+        _ cards: [Card],
+        order: CardSuitDisplayOrder
+    ) -> [[Card]] {
+        let sorted = cards.sortedForTableDisplay(order: order)
+        guard sorted.count > 5 else { return [sorted] }
+        return [
+            Array(sorted.prefix(5)),
+            Array(sorted.dropFirst(5)),
+        ]
     }
 }
