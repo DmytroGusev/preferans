@@ -46,15 +46,15 @@ public extension Deck {
 /// (system-random) by default.
 ///
 /// Sendable because deal sources cross actor boundaries on their way to
-/// `HostGameActor` / online coordinators. Each instance is owned by a
-/// single component and accessed serially; concrete implementations are
-/// `@unchecked Sendable` since their internal RNG / index state isn't
-/// guarded by a lock.
+/// `HostGameActor` / online coordinators. Stateful implementations serialize
+/// their RNG/index mutation internally; callers do not need to supply an
+/// actor-isolation guarantee that the protocol cannot enforce.
 public protocol DealSource: AnyObject, Sendable {
     func nextDeck() -> [Card]
 }
 
-public final class RandomDealSource: DealSource, @unchecked Sendable {
+/// Stateless, so checked `Sendable` conformance is sufficient.
+public final class RandomDealSource: DealSource {
     public init() {}
     public func nextDeck() -> [Card] {
         Deck.standard32.shuffled()
@@ -63,19 +63,26 @@ public final class RandomDealSource: DealSource, @unchecked Sendable {
 
 public final class SeededDealSource: DealSource, @unchecked Sendable {
     private var rng: SeededRandomNumberGenerator
+    /// Protects the reference-backed GameplayKit RNG. The conformance remains
+    /// unchecked because Swift cannot infer synchronization around `rng`.
+    private let lock = NSLock()
 
     public init(seed: UInt64) {
         self.rng = SeededRandomNumberGenerator(seed: seed)
     }
 
     public func nextDeck() -> [Card] {
-        Deck.standard32.shuffled(using: &rng)
+        lock.lock()
+        defer { lock.unlock() }
+        return Deck.standard32.shuffled(using: &rng)
     }
 }
 
 public final class ScriptedDealSource: DealSource, @unchecked Sendable {
     private let decks: [[Card]]
     private var index = 0
+    /// Protects the cycling cursor. `decks` is immutable value state.
+    private let lock = NSLock()
 
     public init(decks: [[Card]]) {
         precondition(!decks.isEmpty, "ScriptedDealSource requires at least one deck")
@@ -83,6 +90,8 @@ public final class ScriptedDealSource: DealSource, @unchecked Sendable {
     }
 
     public func nextDeck() -> [Card] {
+        lock.lock()
+        defer { lock.unlock() }
         defer { index += 1 }
         return decks[index % decks.count]
     }

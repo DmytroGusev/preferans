@@ -10,7 +10,14 @@ struct EngineTestError: Error, CustomStringConvertible {
 final class CountingDealSource: DealSource, @unchecked Sendable {
     private let decks: [[Card]]
     private var index = 0
-    private(set) var requestCount = 0
+    private var storedRequestCount = 0
+    private let lock = NSLock()
+
+    var requestCount: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedRequestCount
+    }
 
     init(decks: [[Card]]) {
         precondition(!decks.isEmpty, "CountingDealSource requires at least one deck")
@@ -18,9 +25,11 @@ final class CountingDealSource: DealSource, @unchecked Sendable {
     }
 
     func nextDeck() -> [Card] {
+        lock.lock()
+        defer { lock.unlock() }
         defer {
             index += 1
-            requestCount += 1
+            storedRequestCount += 1
         }
         return decks[index % decks.count]
     }

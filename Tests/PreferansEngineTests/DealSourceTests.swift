@@ -51,6 +51,37 @@ final class DealSourceTests: XCTestCase {
         XCTAssertEqual(source.nextDeck(), deckA, "scripted source should wrap around once exhausted")
     }
 
+    func testScriptedDealSourceSerializesConcurrentRequests() async {
+        let deckA = Deck.standard32
+        let deckB = Array(Deck.standard32.reversed())
+        let source = ScriptedDealSource(decks: [deckA, deckB])
+
+        let dealt = await withTaskGroup(of: [Card].self, returning: [[Card]].self) { group in
+            for _ in 0..<100 {
+                group.addTask { source.nextDeck() }
+            }
+            return await group.reduce(into: []) { $0.append($1) }
+        }
+
+        XCTAssertEqual(dealt.filter { $0 == deckA }.count, 50)
+        XCTAssertEqual(dealt.filter { $0 == deckB }.count, 50)
+    }
+
+    func testSeededDealSourceSerializesConcurrentRequests() async {
+        let source = SeededDealSource(seed: 2026)
+
+        let dealt = await withTaskGroup(of: [Card].self, returning: [[Card]].self) { group in
+            for _ in 0..<32 {
+                group.addTask { source.nextDeck() }
+            }
+            return await group.reduce(into: []) { $0.append($1) }
+        }
+
+        XCTAssertEqual(dealt.count, 32)
+        XCTAssertTrue(dealt.allSatisfy { Set($0) == Set(Deck.standard32) })
+        XCTAssertEqual(Set(dealt).count, 32, "each serialized RNG advance should produce one sequence entry")
+    }
+
     func testSeededDealSourceFeedsTheEngineDeterministically() throws {
         var engineA = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         var engineB = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
