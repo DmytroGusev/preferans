@@ -115,10 +115,32 @@ enum EngineTestDriver {
     }
 }
 
-struct BotDriveResult: Sendable {
-    var steps: Int
-    var stalled: Bool
-    var illegalActionAttempts: Int
+enum BotDriveStopReason: Sendable, Equatable {
+    case phaseCompleted
+    case strategyReturnedNoAction(actor: PlayerID, decider: PlayerID)
+    case engineRejectedAction(
+        actor: PlayerID,
+        decider: PlayerID,
+        action: PreferansAction,
+        error: String
+    )
+    case stepLimitReached(limit: Int, actor: PlayerID, decider: PlayerID)
+}
+
+struct BotDriveResult: Sendable, Equatable {
+    let steps: Int
+    let stopReason: BotDriveStopReason
+
+    /// Compatibility view for callers that only need success/failure.
+    var stalled: Bool {
+        stopReason != .phaseCompleted
+    }
+
+    /// Compatibility view retained for the simulation report.
+    var illegalActionAttempts: Int {
+        if case .engineRejectedAction = stopReason { return 1 }
+        return 0
+    }
 }
 
 enum BotTestDriver {
@@ -126,12 +148,12 @@ enum BotTestDriver {
     static func drive(
         engine: inout PreferansEngine,
         strategy: PlayerStrategy,
-        stepLimit: Int = 500
+        stepLimit: Int = 96
     ) async throws -> BotDriveResult {
         var steps = 0
         while steps < stepLimit {
             guard let actor = engine.state.currentActor else {
-                return BotDriveResult(steps: steps, stalled: false, illegalActionAttempts: 0)
+                return BotDriveResult(steps: steps, stopReason: .phaseCompleted)
             }
             // The seat authorized to decide may differ from the seat
             // whose turn it physically is — in open single-whist greedy
@@ -139,15 +161,37 @@ enum BotTestDriver {
             // strategy is queried for the whister's perspective.
             let decider = engine.controllingActor(of: actor)
             guard let action = await strategy.decide(snapshot: engine.snapshot, viewer: decider) else {
-                return BotDriveResult(steps: steps, stalled: true, illegalActionAttempts: 0)
+                return BotDriveResult(
+                    steps: steps,
+                    stopReason: .strategyReturnedNoAction(actor: actor, decider: decider)
+                )
             }
             do {
                 _ = try engine.apply(action)
             } catch {
-                return BotDriveResult(steps: steps, stalled: true, illegalActionAttempts: 1)
+                let description = (error as? LocalizedError)?.errorDescription ?? String(describing: error)
+                return BotDriveResult(
+                    steps: steps,
+                    stopReason: .engineRejectedAction(
+                        actor: actor,
+                        decider: decider,
+                        action: action,
+                        error: description
+                    )
+                )
             }
             steps += 1
         }
-        return BotDriveResult(steps: steps, stalled: true, illegalActionAttempts: 0)
+
+        // The final permitted action may itself complete the deal. Re-read
+        // engine state before diagnosing the loop bound as a stall.
+        guard let actor = engine.state.currentActor else {
+            return BotDriveResult(steps: steps, stopReason: .phaseCompleted)
+        }
+        let decider = engine.controllingActor(of: actor)
+        return BotDriveResult(
+            steps: steps,
+            stopReason: .stepLimitReached(limit: stepLimit, actor: actor, decider: decider)
+        )
     }
 }

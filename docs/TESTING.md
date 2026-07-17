@@ -4,10 +4,10 @@ Preferans uses a layered test strategy. Keep fast, deterministic checks near
 the engine and reserve simulator runs for behavior that genuinely needs iOS.
 
 `bin/test-engine` selects a dependency-free SwiftPM graph containing the rules
-engine, pure test support, and a portable Swift Testing suite. It runs 36
-seeded three- and four-player generative walks plus focused deterministic
-bot-planning contracts under Command Line Tools. The default `swift test`
-graph remains the complete graph: core XCTest plus
+engine, pure test support, and a portable Swift Testing suite. It runs 42
+cases under Command Line Tools: 36 seeded three- and four-player generative
+walks plus focused deterministic bot-planning and driver-diagnostic contracts.
+The default `swift test` graph remains the complete graph: core XCTest plus
 projection/coordinator/app integration suites, which require full Xcode on this
 machine.
 
