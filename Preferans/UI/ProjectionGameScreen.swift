@@ -30,6 +30,9 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// roster).
     public var onRematch: (() -> Void)?
     let extraMenu: Menu
+    private let seatActions: [PlayerID: RecentAction]
+    private let bannerAction: RecentAction?
+    private let seatRoleBadges: [PlayerID: SeatRoleBadge]
 
     @State private var selectedDiscard: Set<Card> = []
     @State private var selectedPlayCard: Card?
@@ -69,27 +72,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
         // once per view construction.
         self.seatActions = RecentActionFeed.perSeat(from: recentEvents)
         self.bannerAction = RecentActionFeed.banner(from: recentEvents)
+        self.seatRoleBadges = SeatRoleBadgeFeed.perSeat(from: projection)
     }
-
-    private let seatActions: [PlayerID: RecentAction]
-
-    private let bannerAction: RecentAction?
 
     private var activityEntries: [ActivityLogEntry] {
         ActivityLogFeed.entries(from: recentEvents, displayName: projection.displayName(for:))
-    }
-
-    /// Per-seat contract-role pill keyed by PlayerID. Computed once per
-    /// render so every seat view doesn't re-derive the same dictionary
-    /// from the projection.
-    private var seatRoleBadges: [PlayerID: SeatRoleBadge] {
-        var result: [PlayerID: SeatRoleBadge] = [:]
-        for seat in projection.seats {
-            if let badge = projection.roleBadge(for: seat.player) {
-                result[seat.player] = badge
-            }
-        }
-        return result
     }
 
     private var cardSuitDisplayOrder: CardSuitDisplayOrder {
@@ -139,7 +126,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 6)
                 .padding(.bottom, 8)
-            tableView(seatRoleBadges: seatRoleBadges)
+            tableView()
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if shouldShowHandRail {
@@ -229,9 +216,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// Single source of truth for the TableView trailing arguments.
     /// Every layout (compact, landscape, regular) passes the same
     /// projection / handlers / pause state — only `renderOpponentsAtTop`
-    /// and `seatRoleBadges` vary.
-    private func tableView(renderOpponentsAtTop: Bool = true,
-                           seatRoleBadges: [PlayerID: SeatRoleBadge] = [:]) -> TableView {
+    /// varies.
+    private func tableView(renderOpponentsAtTop: Bool = true) -> TableView {
         // The method reference `advanceToNextDeal` trips a Swift 6
         // type-checker bug here ("failed to produce diagnostic for
         // expression"); wrapping in an explicit closure sidesteps it

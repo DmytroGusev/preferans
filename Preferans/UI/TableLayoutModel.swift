@@ -21,19 +21,6 @@ public struct TableLayoutModel: Equatable {
         self.bounds = bounds
     }
 
-    /// True when at least one active opponent has a revealed (face-up)
-    /// hand — misère, open whist, etc. Open seats need more vertical
-    /// room for taller, suit-grouped fans, so the play area shrinks to
-    /// give them headroom.
-    public var hasOpenOpponent: Bool {
-        // The model doesn't carry the seat list directly; callers pass
-        // it in via `opponentSlots`. Open-aware sizing keys off the
-        // SeatProjection embedded in each `OpponentSlot`. We re-derive
-        // it on demand inside `playAreaSize` / `playAreaPosition` only
-        // when callers ask via `playArea(for:)`.
-        false
-    }
-
     public var playAreaSize: CGSize {
         playArea(for: []).size
     }

@@ -516,6 +516,19 @@ public enum SeatRoleBadge: Equatable {
     }
 }
 
+/// Derives the complete, stable role-badge input consumed by table subviews.
+/// Keeping this outside `View.body` prevents every seat from rescanning the
+/// projection and gives all size-class layouts the same badge map.
+enum SeatRoleBadgeFeed {
+    static func perSeat(from projection: PlayerGameProjection) -> [PlayerID: SeatRoleBadge] {
+        projection.seats.reduce(into: [:]) { badges, seat in
+            if let badge = projection.roleBadge(for: seat.player) {
+                badges[seat.player] = badge
+            }
+        }
+    }
+}
+
 public extension PlayerGameProjection {
     /// Active contract, when the deal has moved beyond pure bidding. Kept
     /// in one place so the strip, table layout, and seat labels describe

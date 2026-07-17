@@ -118,7 +118,7 @@ public struct TableView: View {
         handlers: TableHandlers = TableHandlers(),
         display: TableDisplayState = TableDisplayState(),
         seatActions: [PlayerID: RecentAction] = [:],
-        seatRoleBadges: [PlayerID: SeatRoleBadge] = [:],
+        seatRoleBadges: [PlayerID: SeatRoleBadge],
         bannerAction: RecentAction? = nil,
         pendingAdvance: PendingAdvance? = nil,
         cardSuitOrder: CardSuitDisplayOrder = .default,
