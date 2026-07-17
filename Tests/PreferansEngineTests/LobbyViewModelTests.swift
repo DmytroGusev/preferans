@@ -47,22 +47,28 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(model.onlineDisplayName, "")
         XCTAssertEqual(model.onlineIdentityValidationError, "Enter your name to play online.")
 
+        model.infoText = "stale status"
         model.startCloudflareOnlineRoom()
         XCTAssertNil(model.cloudOnlineSession)
         XCTAssertFalse(model.isOnlineRoomLoading)
         XCTAssertEqual(model.errorText, "Enter your name to play online.")
+        XCTAssertNil(model.infoText)
 
         model.errorText = nil
+        model.infoText = "stale status"
         model.onlineJoinRoomCode = "ABCD"
         model.joinCloudflareOnlineRoom()
         XCTAssertNil(model.cloudOnlineSession)
         XCTAssertFalse(model.isOnlineRoomLoading)
         XCTAssertEqual(model.errorText, "Enter your name to play online.")
+        XCTAssertNil(model.infoText)
 
         model.errorText = nil
+        model.infoText = "stale status"
         model.startInMemoryOnlineRoom()
         XCTAssertNil(model.onlineSession)
         XCTAssertEqual(model.errorText, "Enter your name to play online.")
+        XCTAssertNil(model.infoText)
 
         model.setOnlineDisplayName(" Ada ")
         XCTAssertNil(model.onlineIdentityValidationError)

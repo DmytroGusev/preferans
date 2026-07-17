@@ -111,33 +111,21 @@ public final class LobbyViewModel: ObservableObject {
     public func startCloudflareOnlineRoom() {
         guard !isOnlineRoomLoading else { return }
         if let validation = onlineSetupValidationError {
-            errorText = validation
-            infoText = nil
+            rejectOnlineOperation(validation)
             return
         }
-        isOnlineRoomLoading = true
-        errorText = nil
-        infoText = nil
         let setup = onlineRoomSetup()
         let delay = onlineBotMoveDelay
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                let session = try await CloudflareOnlineGameSession.createRoom(
-                    peers: setup.peers,
-                    localPlayerID: setup.localPlayer,
-                    rules: setup.rules,
-                    match: setup.match,
-                    variantTag: onlineVariant.rawValue,
-                    botMoveDelay: delay
-                )
-                await session.start()
-                cloudOnlineSession = session
-                onlineJoinRoomCode = session.roomCode
-            } catch {
-                errorText = error.localizedDescription
-            }
-            isOnlineRoomLoading = false
+        let variantTag = onlineVariant.rawValue
+        launchCloudRoom {
+            try await CloudflareOnlineGameSession.createRoom(
+                peers: setup.peers,
+                localPlayerID: setup.localPlayer,
+                rules: setup.rules,
+                match: setup.match,
+                variantTag: variantTag,
+                botMoveDelay: delay
+            )
         }
     }
 
@@ -147,38 +135,25 @@ public final class LobbyViewModel: ObservableObject {
             return
         }
         if let validation = onlineIdentityValidationError {
-            errorText = validation
-            infoText = nil
+            rejectOnlineOperation(validation)
             return
         }
-        isOnlineRoomLoading = true
-        errorText = nil
-        infoText = nil
         let setup = onlineRoomSetup()
         guard let localPeer = setup.peers.first(where: { $0.playerID == setup.localPlayer }) else {
-            errorText = String(localized: "Selected seat is not available.")
-            isOnlineRoomLoading = false
+            rejectOnlineOperation(String(localized: "Selected seat is not available."))
             return
         }
         let delay = onlineBotMoveDelay
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            do {
-                let session = try await CloudflareOnlineGameSession.joinRoom(
-                    roomCode: roomCode,
-                    localPeer: localPeer,
-                    rules: setup.rules,
-                    match: setup.match,
-                    variantTag: onlineVariant.rawValue,
-                    botMoveDelay: delay
-                )
-                await session.start()
-                cloudOnlineSession = session
-                onlineJoinRoomCode = session.roomCode
-            } catch {
-                errorText = error.localizedDescription
-            }
-            isOnlineRoomLoading = false
+        let variantTag = onlineVariant.rawValue
+        launchCloudRoom {
+            try await CloudflareOnlineGameSession.joinRoom(
+                roomCode: roomCode,
+                localPeer: localPeer,
+                rules: setup.rules,
+                match: setup.match,
+                variantTag: variantTag,
+                botMoveDelay: delay
+            )
         }
     }
 
@@ -188,8 +163,7 @@ public final class LobbyViewModel: ObservableObject {
     public func startInMemoryOnlineRoom() {
         do {
             if let validation = onlineSetupValidationError {
-                errorText = validation
-                infoText = nil
+                rejectOnlineOperation(validation)
                 return
             }
             let players = OnlineSeatSlot.canonicalPlayerIDs(count: 3)
@@ -330,32 +304,49 @@ public final class LobbyViewModel: ObservableObject {
     public func resumeCloudflareOnlineRoom(_ summary: OnlineGameSummary) {
         guard !isOnlineRoomLoading else { return }
         guard let localPeer = resumeLocalPeer(for: summary) else {
-            errorText = String(localized: "Sign in or set your name to resume your games.")
-            infoText = nil
+            rejectOnlineOperation(String(localized: "Sign in or set your name to resume your games."))
             return
         }
+        let delay = onlineBotMoveDelay
+        let variantTag = summary.variant ?? onlineVariant.rawValue
+        launchCloudRoom {
+            try await CloudflareOnlineGameSession.resumeRoom(
+                roomCode: summary.roomCode,
+                localPeer: localPeer,
+                variantTag: variantTag,
+                botMoveDelay: delay
+            )
+        }
+    }
+
+    /// Owns the shared create/join/resume lifecycle: one busy gate, one place
+    /// that clears stale messages, starts the returned session, publishes it,
+    /// and restores the idle state on both success and failure.
+    private func launchCloudRoom(
+        operation: @escaping @MainActor () async throws -> CloudflareOnlineGameSession
+    ) {
+        guard !isOnlineRoomLoading else { return }
         isOnlineRoomLoading = true
         errorText = nil
         infoText = nil
-        let delay = onlineBotMoveDelay
-        let variantTag = summary.variant ?? onlineVariant.rawValue
+
         Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { isOnlineRoomLoading = false }
             do {
-                let session = try await CloudflareOnlineGameSession.resumeRoom(
-                    roomCode: summary.roomCode,
-                    localPeer: localPeer,
-                    variantTag: variantTag,
-                    botMoveDelay: delay
-                )
+                let session = try await operation()
                 await session.start()
                 cloudOnlineSession = session
                 onlineJoinRoomCode = session.roomCode
             } catch {
                 errorText = error.localizedDescription
             }
-            isOnlineRoomLoading = false
         }
+    }
+
+    private func rejectOnlineOperation(_ message: String) {
+        errorText = message
+        infoText = nil
     }
 
     /// Give up an unfinished online game from the list (best-effort). The worker
