@@ -105,6 +105,9 @@ wait_for_log() {
 
 cd "$ROOT_DIR"
 
+source "$ROOT_DIR/bin/lib/xcode-sim.sh"
+preferans_require_xcode
+
 xcodebuild \
   -project Preferans.xcodeproj \
   -scheme Preferans \

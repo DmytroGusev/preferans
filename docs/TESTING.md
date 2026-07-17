@@ -3,6 +3,10 @@
 Preferans uses a layered test strategy. Keep fast, deterministic checks near
 the engine and reserve simulator runs for behavior that genuinely needs iOS.
 
+All current test targets import the SwiftUI app module. Full Xcode is therefore
+required even for `bin/test-engine`; the wrapper reports a concise prerequisite
+error when the active developer directory points at Command Line Tools only.
+
 ## Rules of engagement
 
 - Prefer XCTest/XCUIAutomation for app UI automation. MCP screenshots and
