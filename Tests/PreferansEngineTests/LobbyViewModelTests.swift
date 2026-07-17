@@ -131,6 +131,32 @@ final class LobbyViewModelTests: AppTestCase {
         }
     }
 
+    func testLobbyRosterValidationRejectsBlankAndDuplicateNames() {
+        var seats = LobbySeat.defaults(count: 3)
+        XCTAssertNil(seats.validationError)
+
+        seats[1].name = "  "
+        XCTAssertEqual(seats.validationError, "Every seat needs a name.")
+
+        seats[1].name = seats[0].name
+        XCTAssertEqual(seats.validationError, "Names must be unique.")
+    }
+
+    func testOnlineCompositionResizePreservesConfiguredSeats() {
+        var seats = OnlineSeatSlot.defaultComposition(count: 3)
+        seats[1].kind = .bot
+
+        let expanded = OnlineSeatSlot.resize(seats, to: 4)
+        XCTAssertEqual(expanded.map(\.kind), [.you, .bot, .invite, .invite])
+
+        let contracted = OnlineSeatSlot.resize(expanded, to: 3)
+        XCTAssertEqual(contracted.map(\.kind), [.you, .bot, .invite])
+        XCTAssertEqual(
+            OnlineSeatSlot.canonicalPlayerIDs(count: 4),
+            ["north", "east", "south", "west"]
+        )
+    }
+
     private func resetOnlineIdentityDefaults() {
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
