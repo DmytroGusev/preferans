@@ -5,7 +5,7 @@ This file records App Store/TestFlight build provenance and review-facing change
 ## 1.0 (25) - App Store Connect
 
 - Date: 2026-07-27
-- Git commit: pending
+- Git commit: `7e96414 Fix rules scoring and soften table palette for build 25`
 - Operational change made by: Codex in the rules and comfort visual audit session
 - Source base: build `1.0 (24)`, commit `f6be093`
 
@@ -19,7 +19,8 @@ Changes:
 
 Verification:
 
-- Pending.
+- `swift test`: 190 tests passed, 1 environment-dependent integration test skipped.
+- `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
 
 ## 1.0 (24) - App Store Connect
 
