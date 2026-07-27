@@ -21,6 +21,8 @@ Verification:
 
 - `swift test`: 190 tests passed, 1 environment-dependent integration test skipped.
 - `xcodebuild build -project Preferans.xcodeproj -scheme Preferans -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO`
+- `xcodebuild archive`: signed Store archive completed successfully.
+- App Store Connect upload: `1.0.1 (25)` is `VALID` and ready for TestFlight.
 
 ## 1.0 (24) - App Store Connect
 
