@@ -41,9 +41,10 @@ public enum TotusPolicy: Hashable, Codable, Sendable {
     case asTenTrickGame(requireWhist: Bool)
 
     /// Totus is its own bid sitting above misère. Declarer takes the talon,
-    /// discards two, then picks the trump strain; opponents are forced to
-    /// whist when ``requireWhist`` is true. ``bonusPool`` is added to the
-    /// declarer's pool *only* when the contract is made.
+    /// discards two, then picks the trump strain and starts play immediately.
+    /// ``requireWhist`` is retained for compatibility with saved settings;
+    /// it applies to the standard 10-trick ladder, not this dedicated flow.
+    /// ``bonusPool`` is added to the declarer's pool *only* when made.
     case dedicatedContract(requireWhist: Bool, bonusPool: Int)
 
     public var isDedicated: Bool {

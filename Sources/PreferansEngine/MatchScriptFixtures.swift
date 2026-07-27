@@ -237,8 +237,9 @@ private extension DealScript {
         )
     }
 
-    /// 10-trick game contract under `.asTenTrickGame`: whist/pass is skipped
-    /// and the hand must be played.
+    /// 10-trick game contract under `.asTenTrickGame`. The script supplies
+    /// both forced whists when that convention is enabled; otherwise the
+    /// driver skips them because no whist state is entered.
     static func makeTenTrickGame(declarer: PlayerID, strain: Strain) -> DealScript {
         let contract = GameContract(10, strain)
         return DealScript(
@@ -246,6 +247,7 @@ private extension DealScript {
             auction: [.bid(.game(contract)), .pass, .pass],
             discardChoice: .talon,
             contractDeclaration: contract,
+            whists: [.whist, .whist],
             cardPlay: .greedyForDeclarer(declarer: declarer)
         )
     }

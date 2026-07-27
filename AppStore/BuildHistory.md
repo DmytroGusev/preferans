@@ -2,6 +2,25 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0 (25) - App Store Connect
+
+- Date: 2026-07-27
+- Git commit: pending
+- Operational change made by: Codex in the rules and comfort visual audit session
+- Source base: build `1.0 (24)`, commit `f6be093`
+
+Changes:
+
+- Fixed 10-trick contracts configured for mandatory whist: defenders now enter and complete the whist round instead of being skipped directly into play.
+- Added regression coverage for all-pass opening lead order with three and four players.
+- Added a formal Leningrad rule profile with doubled contract values, semi-responsible whist, and gentleman single-whist scoring.
+- Softened the felt, accent, surface, and vignette tokens to reduce sustained contrast fatigue during long sessions.
+- Bumped `CURRENT_PROJECT_VERSION` from `24` to `25`.
+
+Verification:
+
+- Pending.
+
 ## 1.0 (24) - App Store Connect
 
 - Date: 2026-07-06

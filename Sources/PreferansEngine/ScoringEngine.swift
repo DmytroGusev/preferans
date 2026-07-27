@@ -7,7 +7,7 @@ struct PreferansScoring {
 
     func passedOut(_ whist: WhistState) -> DealResult {
         var delta = ScoreDelta(players: players)
-        delta.addPool(whist.contract.value + whist.bonusPoolOnSuccess, to: whist.declarer)
+        delta.addPool(contractValue(whist.contract) + whist.bonusPoolOnSuccess, to: whist.declarer)
         return .unplayed(
             kind: .passedOut,
             activePlayers: whist.activePlayers,
@@ -18,9 +18,10 @@ struct PreferansScoring {
 
     func halfWhist(_ whist: WhistState, halfWhister: PlayerID) -> DealResult {
         var delta = ScoreDelta(players: players)
-        delta.addPool(whist.contract.value, to: whist.declarer)
+        let value = contractValue(whist.contract)
+        delta.addPool(value, to: whist.declarer)
         delta.addWhists(
-            whist.contract.value * (effectiveWhistRequirement(for: whist.contract) / 2),
+            value * (effectiveWhistRequirement(for: whist.contract) / 2),
             writer: halfWhister,
             on: whist.declarer
         )
@@ -51,32 +52,36 @@ struct PreferansScoring {
         var delta = ScoreDelta(players: players)
         let declarerTricks = tricks(context.declarer, in: playing.trickCounts)
         let defenderTricks = context.defenders.reduce(0) { $0 + tricks($1, in: playing.trickCounts) }
-        let value = context.contract.value
+        let value = contractValue(context.contract)
 
         if declarerTricks >= context.contract.tricks {
             delta.addPool(value + context.bonusPoolOnSuccess, to: context.declarer)
         } else {
             let undertricks = context.contract.tricks - declarerTricks
             delta.addMountain(value * undertricks, to: context.declarer)
-            if rules.failedDeclarerConsolation == .eachDefender {
-                for defender in context.defenders {
-                    delta.addWhists(value * undertricks, writer: defender, on: context.declarer)
-                }
+            applyDeclarerRemiseConsolation(
+                undertricks: undertricks,
+                context: context,
+                value: value,
+                delta: &delta
+            )
+        }
+
+        switch rules.singleWhistScoring {
+        case .greedy where context.whisters.count == 1:
+            delta.addWhists(value * defenderTricks, writer: context.whisters[0], on: context.declarer)
+        case .gentleman where context.whisters.count == 1:
+            let share = value * defenderTricks / context.defenders.count
+            for defender in context.defenders {
+                delta.addWhists(share, writer: defender, on: context.declarer)
+            }
+        case .greedy, .ownHandOnly, .gentleman:
+            for whister in context.whisters {
+                delta.addWhists(value * tricks(whister, in: playing.trickCounts), writer: whister, on: context.declarer)
             }
         }
 
-        // Multi-whister and "own hand only" single-whister both credit each
-        // writer with their own trick count. Greedy single-whister rolls
-        // every defender trick into the lone writer.
-        let usesGreedyAggregation = context.whisters.count == 1 && rules.singleWhistScoring == .greedy
-        for whister in context.whisters {
-            let whistTricks = usesGreedyAggregation
-                ? defenderTricks
-                : tricks(whister, in: playing.trickCounts)
-            delta.addWhists(value * whistTricks, writer: whister, on: context.declarer)
-        }
-
-        if rules.whistResponsibility == .responsible {
+        if rules.whistResponsibility != .none {
             applyWhistResponsibility(
                 contract: context.contract,
                 whisters: context.whisters,
@@ -112,13 +117,13 @@ struct PreferansScoring {
 
         if whisters.count == 1, let whister = whisters.first {
             let missing = max(0, requirement - defenderTricks)
-            delta.addMountain(missing * value, to: whister)
+            delta.addMountain(whistRemiseMountain(missing: missing, value: value), to: whister)
             return
         }
 
         if requirement == 1 {
             if defenderTricks == 0, let second = whisters.last {
-                delta.addMountain(value, to: second)
+                delta.addMountain(whistRemiseMountain(missing: 1, value: value), to: second)
             }
             return
         }
@@ -127,7 +132,18 @@ struct PreferansScoring {
         for whister in whisters {
             let own = tricks(whister, in: trickCounts)
             let missing = max(0, quota - own)
-            delta.addMountain(missing * value, to: whister)
+            delta.addMountain(whistRemiseMountain(missing: missing, value: value), to: whister)
+        }
+    }
+
+    private func whistRemiseMountain(missing: Int, value: Int) -> Int {
+        switch rules.whistResponsibility {
+        case .responsible:
+            return missing * value
+        case .semiResponsible:
+            return missing * value / 2
+        case .none:
+            return 0
         }
     }
 
@@ -137,11 +153,12 @@ struct PreferansScoring {
         settlement: TrickSettlement? = nil
     ) -> DealResult {
         var delta = ScoreDelta(players: players)
-        let tricks = tricks(context.declarer, in: playing.trickCounts)
-        if tricks == 0 {
-            delta.addPool(10, to: context.declarer)
+        let declarerTricks = tricks(context.declarer, in: playing.trickCounts)
+        let value = 10 * rules.scoringMultiplier
+        if declarerTricks == 0 {
+            delta.addPool(value, to: context.declarer)
         } else {
-            delta.addMountain(10 * tricks, to: context.declarer)
+            delta.addMountain(value * declarerTricks, to: context.declarer)
         }
         return DealResult(
             kind: .misere(declarer: context.declarer),
@@ -184,10 +201,36 @@ struct PreferansScoring {
     }
 
     private func effectiveWhistRequirement(for contract: GameContract) -> Int {
-        if contract.tricks == 10 && match.totus.requireWhistOnTenTricks {
+        if contract.tricks == 10
+            && (match.totus.requireWhistOnTenTricks || rules.requireWhistOnTenTrickContracts) {
             return 1
         }
         return rules.whistRequirement(for: contract)
+    }
+
+    private func contractValue(_ contract: GameContract) -> Int {
+        contract.value * rules.scoringMultiplier
+    }
+
+    private func applyDeclarerRemiseConsolation(
+        undertricks: Int,
+        context: GamePlayContext,
+        value: Int,
+        delta: inout ScoreDelta
+    ) {
+        guard rules.failedDeclarerConsolation == .eachDefender else { return }
+
+        if rules.singleWhistScoring == .gentleman, context.whisters.count == 1 {
+            let share = value * undertricks / context.defenders.count
+            for defender in context.defenders {
+                delta.addWhists(share, writer: defender, on: context.declarer)
+            }
+            return
+        }
+
+        for defender in context.defenders {
+            delta.addWhists(value * undertricks, writer: defender, on: context.declarer)
+        }
     }
 
     private func openingHands(from whist: WhistState) -> [PlayerID: [Card]]? {

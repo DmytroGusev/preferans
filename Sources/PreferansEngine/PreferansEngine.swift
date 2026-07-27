@@ -392,7 +392,7 @@ public struct PreferansEngine: Sendable {
         guard whist.defenders.contains(player), whist.currentPlayer == player else {
             return []
         }
-        if isStalingradContract(whist.contract) {
+        if requiresForcedWhist(for: whist.contract) {
             return [.whist]
         }
 
@@ -412,8 +412,20 @@ public struct PreferansEngine: Sendable {
         }
     }
 
-    private func isStalingradContract(_ contract: GameContract) -> Bool {
+    private func requiresForcedWhist(for contract: GameContract) -> Bool {
         contract == GameContract(6, .suit(.spades))
+            || (contract.tricks == 10
+                && (rules.requireWhistOnTenTrickContracts || match.totus.requireWhistOnTenTricks))
+    }
+
+    func requiresWhistRound(for contract: GameContract, finalBid: ContractBid) -> Bool {
+        // Dedicated totus is a separate, immediate-play convention. Its
+        // `requireWhist` setting belongs to the standard 10-trick ladder;
+        // it must not turn a declared totus into a normal whist round.
+        if finalBid == .totus {
+            return false
+        }
+        return contract.tricks < 10 || requiresForcedWhist(for: contract)
     }
 
     /// Active rotation for a deal with the given dealer. In 3-player matches

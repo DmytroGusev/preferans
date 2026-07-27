@@ -118,8 +118,10 @@ final class LobbyViewModelTests: AppTestCase {
         let rules = PreferansVariant.wien.rules
 
         XCTAssertTrue(rules.requireWhistOnTenTrickContracts)
-        XCTAssertEqual(rules.singleWhistScoring, .ownHandOnly)
-        XCTAssertEqual(rules.failedDeclarerConsolation, .none)
+        XCTAssertEqual(rules.singleWhistScoring, .gentleman)
+        XCTAssertEqual(rules.failedDeclarerConsolation, .eachDefender)
+        XCTAssertEqual(rules.whistResponsibility, .semiResponsible)
+        XCTAssertEqual(rules.scoringMultiplier, 2)
         XCTAssertEqual(rules.zeroTricksAllPassPoolBonus, 0)
         if case let .perTrick(multiplier, amnesty) = rules.allPassPenaltyPolicy {
             XCTAssertEqual(multiplier, 2)

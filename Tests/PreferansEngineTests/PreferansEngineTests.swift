@@ -42,6 +42,118 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(playing.currentPlayer, "east")
     }
 
+    func testAllPassLeadStartsWithForehandForThreeAndFourPlayerTables() throws {
+        struct TableCase {
+            let players: [PlayerID]
+            let dealer: PlayerID
+            let expectedActive: [PlayerID]
+        }
+
+        let cases = [
+            TableCase(
+                players: ["north", "east", "south"],
+                dealer: "north",
+                expectedActive: ["east", "south", "north"]
+            ),
+            TableCase(
+                players: ["north", "east", "south", "west"],
+                dealer: "north",
+                expectedActive: ["east", "south", "west"]
+            ),
+        ]
+
+        for table in cases {
+            var engine = try PreferansEngine(players: table.players, firstDealer: table.dealer)
+            try engine.startDeal(deck: Deck.standard32)
+            for player in table.expectedActive {
+                try engine.apply(.bid(player: player, call: .pass))
+            }
+
+            guard case let .playing(playing) = engine.state,
+                  case .allPass = playing.kind else {
+                return XCTFail("Three passes must start all-pass play.")
+            }
+            XCTAssertEqual(playing.activePlayers, table.expectedActive)
+            XCTAssertEqual(playing.leader, table.expectedActive[0])
+            XCTAssertEqual(playing.currentPlayer, table.expectedActive[0])
+            XCTAssertEqual(playing.leader, engine.activePlayers(forDealer: table.dealer)[0],
+                           "Forehand, immediately after the dealer, opens an all-pass deal.")
+        }
+    }
+
+    func testTenTrickContractWithRequiredWhistDoesNotSkipDefenders() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        var engine = try PreferansEngine(
+            players: players,
+            rules: .leningrad,
+            firstDealer: "south"
+        )
+        try engine.startDeal(deck: Deck.standard32)
+
+        let contract = GameContract(10, .suit(.clubs))
+        try engine.apply(.bid(player: "north", call: .bid(.game(contract))))
+        try engine.apply(.bid(player: "east", call: .pass))
+        try engine.apply(.bid(player: "south", call: .pass))
+
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("Expected the declarer to receive the talon.")
+        }
+        try engine.apply(.discard(player: "north", cards: exchange.talon))
+        try engine.apply(.declareContract(player: "north", contract: contract))
+
+        guard case let .awaitingWhist(whist) = engine.state else {
+            return XCTFail("Required-whist ten must enter the defenders' decision phase.")
+        }
+        XCTAssertEqual(whist.currentPlayer, "east")
+        XCTAssertEqual(engine.legalWhistCalls(for: "east"), [.whist])
+        try engine.apply(.whist(player: "east", call: .whist))
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
+        try engine.apply(.whist(player: "south", call: .whist))
+
+        guard case let .playing(playing) = engine.state,
+              case let .game(context) = playing.kind else {
+            return XCTFail("Expected play after both forced whists.")
+        }
+        XCTAssertEqual(context.whisters, ["east", "south"])
+    }
+
+    func testLeningradScoringDoublesContractAndSplitsGentlemanWhist() {
+        let players: [PlayerID] = ["north", "east", "south"]
+        let deal = DealDeckLayout.deal(deck: Deck.standard32, activePlayers: players)
+        let contract = GameContract(6, .suit(.clubs))
+        let playing = PlayingState(
+            dealer: "south",
+            activePlayers: players,
+            hands: deal.hands,
+            talon: deal.talon,
+            discard: deal.talon,
+            leader: "north",
+            currentPlayer: "north",
+            trickCounts: ["north": 4, "east": 4, "south": 2],
+            kind: .game(GamePlayContext(
+                declarer: "north",
+                contract: contract,
+                defenders: ["east", "south"],
+                whisters: ["east"],
+                defenderPlayMode: .open,
+                whistCalls: []
+            ))
+        )
+
+        let result = PreferansScoring(
+            players: players,
+            rules: .leningrad,
+            match: .unbounded
+        ).completedPlay(playing)
+
+        // 6-game is worth 4 in Leningrad. North is two short: 8 mountain.
+        // The lone whister and the passer share 6 defender tricks (24) and
+        // two undertricks of consolation (8): 16 whists each.
+        XCTAssertEqual(result.scoreDelta.mountain["north"], 8)
+        XCTAssertEqual(result.scoreDelta.whists["east"]?["north"], 16)
+        XCTAssertEqual(result.scoreDelta.whists["south"]?["north"], 16)
+    }
+
     func testHalfWhistRequiresFirstDefenderSecondChanceAndScores() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)

@@ -57,7 +57,11 @@ struct OnboardingView: View {
                             .tag(index)
                     }
                 }
+#if os(macOS)
+                .tabViewStyle(.automatic)
+#else
                 .tabViewStyle(.page(indexDisplayMode: .never))
+#endif
 
                 VStack(spacing: 18) {
                     HStack(spacing: 8) {

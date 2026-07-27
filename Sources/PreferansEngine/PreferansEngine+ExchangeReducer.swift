@@ -83,7 +83,7 @@ extension PreferansEngine {
         }
 
         let defenders = defenders(after: player, activePlayers: declaration.activePlayers)
-        if contract.tricks == 10 {
+        if !requiresWhistRound(for: contract, finalBid: declaration.finalBid) {
             let playing = makePlayingState(
                 dealer: declaration.dealer,
                 activePlayers: declaration.activePlayers,

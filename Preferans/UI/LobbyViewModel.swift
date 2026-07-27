@@ -624,13 +624,7 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
         case .odesa:
             return .sochi
         case .wien:
-            return PreferansRules(
-                requireWhistOnTenTrickContracts: true,
-                singleWhistScoring: .ownHandOnly,
-                failedDeclarerConsolation: .none,
-                allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false),
-                zeroTricksAllPassPoolBonus: 0
-            )
+            return .leningrad
         }
     }
 }

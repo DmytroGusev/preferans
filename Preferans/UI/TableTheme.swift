@@ -9,10 +9,12 @@ import PreferansEngine
 public enum TableTheme {
     // MARK: - Felt
 
-    public static let feltDeep = Color(red: 0.04, green: 0.16, blue: 0.10)
-    public static let feltMid  = Color(red: 0.07, green: 0.24, blue: 0.16)
-    public static let feltHigh = Color(red: 0.12, green: 0.36, blue: 0.24)
-    public static let feltEdge = Color(red: 0.02, green: 0.09, blue: 0.06)
+    // A lower-chroma blue-green felt reduces the red/green contrast that
+    // becomes tiring over long sessions while preserving card-table depth.
+    public static let feltDeep = Color(red: 0.06, green: 0.15, blue: 0.14)
+    public static let feltMid  = Color(red: 0.09, green: 0.22, blue: 0.20)
+    public static let feltHigh = Color(red: 0.15, green: 0.30, blue: 0.27)
+    public static let feltEdge = Color(red: 0.04, green: 0.10, blue: 0.09)
 
     // MARK: - Inks
 
@@ -25,9 +27,9 @@ public enum TableTheme {
 
     // MARK: - Accents
 
-    public static let gold       = Color(red: 0.83, green: 0.67, blue: 0.34)
-    public static let goldBright = Color(red: 0.96, green: 0.82, blue: 0.46)
-    public static let wine       = Color(red: 0.62, green: 0.13, blue: 0.16)
+    public static let gold       = Color(red: 0.76, green: 0.65, blue: 0.43)
+    public static let goldBright = Color(red: 0.90, green: 0.79, blue: 0.54)
+    public static let wine       = Color(red: 0.52, green: 0.20, blue: 0.21)
 
     // MARK: - Status inks
     //
@@ -67,10 +69,10 @@ public enum TableTheme {
     /// Base fill for a surface. Layered over the felt — never pure black.
     public static func surfaceFill(_ surface: Surface) -> Color {
         switch surface {
-        case .seat:       return Color.black.opacity(0.18)
-        case .seatActive: return Color.black.opacity(0.26)
-        case .chip:       return Color.black.opacity(0.22)
-        case .card:       return Color.black.opacity(0.30)
+        case .seat:       return feltEdge.opacity(0.36)
+        case .seatActive: return feltEdge.opacity(0.50)
+        case .chip:       return feltEdge.opacity(0.42)
+        case .card:       return feltEdge.opacity(0.56)
         }
     }
 
@@ -139,7 +141,7 @@ extension View {
             ZStack {
                 TableTheme.feltGradient
                 RadialGradient(
-                    colors: [Color.clear, Color.black.opacity(0.32)],
+                    colors: [Color.clear, TableTheme.feltEdge.opacity(0.20)],
                     center: .center,
                     startRadius: 140,
                     endRadius: 720
@@ -154,7 +156,7 @@ extension View {
     public func feltBand() -> some View {
         background(
             LinearGradient(
-                colors: [Color.black.opacity(0.24), Color.black.opacity(0.14)],
+                colors: [TableTheme.feltEdge.opacity(0.42), TableTheme.feltEdge.opacity(0.24)],
                 startPoint: .top,
                 endPoint: .bottom
             )
@@ -208,9 +210,9 @@ public struct FeltButtonStyle: ButtonStyle {
             (tint ?? TableTheme.goldBright)
                 .opacity(pressed ? 0.86 : 1.0)
         case .secondary:
-            Color.black.opacity(pressed ? 0.36 : 0.24)
+            TableTheme.feltEdge.opacity(pressed ? 0.60 : 0.46)
         case .dim:
-            Color.black.opacity(pressed ? 0.24 : 0.14)
+            TableTheme.feltEdge.opacity(pressed ? 0.42 : 0.28)
         }
     }
 
