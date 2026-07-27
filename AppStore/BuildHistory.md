@@ -2,12 +2,12 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
-## 1.0 (25) - App Store Connect
+## 1.0.1 (25) - App Store Connect
 
 - Date: 2026-07-27
 - Git commit: `7e96414 Fix rules scoring and soften table palette for build 25`
 - Operational change made by: Codex in the rules and comfort visual audit session
-- Source base: build `1.0 (24)`, commit `f6be093`
+- Source base: build `1.0 (24)`, commit `f6be093`; version raised because App Store Connect closed the `1.0` upload train.
 
 Changes:
 
