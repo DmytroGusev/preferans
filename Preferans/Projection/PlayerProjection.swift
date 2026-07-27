@@ -127,7 +127,7 @@ public struct LegalActionProjection: Codable, Sendable, Equatable {
     /// Seat whose hand `playableCards` belongs to. `nil` means the
     /// viewer's own seat (the default). Set when the viewer is acting
     /// on behalf of a controlled seat — today, the lone whister pulling
-    /// the passer's cards in single-whist greedy play.
+    /// the passer's cards in open single-whist greedy play.
     public var playableCardsOwner: PlayerID?
 
     public init(

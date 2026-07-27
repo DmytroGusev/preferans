@@ -139,8 +139,8 @@ public struct PreferansEngine: Sendable {
     }
 
     /// Resolves the seat authorized to send actions for `player`. When a
-    /// passer's turn comes up in a single-whist greedy game, the lone
-    /// whister speaks for them; otherwise the seat speaks for itself.
+    /// passer's turn comes up in an open single-whist greedy game, the
+    /// lone whister speaks for them; otherwise the seat speaks for itself.
     /// Used by the host actor (sender validation), the bot dispatcher
     /// (deciding when to act for another seat), and the projection (who
     /// gets the playable-cards affordance).

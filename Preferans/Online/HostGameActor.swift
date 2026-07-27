@@ -108,9 +108,9 @@ public struct HostUpdate: Sendable {
 /// complete ``PreferansSnapshot`` — hidden hands included — that the strategy
 /// needs), then carried back to the `@MainActor` coordinator which paces the
 /// decision off-actor and applies it. `decider` is the *controlling* seat: for
-/// most phases that equals the seat whose turn it is, but in single-whist
-/// greedy play the lone whister plays the passer's cards, so `decider` names
-/// the whister.
+/// most phases that equals the seat whose turn it is, but in open
+/// single-whist greedy play the lone whister plays the passer's cards, so
+/// `decider` names the whister.
 public struct BotDecisionPlan: Sendable {
     public let decider: PlayerID
     public let snapshot: PreferansSnapshot
@@ -259,9 +259,9 @@ public actor HostGameActor {
                 throw HostGameError.spoofedActor(expected: envelope.actor, actual: actionActor)
             }
             // The action speaks for `actionActor`. The wire sender may be
-            // either that seat itself or — in single-whist greedy play —
-            // the lone whister speaking for a passer they control. Any
-            // other sender is rejected as spoofed.
+            // either that seat itself or — in open single-whist greedy
+            // play — the lone whister speaking for a passer they control.
+            // Any other sender is rejected as spoofed.
             if let sender, sender != envelope.actor {
                 let controller = engine.controllingActor(of: envelope.actor)
                 if sender != controller {

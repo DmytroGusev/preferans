@@ -2,12 +2,11 @@ import XCTest
 @testable import PreferansApp
 @testable import PreferansEngine
 
-/// Verifies the "lone whister pulls the passer's cards" rule that applies in
-/// single-whist greedy scoring. The bug this guards against: the whister
-/// could not play on the passer's turn, so a bot or human passer took the
-/// trick into their own hands even though scoring rolls those tricks into
-/// the whister anyway. The fix introduces a controlling-actor concept the
-/// engine, projection, and bot dispatcher all share.
+/// Verifies the "lone whister pulls the passer's cards" rule that applies
+/// only in *open* single-whist greedy scoring. In closed play every
+/// defender keeps their own hand and takes their own turns. The controlling
+/// actor concept is shared by the engine, projection, bot dispatcher and
+/// multiplayer host, so both modes are covered here.
 final class SingleWhistControlTests: AppTestCase {
     private let players: [PlayerID] = ["north", "east", "south"]
 
@@ -92,6 +91,24 @@ final class SingleWhistControlTests: AppTestCase {
                        "ownHandOnly scoring keeps the passer in charge of their own cards")
     }
 
+    func testClosedSingleWhistKeepsThePasserInControlOfTheirOwnHand() throws {
+        var engine = try makeSingleWhistPlayingEngine(
+            whister: "east",
+            passer: "south",
+            mode: .closed
+        )
+        try advanceToCurrentPlayer("south", in: &engine)
+
+        XCTAssertEqual(engine.controllingActor(of: "south"), "south",
+                       "a closed passer must play their own hand")
+        XCTAssertNil(engine.controlledSeat(by: "east"),
+                     "the whister must not control another seat in closed play")
+        XCTAssertFalse(engine.legalCards(for: "south").isEmpty,
+                       "the passer receives their legal cards on their own turn")
+        XCTAssertTrue(engine.legalCards(for: "east").isEmpty,
+                      "the whister cannot play a closed passer's cards")
+    }
+
     // MARK: - Multiplayer host validation
 
     func testHostActorAllowsTheWhisterToSendPlayActionsForThePasser() async throws {
@@ -141,6 +158,37 @@ final class SingleWhistControlTests: AppTestCase {
         }
     }
 
+    func testHostActorRejectsWhisterActingForPasserInClosedPlay() async throws {
+        let host = try await makeSingleWhistHostAtPasserTurn(
+            declarer: "north",
+            whister: "east",
+            passer: "south",
+            mode: .closed
+        )
+        let snapshotState = await host.currentSnapshot.state
+        guard case let .playing(playing) = snapshotState,
+              playing.currentPlayer == "south",
+              let card = playing.hands["south"]?.sorted().first else {
+            return XCTFail("Expected south to be on lead with a card to play.")
+        }
+
+        let envelope = ClientActionEnvelope(
+            tableID: host.tableID,
+            actor: "south",
+            action: .playCard(player: "south", card: card),
+            baseHostSequence: 0
+        )
+
+        do {
+            _ = try await host.applyClientAction(envelope, sender: "east")
+            XCTFail("A whister cannot act for the passer in closed play.")
+        } catch let error as HostGameError {
+            guard case .spoofedActor = error else {
+                return XCTFail("Expected spoofedActor; got \(error)")
+            }
+        }
+    }
+
     // MARK: - Projection
 
     func testProjectionRevealsPasserHandToTheControllingWhister() throws {
@@ -165,7 +213,11 @@ final class SingleWhistControlTests: AppTestCase {
     }
 
     func testProjectionDoesNotLeakPasserHandToOtherViewers() throws {
-        var engine = try makeSingleWhistPlayingEngine(whister: "east", passer: "south")
+        var engine = try makeSingleWhistPlayingEngine(
+            whister: "east",
+            passer: "south",
+            mode: .closed
+        )
         try advanceToCurrentPlayer("south", in: &engine)
 
         let declarerProjection = PlayerProjectionBuilder.projection(
@@ -180,11 +232,36 @@ final class SingleWhistControlTests: AppTestCase {
                        "declarer must not gain visibility into the passer's hand")
     }
 
+    func testClosedSingleWhistKeepsPasserHandPrivateFromWhister() throws {
+        var engine = try makeSingleWhistPlayingEngine(
+            whister: "east",
+            passer: "south",
+            mode: .closed
+        )
+        try advanceToCurrentPlayer("south", in: &engine)
+
+        let whisterProjection = PlayerProjectionBuilder.projection(
+            for: "east",
+            tableID: UUID(),
+            sequence: 0,
+            engine: engine,
+            policy: .online
+        )
+
+        let passerSeat = try XCTUnwrap(whisterProjection.seats.first { $0.player == "south" })
+        XCTAssertEqual(passerSeat.hand.compactMap(\.knownCard).count, 0,
+                       "a whister cannot see the passer's closed hand")
+        XCTAssertNil(whisterProjection.legal.playableCardsOwner)
+        XCTAssertTrue(whisterProjection.legal.playableCards.isEmpty,
+                      "a whister cannot be offered cards from a closed passer's hand")
+    }
+
     // MARK: - Helpers
 
     private func makeSingleWhistPlayingEngine(
         whister: PlayerID,
         passer: PlayerID,
+        mode: DefenderPlayMode = .open,
         rules: PreferansRules = .sochi
     ) throws -> PreferansEngine {
         let recipe = HandRecipe.declarerFails(
@@ -209,7 +286,7 @@ final class SingleWhistControlTests: AppTestCase {
         _ = try engine.apply(.whist(player: firstDefender, call: firstCall))
         _ = try engine.apply(.whist(player: secondDefender, call: secondCall))
         if case .awaitingDefenderMode = engine.state {
-            _ = try engine.apply(.chooseDefenderMode(player: whister, mode: .closed))
+            _ = try engine.apply(.chooseDefenderMode(player: whister, mode: mode))
         }
         guard case .playing = engine.state else {
             throw EngineTestError("Expected playing state after whist; got \(engine.state.description)")
@@ -237,7 +314,8 @@ final class SingleWhistControlTests: AppTestCase {
     private func makeSingleWhistHostAtPasserTurn(
         declarer: PlayerID,
         whister: PlayerID,
-        passer: PlayerID
+        passer: PlayerID,
+        mode: DefenderPlayMode = .open
     ) async throws -> HostGameActor {
         let recipe = HandRecipe.declarerFails(
             declarer: declarer,
@@ -288,7 +366,7 @@ final class SingleWhistControlTests: AppTestCase {
             try await apply(.whist(player: defender, call: call), sender: defender)
         }
         if case .awaitingDefenderMode = await host.currentSnapshot.state {
-            try await apply(.chooseDefenderMode(player: whister, mode: .closed), sender: whister)
+            try await apply(.chooseDefenderMode(player: whister, mode: mode), sender: whister)
         }
 
         // Walk play forward until it's `passer`'s turn.

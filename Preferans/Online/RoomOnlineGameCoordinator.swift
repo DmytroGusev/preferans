@@ -355,11 +355,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
         refreshPeersFromTransport()
         // The envelope's `actor` is the seat the action speaks for. For
-        // most actions this equals the local seat, but in single-whist
-        // greedy play the lone whister sends play actions on behalf of
-        // the passer — `action.actor` then names the passer while the
-        // wire sender stays the whister. The host validates the sender
-        // against the controlling actor for that seat.
+        // most actions this equals the local seat, but in open
+        // single-whist greedy play the lone whister sends play actions on
+        // behalf of the passer — `action.actor` then names the passer
+        // while the wire sender stays the whister. The host validates the
+        // sender against the controlling actor for that seat.
         let envelope = ClientActionEnvelope(
             tableID: tableID,
             actor: action.actor ?? localSeat,

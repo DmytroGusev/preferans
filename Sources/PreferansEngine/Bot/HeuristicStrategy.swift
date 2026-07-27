@@ -48,8 +48,8 @@ public struct HeuristicStrategy: PlayerStrategy {
                     ? .acceptSettlement(player: viewer)
                     : .rejectSettlement(player: viewer)
             }
-            // The lone whister in a single-whist greedy game pulls the
-            // passer's cards. Resolve who's authorized to act for the
+            // In an open single-whist greedy game the lone whister pulls
+            // the passer's cards. Resolve who's authorized to act for the
             // current seat — `viewer` only plays when they ARE that
             // controller, and the resulting action speaks for the seat
             // whose hand the card comes from (which may be the passer).

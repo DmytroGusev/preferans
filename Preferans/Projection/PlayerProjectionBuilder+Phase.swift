@@ -173,13 +173,13 @@ extension PlayerProjectionBuilder {
         frame.legal.canAcceptSettlement = engine.canAcceptSettlement(player: viewer)
         frame.legal.canRejectSettlement = engine.canRejectSettlement(player: viewer)
         applyPlayRolesAndVisibility(state.kind, activePlayers: frame.activePlayers, policy: policy, to: &frame)
-        // The lone whister sees the passer's hand face-up regardless of
-        // open/closed mode — they're the one playing it. The passer
-        // sees their own hand too (it's still "their" cards, even
-        // though the whister directs the play).
+        // In open single-whist greedy play the lone whister also controls
+        // the passer's hand, so that hand is face-up to the whister. A
+        // closed game keeps both defender hands private and self-controlled.
         if case let .game(context) = state.kind,
            context.whisters.count == 1,
            context.defenders.count > 1,
+           context.defenderPlayMode == .open,
            engine.rules.singleWhistScoring == .greedy,
            let whister = context.whisters.first,
            viewer == whister {
