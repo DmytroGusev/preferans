@@ -21,11 +21,11 @@ final class BotSimulationReportTests: XCTestCase {
         ProcessInfo.processInfo.environment["PREF_SIM_FULL"] == "1"
     }
 
-    /// Single hero scenario: random 3-player matches to pool target = 6.
+    /// Single hero scenario: seeded 3-player matches to pool target = 6.
     func testFiftyThreePlayerMatchesAgainstBots() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4))
         var report = SimReport()
-        var rng = SystemRandomNumberGenerator()
+        var rng = SeededRandomNumberGenerator(seed: 0x3342_4F54_5349_4D)
         let matchCount = fullSim ? 50 : 5
         for matchIndex in 0..<matchCount {
             let match = MatchSettings(poolTarget: 6, raspasy: .singleShot)
@@ -41,24 +41,27 @@ final class BotSimulationReportTests: XCTestCase {
         XCTAssertEqual(report.illegalActionAttempts, 0)
         XCTAssertEqual(report.stalledDeals, 0)
         XCTAssertEqual(report.scoringInconsistencies, 0)
+        XCTAssertEqual(report.dealCapHits, 0)
     }
 
     func testTwentyFourPlayerMatchesAgainstBots() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4))
         var report = SimReport()
-        var rng = SystemRandomNumberGenerator()
+        var rng = SeededRandomNumberGenerator(seed: 0x3442_4F54_5349_4D)
         let matchCount = fullSim ? 20 : 3
         let four: [PlayerID] = ["N", "E", "S", "W"]
         for matchIndex in 0..<matchCount {
-            let match = MatchSettings(poolTarget: 6, raspasy: .singleShot)
+            let match = MatchSettings(poolTarget: 8, raspasy: .singleShot)
             var engine = try PreferansEngine(players: four, match: match)
             try await playMatch(engine: &engine, strategy: strategy, report: &report, matchIndex: matchIndex, rng: &rng)
             report.matchesCompleted += 1
         }
-        report.print(label: "4-player x \(matchCount) matches, pool=6")
+        report.print(label: "4-player x \(matchCount) matches, pool=8")
         XCTAssertEqual(report.matchesCompleted, matchCount)
         XCTAssertEqual(report.illegalActionAttempts, 0)
         XCTAssertEqual(report.stalledDeals, 0)
+        XCTAssertEqual(report.scoringInconsistencies, 0)
+        XCTAssertEqual(report.dealCapHits, 0)
     }
 
     // MARK: - Driver
@@ -68,7 +71,7 @@ final class BotSimulationReportTests: XCTestCase {
         strategy: PlayerStrategy,
         report: inout SimReport,
         matchIndex: Int,
-        rng: inout SystemRandomNumberGenerator
+        rng: inout SeededRandomNumberGenerator
     ) async throws {
         let dealCap = 200
         var dealsThisMatch = 0
@@ -91,7 +94,7 @@ final class BotSimulationReportTests: XCTestCase {
                 return
             }
             if case let .dealFinished(result) = engine.state {
-                report.observe(result: result)
+                report.observe(result: result, players: engine.players)
             }
         }
         if dealsThisMatch >= dealCap {
@@ -114,7 +117,11 @@ private struct SimReport {
     var declarerLossCount = 0
     var trickCountSamples: [Int] = []
 
-    mutating func observe(result: DealResult) {
+    mutating func observe(result: DealResult, players: [PlayerID]) {
+        if (try? result.scoreDelta.validate(players: players)) == nil {
+            scoringInconsistencies += 1
+        }
+
         let key: String
         switch result.kind {
         case .passedOut: key = "passedOut"
@@ -127,6 +134,17 @@ private struct SimReport {
             contractValueHistogram[contract.value, default: 0] += 1
         }
         dealResultKindCounts[key, default: 0] += 1
+
+        switch result.kind {
+        case .game, .misere, .allPass:
+            if result.trickCounts.values.reduce(0, +) != 10 {
+                scoringInconsistencies += 1
+            }
+        case .passedOut, .withoutThree, .halfWhist:
+            if result.trickCounts.values.contains(where: { $0 != 0 }) {
+                scoringInconsistencies += 1
+            }
+        }
 
         if case let .game(declarer, contract, _) = result.kind {
             let declTricks = result.trickCounts[declarer] ?? 0

@@ -7,16 +7,13 @@ import Foundation
 /// wins.
 public struct CardPlayPlanner: Sendable {
     public var samples: Int
-    public var rolloutsPerSample: Int
     public var samplingSeed: UInt64
 
     public init(
         samples: Int = 24,
-        rolloutsPerSample: Int = 1,
         samplingSeed: UInt64 = 0x5052_4546_4552_414E
     ) {
-        self.samples = samples
-        self.rolloutsPerSample = rolloutsPerSample
+        self.samples = max(1, samples)
         self.samplingSeed = samplingSeed
     }
 
@@ -47,20 +44,16 @@ public struct CardPlayPlanner: Sendable {
         let pool = sampleSnapshots.isEmpty ? [snapshot] : sampleSnapshots
 
         var totals = [Double](repeating: 0, count: legal.count)
-        var counts = [Int](repeating: 0, count: legal.count)
         for sample in pool {
             for (i, candidate) in legal.enumerated() {
-                for _ in 0..<rolloutsPerSample {
-                    totals[i] += rollout(from: sample, viewer: viewer, actingFor: actingFor, firstMove: candidate)
-                    counts[i] += 1
-                }
+                totals[i] += rollout(from: sample, viewer: viewer, actingFor: actingFor, firstMove: candidate)
             }
         }
 
         var bestIndex = 0
         var bestMean = -Double.infinity
         for i in legal.indices {
-            let mean = totals[i] / Double(max(1, counts[i]))
+            let mean = totals[i] / Double(pool.count)
             if mean > bestMean || (mean == bestMean && legal[i] < legal[bestIndex]) {
                 bestMean = mean
                 bestIndex = i
@@ -99,7 +92,7 @@ public struct CardPlayPlanner: Sendable {
     /// Greedy in-rollout policy — used for both the bot itself and every
     /// opponent during simulation. Trick-winning vs trick-dumping based on
     /// whether the seat wants tricks under the active contract.
-    private func greedyChoice(
+    func greedyChoice(
         legal: [Card],
         playing: PlayingState,
         actor: PlayerID
@@ -175,7 +168,7 @@ public struct CardPlayPlanner: Sendable {
 
     private func wantsTricks(actor: PlayerID, kind: PlayKind) -> Bool {
         switch kind {
-        case let .game(ctx): return actor == ctx.declarer
+        case .game: return true
         case .misere, .allPass: return false
         }
     }
@@ -190,43 +183,22 @@ public struct CardPlayPlanner: Sendable {
         }
     }
 
-    /// Final score for a deal viewed from `viewer`. Higher is better;
-    /// scaled in trick-equivalents so it's comparable across contracts.
+    /// Final match balance for `viewer`. This deliberately uses the same
+    /// pool/mountain/whist conversion as the production scoreboard, including
+    /// variant-specific values and pulka closure already applied by the
+    /// engine. Candidate cards are therefore compared by real Preferans value
+    /// rather than an unrelated hard-coded trick bonus.
     private func score(snapshot: PreferansSnapshot, viewer: PlayerID) -> Double {
         switch snapshot.state {
-        case let .dealFinished(result):
-            return scoreFromResult(result: result, viewer: viewer)
-        case let .gameOver(summary):
-            return scoreFromResult(result: summary.lastDeal, viewer: viewer)
+        case .dealFinished, .gameOver:
+            let balances = snapshot.score.normalizedBalances(
+                poolPointValue: Double(snapshot.rules.poolPointWhistValue),
+                mountainPointValue: Double(snapshot.rules.mountainPointWhistValue)
+            )
+            return balances[viewer] ?? 0
         case let .playing(p):
             return scoreFromPlaying(playing: p, viewer: viewer)
         default:
-            return 0
-        }
-    }
-
-    private func scoreFromResult(result: DealResult, viewer: PlayerID) -> Double {
-        let counts = result.trickCounts
-        switch result.kind {
-        case let .game(declarer, contract, _):
-            let declarerTricks = counts[declarer] ?? 0
-            if viewer == declarer {
-                return Double(declarerTricks - contract.tricks) + (declarerTricks >= contract.tricks ? 5 : -5)
-            } else {
-                let made = declarerTricks >= contract.tricks
-                return Double(counts[viewer] ?? 0) + (made ? -5 : 5)
-            }
-        case let .misere(declarer):
-            let declarerTricks = counts[declarer] ?? 0
-            if viewer == declarer {
-                return Double(-declarerTricks * 2) + (declarerTricks == 0 ? 5 : -5)
-            } else {
-                return declarerTricks > 0 ? 5 : -1
-            }
-        case .allPass:
-            let own = counts[viewer] ?? 0
-            return Double(-own * 2) + (own == 0 ? 3 : 0)
-        case .passedOut, .withoutThree, .halfWhist:
             return 0
         }
     }

@@ -7,10 +7,15 @@ import Foundation
 /// sampling. Card play uses ``CardPlayPlanner`` (perfect-info Monte
 /// Carlo) so the bot accounts for hidden hands when it actually matters.
 public struct HeuristicStrategy: PlayerStrategy {
-    public var planner: CardPlayPlanner
+    public let profile: BotProfile
+    public let planner: CardPlayPlanner
 
-    public init(planner: CardPlayPlanner = CardPlayPlanner()) {
-        self.planner = planner
+    public init(
+        profile: BotProfile = .standard,
+        planner: CardPlayPlanner? = nil
+    ) {
+        self.profile = profile
+        self.planner = planner ?? CardPlayPlanner(samples: profile.difficulty.plannerSamples)
     }
 
     public func decide(
@@ -34,7 +39,7 @@ public struct HeuristicStrategy: PlayerStrategy {
             return .whist(player: viewer, call: chooseWhistCall(snapshot: snapshot, state: s, viewer: viewer))
         case let .awaitingDefenderMode(s):
             guard s.whister == viewer else { return nil }
-            return .chooseDefenderMode(player: viewer, mode: .closed)
+            return .chooseDefenderMode(player: viewer, mode: chooseDefenderMode(state: s))
         case let .playing(s):
             if let proposal = s.pendingSettlement {
                 guard snapshot.state.currentActor == viewer else { return nil }
@@ -60,6 +65,78 @@ public struct HeuristicStrategy: PlayerStrategy {
                 ?? (try? PreferansEngine(snapshot: snapshot).legalCards(for: viewer))?.first
             guard let card else { return nil }
             return .playCard(player: controlled, card: card)
+        }
+    }
+
+    /// The action is still computed by the single decision path above. This
+    /// wrapper only attaches a categorical rationale afterward, keeping bot
+    /// behavior and its player-facing explanation from becoming two sources
+    /// of truth.
+    public func decision(
+        snapshot: PreferansSnapshot,
+        viewer: PlayerID
+    ) async -> StrategyDecision? {
+        guard let action = await decide(snapshot: snapshot, viewer: viewer) else {
+            return nil
+        }
+        let explanation = rationale(for: action, snapshot: snapshot).map { rationale in
+            BotDecisionExplanation(
+                actor: viewer,
+                profile: profile,
+                rationale: rationale
+            )
+        }
+        return StrategyDecision(
+            action: action,
+            explanation: explanation
+        )
+    }
+
+    private func rationale(
+        for action: PreferansAction,
+        snapshot: PreferansSnapshot
+    ) -> BotDecisionRationale? {
+        switch action {
+        case .startDeal, .proposeSettlement:
+            return nil
+        case let .bid(_, call):
+            switch call {
+            case .pass:
+                return .auctionPass
+            case let .bid(contract):
+                switch contract {
+                case .game: return .gameBid
+                case .misere: return .misereBid
+                case .totus: return .totusBid
+                }
+            }
+        case .discard:
+            if case let .awaitingDiscard(exchange) = snapshot.state,
+               exchange.finalBid == .misere {
+                return .discardForMisere
+            }
+            return .discardForContract
+        case .declareContract:
+            return .contractFit
+        case .concedeWithoutThree:
+            return .contractConcession
+        case let .whist(_, call):
+            switch call {
+            case .whist: return .fullWhist
+            case .halfWhist: return .halfWhist
+            case .pass: return .defensivePass
+            }
+        case let .chooseDefenderMode(_, mode):
+            return mode == .open ? .openDefense : .closedDefense
+        case .playCard:
+            // Card-play explanations would fire up to thirty times per deal
+            // and compete with the visible card/trick animation. Keep the
+            // lightweight notes for strategic phase decisions instead.
+            return nil
+        case .acceptSettlement:
+            return .forcedSettlement
+        case .rejectSettlement:
+            return .contestSettlement
         }
     }
 
@@ -93,7 +170,8 @@ public struct HeuristicStrategy: PlayerStrategy {
         // Misere hands are rare enough that waiting until every game contract
         // is unaffordable hides them entirely. Let clean misere candidates
         // speak before a marginal six-level game.
-        if hasAffordableMisere, HandEvaluator.expectedMisereTricks(grouped: grouped) <= 1.5 {
+        let misereTolerance = 1.5 + profile.temperament.misereToleranceAdjustment
+        if hasAffordableMisere, HandEvaluator.expectedMisereTricks(grouped: grouped) <= misereTolerance {
             return .bid(.misere)
         }
         if hasAffordableTotus { return .bid(.totus) }
@@ -128,9 +206,10 @@ public struct HeuristicStrategy: PlayerStrategy {
             case 9: margin = 1.0
             default: margin = 1.5
             }
-            return estimate >= Double(contract.tricks) - margin
+            return estimate >= Double(contract.tricks) - margin - profile.temperament.bidMarginAdjustment
         case .misere:
-            return HandEvaluator.expectedMisereTricks(grouped: grouped) <= 1.5
+            return HandEvaluator.expectedMisereTricks(grouped: grouped)
+                <= 1.5 + profile.temperament.misereToleranceAdjustment
         case .totus:
             // Totus needs all 10 tricks — only the strongest hands.
             let bestStrain = Strain.allStandard
@@ -236,12 +315,31 @@ public struct HeuristicStrategy: PlayerStrategy {
         let firstCall = firstDefender.flatMap { defender in
             state.calls.first { $0.player == defender }?.call
         }
-        let whistThreshold = firstCall == .whist && viewer != firstDefender
+        let cooperativeThreshold = firstCall == .whist && viewer != firstDefender
             ? share + 1.0
             : share
+        let whistThreshold = cooperativeThreshold + profile.temperament.whistThresholdAdjustment
         if legal.contains(.whist), estimate >= whistThreshold { return .whist }
-        if legal.contains(.halfWhist), estimate >= share - 0.75 { return .halfWhist }
+        if legal.contains(.halfWhist),
+           estimate >= share - 0.75 + profile.temperament.whistThresholdAdjustment {
+            return .halfWhist
+        }
         return legal.contains(.pass) ? .pass : legal[0]
+    }
+
+    /// Open whist coordinates both defending hands and is the sound default
+    /// for stronger/careful bots. Casual and bold personalities keep their
+    /// cards closed; adaptive seasoned bots reveal only against the contracts
+    /// where coordinated defense is most valuable.
+    private func chooseDefenderMode(state: DefenderModeState) -> DefenderPlayMode {
+        switch (profile.difficulty, profile.temperament) {
+        case (.expert, _), (_, .careful):
+            return .open
+        case (.seasoned, .adaptive):
+            return state.contract.tricks <= 7 ? .open : .closed
+        case (.casual, _), (_, .bold):
+            return .closed
+        }
     }
 
 }

@@ -22,7 +22,6 @@ struct BotDeterminismTests {
         let snapshot = makePlayingSnapshot()
         let planner = CardPlayPlanner(
             samples: 8,
-            rolloutsPerSample: 1,
             samplingSeed: 0x504C_414E_4E45_52
         )
 

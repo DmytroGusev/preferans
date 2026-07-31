@@ -8,8 +8,58 @@ import XCTest
 final class BotTests: XCTestCase {
     private let players: [PlayerID] = ["N", "E", "S"]
 
+    func testDifficultyControlsPlannerDepth() {
+        XCTAssertEqual(
+            HeuristicStrategy(profile: BotProfile(difficulty: .casual)).planner.samples,
+            6
+        )
+        XCTAssertEqual(
+            HeuristicStrategy(profile: BotProfile(difficulty: .seasoned)).planner.samples,
+            16
+        )
+        XCTAssertEqual(
+            HeuristicStrategy(profile: BotProfile(difficulty: .expert)).planner.samples,
+            32
+        )
+    }
+
+    func testDefenderRolloutTakesCheapestWinningCard() {
+        let planner = CardPlayPlanner(samples: 1)
+        let state = rolloutState(
+            currentPlayer: "N",
+            currentTrick: [CardPlay(player: "E", card: Card(.hearts, .ten))]
+        )
+
+        let choice = planner.greedyChoice(
+            legal: [Card(.hearts, .ace), Card(.hearts, .jack)],
+            playing: state,
+            actor: "N"
+        )
+
+        XCTAssertEqual(choice, Card(.hearts, .jack))
+    }
+
+    func testDefenderRolloutDoesNotOvertakeWinningPartner() {
+        let planner = CardPlayPlanner(samples: 1)
+        let state = rolloutState(
+            currentPlayer: "N",
+            currentTrick: [
+                CardPlay(player: "E", card: Card(.hearts, .ten)),
+                CardPlay(player: "S", card: Card(.hearts, .king))
+            ]
+        )
+
+        let choice = planner.greedyChoice(
+            legal: [Card(.hearts, .ace), Card(.hearts, .queen)],
+            playing: state,
+            actor: "N"
+        )
+
+        XCTAssertEqual(choice, Card(.hearts, .queen))
+    }
+
     func testStrategyDrivesEntireGameDealToFinish() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 6, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 6))
         let outcome = try await playOneDeal(strategy: strategy, deck: makeDeck(.strongSpades))
         XCTAssertNotNil(outcome.result)
         switch outcome.result?.kind {
@@ -21,19 +71,19 @@ final class BotTests: XCTestCase {
     }
 
     func testStrategyDrivesMisereDealToFinish() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 6, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 6))
         let outcome = try await playOneDeal(strategy: strategy, deck: makeDeck(.misereForNorth))
         XCTAssertNotNil(outcome.result)
     }
 
     func testStrategyDrivesAllPassDealToFinish() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4))
         let outcome = try await playOneDeal(strategy: strategy, deck: makeDeck(.allWeak))
         XCTAssertNotNil(outcome.result)
     }
 
     func testFiveConsecutiveBotDealsAllReachAScoredResult() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 4))
         var engine = try PreferansEngine(players: players)
         for dealIndex in 0..<5 {
             _ = try engine.startDeal(deck: Deck.standard32.shuffled())
@@ -50,7 +100,7 @@ final class BotTests: XCTestCase {
     }
 
     func testSecondDefenderPassesMarginalHandAfterFirstDefenderWhists() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1))
         let engine = try makeSecondDefenderWhistEngine(
             secondDefenderHand: [
                 Card(.spades, .ace),
@@ -73,26 +123,81 @@ final class BotTests: XCTestCase {
     }
 
     func testSecondDefenderStillWhistsWithStrongHandAfterFirstDefenderWhists() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1))
         let engine = try makeSecondDefenderWhistEngine(
-            secondDefenderHand: [
-                Card(.spades, .ace),
-                Card(.diamonds, .ace),
-                Card(.clubs, .king),
-                Card(.clubs, .queen),
-                Card(.clubs, .jack),
-                Card(.clubs, .seven),
-                Card(.spades, .seven),
-                Card(.spades, .eight),
-                Card(.diamonds, .seven),
-                Card(.hearts, .seven)
-            ]
+            secondDefenderHand: strongSecondDefenderHand
         )
 
         let action = await strategy.decide(snapshot: engine.snapshot, viewer: "S")
 
         XCTAssertEqual(action, .whist(player: "S", call: .whist),
                        "a genuinely strong second defender should still be willing to whist")
+    }
+
+    func testTemperamentChangesBorderlineSecondWhist() async throws {
+        let engine = try makeSecondDefenderWhistEngine(secondDefenderHand: strongSecondDefenderHand)
+        let careful = HeuristicStrategy(
+            profile: BotProfile(difficulty: .seasoned, temperament: .careful),
+            planner: CardPlayPlanner(samples: 1)
+        )
+        let bold = HeuristicStrategy(
+            profile: BotProfile(difficulty: .seasoned, temperament: .bold),
+            planner: CardPlayPlanner(samples: 1)
+        )
+
+        let carefulAction = await careful.decide(snapshot: engine.snapshot, viewer: "S")
+        let boldAction = await bold.decide(snapshot: engine.snapshot, viewer: "S")
+
+        XCTAssertEqual(carefulAction, .whist(player: "S", call: .pass))
+        XCTAssertEqual(boldAction, .whist(player: "S", call: .whist))
+    }
+
+    func testTemperamentChangesSingleWhistVisibility() async throws {
+        var engine = try makeSecondDefenderWhistEngine(
+            secondDefenderHand: [
+                Card(.spades, .ace), Card(.diamonds, .ace),
+                Card(.spades, .seven), Card(.spades, .eight),
+                Card(.clubs, .seven), Card(.clubs, .eight),
+                Card(.diamonds, .seven), Card(.diamonds, .eight),
+                Card(.hearts, .seven), Card(.hearts, .eight)
+            ]
+        )
+        _ = try engine.apply(.whist(player: "S", call: .pass))
+        let careful = HeuristicStrategy(
+            profile: BotProfile(difficulty: .seasoned, temperament: .careful),
+            planner: CardPlayPlanner(samples: 1)
+        )
+        let bold = HeuristicStrategy(
+            profile: BotProfile(difficulty: .seasoned, temperament: .bold),
+            planner: CardPlayPlanner(samples: 1)
+        )
+
+        let carefulAction = await careful.decide(snapshot: engine.snapshot, viewer: "E")
+        let boldAction = await bold.decide(snapshot: engine.snapshot, viewer: "E")
+
+        XCTAssertEqual(carefulAction, .chooseDefenderMode(player: "E", mode: .open))
+        XCTAssertEqual(boldAction, .chooseDefenderMode(player: "E", mode: .closed))
+    }
+
+    func testStrategicDecisionCarriesPublicSafeProfileExplanation() async throws {
+        let profile = BotProfile(difficulty: .expert, temperament: .bold)
+        let strategy = HeuristicStrategy(
+            profile: profile,
+            planner: CardPlayPlanner(samples: 1)
+        )
+        let engine = try makeSecondDefenderWhistEngine(
+            secondDefenderHand: strongSecondDefenderHand
+        )
+
+        let proposed = await strategy.decision(snapshot: engine.snapshot, viewer: "S")
+        let decision = try XCTUnwrap(proposed)
+
+        XCTAssertEqual(decision.action, .whist(player: "S", call: .whist))
+        XCTAssertEqual(
+            decision.explanation,
+            BotDecisionExplanation(actor: "S", profile: profile, rationale: .fullWhist)
+        )
+        XCTAssertEqual(decision.explanation?.rationale.category, .whist)
     }
 
     // MARK: - Driver
@@ -120,10 +225,48 @@ final class BotTests: XCTestCase {
         return DealOutcome(result: result, stepCount: drive.steps)
     }
 
+    private func rolloutState(
+        currentPlayer: PlayerID,
+        currentTrick: [CardPlay]
+    ) -> PlayingState {
+        PlayingState(
+            dealer: "S",
+            activePlayers: players,
+            hands: players.dictionary(filledWith: []),
+            talon: [],
+            leader: "E",
+            currentPlayer: currentPlayer,
+            currentTrick: currentTrick,
+            kind: .game(GamePlayContext(
+                declarer: "E",
+                contract: GameContract(6, .suit(.clubs)),
+                defenders: ["N", "S"],
+                whisters: ["N", "S"],
+                defenderPlayMode: .closed,
+                whistCalls: []
+            ))
+        )
+    }
+
     // MARK: - Deck stacking helpers
 
     private enum DealerPattern {
         case strongSpades, misereForNorth, allWeak
+    }
+
+    private var strongSecondDefenderHand: [Card] {
+        [
+            Card(.spades, .ace),
+            Card(.diamonds, .ace),
+            Card(.clubs, .king),
+            Card(.clubs, .queen),
+            Card(.clubs, .jack),
+            Card(.clubs, .seven),
+            Card(.spades, .seven),
+            Card(.spades, .eight),
+            Card(.diamonds, .seven),
+            Card(.hearts, .seven)
+        ]
     }
 
     private func cards(_ suit: Suit, _ ranks: [Rank]) -> [Card] {
