@@ -3,8 +3,9 @@ import Foundation
 /// Perfect-information Monte Carlo planner for card play. For each legal
 /// candidate move the planner samples a number of fully-determined deals
 /// consistent with the bot's information set, plays each deal out greedily,
-/// and averages a contract-aware score. The move with the best mean score
-/// wins.
+/// and records a contract-aware score. Adaptive play maximizes the mean;
+/// careful and bold profiles apply opposite, bounded preferences for outcome
+/// variance so their personalities extend into card play.
 public struct CardPlayPlanner: Sendable {
     public var samples: Int
     public var samplingSeed: UInt64
@@ -17,7 +18,11 @@ public struct CardPlayPlanner: Sendable {
         self.samplingSeed = samplingSeed
     }
 
-    public func choose(snapshot: PreferansSnapshot, viewer: PlayerID) -> Card? {
+    public func choose(
+        snapshot: PreferansSnapshot,
+        viewer: PlayerID,
+        temperament: BotTemperament = .adaptive
+    ) -> Card? {
         guard case .playing = snapshot.state,
               let engine = try? PreferansEngine(snapshot: snapshot),
               let currentActor = snapshot.state.currentActor,
@@ -43,23 +48,55 @@ public struct CardPlayPlanner: Sendable {
         // already visible to the planner there.
         let pool = sampleSnapshots.isEmpty ? [snapshot] : sampleSnapshots
 
-        var totals = [Double](repeating: 0, count: legal.count)
+        var outcomes = [[Double]](repeating: [], count: legal.count)
         for sample in pool {
             for (i, candidate) in legal.enumerated() {
-                totals[i] += rollout(from: sample, viewer: viewer, actingFor: actingFor, firstMove: candidate)
+                outcomes[i].append(
+                    rollout(from: sample, viewer: viewer, actingFor: actingFor, firstMove: candidate)
+                )
             }
         }
 
+        return selectCard(legal: legal, outcomes: outcomes, temperament: temperament)
+    }
+
+    /// Select from already-scored rollout outcomes. Kept separate from deal
+    /// sampling so profile behavior has a deterministic fixed-corpus test lane.
+    func selectCard(
+        legal: [Card],
+        outcomes: [[Double]],
+        temperament: BotTemperament
+    ) -> Card? {
+        guard !legal.isEmpty,
+              legal.count == outcomes.count,
+              outcomes.allSatisfy({ !$0.isEmpty }) else { return nil }
         var bestIndex = 0
-        var bestMean = -Double.infinity
+        var bestUtility = -Double.infinity
         for i in legal.indices {
-            let mean = totals[i] / Double(pool.count)
-            if mean > bestMean || (mean == bestMean && legal[i] < legal[bestIndex]) {
-                bestMean = mean
+            let utility = rolloutUtility(outcomes[i], temperament: temperament)
+            let winsTie = utility == bestUtility && {
+                switch temperament {
+                case .bold: return legal[i] > legal[bestIndex]
+                case .careful, .adaptive: return legal[i] < legal[bestIndex]
+                }
+            }()
+            if utility > bestUtility || winsTie {
+                bestUtility = utility
                 bestIndex = i
             }
         }
         return legal[bestIndex]
+    }
+
+    func rolloutUtility(_ outcomes: [Double], temperament: BotTemperament) -> Double {
+        guard !outcomes.isEmpty else { return -Double.infinity }
+        let mean = outcomes.reduce(0, +) / Double(outcomes.count)
+        guard outcomes.count > 1, temperament.rolloutRiskWeight != 0 else { return mean }
+        let variance = outcomes.reduce(0) { partial, outcome in
+            let delta = outcome - mean
+            return partial + delta * delta
+        } / Double(outcomes.count)
+        return mean + temperament.rolloutRiskWeight * sqrt(variance)
     }
 
     private func rollout(

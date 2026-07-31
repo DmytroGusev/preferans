@@ -36,6 +36,53 @@ final class BotTests: XCTestCase {
         )
     }
 
+    func testCardPlayTemperamentCorpusBalancesReliabilityAndUpside() {
+        struct Scenario {
+            var name: String
+            var stable: [Double]
+            var swing: [Double]
+            var expected: [BotTemperament: Card]
+        }
+
+        let stableCard = Card(.spades, .seven)
+        let swingCard = Card(.spades, .ace)
+        let planner = CardPlayPlanner(samples: 3)
+        let scenarios = [
+            Scenario(
+                name: "controlled upside separates all three profiles",
+                stable: [4, 4, 4],
+                swing: [0, 0, 10],
+                expected: [.careful: stableCard, .adaptive: stableCard, .bold: swingCard]
+            ),
+            Scenario(
+                name: "reckless downside is rejected even by bold play",
+                stable: [4, 4, 4],
+                swing: [0, 0, 6],
+                expected: [.careful: stableCard, .adaptive: stableCard, .bold: stableCard]
+            ),
+            Scenario(
+                name: "equal lines preserve honors unless the profile is bold",
+                stable: [3, 3, 3],
+                swing: [3, 3, 3],
+                expected: [.careful: stableCard, .adaptive: stableCard, .bold: swingCard]
+            )
+        ]
+
+        for scenario in scenarios {
+            for temperament in BotTemperament.allCases {
+                XCTAssertEqual(
+                    planner.selectCard(
+                        legal: [stableCard, swingCard],
+                        outcomes: [scenario.stable, scenario.swing],
+                        temperament: temperament
+                    ),
+                    scenario.expected[temperament],
+                    "\(scenario.name): \(temperament.rawValue)"
+                )
+            }
+        }
+    }
+
     func testOpeningDecisionCorpusCoversStrengthStyleAndRaspasyExit() async throws {
         let strongSpades = cards(.spades, Rank.allCases)
             + cards(.clubs, [.ace])
@@ -191,6 +238,19 @@ final class BotTests: XCTestCase {
             break
         default:
             XCTFail("Unexpected deal result: \(String(describing: outcome.result?.kind))")
+        }
+    }
+
+    func testEveryTemperamentCompletesTheSameFixedGameDealLegally() async throws {
+        for temperament in BotTemperament.allCases {
+            let strategy = HeuristicStrategy(
+                profile: BotProfile(difficulty: .casual, temperament: temperament),
+                planner: CardPlayPlanner(samples: 6)
+            )
+            let outcome = try await playOneDeal(strategy: strategy, deck: makeDeck(.strongSpades))
+
+            XCTAssertNotNil(outcome.result, temperament.rawValue)
+            XCTAssertGreaterThan(outcome.stepCount, 0, temperament.rawValue)
         }
     }
 

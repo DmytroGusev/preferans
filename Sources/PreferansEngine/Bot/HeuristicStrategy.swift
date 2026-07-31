@@ -61,7 +61,11 @@ public struct HeuristicStrategy: PlayerStrategy {
             let controlled = s.currentPlayer
             let controller = s.controllingActor(of: controlled, rules: snapshot.rules)
             guard controller == viewer else { return nil }
-            let card = planner.choose(snapshot: snapshot, viewer: viewer)
+            let card = planner.choose(
+                snapshot: snapshot,
+                viewer: viewer,
+                temperament: profile.temperament
+            )
                 ?? (try? PreferansEngine(snapshot: snapshot).legalCards(for: viewer))?.first
             guard let card else { return nil }
             return .playCard(player: controlled, card: card)

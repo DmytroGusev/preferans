@@ -52,6 +52,17 @@ public enum BotTemperament: String, CaseIterable, Codable, Hashable, Sendable {
         case .bold: 0.25
         }
     }
+
+    /// Applied to rollout standard deviation after the expected score is
+    /// calculated. Careful bots prefer reliable lines, adaptive bots maximize
+    /// expectation, and bold bots accept controlled variance for upside.
+    var rolloutRiskWeight: Double {
+        switch self {
+        case .careful: -0.35
+        case .adaptive: 0
+        case .bold: 0.35
+        }
+    }
 }
 
 /// Stable, serializable configuration for one bot seat.
