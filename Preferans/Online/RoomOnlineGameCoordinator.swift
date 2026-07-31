@@ -1062,13 +1062,25 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         let pending = PendingAdvance(
             waitingOn: localSeat ?? projection.viewer,
-            trickPlays: trick.plays,
+            trickPlays: trick.tablePlays,
             trickWinner: trick.winner,
+            talonOverride: talonBeforeCompletedTrick(trick, projection: projection),
             phaseOverride: phaseOverrideForCompletedTrick(trick, in: projection),
             completedTrickCountOverride: max(0, projection.completedTrickCount - 1)
         )
         pendingAdvance = pending
         scheduleTrickResultHoldClear(for: pending)
+    }
+
+    private func talonBeforeCompletedTrick(
+        _ trick: Trick,
+        projection: PlayerGameProjection
+    ) -> [ProjectedCard]? {
+        guard trick.talonLead != nil else { return nil }
+        let visibleCount = max(1, projection.completedTrickCount)
+        return projection.talon.enumerated().map { index, card in
+            index < visibleCount ? card : .hidden
+        }
     }
 
     private func scheduleTrickResultHoldClear(for pending: PendingAdvance) {

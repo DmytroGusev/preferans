@@ -139,13 +139,18 @@ struct DealSummaryCard: View {
             )
     }
 
-    /// Compact tricks-per-active-player grid. Sitting-out seats are excluded
-    /// (they took zero tricks by definition); the declarer is highlighted in
-    /// gold so the user can see at a glance whether the contract was met.
+    /// Compact tricks-per-taker grid. A sitting-out fourth player is normally
+    /// excluded, but joins the tally after a classic raspasy because either
+    /// dealer-owned talon card can win an opening trick.
     private func trickTallyGrid(result: DealResult) -> some View {
-        let players = result.activePlayers
+        let players = projection.seats
+            .map(\.player)
+            .filter { result.trickCounts[$0] != nil }
         let declarer = DealSummaryPresentation.declarer(in: result.kind)
-        return HStack(spacing: 8) {
+        let columns = players.count > 3
+            ? [GridItem(.adaptive(minimum: 112), spacing: 8)]
+            : players.map { _ in GridItem(.flexible(), spacing: 8) }
+        return LazyVGrid(columns: columns, spacing: 8) {
             ForEach(players, id: \.self) { player in
                 let isDeclarer = player == declarer
                 VStack(spacing: 3) {

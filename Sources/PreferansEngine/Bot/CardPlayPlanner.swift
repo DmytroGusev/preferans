@@ -99,14 +99,16 @@ public struct CardPlayPlanner: Sendable {
     ) -> Card {
         let trump = playing.kind.trumpSuit
         let wantsTricks = wantsTricks(actor: actor, kind: playing.kind)
-        let leadSuit = playing.currentTrick.first?.card.suit
+        let talonLead = playing.currentTalonLead
+        let leadSuit = talonLead?.card.suit ?? playing.currentTrick.first?.card.suit
 
         if leadSuit == nil {
             return leadCard(legal: legal, trump: trump, wantsTricks: wantsTricks)
         }
 
+        let playsSoFar = (talonLead.map { [$0] } ?? []) + playing.currentTrick
         let currentBest = PreferansEngine.trickWinner(
-            for: playing.currentTrick,
+            for: playsSoFar,
             leadSuit: leadSuit!,
             trump: trump
         )

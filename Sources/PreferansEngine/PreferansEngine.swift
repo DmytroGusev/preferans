@@ -548,13 +548,18 @@ public struct PreferansEngine: Sendable {
         discard: [Card],
         kind: PlayKind
     ) -> PlayingState {
-        PlayingState(
+        let dealerLeads = !activePlayers.contains(dealer)
+            && {
+                guard case let .allPass(context) = kind else { return false }
+                return context.talonPolicy == .classic
+            }()
+        return PlayingState(
             dealer: dealer,
             activePlayers: activePlayers,
             hands: hands,
             talon: talon,
             discard: discard,
-            leader: activePlayers[0],
+            leader: dealerLeads ? dealer : activePlayers[0],
             currentPlayer: activePlayers[0],
             kind: kind
         )
@@ -604,19 +609,7 @@ public struct PreferansEngine: Sendable {
             return
         }
 
-        let leadSuit = requiredSuit(for: playing) ?? playing.currentTrick[0].card.suit
-        let winner = trickWinner(for: playing.currentTrick, leadSuit: leadSuit, trump: playing.kind.trumpSuit)
-        let trick = Trick(
-            leader: playing.leader,
-            leadSuit: leadSuit,
-            plays: playing.currentTrick,
-            winner: winner
-        )
-        playing.completedTricks.append(trick)
-        playing.trickCounts[winner, default: 0] += 1
-        playing.currentTrick = []
-        playing.leader = winner
-        playing.currentPlayer = winner
+        _ = completeCurrentTrick(in: &playing)
     }
 
     private func makeSettlement(
@@ -787,16 +780,56 @@ public struct PreferansEngine: Sendable {
     }
 
     func requiredSuit(for playing: PlayingState) -> Suit? {
-        if let lead = playing.currentTrick.first?.card.suit {
-            return lead
-        }
         guard case let .allPass(context) = playing.kind,
-              context.talonPolicy == .leadSuitOnly,
               playing.completedTricks.count < 2,
               playing.talon.indices.contains(playing.completedTricks.count) else {
-            return nil
+            return playing.currentTrick.first?.card.suit
         }
-        return playing.talon[playing.completedTricks.count].suit
+        switch context.talonPolicy {
+        case .classic, .leadSuitOnly:
+            return playing.talon[playing.completedTricks.count].suit
+        case .ignored:
+            return playing.currentTrick.first?.card.suit
+        }
+    }
+
+    /// Completes one fully played trick and advances to the correct leader.
+    /// The first two classic four-player raspasy tricks include a dealer-owned
+    /// talon card. Every talon-led variant resets the responding order to
+    /// forehand for both opening tricks and for the ordinary third lead.
+    @discardableResult
+    func completeCurrentTrick(in playing: inout PlayingState) -> Trick {
+        precondition(playing.currentTrick.count == playing.activePlayers.count)
+        let talonLead = playing.currentTalonLead
+        let leadSuit = requiredSuit(for: playing) ?? playing.currentTrick[0].card.suit
+        let candidates = (talonLead.map { [$0] } ?? []) + playing.currentTrick
+        let winner = trickWinner(
+            for: candidates,
+            leadSuit: leadSuit,
+            trump: playing.kind.trumpSuit
+        )
+        let trick = Trick(
+            leader: talonLead?.player ?? playing.leader,
+            leadSuit: leadSuit,
+            talonLead: talonLead,
+            plays: playing.currentTrick,
+            winner: winner
+        )
+        playing.completedTricks.append(trick)
+        playing.trickCounts[winner, default: 0] += 1
+        playing.currentTrick = []
+
+        if playing.usesTalonLeads, playing.completedTricks.count <= 2 {
+            playing.currentPlayer = playing.activePlayers[0]
+            playing.leader = playing.isClassicFourPlayerAllPass
+                && playing.completedTricks.count < 2
+                ? playing.dealer
+                : playing.activePlayers[0]
+        } else {
+            playing.currentPlayer = winner
+            playing.leader = winner
+        }
+        return trick
     }
 
     func isLegal(card: Card, by player: PlayerID, in playing: PlayingState) -> Bool {

@@ -315,13 +315,31 @@ public struct CardPlay: Hashable, Codable, Sendable, CustomStringConvertible {
 public struct Trick: Hashable, Codable, Sendable {
     public let leader: PlayerID
     public let leadSuit: Suit
+    /// The sitting-out dealer's opening card on either of the first two
+    /// four-player raspasy tricks. It participates in determining the winner
+    /// but is not repeated in ``plays`` because it remains part of `talon` in
+    /// the enclosing deal state.
+    public let talonLead: CardPlay?
     public let plays: [CardPlay]
     public let winner: PlayerID
 
-    public init(leader: PlayerID, leadSuit: Suit, plays: [CardPlay], winner: PlayerID) {
+    public init(
+        leader: PlayerID,
+        leadSuit: Suit,
+        talonLead: CardPlay? = nil,
+        plays: [CardPlay],
+        winner: PlayerID
+    ) {
         self.leader = leader
         self.leadSuit = leadSuit
+        self.talonLead = talonLead
         self.plays = plays
         self.winner = winner
+    }
+
+    /// Cards that were visibly on the table for this trick, including a
+    /// dealer-owned raspasy opening card when present.
+    public var tablePlays: [CardPlay] {
+        (talonLead.map { [$0] } ?? []) + plays
     }
 }

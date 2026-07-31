@@ -46,7 +46,7 @@ public enum HandRecipe: Hashable, Sendable {
     /// twenty-two high cards.
     ///
     /// `talonLeadSuit` constrains the talon to two cards of that suit so the
-    /// `AllPassTalonPolicy.leadSuitOnly` rule has valid material for the
+    /// `AllPassTalonPolicy.classic` rule has valid material for the
     /// first two tricks. Pass `nil` when the talon is ignored by the policy.
     case raspasyCleanExit(cleaner: PlayerID, talonLeadSuit: Suit?)
 

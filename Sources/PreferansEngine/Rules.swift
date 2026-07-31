@@ -22,6 +22,12 @@ public struct PreferansRules: Hashable, Codable, Sendable {
 
     public enum AllPassTalonPolicy: Hashable, Codable, Sendable {
         case ignored
+        /// Three-player raspasy uses each talon card only to set the opening
+        /// suit. At a four-player table the sitting-out dealer owns those
+        /// cards and may win either of the first two tricks.
+        case classic
+        /// House-rule compatibility: the talon sets the opening suit at every
+        /// table size, but its rank can never win the trick.
         case leadSuitOnly
     }
 
@@ -66,7 +72,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         singleWhistScoring: SingleWhistScoring = .greedy,
         failedDeclarerConsolation: FailedDeclarerConsolation = .eachDefender,
         whistResponsibility: WhistResponsibility = .responsible,
-        allPassTalonPolicy: AllPassTalonPolicy = .leadSuitOnly,
+        allPassTalonPolicy: AllPassTalonPolicy = .classic,
         allPassPenaltyPolicy: AllPassPenaltyPolicy = .perTrick(multiplier: 1, amnesty: true),
         zeroTricksAllPassPoolBonus: Int = 1,
         dealerTalonCompensation: DealerTalonCompensation = .classic,
@@ -111,7 +117,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         singleWhistScoring: .gentleman,
         failedDeclarerConsolation: .eachDefender,
         whistResponsibility: .semiResponsible,
-        allPassTalonPolicy: .leadSuitOnly,
+        allPassTalonPolicy: .classic,
         allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false),
         zeroTricksAllPassPoolBonus: 1,
         poolValueMultiplier: 1,

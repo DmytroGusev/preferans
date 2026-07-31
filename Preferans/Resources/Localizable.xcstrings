@@ -480,12 +480,12 @@
       }
     },
     "rules.talon.explanation" : {
-      "comment" : "Explains the first two raspasy trick leads.",
+      "comment" : "Explains classic talon-led raspasy at three- and four-player tables.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The two talon cards set the led suit on the first two raspasy tricks; rank is ignored." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Две карты прикупа задают масть первых двух взяток на распасах; достоинство карты не учитывается." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Дві карти прикупу задають масть перших двох взяток на розпасах; ранг карти не враховується." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Talon cards are opened one at a time and lead the first two raspasy tricks. With three players only their suit matters; with four, the sitting-out dealer owns each card and may take the trick." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Карты прикупа открываются по одной и задают первые два хода на распасах. При игре втроём учитывается только масть; вчетвером каждая карта принадлежит не играющему сдатчику, который может взять взятку." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Карти прикупу відкриваються по одній і задають перші два ходи на розпасах. У грі втрьох враховується лише масть; учетверо кожна карта належить здавачу, який не грає й може взяти взятку." } }
       }
     },
     "rules.dealerTalon" : {

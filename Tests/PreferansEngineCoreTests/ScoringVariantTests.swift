@@ -137,7 +137,7 @@ final class ScoringVariantTests: XCTestCase {
     }
 
     func testCanonicalSochiRaspasyUsesTalonLeadAndAmnesty() {
-        XCTAssertEqual(PreferansRules.sochi.allPassTalonPolicy, .leadSuitOnly)
+        XCTAssertEqual(PreferansRules.sochi.allPassTalonPolicy, .classic)
         XCTAssertEqual(PreferansRules.sochi.dealerTalonCompensation, .classic)
         XCTAssertEqual(PreferansRules.leningrad.dealerTalonCompensation, .classic)
         guard case let .perTrick(multiplier, amnesty) = PreferansRules.sochi.allPassPenaltyPolicy else {
@@ -323,6 +323,20 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(halfWhist.whists["west"]?["north"], 6)
     }
 
+    func testFourPlayerRaspasyDealerParticipatesInAmnestyAndCleanExit() {
+        let cleanDealer = scoreFourPlayerAllPass(
+            trickCounts: ["north": 4, "east": 3, "south": 3, "west": 0]
+        )
+        XCTAssertEqual(cleanDealer.pool["west"], 1)
+        XCTAssertEqual(cleanDealer.mountain, ["north": 4, "east": 3, "south": 3, "west": 0])
+
+        let oneDealerTrick = scoreFourPlayerAllPass(
+            trickCounts: ["north": 3, "east": 3, "south": 3, "west": 1]
+        )
+        XCTAssertEqual(oneDealerTrick.pool["west"], 0)
+        XCTAssertEqual(oneDealerTrick.mountain, ["north": 2, "east": 2, "south": 2, "west": 0])
+    }
+
     // MARK: - Failed misère
 
     func testFailedMisereChargesTenMountainPerDeclarerTrick() {
@@ -451,6 +465,22 @@ final class ScoringVariantTests: XCTestCase {
             defenders: ["east", "south"],
             currentPlayer: "east"
         )
+    }
+
+    private func scoreFourPlayerAllPass(trickCounts: [PlayerID: Int]) -> ScoreDelta {
+        let active: [PlayerID] = ["north", "east", "south"]
+        let playing = PlayingState(
+            dealer: "west",
+            activePlayers: active,
+            hands: active.dictionary(filledWith: []),
+            talon: [Card(.spades, .ace), Card(.hearts, .seven)],
+            leader: "north",
+            currentPlayer: "north",
+            trickCounts: trickCounts,
+            kind: .allPass(AllPassPlayContext(talonPolicy: .classic))
+        )
+        return PreferansScoring(players: fourPlayers, rules: .sochi, match: .unbounded)
+            .completedPlay(playing).scoreDelta
     }
 
     private func scoreAllPass(

@@ -26,19 +26,7 @@ extension PreferansEngine {
             return EngineTransition(state: .playing(playing), events: events)
         }
 
-        let leadSuit = requiredSuit(for: playing) ?? playing.currentTrick[0].card.suit
-        let winner = trickWinner(for: playing.currentTrick, leadSuit: leadSuit, trump: playing.kind.trumpSuit)
-        let trick = Trick(
-            leader: playing.leader,
-            leadSuit: leadSuit,
-            plays: playing.currentTrick,
-            winner: winner
-        )
-        playing.completedTricks.append(trick)
-        playing.trickCounts[winner, default: 0] += 1
-        playing.currentTrick = []
-        playing.leader = winner
-        playing.currentPlayer = winner
+        let trick = completeCurrentTrick(in: &playing)
         events.append(.trickCompleted(trick))
 
         if playing.isComplete {

@@ -43,7 +43,7 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(playing.currentPlayer, "east")
     }
 
-    func testAllPassLeadStartsWithForehandForThreeAndFourPlayerTables() throws {
+    func testAllPassLeadStartsWithForehandAtThreePlayersAndDealerAtFour() throws {
         struct TableCase {
             let players: [PlayerID]
             let dealer: PlayerID
@@ -75,11 +75,90 @@ final class PreferansEngineTests: XCTestCase {
                 return XCTFail("Three passes must start all-pass play.")
             }
             XCTAssertEqual(playing.activePlayers, table.expectedActive)
-            XCTAssertEqual(playing.leader, table.expectedActive[0])
             XCTAssertEqual(playing.currentPlayer, table.expectedActive[0])
-            XCTAssertEqual(playing.leader, engine.activePlayers(forDealer: table.dealer)[0],
-                           "Forehand, immediately after the dealer, opens an all-pass deal.")
+            XCTAssertEqual(
+                playing.leader,
+                table.players.count == 4 ? table.dealer : table.expectedActive[0],
+                "The dealer owns four-player talon leads; forehand responds first."
+            )
         }
+    }
+
+    func testFourPlayerRaspasyDealerOwnsTalonTricksAndForehandResets() throws {
+        let players: [PlayerID] = ["north", "east", "south", "west"]
+        let active: [PlayerID] = ["east", "south", "west"]
+        let firstLead = Card(.spades, .ace)
+        let secondLead = Card(.hearts, .seven)
+        let southWinner = Card(.hearts, .ace)
+        let available = Deck.standard32.filter { ![firstLead, secondLead].contains($0) }
+        let east = Array(available.filter { $0.suit != .spades && $0 != southWinner }.prefix(10))
+        let afterEast = available.filter { !east.contains($0) }
+        let south = [southWinner] + Array(afterEast.filter { $0 != southWinner }.prefix(9))
+        let west = available.filter { !east.contains($0) && !south.contains($0) }
+        let deck = DealDeckLayout.deck(
+            hands: ["east": east, "south": south, "west": west],
+            talon: [firstLead, secondLead],
+            activePlayers: active
+        )
+
+        var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "north")
+        try engine.startDeal(deck: deck)
+        for player in active {
+            _ = try engine.apply(.bid(player: player, call: .pass))
+        }
+
+        guard case let .playing(opening) = engine.state else {
+            return XCTFail("Expected four-player raspasy play.")
+        }
+        XCTAssertEqual(opening.leader, "north")
+        XCTAssertEqual(opening.currentPlayer, "east")
+        XCTAssertEqual(opening.currentTalonLead, CardPlay(player: "north", card: firstLead))
+        XCTAssertEqual(Set(opening.trickCounts.keys), Set(players))
+
+        let eastDiscard = try XCTUnwrap(engine.legalCards(for: "east").min())
+        XCTAssertNotEqual(eastDiscard.suit, .spades, "Forehand was deliberately dealt no spades.")
+        _ = try engine.apply(.playCard(player: "east", card: eastDiscard))
+        XCTAssertTrue(
+            engine.legalCards(for: "south").allSatisfy { $0.suit == .spades },
+            "The talon suit, not forehand's discard suit, must remain the led suit."
+        )
+        while case let .playing(playing) = engine.state, playing.completedTricks.isEmpty {
+            let actor = playing.currentPlayer
+            _ = try engine.apply(.playCard(player: actor, card: try XCTUnwrap(engine.legalCards(for: actor).min())))
+        }
+
+        guard case let .playing(afterFirst) = engine.state else {
+            return XCTFail("Expected the second talon-led trick.")
+        }
+        XCTAssertEqual(afterFirst.completedTricks[0].talonLead, CardPlay(player: "north", card: firstLead))
+        XCTAssertEqual(afterFirst.completedTricks[0].winner, "north")
+        XCTAssertEqual(afterFirst.trickCounts["north"], 1)
+        XCTAssertEqual(afterFirst.leader, "north")
+        XCTAssertEqual(afterFirst.currentPlayer, "east")
+        XCTAssertEqual(afterFirst.currentTalonLead, CardPlay(player: "north", card: secondLead))
+
+        while case let .playing(playing) = engine.state, playing.completedTricks.count == 1 {
+            let actor = playing.currentPlayer
+            _ = try engine.apply(.playCard(player: actor, card: try XCTUnwrap(engine.legalCards(for: actor).min())))
+        }
+
+        guard case let .playing(afterSecond) = engine.state else {
+            return XCTFail("Expected ordinary play after the two talon leads.")
+        }
+        XCTAssertEqual(afterSecond.completedTricks[1].winner, "south")
+        XCTAssertEqual(afterSecond.currentPlayer, "east", "Forehand starts the third trick regardless of the second winner.")
+        XCTAssertEqual(afterSecond.leader, "east")
+        XCTAssertNil(afterSecond.currentTalonLead)
+
+        try EngineTestDriver.playOut(engine: &engine, policy: .lowestLegal)
+        guard case let .dealFinished(result) = engine.state else {
+            return XCTFail("Expected scored four-player raspasy.")
+        }
+        XCTAssertEqual(Set(result.trickCounts.keys), Set(players))
+        XCTAssertEqual(result.trickCounts.values.reduce(0, +), 10)
+        XCTAssertEqual(result.trickCounts["north"], 1)
+        let minimum = result.trickCounts.values.min() ?? 0
+        XCTAssertEqual(result.scoreDelta.mountain["north"], max(0, 1 - minimum))
     }
 
     func testTenTrickContractWithRequiredWhistDoesNotSkipDefenders() throws {

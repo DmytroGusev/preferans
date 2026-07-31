@@ -196,7 +196,7 @@ final class HandRecipeTests: XCTestCase {
         guard case let .playing(state) = engine.state, case let .allPass(context) = state.kind else {
             return XCTFail("Expected all-pass play after three passes.")
         }
-        XCTAssertEqual(context.talonPolicy, .leadSuitOnly)
+        XCTAssertEqual(context.talonPolicy, .classic)
         XCTAssertEqual(state.talon.count, 2)
         XCTAssertTrue(state.talon.allSatisfy { $0.suit == .clubs },
                       "talonLeadSuit constraint must place two clubs in the talon.")

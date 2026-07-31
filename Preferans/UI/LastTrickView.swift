@@ -19,7 +19,7 @@ struct LastTrickView: View {
                     .foregroundStyle(TableTheme.inkCreamSoft)
             }
             HStack(alignment: .bottom, spacing: 12) {
-                ForEach(Array(trick.plays.enumerated()), id: \.offset) { _, play in
+                ForEach(Array(trick.tablePlays.enumerated()), id: \.offset) { _, play in
                     trickPlayColumn(play)
                         .frame(maxWidth: .infinity)
                 }

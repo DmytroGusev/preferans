@@ -29,10 +29,19 @@ extension PlayerProjectionBuilder {
     }
 
     static func projectTalon(_ talon: [Card], state: DealState, viewer: PlayerID, revealAll: Bool) -> [ProjectedCard] {
-        // The prikup is opened publicly during the talon exchange. In
-        // lead-suit all-pass play the talon also remains public because it
-        // determines the suit everyone must follow on the first two tricks.
-        reveal(talon, when: revealAll || state.hasPublicTalon)
+        if revealAll { return reveal(talon, when: true) }
+        if case .awaitingDiscard = state { return reveal(talon, when: true) }
+        guard case let .playing(playing) = state,
+              playing.usesTalonLeads,
+              playing.completedTricks.count < 2 else {
+            return reveal(talon, when: false)
+        }
+        // Raspasy opens the talon one card at a time. Keep the second card
+        // hidden throughout the first opening trick; after it closes, reveal
+        // the second lead while retaining the first as public history.
+        return talon.enumerated().map { index, card in
+            index <= playing.completedTricks.count ? .known(card) : .hidden
+        }
     }
 
     static func projectDiscard(
@@ -61,22 +70,5 @@ extension PlayerProjectionBuilder {
     private static func reveal(_ cards: [Card], when shouldReveal: Bool) -> [ProjectedCard] {
         if shouldReveal { return cards.sorted().map(ProjectedCard.known) }
         return Array(repeating: .hidden, count: cards.count)
-    }
-}
-
-private extension DealState {
-    var hasPublicTalon: Bool {
-        switch self {
-        case .awaitingDiscard:
-            return true
-        case let .playing(state):
-            guard case let .allPass(context) = state.kind,
-                  context.talonPolicy == .leadSuitOnly else {
-                return false
-            }
-            return state.completedTricks.count < 2
-        default:
-            return false
-        }
     }
 }

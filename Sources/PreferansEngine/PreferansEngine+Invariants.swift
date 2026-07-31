@@ -123,16 +123,19 @@ extension PreferansEngine {
                 "playing hand keys \(sorted(s.hands.keys)) ≠ activePlayers \(sorted(s.activePlayers))"
             )
             try require(
-                Set(s.trickCounts.keys) == Set(s.activePlayers),
-                "playing trickCounts keys \(sorted(s.trickCounts.keys)) ≠ activePlayers \(sorted(s.activePlayers))"
+                Set(s.trickCounts.keys) == Set(s.trickTakingPlayers),
+                "playing trickCounts keys \(sorted(s.trickCounts.keys)) ≠ trick takers \(sorted(s.trickTakingPlayers))"
             )
             try require(
                 s.activePlayers.contains(s.currentPlayer),
                 "playing currentPlayer \(s.currentPlayer) ∉ activePlayers"
             )
             try require(
-                s.activePlayers.contains(s.leader),
-                "playing leader \(s.leader) ∉ activePlayers"
+                s.activePlayers.contains(s.leader)
+                    || (s.isClassicFourPlayerAllPass
+                        && s.completedTricks.count < 2
+                        && s.leader == s.dealer),
+                "playing leader \(s.leader) is neither active nor the opening raspasy dealer"
             )
             let expectedRemaining = 10 - s.completedTricks.count
             for (player, hand) in s.hands {
@@ -147,6 +150,10 @@ extension PreferansEngine {
             try require(
                 trickSum == s.completedTricks.count,
                 "trickCounts sum \(trickSum) ≠ completedTricks \(s.completedTricks.count)"
+            )
+            try require(
+                s.completedTricks.allSatisfy { s.trickCounts.keys.contains($0.winner) },
+                "completed trick winner must be a trick-taking player"
             )
             let playedCards = s.completedTricks.flatMap { $0.plays.map(\.card) } + s.currentTrick.map(\.card)
             switch s.kind {
@@ -291,10 +298,26 @@ extension PreferansEngine {
 
     private static func checkResult(_ result: DealResult, context: String) throws {
         try checkActiveSeats(result.activePlayers)
+        let active = Set(result.activePlayers)
+        let countPlayers = Set(result.trickCounts.keys)
+        let scorePlayers = Set(result.scoreDelta.pool.keys)
+        let hasFourPlayerRaspasyDealer = {
+            guard case .allPass = result.kind else { return false }
+            return scorePlayers.count == 4
+                && countPlayers == scorePlayers
+                && countPlayers.subtracting(active).count == 1
+        }()
         try require(
-            Set(result.trickCounts.keys) == Set(result.activePlayers),
-            "\(context) trickCounts keys \(sorted(result.trickCounts.keys)) ≠ activePlayers \(sorted(result.activePlayers))"
+            countPlayers == active || hasFourPlayerRaspasyDealer,
+            "\(context) trickCounts keys \(sorted(result.trickCounts.keys)) do not match the deal's trick takers"
         )
+        let trickTotal = result.trickCounts.values.reduce(0, +)
+        switch result.kind {
+        case .game, .misere, .allPass:
+            try require(trickTotal == 10, "\(context) played trick total \(trickTotal), expected 10")
+        case .passedOut, .withoutThree, .halfWhist:
+            try require(trickTotal == 0, "\(context) unplayed trick total \(trickTotal), expected 0")
+        }
         if let initialHands = result.initialHands {
             try checkHands(initialHands, seats: result.activePlayers, expected: 10, context: "\(context) initialHands")
         }

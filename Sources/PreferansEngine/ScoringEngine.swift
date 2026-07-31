@@ -265,8 +265,9 @@ struct PreferansScoring {
         }
         let multiplier = baseMultiplier
             * match.raspasy.scoreMultiplier(precededBy: consecutiveAllPassDeals)
-        let minimum = playing.activePlayers.map { tricks($0, in: playing.trickCounts) }.min() ?? 0
-        for player in playing.activePlayers {
+        let scoringPlayers = playing.trickTakingPlayers
+        let minimum = scoringPlayers.map { tricks($0, in: playing.trickCounts) }.min() ?? 0
+        for player in scoringPlayers {
             let tricks = tricks(player, in: playing.trickCounts)
             if tricks == 0, rules.zeroTricksAllPassPoolBonus > 0 {
                 delta.addPool(rules.zeroTricksAllPassPoolBonus * multiplier, to: player)

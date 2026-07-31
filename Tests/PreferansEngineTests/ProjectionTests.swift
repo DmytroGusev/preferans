@@ -60,7 +60,7 @@ final class ProjectionTests: AppTestCase {
         }
     }
 
-    func testLeadSuitAllPassProjectionKeepsTalonPublicToTable() throws {
+    func testClassicAllPassProjectionOpensTalonOneCardAtATime() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         let recipe = HandRecipe.raspasyCleanExit(cleaner: "north", talonLeadSuit: .clubs)
         var engine = try PreferansEngine(
@@ -417,7 +417,7 @@ final class ProjectionTests: AppTestCase {
         guard case let .playing(state) = engine.state else {
             throw EngineTestError("Expected playing state.")
         }
-        expectedTalon = state.talon.sorted()
+        expectedTalon = Array(state.talon.prefix(min(2, state.completedTricks.count + 1)))
 
         for viewer in viewers {
             let projection = PlayerProjectionBuilder.projection(
@@ -430,7 +430,7 @@ final class ProjectionTests: AppTestCase {
             XCTAssertEqual(
                 projection.talon.compactMap(\.knownCard),
                 expectedTalon,
-                "\(label): \(viewer) should see the public talon on the table.",
+                "\(label): \(viewer) should see only the talon cards opened so far.",
                 file: file,
                 line: line
             )

@@ -90,6 +90,41 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
                        "live projection still reflects the engine's true post-clear state")
     }
 
+    func testFourPlayerRaspasyFreezeDoesNotRevealSecondTalonLeadEarly() throws {
+        let players: [PlayerID] = ["north", "east", "south", "west"]
+        let model = try GameViewModel(
+            players: players,
+            rules: .sochi,
+            firstDealer: "north",
+            viewerPolicy: .pinned("north"),
+            dealSource: ScriptedDealSource(decks: [Deck.standard32])
+        )
+        model.startDeal()
+        for player in ["east", "south", "west"] as [PlayerID] {
+            model.send(.bid(player: player, call: .pass))
+        }
+
+        let opening = model.projection(revealAll: false)
+        let firstLead = try XCTUnwrap(opening.talon.first?.knownCard)
+        XCTAssertEqual(opening.talon, [.known(firstLead), .hidden])
+
+        while case let .playing(playing) = model.engine.state,
+              playing.completedTricks.isEmpty {
+            let actor = playing.currentPlayer
+            let card = try XCTUnwrap(model.engine.legalCards(for: actor).min())
+            model.send(.playCard(player: actor, card: card))
+        }
+
+        let pending = try XCTUnwrap(model.pendingAdvance)
+        XCTAssertEqual(pending.trickPlays?.count, 4,
+                       "the dealer-owned talon lead is part of the visible trick")
+        XCTAssertEqual(pending.talonOverride, [.known(firstLead), .hidden])
+        XCTAssertEqual(model.projection(revealAll: false).talon.compactMap(\.knownCard).count, 2,
+                       "the live engine has advanced to the second opening lead")
+        XCTAssertEqual(model.displayProjection(revealAll: false).talon, [.known(firstLead), .hidden],
+                       "the frozen table must not reveal that second lead before acknowledgement")
+    }
+
     func testAdvanceReleasesTheFreeze() throws {
         let model = try makeModel()
         driveToPlay(model)

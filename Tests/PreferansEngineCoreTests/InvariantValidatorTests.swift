@@ -405,7 +405,7 @@ final class InvariantValidatorTests: XCTestCase {
         let result = DealResult(
             kind: .allPass,
             activePlayers: seats,
-            trickCounts: seats.dictionary(filledWith: 0),
+            trickCounts: [north: 10, east: 0, south: 0],
             completedTricks: [],
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands.filter { $0.key != south }
@@ -482,7 +482,7 @@ final class InvariantValidatorTests: XCTestCase {
         let result = DealResult(
             kind: .allPass,
             activePlayers: seats,
-            trickCounts: seats.dictionary(filledWith: 0),
+            trickCounts: [north: 10, east: 0, south: 0],
             completedTricks: [],
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands
@@ -515,7 +515,7 @@ final class InvariantValidatorTests: XCTestCase {
         let result = DealResult(
             kind: .allPass,
             activePlayers: seats,
-            trickCounts: seats.dictionary(filledWith: 0),
+            trickCounts: [north: 10, east: 0, south: 0],
             completedTricks: [],
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands

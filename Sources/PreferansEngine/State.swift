@@ -365,6 +365,43 @@ public struct PlayingState: Equatable, Codable, Sendable {
     public let kind: PlayKind
     public var pendingSettlement: TrickSettlementProposal?
 
+    /// Players eligible to own a trick in this deal. Usually these are the
+    /// three active seats. In classic four-player raspasy the sitting-out
+    /// dealer can also take either talon-led opening trick.
+    public var trickTakingPlayers: [PlayerID] {
+        guard isClassicFourPlayerAllPass else { return activePlayers }
+        return activePlayers + [dealer]
+    }
+
+    public var isClassicFourPlayerAllPass: Bool {
+        guard !activePlayers.contains(dealer),
+              case let .allPass(context) = kind,
+              context.talonPolicy == .classic else {
+            return false
+        }
+        return true
+    }
+
+    public var usesTalonLeads: Bool {
+        guard case let .allPass(context) = kind else { return false }
+        switch context.talonPolicy {
+        case .classic, .leadSuitOnly:
+            return true
+        case .ignored:
+            return false
+        }
+    }
+
+    /// Dealer-owned talon card currently leading a four-player raspasy trick.
+    public var currentTalonLead: CardPlay? {
+        guard isClassicFourPlayerAllPass,
+              completedTricks.count < 2,
+              talon.indices.contains(completedTricks.count) else {
+            return nil
+        }
+        return CardPlay(player: dealer, card: talon[completedTricks.count])
+    }
+
     /// In open single-whist greedy play, the lone whister plays both
     /// defender hands — the passer becomes a visible dummy whose cards are
     /// pulled by the whister. Closed single-whist keeps the passer in charge
@@ -416,9 +453,19 @@ public struct PlayingState: Equatable, Codable, Sendable {
         self.currentPlayer = currentPlayer
         self.currentTrick = currentTrick
         self.completedTricks = completedTricks
-        self.trickCounts = trickCounts ?? activePlayers.dictionary(filledWith: 0)
         self.kind = kind
         self.pendingSettlement = pendingSettlement
+        let dealerCanTakeTalonTricks: Bool
+        if case let .allPass(context) = kind {
+            dealerCanTakeTalonTricks = !activePlayers.contains(dealer)
+                && context.talonPolicy == .classic
+        } else {
+            dealerCanTakeTalonTricks = false
+        }
+        let trickTakers = dealerCanTakeTalonTricks
+            ? activePlayers + [dealer]
+            : activePlayers
+        self.trickCounts = trickCounts ?? trickTakers.dictionary(filledWith: 0)
     }
 
     public var isComplete: Bool {

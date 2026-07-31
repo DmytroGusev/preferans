@@ -285,7 +285,7 @@ public enum ActivityLogFeed {
         case let .trickCompleted(trick):
             return (
                 String(localized: "\(displayName(trick.winner)) took the trick"),
-                String(localized: "\(trick.plays.count) cards played"),
+                String(localized: "\(trick.tablePlays.count) cards played"),
                 .play
             )
         case let .settlementProposed(proposal):

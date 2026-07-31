@@ -91,7 +91,7 @@ public enum MatchScriptFixtures {
     /// Individual Sochi target 24 (6 each) fires on deal 5; raw trajectory is
     /// measured with closure disabled, so its last value remains 25.
     /// Mix: 6♣ failed, 7♥ made, 10♠ totus (asTenTrickGame, requireWhist:true,
-    /// defenders forced to whist, played out), raspasy with leadSuitOnly
+    /// defenders forced to whist, played out), classic talon-led raspasy
     /// talon constraint, misère clean.
     public static let game2LongSochi: MatchScript = {
         let players = MatchScriptFixtures.players
@@ -229,7 +229,7 @@ private extension DealScript {
     }
 
     /// All-pass deal where `cleaner` takes zero tricks under lowest-legal
-    /// play. `talonLeadSuit` constrains the talon for `.leadSuitOnly` rules;
+    /// play. `talonLeadSuit` constrains the talon for `.classic` rules;
     /// pass `nil` when the talon is ignored.
     static func makeRaspasy(cleaner: PlayerID, talonLeadSuit: Suit?) -> DealScript {
         DealScript(

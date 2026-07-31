@@ -105,6 +105,52 @@ final class PreferansUITests: XCTestCase {
         robot.waitForPhase("Play")
     }
 
+    func testFourPlayerRaspasyShowsDealerLeadWithoutRevealingNextTalonCard() {
+        let app = launchedApp(
+            extraArguments: manualFourPlayerHarness(),
+            skipTapToAdvance: false
+        )
+        let robot = MatchUIRobot(app: app)
+
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
+
+        for _ in 0..<3 {
+            robot.bid(.pass)
+        }
+        robot.waitForPhase("Play")
+
+        let publicTalonCards = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'card.talon.'")
+        )
+        XCTAssertEqual(publicTalonCards.count, 1,
+                       "only the current raspasy lead should be face-up")
+
+        for _ in 0..<3 {
+            XCTAssertTrue(robot.playFirstPlayableHandCard(acceptanceTimeout: 1.5),
+                          "each active seat should be able to answer the dealer's talon lead")
+        }
+
+        let hold = app.descendants(matching: .any)[UIIdentifiers.tapToAdvance]
+        XCTAssertTrue(hold.waitForExistence(timeout: 3),
+                      "the completed opening trick should remain visible")
+        let trickCards = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'card.trick.'")
+        )
+        XCTAssertEqual(trickCards.count, 4,
+                       "the dealer-owned talon card must join all three responses")
+        XCTAssertEqual(
+            app.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier BEGINSWITH 'card.trick.north.'")
+            ).count,
+            1,
+            "the sitting-out dealer should own the opening talon card"
+        )
+        XCTAssertEqual(publicTalonCards.count, 1,
+                       "the second talon card must stay hidden during the first-trick hold")
+    }
+
     func testDeterministicScenarioPinsFirstBidder() {
         let app = launchedApp(extraArguments: manualThreePlayerHarness() + [
             UITestFlags.dealScenario, "sortedDeck"
@@ -154,10 +200,21 @@ final class PreferansUITests: XCTestCase {
         robot.waitForElement(UIIdentifiers.Panel.bidding.rawValue)
     }
 
-    private func launchedApp(extraArguments: [String] = []) -> XCUIApplication {
+    private func launchedApp(
+        extraArguments: [String] = [],
+        skipTapToAdvance: Bool = true
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += extraArguments
-        app.disableUITestAnimations()
+        if skipTapToAdvance {
+            app.disableUITestAnimations()
+        } else {
+            app.pinTestLocaleEnglish()
+            app.launchArguments += [
+                UITestFlags.disableAnimations,
+                UITestFlags.fastBotDelay,
+            ]
+        }
         app.launch()
         return app
     }
@@ -167,6 +224,15 @@ final class PreferansUITests: XCTestCase {
             UITestFlags.viewerFollowsActor,
             UITestFlags.players, "north,east,south",
             UITestFlags.firstDealer, "south"
+        ]
+    }
+
+    private func manualFourPlayerHarness() -> [String] {
+        [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.players, "north,east,south,west",
+            UITestFlags.firstDealer, "north",
+            UITestFlags.poolTarget, "84"
         ]
     }
 }

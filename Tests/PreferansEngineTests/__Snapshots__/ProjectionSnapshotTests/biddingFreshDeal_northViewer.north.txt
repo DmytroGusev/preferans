@@ -492,7 +492,7 @@
       }
     },
     "allPassTalonPolicy" : {
-      "leadSuitOnly" : {
+      "classic" : {
 
       }
     },

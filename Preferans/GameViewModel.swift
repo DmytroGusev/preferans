@@ -89,6 +89,7 @@ public final class GameViewModel: ObservableObject {
             // of a deal jumps straight to `.dealScored` and the trick
             // would otherwise vanish before the user sees it).
             let preProjection = projection(revealAll: true)
+            let publicTalonBeforeAction = projection(revealAll: false).talon
             let authoritativeAction = makeAuthoritative(action)
             let events = try engine.apply(authoritativeAction)
             eventLog.append(contentsOf: ActivityLogFeed.summaries(for: events))
@@ -96,7 +97,11 @@ public final class GameViewModel: ObservableObject {
             lastError = nil
             lastErrorCategory = nil
             applyViewerPolicy()
-            if let pending = makePendingAdvance(events: events, preProjection: preProjection) {
+            if let pending = makePendingAdvance(
+                events: events,
+                preProjection: preProjection,
+                publicTalonBeforeAction: publicTalonBeforeAction
+            ) {
                 pendingAdvance = pending
                 startIdleHintTimer()
                 pendingBotTask?.cancel()
@@ -165,7 +170,11 @@ public final class GameViewModel: ObservableObject {
     /// builds the same `PendingAdvance` but clears it on a timer (no tap, no
     /// idle hint) so one distracted player can't stall the table. If you
     /// change what a hold freezes here, mirror it there.
-    private func makePendingAdvance(events: [PreferansEvent], preProjection: PlayerGameProjection) -> PendingAdvance? {
+    private func makePendingAdvance(
+        events: [PreferansEvent],
+        preProjection: PlayerGameProjection,
+        publicTalonBeforeAction: [ProjectedCard]
+    ) -> PendingAdvance? {
         guard tapToAdvanceEnabled else { return nil }
         // Watch-bots demo / all-bot table: no human to tap, just cascade.
         guard !isBotSeat(selectedViewer) else { return nil }
@@ -186,8 +195,9 @@ public final class GameViewModel: ObservableObject {
             // so the override holds the felt on the completed trick.
             return PendingAdvance(
                 waitingOn: selectedViewer,
-                trickPlays: trick.plays,
+                trickPlays: trick.tablePlays,
                 trickWinner: trick.winner,
+                talonOverride: trick.talonLead == nil ? nil : publicTalonBeforeAction,
                 phaseOverride: preProjection.phase,
                 completedTrickCountOverride: preProjection.completedTrickCount
             )
@@ -373,6 +383,9 @@ extension PlayerGameProjection {
                 p.seats[i].trickCount = max(0, p.seats[i].trickCount - 1)
             }
         }
+        if let talon = advance.talonOverride {
+            p.talon = talon
+        }
         if let count = advance.completedTrickCountOverride {
             p.completedTrickCount = count
         }
@@ -408,6 +421,10 @@ public struct PendingAdvance: Equatable, Sendable {
     /// Seat that just won the trick. Used to roll the displayed
     /// trick-count back to its pre-close value while the trick is frozen.
     public let trickWinner: PlayerID?
+    /// Public talon state from immediately before the trick closed. This
+    /// prevents the second raspasy lead from being revealed early while the
+    /// first completed trick is still frozen on screen.
+    public let talonOverride: [ProjectedCard]?
     /// Phase to display while the gate is up. Lets the felt stay on
     /// `.playingTrick` even when the engine has moved to `.dealScored`
     /// or `.matchOver` (the closing trick of a deal).
@@ -416,6 +433,22 @@ public struct PendingAdvance: Equatable, Sendable {
     /// pre-close value so the auction-trail / felt indicators don't tick
     /// the trick number forward before the user has acknowledged it.
     public let completedTrickCountOverride: Int?
+
+    public init(
+        waitingOn: PlayerID,
+        trickPlays: [CardPlay]?,
+        trickWinner: PlayerID?,
+        talonOverride: [ProjectedCard]? = nil,
+        phaseOverride: ProjectedPhase?,
+        completedTrickCountOverride: Int?
+    ) {
+        self.waitingOn = waitingOn
+        self.trickPlays = trickPlays
+        self.trickWinner = trickWinner
+        self.talonOverride = talonOverride
+        self.phaseOverride = phaseOverride
+        self.completedTrickCountOverride = completedTrickCountOverride
+    }
 }
 
 extension GameViewModel {

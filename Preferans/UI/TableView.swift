@@ -415,9 +415,12 @@ public struct TableView: View {
             // declarer until they explicitly take it into the discard fan.
             return hasKnownCards && (isTalonTakePending || !projection.legal.canDiscard)
         case .playing(_, _, kind: .allPass):
-            return hasKnownCards
-                && projection.rules.allPassTalonPolicy == .leadSuitOnly
-                && projection.completedTrickCount < 2
+            let usesTalonLeads: Bool
+            switch projection.rules.allPassTalonPolicy {
+            case .classic, .leadSuitOnly: usesTalonLeads = true
+            case .ignored: usesTalonLeads = false
+            }
+            return hasKnownCards && usesTalonLeads && projection.completedTrickCount < 2
         default:
             return false
         }
