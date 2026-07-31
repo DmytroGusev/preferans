@@ -157,6 +157,7 @@ final class EngineMatchDriverTests: XCTestCase {
         for prefixCount in 1...script.deals.count {
             let openMatch = MatchSettings(
                 poolTarget: .max,
+                poolClosure: script.match.poolClosure,
                 raspasy: script.match.raspasy,
                 totus: script.match.totus
             )

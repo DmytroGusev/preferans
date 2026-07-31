@@ -173,7 +173,7 @@ struct SettlementTests {
 
     @Test("Bot plays deterministic last trick instead of proposing settlement")
     func botPlaysDeterministicLastTrick() async throws {
-        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1, rolloutsPerSample: 1))
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1))
         var engine = try makeLastTrickEngine()
 
         let drive = try await BotTestDriver.drive(engine: &engine, strategy: strategy, stepLimit: 4)

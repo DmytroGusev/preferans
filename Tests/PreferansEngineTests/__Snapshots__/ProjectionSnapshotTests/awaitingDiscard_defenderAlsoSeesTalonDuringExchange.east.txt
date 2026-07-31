@@ -43,6 +43,7 @@
     }
   ],
   "completedTrickCount" : 0,
+  "consecutiveAllPassDeals" : 0,
   "currentTrick" : [
 
   ],
@@ -75,6 +76,21 @@
     "whistCalls" : [
 
     ]
+  },
+  "match" : {
+    "poolClosure" : "individualWithAmericanAid",
+    "poolTarget" : 9223372036854775807,
+    "raspasy" : {
+      "progressive" : {
+        "exit" : "strict",
+        "penalties" : "arithmetic"
+      }
+    },
+    "totus" : {
+      "asTenTrickGame" : {
+        "requireWhist" : false
+      }
+    }
   },
   "phase" : {
     "awaitingDiscard" : {
@@ -110,12 +126,12 @@
     "allowSeniorHandHoldBid" : true,
     "allPassPenaltyPolicy" : {
       "perTrick" : {
-        "amnesty" : false,
+        "amnesty" : true,
         "multiplier" : 1
       }
     },
     "allPassTalonPolicy" : {
-      "ignored" : {
+      "leadSuitOnly" : {
 
       }
     },

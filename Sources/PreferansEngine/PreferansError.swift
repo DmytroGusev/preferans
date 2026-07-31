@@ -3,6 +3,7 @@ import Foundation
 public enum PreferansError: Error, Equatable, LocalizedError, Sendable {
     case invalidPlayer(PlayerID)
     case invalidPlayers(String)
+    case invalidMatch(String)
     case invalidDeck(String)
     case invalidContract(String)
     case invalidState(expected: String, actual: String)
@@ -18,7 +19,7 @@ public enum PreferansError: Error, Equatable, LocalizedError, Sendable {
         switch self {
         case let .invalidPlayer(player):
             return "Invalid player: \(player)."
-        case let .invalidPlayers(message), let .invalidDeck(message), let .invalidContract(message),
+        case let .invalidPlayers(message), let .invalidMatch(message), let .invalidDeck(message), let .invalidContract(message),
              let .illegalBid(message), let .illegalWhist(message), let .illegalSettlement(message),
              let .illegalCardPlay(message):
             return message

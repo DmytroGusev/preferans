@@ -19,6 +19,41 @@ final class PulkaClosingTests: XCTestCase {
         XCTAssertEqual(applied.whists["north"]?["east"], 30)
     }
 
+    func testLeningradTableTotalLeavesIndividualPoolsOpenWithoutAmericanAid() {
+        var score = makeScore(pool: ["north": 10, "east": 7, "south": 3])
+        var delta = ScoreDelta(players: players)
+        delta.addPool(4, to: "north")
+
+        let applied = score.apply(
+            delta,
+            closingAtPoolTarget: 33,
+            poolClosure: .tableTotal,
+            poolPointWhistValue: PreferansRules.leningrad.poolPointWhistValue
+        )
+
+        XCTAssertEqual(score.pool, ["north": 14, "east": 7, "south": 3])
+        XCTAssertEqual(score.whistsWritten(by: "north", on: "east"), 0)
+        XCTAssertEqual(score.whistsWritten(by: "north", on: "south"), 0)
+        XCTAssertEqual(applied, delta)
+    }
+
+    func testLeningradFinalBalanceUsesDifferentPoolAndMountainRates() {
+        let score = makeScore(
+            pool: ["north": 1, "east": 0, "south": 0],
+            mountain: ["north": 0, "east": 1, "south": 0]
+        )
+
+        let balances = score.normalizedBalances(
+            poolPointValue: Double(PreferansRules.leningrad.poolPointWhistValue),
+            mountainPointValue: Double(PreferansRules.leningrad.mountainPointWhistValue)
+        )
+
+        XCTAssertEqual(balances["north"] ?? 0, 50.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertEqual(balances["east"] ?? 0, -40.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertEqual(balances["south"] ?? 0, -10.0 / 3.0, accuracy: 0.000_001)
+        XCTAssertEqual(balances.values.reduce(0, +), 0, accuracy: 0.000_001)
+    }
+
     func testSurplusPoolCascadesAcrossPlayersThenReducesMountainWhenEveryoneIsClosed() {
         var score = makeScore(pool: ["north": 10, "east": 10, "south": 8])
         var delta = ScoreDelta(players: players)
@@ -54,21 +89,54 @@ final class PulkaClosingTests: XCTestCase {
         XCTAssertEqual(applied.whists["north"]?["east"], 20)
     }
 
-    func testNonDivisiblePoolTargetFallsBackToPlainApplication() {
+    func testTableTotalAppliesPoolWithoutRequiringPlayerDivisibility() {
         var score = makeScore(pool: ["north": 9, "east": 0, "south": 0])
         var delta = ScoreDelta(players: players)
         delta.addPool(5, to: "north")
 
-        // 10 does not divide by 3 players, so no per-player closure limit
-        // can be derived — the delta applies verbatim: no cap on north's
-        // pool, no American aid, no whists, no mountain relief.
-        let applied = score.apply(delta, closingAtPoolTarget: 10)
+        // A shared Leningrad table total need not divide by the player count.
+        // Entries remain verbatim: no cap, aid, whists, or mountain relief.
+        let applied = score.apply(
+            delta,
+            closingAtPoolTarget: 10,
+            poolClosure: .tableTotal
+        )
 
         XCTAssertEqual(score.pool, ["north": 14, "east": 0, "south": 0])
         XCTAssertEqual(score.mountain, ["north": 0, "east": 0, "south": 0])
         XCTAssertEqual(score.whistsWritten(by: "north", on: "east"), 0)
         XCTAssertEqual(score.whistsWritten(by: "north", on: "south"), 0)
         XCTAssertEqual(applied, delta)
+    }
+
+    func testLeningradMatchClosesOnSharedTotalAndAllowsTheWinnerToOvershoot() throws {
+        var engine = try makeEngine(
+            pool: ["north": 20, "east": 0, "south": 0],
+            rules: .leningrad,
+            match: MatchSettings(poolTarget: 21, poolClosure: .tableTotal),
+            firstDealer: "south"
+        )
+        try engine.startDeal(deck: Self.northSpadesSixDeck)
+
+        let contract = GameContract(6, .suit(.clubs))
+        _ = try engine.apply(.bid(player: "north", call: .bid(.game(contract))))
+        _ = try engine.apply(.bid(player: "east", call: .pass))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("Expected north to discard.")
+        }
+        _ = try engine.apply(.discard(player: "north", cards: exchange.talon))
+        _ = try engine.apply(.declareContract(player: "north", contract: contract))
+        _ = try engine.apply(.whist(player: "east", call: .pass))
+        let events = try engine.apply(.whist(player: "south", call: .pass))
+
+        XCTAssertTrue(events.contains { if case .matchEnded = $0 { return true } else { return false } })
+        guard case .gameOver = engine.state else {
+            return XCTFail("The shared pool total should close at or beyond 21.")
+        }
+        XCTAssertEqual(engine.score.pool, ["north": 22, "east": 0, "south": 0])
+        XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 0)
+        XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "south"), 0)
     }
 
     func testFourPlayerMatchClosesAndAidsSittingOutDealer() throws {
@@ -171,6 +239,7 @@ final class PulkaClosingTests: XCTestCase {
 
     private func makeEngine(
         pool: [PlayerID: Int],
+        rules: PreferansRules = .sochi,
         match: MatchSettings,
         firstDealer: PlayerID
     ) throws -> PreferansEngine {
@@ -182,7 +251,7 @@ final class PulkaClosingTests: XCTestCase {
         )
         let snapshot = PreferansSnapshot(
             players: players,
-            rules: .sochi,
+            rules: rules,
             match: match,
             state: .waitingForDeal,
             score: score,

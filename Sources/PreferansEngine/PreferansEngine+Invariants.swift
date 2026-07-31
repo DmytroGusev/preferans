@@ -214,20 +214,38 @@ extension PreferansEngine {
     static func validateInvariants(_ snapshot: PreferansSnapshot) throws {
         try validateInvariants(snapshot.state)
         try require(snapshot.players.contains(snapshot.nextDealer), "nextDealer \(snapshot.nextDealer) is not in players")
+        try require(snapshot.consecutiveAllPassDeals >= 0, "consecutiveAllPassDeals cannot be negative")
+        try checkMatchSettings(snapshot.match, playerCount: snapshot.players.count)
         try snapshot.score.validate(players: snapshot.players)
         try checkPlayerReferences(snapshot.state, players: snapshot.players)
+        let poolIsClosed = snapshot.match.isPoolClosed(snapshot.score)
         switch snapshot.state {
         case let .dealFinished(result):
+            try require(!poolIsClosed, "dealFinished score must remain below the pool-closing target")
             try result.scoreDelta.validate(players: snapshot.players)
         case let .gameOver(summary):
+            try require(poolIsClosed, "gameOver score must satisfy the pool-closing policy")
             try checkGameOverSummary(
                 summary,
                 players: snapshot.players,
                 score: snapshot.score,
-                dealsPlayed: snapshot.dealsPlayed
+                dealsPlayed: snapshot.dealsPlayed,
+                rules: snapshot.rules,
+                match: snapshot.match
             )
         default:
+            try require(!poolIsClosed, "an open deal state cannot carry a closed pulka")
             break
+        }
+    }
+
+    private static func checkMatchSettings(_ match: MatchSettings, playerCount: Int) throws {
+        try require(match.poolTarget == .max || match.poolTarget > 0, "pool target must be positive or unbounded")
+        if match.poolTarget != .max, match.poolClosure == .individualWithAmericanAid {
+            try require(
+                match.poolTarget.isMultiple(of: playerCount),
+                "individual pool target must divide evenly across all players"
+            )
         }
     }
 
@@ -381,8 +399,11 @@ extension PreferansEngine {
         _ summary: MatchSummary,
         players: [PlayerID],
         score: ScoreSheet,
-        dealsPlayed: Int
+        dealsPlayed: Int,
+        rules: PreferansRules,
+        match: MatchSettings
     ) throws {
+        try require(match.isPoolClosed(score), "gameOver summary requires a closed pulka")
         try require(summary.finalScore == score, "gameOver finalScore must match engine score")
         try require(summary.dealsPlayed == dealsPlayed, "gameOver dealsPlayed must match engine dealsPlayed")
         try checkResult(summary.lastDeal, context: "gameOver lastDeal")
@@ -391,7 +412,10 @@ extension PreferansEngine {
         let standingsPlayers = summary.standings.map(\.player)
         try require(Set(standingsPlayers) == Set(players), "gameOver standings players must match players")
         try require(Set(standingsPlayers).count == standingsPlayers.count, "gameOver standings players must be unique")
-        let balances = score.normalizedBalances()
+        let balances = score.normalizedBalances(
+            poolPointValue: Double(rules.poolPointWhistValue),
+            mountainPointValue: Double(rules.mountainPointWhistValue)
+        )
         for standing in summary.standings {
             try require(standing.pool == (score.pool[standing.player] ?? 0), "gameOver standing pool must match score")
             try require(standing.mountain == (score.mountain[standing.player] ?? 0), "gameOver standing mountain must match score")

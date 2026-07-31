@@ -88,7 +88,8 @@ public enum MatchScriptFixtures {
     // MARK: - Game 2: Long Sochi totus + lead-suit-only raspasy
 
     /// Pool-sum after each deal: 0 → 4 → 14 → 15 → 25.
-    /// Pool target 25 fires on deal 5.
+    /// Individual Sochi target 24 (6 each) fires on deal 5; raw trajectory is
+    /// measured with closure disabled, so its last value remains 25.
     /// Mix: 6♣ failed, 7♥ made, 10♠ totus (asTenTrickGame, requireWhist:true,
     /// defenders forced to whist, played out), raspasy with leadSuitOnly
     /// talon constraint, misère clean.
@@ -97,7 +98,7 @@ public enum MatchScriptFixtures {
         let firstDealer: PlayerID = "south"
         let rules = PreferansRules.sochiWithTalonLedAllPass
         let match = MatchSettings(
-            poolTarget: 25,
+            poolTarget: 24,
             raspasy: .singleShot,
             totus: .asTenTrickGame(requireWhist: true)
         )
@@ -137,7 +138,8 @@ public enum MatchScriptFixtures {
     // MARK: - Game 3: Rostov-style dedicated totus
 
     /// Pool-sum after each deal: 15 → 15 → 17 → 18 → 18 → 33.
-    /// Pool target 30 fires on deal 6.
+    /// Individual target 32 (8 each) fires on deal 6; raw trajectory is
+    /// measured with closure disabled, so its last value remains 33.
     /// Mix: dedicated totus made twice (with bonus), 9♣ failed, 6♦ made,
     /// raspasy clean, 7♥ failed.
     public static let game3RostovDedicatedTotus: MatchScript = {
@@ -145,7 +147,7 @@ public enum MatchScriptFixtures {
         let firstDealer: PlayerID = "west"
         let rules = PreferansRules.sochi
         let match = MatchSettings(
-            poolTarget: 30,
+            poolTarget: 32,
             raspasy: .singleShot,
             totus: .dedicatedContract(requireWhist: true, bonusPool: 5)
         )

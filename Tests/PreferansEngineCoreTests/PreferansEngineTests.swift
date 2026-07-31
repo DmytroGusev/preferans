@@ -242,10 +242,10 @@ final class PreferansEngineTests: XCTestCase {
         // south 6 + 2 * 1 = 8, north 6 + 2 * 6 = 18.
         XCTAssertEqual(engine.score.whistsWritten(by: "south", on: "east"), 8)
         XCTAssertEqual(engine.score.whistsWritten(by: "north", on: "east"), 18)
-        // Responsible whist quota for a 6-contract is 4, split 2 per
-        // whister: north met it (6 tricks); south took 1 of 2, mountaining
-        // 1 missing * value 2 = 2.
-        XCTAssertEqual(engine.score.mountain["south"], 2)
+        // Responsible whist is collective: together the defenders took 7,
+        // safely above the 4-trick quota. South's uneven one-trick share is
+        // not a remise while the partnership fulfilled its obligation.
+        XCTAssertEqual(engine.score.mountain["south"], 0)
         XCTAssertEqual(engine.score.mountain["north"], 0)
     }
 

@@ -8,34 +8,177 @@ import Foundation
 /// configures *one deal*; ``MatchSettings`` configures the match those deals
 /// are accumulating into.
 public struct MatchSettings: Hashable, Codable, Sendable {
-    /// Total table pulka target. The UI stores a per-player limit multiplied
+    /// Total table pulka target. The UI stores a per-player length multiplied
     /// by player count, so a 3-player short pulka of 11 is represented as 33.
-    /// When this value divides evenly by the player count, score application
-    /// uses that quotient as the per-player closure limit and moves surplus
-    /// pool through American aid. ``unbounded`` (`Int.max`) keeps the engine
-    /// in the legacy "play deals forever" mode.
+    /// ``poolClosure`` determines whether that total represents equal
+    /// individual limits (Sochi) or one shared table total (Leningrad).
+    /// ``unbounded`` (`Int.max`) keeps the engine in the legacy "play deals
+    /// forever" mode.
     public var poolTarget: Int
+    public var poolClosure: PoolClosurePolicy
     public var raspasy: RaspasyPolicy
     public var totus: TotusPolicy
 
     public init(
         poolTarget: Int = .max,
-        raspasy: RaspasyPolicy = .singleShot,
+        poolClosure: PoolClosurePolicy = .individualWithAmericanAid,
+        raspasy: RaspasyPolicy = .sochi,
         totus: TotusPolicy = .asTenTrickGame(requireWhist: false)
     ) {
         self.poolTarget = poolTarget
+        self.poolClosure = poolClosure
         self.raspasy = raspasy
         self.totus = totus
     }
 
-    /// No game-over gate, no totus bonus, single-shot raspasy. The shape the
-    /// engine had before ``MatchSettings`` existed.
+    /// No game-over gate and no dedicated totus bonus. Deal rules still use
+    /// the canonical Sochi raspasy series so an unbounded practice table plays
+    /// the same auctions and scores as a bounded one.
     public static let unbounded = MatchSettings()
+
+    /// Whether the current score has closed the match. Keeping this decision
+    /// beside the policy prevents scoring, game-over transitions, and snapshot
+    /// invariants from growing subtly different definitions of "closed".
+    func isPoolClosed(_ score: ScoreSheet) -> Bool {
+        guard poolTarget != .max else { return false }
+        switch poolClosure {
+        case .individualWithAmericanAid:
+            guard poolTarget > 0,
+                  poolTarget.isMultiple(of: score.players.count) else {
+                return false
+            }
+            let target = poolTarget / score.players.count
+            return score.players.allSatisfy { (score.pool[$0] ?? 0) >= target }
+        case .tableTotal:
+            return score.pool.values.reduce(0, +) >= poolTarget
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case poolTarget
+        case poolClosure
+        case raspasy
+        case totus
+    }
+
+    /// Snapshots written before pool closure became explicit were all using
+    /// the Sochi-style individual/American-aid behavior.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            poolTarget: try values.decodeIfPresent(Int.self, forKey: .poolTarget) ?? .max,
+            poolClosure: try values.decodeIfPresent(PoolClosurePolicy.self, forKey: .poolClosure)
+                ?? .individualWithAmericanAid,
+            raspasy: try values.decodeIfPresent(RaspasyPolicy.self, forKey: .raspasy) ?? .singleShot,
+            totus: try values.decodeIfPresent(TotusPolicy.self, forKey: .totus)
+                ?? .asTenTrickGame(requireWhist: false)
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(poolTarget, forKey: .poolTarget)
+        try values.encode(poolClosure, forKey: .poolClosure)
+        try values.encode(raspasy, forKey: .raspasy)
+        try values.encode(totus, forKey: .totus)
+    }
+}
+
+/// Pulka-closing conventions are deliberately match-level rather than score
+/// multipliers. Sochi closes every player's individual pool and redirects
+/// surplus via American aid; Leningrad never closes an individual pool and
+/// simply stops once the table's combined pool reaches the agreed total.
+public enum PoolClosurePolicy: String, Hashable, Codable, Sendable {
+    case individualWithAmericanAid
+    case tableTotal
+}
+
+/// How the price of consecutive raspasy deals grows. The multiplier is
+/// applied to the convention's base all-pass price: Sochi's base is 1, while
+/// Leningrad's is 2, so the same arithmetic progression records 1–2–3 and
+/// 2–4–6 respectively.
+public enum RaspasyPenaltyProgression: String, Hashable, Codable, Sendable {
+    /// 1–1–1…
+    case flat
+    /// 1–2–3–3…
+    case arithmetic
+    /// 1–2–4–4…
+    case geometric
+}
+
+/// Minimum game contract that may be bid as a raspasy series deepens.
+/// Misère and a dedicated totus remain legal special bids at every stage.
+public enum RaspasyExitProgression: String, Hashable, Codable, Sendable {
+    /// 6–6–6…
+    case simple
+    /// 6–7–7…
+    case constrained
+    /// 6–7–8–8…
+    case strict
 }
 
 public enum RaspasyPolicy: Hashable, Codable, Sendable {
-    /// One all-pass deal then bidding resumes normally on the next deal.
+    /// Legacy behavior retained for old fixtures and decoded snapshots: one
+    /// all-pass price and an ordinary six-level auction after every deal.
     case singleShot
+
+    /// Consecutive all-pass deals share a persistent progression stage. A
+    /// non-raspasy result resets both the price and the exit requirement.
+    case progressive(
+        penalties: RaspasyPenaltyProgression,
+        exit: RaspasyExitProgression
+    )
+
+    /// Canonical table defaults used by the app. Both named conventions use
+    /// an arithmetic three-step series and strict 6–7–8 exit; Leningrad's
+    /// doubled base all-pass value turns the score into 2–4–6.
+    public static let sochi = RaspasyPolicy.progressive(
+        penalties: .arithmetic,
+        exit: .strict
+    )
+    public static let leningrad = RaspasyPolicy.progressive(
+        penalties: .arithmetic,
+        exit: .strict
+    )
+
+    /// Multiplier for the *current* raspasy deal. `precedingDeals` is the
+    /// number of immediately preceding deals that were also raspasy, so zero
+    /// is the first deal in a series.
+    public func scoreMultiplier(precededBy precedingDeals: Int) -> Int {
+        let stage = max(0, precedingDeals)
+        switch self {
+        case .singleShot:
+            return 1
+        case let .progressive(penalties, _):
+            switch penalties {
+            case .flat:
+                return 1
+            case .arithmetic:
+                return min(stage + 1, 3)
+            case .geometric:
+                return [1, 2, 4][min(stage, 2)]
+            }
+        }
+    }
+
+    /// Minimum trick count for an ordinary game bid in the next auction.
+    /// `precedingDeals == 1` means one raspasy has just been scored.
+    public func minimumGameTricks(after precedingDeals: Int) -> Int {
+        let stage = max(0, precedingDeals)
+        switch self {
+        case .singleShot:
+            return 6
+        case let .progressive(_, exit):
+            switch exit {
+            case .simple:
+                return 6
+            case .constrained:
+                return stage == 0 ? 6 : 7
+            case .strict:
+                return min(6 + stage, 8)
+            }
+        }
+    }
 }
 
 public enum TotusPolicy: Hashable, Codable, Sendable {

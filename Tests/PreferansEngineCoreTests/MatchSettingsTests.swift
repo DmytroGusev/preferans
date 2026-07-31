@@ -84,8 +84,19 @@ final class MatchSettingsTests: XCTestCase {
         XCTAssertEqual(engine.dealsPlayed, 1)
     }
 
+    func testIndividualClosureRejectsATargetThatCannotDivideAcrossSeats() {
+        XCTAssertThrowsError(
+            try makeEngine(match: MatchSettings(poolTarget: 10))
+        ) { error in
+            guard case let PreferansError.invalidMatch(message) = error else {
+                return XCTFail("Expected invalidMatch; got \(error)")
+            }
+            XCTAssertTrue(message.contains("divide evenly"))
+        }
+    }
+
     func testGameOverFiresWhenPoolSumCrossesTargetExactly() throws {
-        var engine = try makeEngine(match: MatchSettings(poolTarget: 2))
+        var engine = try makeEngine(match: MatchSettings(poolTarget: 2, poolClosure: .tableTotal))
         let events = try runPassedOutSixClubs(&engine)
 
         XCTAssertTrue(events.contains { if case .matchEnded = $0 { return true } else { return false } },
@@ -100,7 +111,7 @@ final class MatchSettingsTests: XCTestCase {
     }
 
     func testGameOverDoesNotFireWhenPoolStaysBelowTarget() throws {
-        var engine = try makeEngine(match: MatchSettings(poolTarget: 10))
+        var engine = try makeEngine(match: MatchSettings(poolTarget: 10, poolClosure: .tableTotal))
         _ = try runPassedOutSixClubs(&engine)
 
         guard case .dealFinished = engine.state else {
@@ -110,7 +121,7 @@ final class MatchSettingsTests: XCTestCase {
     }
 
     func testStartDealFromGameOverThrows() throws {
-        var engine = try makeEngine(match: MatchSettings(poolTarget: 2))
+        var engine = try makeEngine(match: MatchSettings(poolTarget: 2, poolClosure: .tableTotal))
         _ = try runPassedOutSixClubs(&engine)
         guard case .gameOver = engine.state else {
             return XCTFail("Setup did not reach gameOver.")
@@ -125,7 +136,7 @@ final class MatchSettingsTests: XCTestCase {
     }
 
     func testMatchSummaryStandingsAreSortedByBalanceWithDeterministicTiebreak() throws {
-        var engine = try makeEngine(match: MatchSettings(poolTarget: 2))
+        var engine = try makeEngine(match: MatchSettings(poolTarget: 2, poolClosure: .tableTotal))
         _ = try runPassedOutSixClubs(&engine)
 
         guard case let .gameOver(summary) = engine.state else {
@@ -138,6 +149,141 @@ final class MatchSettingsTests: XCTestCase {
         // Tiebreak between east/south falls back to seat order in `players`.
         XCTAssertEqual(summary.standings[1].player, "east")
         XCTAssertEqual(summary.standings[2].player, "south")
+    }
+
+    // MARK: - Multi-deal raspasy
+
+    func testRaspasyProgressionsExposeCanonicalPriceAndExitStages() {
+        XCTAssertEqual(
+            [0, 1, 2, 3].map { RaspasyPolicy.sochi.scoreMultiplier(precededBy: $0) },
+            [1, 2, 3, 3]
+        )
+        XCTAssertEqual(
+            [0, 1, 2, 3].map { RaspasyPolicy.sochi.minimumGameTricks(after: $0) },
+            [6, 7, 8, 8]
+        )
+
+        let geometric = RaspasyPolicy.progressive(penalties: .geometric, exit: .constrained)
+        XCTAssertEqual(
+            [0, 1, 2, 3].map { geometric.scoreMultiplier(precededBy: $0) },
+            [1, 2, 4, 4]
+        )
+        XCTAssertEqual(
+            [0, 1, 2, 3].map { geometric.minimumGameTricks(after: $0) },
+            [6, 7, 7, 7]
+        )
+
+        XCTAssertEqual(
+            [0, 1, 2].map { RaspasyPolicy.singleShot.scoreMultiplier(precededBy: $0) },
+            [1, 1, 1]
+        )
+        XCTAssertEqual(
+            [0, 1, 2].map { RaspasyPolicy.singleShot.minimumGameTricks(after: $0) },
+            [6, 6, 6]
+        )
+    }
+
+    func testStrictRaspasyExitFiltersSixThenSevenLevelGamesButKeepsMisere() throws {
+        XCTAssertEqual(try legalGameLevels(after: 0), Set([6, 7, 8, 9, 10]))
+        XCTAssertEqual(try legalGameLevels(after: 1), Set([7, 8, 9, 10]))
+        XCTAssertEqual(try legalGameLevels(after: 2), Set([8, 9, 10]))
+        XCTAssertEqual(try legalGameLevels(after: 8), Set([8, 9, 10]))
+    }
+
+    func testEngineCarriesRaspasySeriesAcrossDealsAndResetsAfterAContract() throws {
+        var engine = try makeEngine(match: MatchSettings(raspasy: .sochi))
+
+        let first = try finishAllPass(&engine)
+        XCTAssertEqual(engine.consecutiveAllPassDeals, 1)
+        assertSochiAllPass(first, price: 1)
+
+        let second = try finishAllPass(&engine)
+        XCTAssertEqual(engine.consecutiveAllPassDeals, 2)
+        assertSochiAllPass(second, price: 2)
+
+        engine = try PreferansEngine(snapshot: engine.snapshot)
+        XCTAssertEqual(engine.consecutiveAllPassDeals, 2, "The progression must survive host recovery.")
+
+        try engine.startDeal(deck: Self.northSpadesSixDeck)
+        guard case let .bidding(opening) = engine.state else {
+            return XCTFail("Expected bidding after starting the exit deal.")
+        }
+        let exitBid = ContractBid.game(GameContract(8, .suit(.clubs)))
+        XCTAssertTrue(engine.legalBidCalls(for: opening.currentPlayer).contains(.bid(exitBid)))
+        _ = try engine.apply(.bid(player: opening.currentPlayer, call: .bid(exitBid)))
+        while case let .bidding(bidding) = engine.state {
+            _ = try engine.apply(.bid(player: bidding.currentPlayer, call: .pass))
+        }
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("Expected the eight-level declarer to receive the talon.")
+        }
+        _ = try engine.apply(.discard(player: exchange.declarer, cards: exchange.talon))
+        _ = try engine.apply(.concedeWithoutThree(player: exchange.declarer))
+
+        XCTAssertEqual(engine.consecutiveAllPassDeals, 0)
+        guard case let .dealFinished(result) = engine.state,
+              case .withoutThree = result.kind else {
+            return XCTFail("Expected a non-raspasy result to close the series.")
+        }
+    }
+
+    private func finishAllPass(_ engine: inout PreferansEngine) throws -> DealResult {
+        try engine.startDeal(deck: Self.northSpadesSixDeck)
+        while case let .bidding(bidding) = engine.state {
+            _ = try engine.apply(.bid(player: bidding.currentPlayer, call: .pass))
+        }
+        guard case let .playing(playing) = engine.state,
+              case .allPass = playing.kind else {
+            throw EngineTestError("Expected all-pass play, got \(engine.state.description).")
+        }
+        try EngineTestDriver.playOut(engine: &engine, policy: .lowestLegal)
+        guard case let .dealFinished(result) = engine.state else {
+            throw EngineTestError("Expected scored all-pass deal, got \(engine.state.description).")
+        }
+        return result
+    }
+
+    private func assertSochiAllPass(
+        _ result: DealResult,
+        price: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let minimum = result.trickCounts.values.min() ?? 0
+        for player in result.activePlayers {
+            let tricks = result.trickCounts[player] ?? 0
+            XCTAssertEqual(
+                result.scoreDelta.mountain[player],
+                max(0, tricks - minimum) * price,
+                file: file,
+                line: line
+            )
+            XCTAssertEqual(
+                result.scoreDelta.pool[player],
+                tricks == 0 ? price : 0,
+                file: file,
+                line: line
+            )
+        }
+    }
+
+    private func legalGameLevels(after precedingRaspasy: Int) throws -> Set<Int> {
+        var engine = try makeEngine(match: MatchSettings(raspasy: .sochi))
+        try startDeal(&engine)
+        var snapshot = engine.snapshot
+        snapshot.consecutiveAllPassDeals = precedingRaspasy
+        engine = try PreferansEngine(snapshot: snapshot)
+
+        guard case let .bidding(bidding) = engine.state else {
+            XCTFail("Expected bidding state")
+            return []
+        }
+        let calls = engine.legalBidCalls(for: bidding.currentPlayer)
+        XCTAssertTrue(calls.contains(.bid(.misere)), "Misère remains legal at every stage.")
+        return Set(calls.compactMap { call -> Int? in
+            guard case let .bid(.game(contract)) = call else { return nil }
+            return contract.tricks
+        })
     }
 
     // MARK: - Dedicated totus contract

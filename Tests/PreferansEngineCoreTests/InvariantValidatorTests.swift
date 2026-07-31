@@ -458,7 +458,58 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(snapshot, contains: "score players")
     }
 
+    func testSnapshotValidatorRejectsNegativeRaspasySeries() {
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .waitingForDeal,
+            score: ScoreSheet(players: seats),
+            nextDealer: north,
+            consecutiveAllPassDeals: -1
+        )
+
+        assertViolation(snapshot, contains: "consecutiveAllPassDeals cannot be negative")
+    }
+
     func testSnapshotValidatorRejectsGameOverSummaryMismatch() {
+        let (hands, _) = dealHands()
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: [north: 1, east: 0, south: 0],
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+        let result = DealResult(
+            kind: .allPass,
+            activePlayers: seats,
+            trickCounts: seats.dictionary(filledWith: 0),
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: seats),
+            initialHands: hands
+        )
+        let balances = score.normalizedBalances()
+        let standings = seats.map {
+            MatchSummary.Standing(
+                player: $0,
+                balance: balances[$0] ?? 0,
+                pool: score.pool[$0] ?? 0,
+                mountain: score.mountain[$0] ?? 0
+            )
+        }
+        let summary = MatchSummary(finalScore: score, dealsPlayed: 2, lastDeal: result, standings: standings)
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            match: MatchSettings(poolTarget: 1, poolClosure: .tableTotal),
+            state: .gameOver(summary),
+            score: score,
+            nextDealer: north,
+            dealsPlayed: 1
+        )
+        assertViolation(snapshot, contains: "gameOver dealsPlayed")
+    }
+
+    func testSnapshotValidatorRejectsGameOverBeforeSharedPoolTarget() {
         let (hands, _) = dealHands()
         let score = ScoreSheet(players: seats)
         let result = DealResult(
@@ -469,15 +520,39 @@ final class InvariantValidatorTests: XCTestCase {
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands
         )
-        let summary = MatchSummary(finalScore: score, dealsPlayed: 2, lastDeal: result, standings: [])
+        let standings = seats.map {
+            MatchSummary.Standing(player: $0, balance: 0, pool: 0, mountain: 0)
+        }
+        let summary = MatchSummary(finalScore: score, dealsPlayed: 1, lastDeal: result, standings: standings)
         let snapshot = PreferansSnapshot(
             players: seats,
-            rules: .sochi,
+            rules: .leningrad,
+            match: MatchSettings(poolTarget: 1, poolClosure: .tableTotal),
             state: .gameOver(summary),
             score: score,
             nextDealer: north,
             dealsPlayed: 1
         )
-        assertViolation(snapshot, contains: "gameOver dealsPlayed")
+
+        assertViolation(snapshot, contains: "gameOver score must satisfy")
+    }
+
+    func testSnapshotValidatorRejectsOpenStateWithClosedIndividualPulka() {
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 1),
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            match: MatchSettings(poolTarget: 3),
+            state: .waitingForDeal,
+            score: score,
+            nextDealer: north
+        )
+
+        assertViolation(snapshot, contains: "open deal state cannot carry a closed pulka")
     }
 }

@@ -136,6 +136,117 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.mountain["south"], 4)
     }
 
+    func testCanonicalSochiRaspasyUsesTalonLeadAndAmnesty() {
+        XCTAssertEqual(PreferansRules.sochi.allPassTalonPolicy, .leadSuitOnly)
+        guard case let .perTrick(multiplier, amnesty) = PreferansRules.sochi.allPassPenaltyPolicy else {
+            return XCTFail("Expected per-trick Sochi raspasy scoring.")
+        }
+        XCTAssertEqual(multiplier, 1)
+        XCTAssertTrue(amnesty)
+
+        let delta = scoreAllPass(
+            trickCounts: ["north": 4, "east": 3, "south": 3],
+            rules: .sochi
+        )
+        XCTAssertEqual(delta.mountain, ["north": 1, "east": 0, "south": 0])
+    }
+
+    func testSochiRaspasyPriceProgressesOneTwoThreeAndCaps() {
+        let match = MatchSettings(raspasy: .sochi)
+        for (precedingDeals, price) in [1, 2, 3, 3].enumerated() {
+            let delta = scoreAllPass(
+                trickCounts: ["north": 0, "east": 4, "south": 6],
+                rules: .sochi,
+                match: match,
+                consecutiveAllPassDeals: precedingDeals
+            )
+            XCTAssertEqual(delta.pool["north"], price)
+            XCTAssertEqual(delta.mountain["east"], 4 * price)
+            XCTAssertEqual(delta.mountain["south"], 6 * price)
+        }
+    }
+
+    func testLeningradRaspasyUsesDoubledTwoFourSixSeries() {
+        let delta = scoreAllPass(
+            trickCounts: ["north": 0, "east": 4, "south": 6],
+            rules: .leningrad,
+            match: MatchSettings(raspasy: .leningrad),
+            consecutiveAllPassDeals: 2
+        )
+
+        // Leningrad's base price is 2 and the third arithmetic stage is x3.
+        XCTAssertEqual(delta.pool["north"], 6)
+        XCTAssertEqual(delta.mountain["east"], 24)
+        XCTAssertEqual(delta.mountain["south"], 36)
+    }
+
+    func testExecutableRulebookUsesTheProductionScorer() {
+        let sochi = PreferansRulebook.examples(
+            rules: .sochi,
+            match: MatchSettings(raspasy: .sochi)
+        )
+        XCTAssertEqual(sochi.contracts.map(\.madePool), [2, 4, 6, 8, 10])
+        XCTAssertEqual(sochi.contracts.map(\.failedByOneMountain), [2, 4, 6, 8, 10])
+        XCTAssertEqual(sochi.contracts.map(\.whistPerDefenderTrick), [2, 4, 6, 8, 10])
+        XCTAssertEqual(sochi.misere, MisereRuleExample(madePool: 10, failedOneTrickMountain: 10))
+        XCTAssertEqual(sochi.raspasy.map(\.trickPrice), [1, 2, 3])
+        XCTAssertEqual(sochi.raspasy.map(\.cleanExitPool), [1, 2, 3])
+        XCTAssertEqual(sochi.raspasy.map(\.minimumGameTricks), [6, 7, 8])
+        XCTAssertEqual(sochi.raspasy.map(\.mountainForZeroFourSix), [
+            [0, 4, 6], [0, 8, 12], [0, 12, 18],
+        ])
+
+        let leningrad = PreferansRulebook.examples(
+            rules: .leningrad,
+            match: MatchSettings(poolClosure: .tableTotal, raspasy: .leningrad)
+        )
+        XCTAssertEqual(leningrad.contracts.map(\.madePool), [2, 4, 6, 8, 10])
+        XCTAssertEqual(leningrad.contracts.map(\.failedByOneMountain), [4, 8, 12, 16, 20])
+        XCTAssertEqual(leningrad.contracts.map(\.whistPerDefenderTrick), [4, 8, 12, 16, 20])
+        XCTAssertEqual(leningrad.misere, MisereRuleExample(madePool: 10, failedOneTrickMountain: 20))
+        XCTAssertEqual(leningrad.raspasy.map(\.trickPrice), [2, 4, 6])
+        XCTAssertEqual(leningrad.raspasy.map(\.cleanExitPool), [2, 4, 6])
+        XCTAssertEqual(leningrad.raspasy.map(\.minimumGameTricks), [6, 7, 8])
+    }
+
+    // MARK: - Leningrad recording scale
+
+    func testLeningradKeepsPoolBaseValueAndDoublesMountainAndWhists() {
+        let made = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east", "south"],
+            trickCounts: ["north": 6, "east": 1, "south": 3],
+            rules: .leningrad
+        )
+        XCTAssertEqual(made.pool["north"], 2)
+        XCTAssertEqual(made.whists["east"]?["north"], 4)
+        XCTAssertEqual(made.whists["south"]?["north"], 12)
+
+        let failed = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east", "south"],
+            trickCounts: ["north": 5, "east": 3, "south": 2],
+            rules: .leningrad
+        )
+        XCTAssertEqual(failed.mountain["north"], 4)
+        XCTAssertEqual(failed.whists["east"]?["north"], 16)
+        XCTAssertEqual(failed.whists["south"]?["north"], 12)
+    }
+
+    func testLeningradMisereKeepsTenPoolButDoublesRemise() {
+        let made = scoreMisere(
+            trickCounts: ["north": 0, "east": 5, "south": 5],
+            rules: .leningrad
+        )
+        XCTAssertEqual(made.pool["north"], 10)
+
+        let failed = scoreMisere(
+            trickCounts: ["north": 1, "east": 5, "south": 4],
+            rules: .leningrad
+        )
+        XCTAssertEqual(failed.mountain["north"], 20)
+    }
+
     // MARK: - Failed misère
 
     func testFailedMisereChargesTenMountainPerDeclarerTrick() {
@@ -204,13 +315,15 @@ final class ScoringVariantTests: XCTestCase {
     private func scoreAllPass(
         trickCounts: [PlayerID: Int],
         rules: PreferansRules,
-        match: MatchSettings = .unbounded
+        match: MatchSettings = .unbounded,
+        consecutiveAllPassDeals: Int = 0
     ) -> ScoreDelta {
         score(
             kind: .allPass(AllPassPlayContext(talonPolicy: rules.allPassTalonPolicy)),
             trickCounts: trickCounts,
             rules: rules,
-            match: match
+            match: match,
+            consecutiveAllPassDeals: consecutiveAllPassDeals
         )
     }
 
@@ -231,9 +344,15 @@ final class ScoringVariantTests: XCTestCase {
         kind: PlayKind,
         trickCounts: [PlayerID: Int],
         rules: PreferansRules,
-        match: MatchSettings
+        match: MatchSettings,
+        consecutiveAllPassDeals: Int = 0
     ) -> ScoreDelta {
-        let scoring = PreferansScoring(players: players, rules: rules, match: match)
+        let scoring = PreferansScoring(
+            players: players,
+            rules: rules,
+            match: match,
+            consecutiveAllPassDeals: consecutiveAllPassDeals
+        )
         let playing = PlayingState(
             dealer: "south",
             activePlayers: players,

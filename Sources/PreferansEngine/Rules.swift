@@ -37,9 +37,18 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public var allPassTalonPolicy: AllPassTalonPolicy
     public var allPassPenaltyPolicy: AllPassPenaltyPolicy
     public var zeroTricksAllPassPoolBonus: Int
-    /// Multiplies contract, misere, whist and mountain values. The base
-    /// ladder remains 2/4/6/8/10, while Leningrad uses double values.
-    public var scoringMultiplier: Int
+    /// Recording scales are deliberately separate. In Leningrad a made
+    /// contract keeps the standard 2/4/6/8/10 pool value, while direct
+    /// whists and declarer remise mountain entries are doubled.
+    public var poolValueMultiplier: Int
+    public var mountainValueMultiplier: Int
+    public var whistValueMultiplier: Int
+
+    /// Conversion rates used only when the pulka is reduced to a zero-sum
+    /// final balance. Leningrad values one pool point at 20 whists while a
+    /// recorded mountain point remains worth 10.
+    public var poolPointWhistValue: Int
+    public var mountainPointWhistValue: Int
 
     public init(
         allowSeniorHandHoldBid: Bool = true,
@@ -47,12 +56,20 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         singleWhistScoring: SingleWhistScoring = .greedy,
         failedDeclarerConsolation: FailedDeclarerConsolation = .eachDefender,
         whistResponsibility: WhistResponsibility = .responsible,
-        allPassTalonPolicy: AllPassTalonPolicy = .ignored,
-        allPassPenaltyPolicy: AllPassPenaltyPolicy = .perTrick(multiplier: 1, amnesty: false),
+        allPassTalonPolicy: AllPassTalonPolicy = .leadSuitOnly,
+        allPassPenaltyPolicy: AllPassPenaltyPolicy = .perTrick(multiplier: 1, amnesty: true),
         zeroTricksAllPassPoolBonus: Int = 1,
-        scoringMultiplier: Int = 1
+        poolValueMultiplier: Int = 1,
+        mountainValueMultiplier: Int = 1,
+        whistValueMultiplier: Int = 1,
+        poolPointWhistValue: Int = 10,
+        mountainPointWhistValue: Int = 10
     ) {
-        precondition(scoringMultiplier > 0, "scoringMultiplier must be positive.")
+        precondition(poolValueMultiplier > 0, "poolValueMultiplier must be positive.")
+        precondition(mountainValueMultiplier > 0, "mountainValueMultiplier must be positive.")
+        precondition(whistValueMultiplier > 0, "whistValueMultiplier must be positive.")
+        precondition(poolPointWhistValue > 0, "poolPointWhistValue must be positive.")
+        precondition(mountainPointWhistValue > 0, "mountainPointWhistValue must be positive.")
         self.allowSeniorHandHoldBid = allowSeniorHandHoldBid
         self.requireWhistOnTenTrickContracts = requireWhistOnTenTrickContracts
         self.singleWhistScoring = singleWhistScoring
@@ -61,26 +78,35 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         self.allPassTalonPolicy = allPassTalonPolicy
         self.allPassPenaltyPolicy = allPassPenaltyPolicy
         self.zeroTricksAllPassPoolBonus = zeroTricksAllPassPoolBonus
-        self.scoringMultiplier = scoringMultiplier
+        self.poolValueMultiplier = poolValueMultiplier
+        self.mountainValueMultiplier = mountainValueMultiplier
+        self.whistValueMultiplier = whistValueMultiplier
+        self.poolPointWhistValue = poolPointWhistValue
+        self.mountainPointWhistValue = mountainPointWhistValue
     }
 
     public static let sochi = PreferansRules()
 
-    public static let sochiWithTalonLedAllPass = PreferansRules(
-        allPassTalonPolicy: .leadSuitOnly
-    )
+    /// Compatibility name retained for fixtures written before talon-led
+    /// raspasy became part of the canonical Sochi profile.
+    public static let sochiWithTalonLedAllPass = PreferansRules.sochi
 
-    /// Tournament-style Leningrad profile: all contract values are doubled,
-    /// the whist is semi-responsible, and a lone whister splits the score
-    /// with the defender who passed.
+    /// Tournament-style Leningrad profile: pool entries keep the standard
+    /// ladder, while mountain and direct-whist entries are doubled. Whist is
+    /// semi-responsible and a lone whister splits the score with the passer.
     public static let leningrad = PreferansRules(
         requireWhistOnTenTrickContracts: true,
         singleWhistScoring: .gentleman,
         failedDeclarerConsolation: .eachDefender,
         whistResponsibility: .semiResponsible,
+        allPassTalonPolicy: .leadSuitOnly,
         allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false),
-        zeroTricksAllPassPoolBonus: 0,
-        scoringMultiplier: 2
+        zeroTricksAllPassPoolBonus: 1,
+        poolValueMultiplier: 1,
+        mountainValueMultiplier: 2,
+        whistValueMultiplier: 2,
+        poolPointWhistValue: 20,
+        mountainPointWhistValue: 10
     )
 
     public func whistRequirement(for contract: GameContract) -> Int {
@@ -102,13 +128,21 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         case allPassTalonPolicy
         case allPassPenaltyPolicy
         case zeroTricksAllPassPoolBonus
+        case poolValueMultiplier
+        case mountainValueMultiplier
+        case whistValueMultiplier
+        case poolPointWhistValue
+        case mountainPointWhistValue
+        /// Legacy snapshots used one multiplier for every score column.
         case scoringMultiplier
     }
 
-    /// Old online snapshots predate `scoringMultiplier`; decoding them as
-    /// one preserves their original Sochi value scale.
+    /// Decode old snapshots without crashing. A legacy single multiplier is
+    /// applied to all three recording columns, preserving the behavior that
+    /// snapshot was created under; new profiles encode the independent scales.
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
+        let legacyMultiplier = try values.decodeIfPresent(Int.self, forKey: .scoringMultiplier)
         self.init(
             allowSeniorHandHoldBid: try values.decode(Bool.self, forKey: .allowSeniorHandHoldBid),
             requireWhistOnTenTrickContracts: try values.decode(Bool.self, forKey: .requireWhistOnTenTrickContracts),
@@ -118,12 +152,16 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             allPassTalonPolicy: try values.decode(AllPassTalonPolicy.self, forKey: .allPassTalonPolicy),
             allPassPenaltyPolicy: try values.decode(AllPassPenaltyPolicy.self, forKey: .allPassPenaltyPolicy),
             zeroTricksAllPassPoolBonus: try values.decode(Int.self, forKey: .zeroTricksAllPassPoolBonus),
-            scoringMultiplier: try values.decodeIfPresent(Int.self, forKey: .scoringMultiplier) ?? 1
+            poolValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .poolValueMultiplier) ?? legacyMultiplier ?? 1,
+            mountainValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .mountainValueMultiplier) ?? legacyMultiplier ?? 1,
+            whistValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .whistValueMultiplier) ?? legacyMultiplier ?? 1,
+            poolPointWhistValue: try values.decodeIfPresent(Int.self, forKey: .poolPointWhistValue) ?? 10,
+            mountainPointWhistValue: try values.decodeIfPresent(Int.self, forKey: .mountainPointWhistValue) ?? 10
         )
     }
 
-    /// Keep the default Sochi wire format stable for existing room snapshots.
-    /// Non-default profiles (for example, Leningrad) carry their multiplier.
+    /// Keep the default Sochi wire format compact. Non-default profiles carry
+    /// only the recording/conversion values that differ from one/ten.
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(allowSeniorHandHoldBid, forKey: .allowSeniorHandHoldBid)
@@ -134,8 +172,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         try values.encode(allPassTalonPolicy, forKey: .allPassTalonPolicy)
         try values.encode(allPassPenaltyPolicy, forKey: .allPassPenaltyPolicy)
         try values.encode(zeroTricksAllPassPoolBonus, forKey: .zeroTricksAllPassPoolBonus)
-        if scoringMultiplier != 1 {
-            try values.encode(scoringMultiplier, forKey: .scoringMultiplier)
-        }
+        if poolValueMultiplier != 1 { try values.encode(poolValueMultiplier, forKey: .poolValueMultiplier) }
+        if mountainValueMultiplier != 1 { try values.encode(mountainValueMultiplier, forKey: .mountainValueMultiplier) }
+        if whistValueMultiplier != 1 { try values.encode(whistValueMultiplier, forKey: .whistValueMultiplier) }
+        if poolPointWhistValue != 10 { try values.encode(poolPointWhistValue, forKey: .poolPointWhistValue) }
+        if mountainPointWhistValue != 10 { try values.encode(mountainPointWhistValue, forKey: .mountainPointWhistValue) }
     }
 }

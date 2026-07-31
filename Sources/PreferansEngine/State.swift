@@ -9,8 +9,8 @@ public enum DealState: Equatable, Codable, Sendable, CustomStringConvertible {
     case awaitingDefenderMode(DefenderModeState)
     case playing(PlayingState)
     case dealFinished(DealResult)
-    /// Terminal state. Reached when applying a deal's score pushes the pool
-    /// total to or past ``MatchSettings/poolTarget``. ``startDeal`` from this
+    /// Terminal state. Reached when applying a deal's score satisfies the
+    /// match's ``MatchSettings/poolClosure`` policy. ``startDeal`` from this
     /// state throws — the match is closed.
     case gameOver(MatchSummary)
 
@@ -612,6 +612,7 @@ public struct PreferansSnapshot: Equatable, Codable, Sendable {
     public var score: ScoreSheet
     public var nextDealer: PlayerID
     public var dealsPlayed: Int
+    public var consecutiveAllPassDeals: Int
 
     public init(
         players: [PlayerID],
@@ -620,7 +621,8 @@ public struct PreferansSnapshot: Equatable, Codable, Sendable {
         state: DealState,
         score: ScoreSheet,
         nextDealer: PlayerID,
-        dealsPlayed: Int = 0
+        dealsPlayed: Int = 0,
+        consecutiveAllPassDeals: Int = 0
     ) {
         self.players = players
         self.rules = rules
@@ -629,5 +631,48 @@ public struct PreferansSnapshot: Equatable, Codable, Sendable {
         self.score = score
         self.nextDealer = nextDealer
         self.dealsPlayed = dealsPlayed
+        self.consecutiveAllPassDeals = consecutiveAllPassDeals
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case players
+        case rules
+        case match
+        case state
+        case score
+        case nextDealer
+        case dealsPlayed
+        case consecutiveAllPassDeals
+    }
+
+    /// Pre-progression snapshots had no raspasy series counter. They resume at
+    /// the first stage instead of failing to decode or inventing a streak.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            players: try values.decode([PlayerID].self, forKey: .players),
+            rules: try values.decode(PreferansRules.self, forKey: .rules),
+            match: try values.decodeIfPresent(MatchSettings.self, forKey: .match) ?? .unbounded,
+            state: try values.decode(DealState.self, forKey: .state),
+            score: try values.decode(ScoreSheet.self, forKey: .score),
+            nextDealer: try values.decode(PlayerID.self, forKey: .nextDealer),
+            dealsPlayed: try values.decodeIfPresent(Int.self, forKey: .dealsPlayed) ?? 0,
+            consecutiveAllPassDeals: try values.decodeIfPresent(
+                Int.self,
+                forKey: .consecutiveAllPassDeals
+            ) ?? 0
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(players, forKey: .players)
+        try values.encode(rules, forKey: .rules)
+        try values.encode(match, forKey: .match)
+        try values.encode(state, forKey: .state)
+        try values.encode(score, forKey: .score)
+        try values.encode(nextDealer, forKey: .nextDealer)
+        try values.encode(dealsPlayed, forKey: .dealsPlayed)
+        try values.encode(consecutiveAllPassDeals, forKey: .consecutiveAllPassDeals)
     }
 }

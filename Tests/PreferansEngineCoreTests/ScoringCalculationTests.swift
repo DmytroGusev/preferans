@@ -73,6 +73,30 @@ final class ScoringCalculationTests: XCTestCase {
         XCTAssertEqual(delta.whists["south"]?["north"], nil)
     }
 
+    func testJointWhistSuccessDoesNotPenalizeUnevenPartners() {
+        let delta = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east", "south"],
+            trickCounts: ["north": 6, "east": 1, "south": 3]
+        )
+
+        XCTAssertEqual(delta.mountain["east"], 0)
+        XCTAssertEqual(delta.mountain["south"], 0)
+        XCTAssertEqual(delta.whists["east"]?["north"], 2)
+        XCTAssertEqual(delta.whists["south"]?["north"], 6)
+    }
+
+    func testFailedJointWhistUsesFixedHalfSharePenalty() {
+        let delta = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east", "south"],
+            trickCounts: ["north": 7, "east": 0, "south": 3]
+        )
+
+        XCTAssertEqual(delta.mountain["east"], 2)
+        XCTAssertEqual(delta.mountain["south"], 0)
+    }
+
     private func scoreGame(
         contract: GameContract,
         whisters: [PlayerID],

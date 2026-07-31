@@ -8,6 +8,10 @@ public struct PreferansEngine: Sendable {
     public private(set) var score: ScoreSheet
     public private(set) var nextDealer: PlayerID
     public private(set) var dealsPlayed: Int
+    /// Number of immediately preceding deals that ended in raspasy. This is
+    /// match state, not deal state: it drives the next all-pass price and the
+    /// minimum ordinary contract allowed in the next auction.
+    public private(set) var consecutiveAllPassDeals: Int
 
     /// Whether a declared 10-trick contract goes through the whist phase (with
     /// both defenders forced to whist) instead of starting play unwhisted.
@@ -25,6 +29,7 @@ public struct PreferansEngine: Sendable {
         firstDealer: PlayerID? = nil
     ) throws {
         try Self.validate(players: players)
+        try Self.validate(match: match, playerCount: players.count)
         let dealer = firstDealer ?? players[0]
         guard players.contains(dealer) else {
             throw PreferansError.invalidPlayer(dealer)
@@ -36,13 +41,16 @@ public struct PreferansEngine: Sendable {
         self.score = ScoreSheet(players: players)
         self.nextDealer = dealer
         self.dealsPlayed = 0
+        self.consecutiveAllPassDeals = 0
     }
 
     public init(snapshot: PreferansSnapshot) throws {
         try Self.validate(players: snapshot.players)
+        try Self.validate(match: snapshot.match, playerCount: snapshot.players.count)
         guard snapshot.players.contains(snapshot.nextDealer) else {
             throw PreferansError.invalidPlayer(snapshot.nextDealer)
         }
+        try Self.validateInvariants(snapshot)
         self.players = snapshot.players
         self.rules = snapshot.rules
         self.match = snapshot.match
@@ -50,7 +58,7 @@ public struct PreferansEngine: Sendable {
         self.score = snapshot.score
         self.nextDealer = snapshot.nextDealer
         self.dealsPlayed = snapshot.dealsPlayed
-        assertInvariants()
+        self.consecutiveAllPassDeals = snapshot.consecutiveAllPassDeals
     }
 
     public var snapshot: PreferansSnapshot {
@@ -61,7 +69,8 @@ public struct PreferansEngine: Sendable {
             state: state,
             score: score,
             nextDealer: nextDealer,
-            dealsPlayed: dealsPlayed
+            dealsPlayed: dealsPlayed,
+            consecutiveAllPassDeals: consecutiveAllPassDeals
         )
     }
 
@@ -302,7 +311,12 @@ public struct PreferansEngine: Sendable {
     }
 
     private var scoring: PreferansScoring {
-        PreferansScoring(players: players, rules: rules, match: match)
+        PreferansScoring(
+            players: players,
+            rules: rules,
+            match: match,
+            consecutiveAllPassDeals: consecutiveAllPassDeals
+        )
     }
 
     private static func validate(players: [PlayerID]) throws {
@@ -311,6 +325,19 @@ public struct PreferansEngine: Sendable {
         }
         guard Set(players).count == players.count else {
             throw PreferansError.invalidPlayers("PlayerID values must be unique.")
+        }
+    }
+
+    private static func validate(match: MatchSettings, playerCount: Int) throws {
+        guard match.poolTarget == .max || match.poolTarget > 0 else {
+            throw PreferansError.invalidMatch("Pool target must be positive or unbounded.")
+        }
+        if match.poolTarget != .max,
+           match.poolClosure == .individualWithAmericanAid,
+           !match.poolTarget.isMultiple(of: playerCount) {
+            throw PreferansError.invalidMatch(
+                "Individual pool target \(match.poolTarget) must divide evenly across \(playerCount) players."
+            )
         }
     }
 
@@ -371,6 +398,11 @@ public struct PreferansEngine: Sendable {
             return false
         default:
             break
+        }
+
+        if case let .game(contract) = bid,
+           contract.tricks < match.raspasy.minimumGameTricks(after: consecutiveAllPassDeals) {
+            return false
         }
 
         if bid == .misere {
@@ -694,17 +726,28 @@ public struct PreferansEngine: Sendable {
     }
 
     /// Applies the deal's score delta, increments the deal counter, and
-    /// transitions to ``DealState/gameOver`` when the pool sum has reached the
-    /// match's pool target. Otherwise transitions to ``DealState/dealFinished``.
+    /// transitions to ``DealState/gameOver`` when the match's pool-closing
+    /// policy is satisfied. Otherwise transitions to ``DealState/dealFinished``.
     /// Returns the events the caller should append (always `dealScored`,
     /// optionally followed by `matchEnded`).
     mutating func finalize(_ result: DealResult) -> EngineTransition {
-        let appliedDelta = score.apply(result.scoreDelta, closingAtPoolTarget: match.poolTarget)
+        let appliedDelta = score.apply(
+            result.scoreDelta,
+            closingAtPoolTarget: match.poolTarget,
+            poolClosure: match.poolClosure,
+            poolPointWhistValue: rules.poolPointWhistValue
+        )
         let result = result.replacingScoreDelta(appliedDelta)
         dealsPlayed += 1
+        if case .allPass = result.kind {
+            if consecutiveAllPassDeals < Int.max {
+                consecutiveAllPassDeals += 1
+            }
+        } else {
+            consecutiveAllPassDeals = 0
+        }
         var events: [PreferansEvent] = [.dealScored(result)]
-        let totalPool = score.pool.values.reduce(0, +)
-        if totalPool >= match.poolTarget {
+        if match.isPoolClosed(score) {
             let summary = makeMatchSummary(lastDeal: result)
             events.append(.matchEnded(summary))
             return EngineTransition(state: .gameOver(summary), events: events)
@@ -713,7 +756,10 @@ public struct PreferansEngine: Sendable {
     }
 
     private func makeMatchSummary(lastDeal: DealResult) -> MatchSummary {
-        let balances = score.normalizedBalances()
+        let balances = score.normalizedBalances(
+            poolPointValue: Double(rules.poolPointWhistValue),
+            mountainPointValue: Double(rules.mountainPointWhistValue)
+        )
         let standings = players
             .map { player -> MatchSummary.Standing in
                 MatchSummary.Standing(

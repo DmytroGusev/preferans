@@ -91,10 +91,11 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
     /// Adds `delta` to the sheet verbatim, with **no pulka-closing
     /// redistribution**. Safe only as the fallback for matches whose pool
     /// target doesn't imply a per-player limit (see
-    /// ``apply(_:closingAtPoolTarget:)``, the public entry point, which
-    /// delegates here in that case). Applying a delta through this method
-    /// in a closing match would let pool points overshoot the per-player
-    /// target and skip the american-aid write-back — hence `private`.
+    /// ``apply(_:closingAtPoolTarget:poolClosure:)``, the public entry point,
+    /// which delegates here for unbounded and table-total matches). Applying
+    /// a delta through this method in an individually closing match would let
+    /// pool points overshoot the per-player target and skip the American-aid
+    /// write-back — hence `private`.
     private mutating func applyRaw(_ delta: ScoreDelta) {
         validateForApply(delta)
         for (player, points) in delta.pool where points != 0 {
@@ -110,21 +111,32 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         }
     }
 
-    /// Applies a deal delta with pulka closure. If the total target cleanly
-    /// implies a per-player limit, surplus pool first fills the earner, then
-    /// aids the highest open opponent and writes equivalent whists back to the
-    /// earner. Once everyone is closed, leftover value reduces the earner's
-    /// mountain so final equal pool totals can be ignored.
+    /// Applies a deal delta under the match's pulka-closing convention.
+    /// Individual closure first fills the earner, then aids the highest open
+    /// opponent and writes equivalent whists back to the earner. Once everyone
+    /// is closed, leftover value reduces the earner's mountain so final equal
+    /// pool totals can be ignored. Table-total closure applies entries verbatim:
+    /// Leningrad does not close or aid individual pools.
     ///
     /// This is the **only public mutator** for deal deltas: it owns pulka
-    /// closing, so external callers can't accidentally bypass it. Matches
-    /// without a clean per-player target fall back to the raw application
-    /// internally. Returns the delta as actually applied (post-closing).
+    /// closing, so external callers can't accidentally bypass it. Returns the
+    /// delta as actually applied (post-closing).
     @discardableResult
-    public mutating func apply(_ delta: ScoreDelta, closingAtPoolTarget totalPoolTarget: Int) -> ScoreDelta {
-        guard let perPlayerTarget = individualPoolTarget(totalPoolTarget: totalPoolTarget) else {
+    public mutating func apply(
+        _ delta: ScoreDelta,
+        closingAtPoolTarget totalPoolTarget: Int,
+        poolClosure: PoolClosurePolicy = .individualWithAmericanAid,
+        poolPointWhistValue: Int = 10
+    ) -> ScoreDelta {
+        precondition(poolPointWhistValue > 0, "poolPointWhistValue must be positive.")
+        if totalPoolTarget == .max || poolClosure == .tableTotal {
             applyRaw(delta)
             return delta
+        }
+        guard let perPlayerTarget = individualPoolTarget(totalPoolTarget: totalPoolTarget) else {
+            preconditionFailure(
+                "Individual pool target \(totalPoolTarget) must be positive and divisible by \(players.count)."
+            )
         }
 
         validateForApply(delta)
@@ -147,7 +159,13 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         for player in players {
             let points = delta.pool[player] ?? 0
             guard points != 0 else { continue }
-            applyPool(points, earnedBy: player, perPlayerTarget: perPlayerTarget, appliedDelta: &applied)
+            applyPool(
+                points,
+                earnedBy: player,
+                perPlayerTarget: perPlayerTarget,
+                poolPointWhistValue: poolPointWhistValue,
+                appliedDelta: &applied
+            )
         }
 
         return applied
@@ -161,6 +179,8 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         poolPointValue: Double = 10,
         mountainPointValue: Double = 10
     ) -> [PlayerID: Double] {
+        precondition(poolPointValue > 0, "poolPointValue must be positive.")
+        precondition(mountainPointValue > 0, "mountainPointValue must be positive.")
         var balances = players.dictionary(filledWith: 0.0)
 
         for player in players {
@@ -203,6 +223,7 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         _ points: Int,
         earnedBy earner: PlayerID,
         perPlayerTarget: Int,
+        poolPointWhistValue: Int,
         appliedDelta: inout ScoreDelta
     ) {
         guard points > 0 else {
@@ -225,9 +246,13 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
             let aid = min(remaining, room)
             guard aid > 0 else { break }
             pool[recipient]! += aid
-            whists[earner, default: [:]][recipient, default: 0] += aid * 10
+            whists[earner, default: [:]][recipient, default: 0] += aid * poolPointWhistValue
             appliedDelta.addPool(aid, to: recipient)
-            appliedDelta.addWhists(aid * 10, writer: earner, on: recipient)
+            appliedDelta.addWhists(
+                aid * poolPointWhistValue,
+                writer: earner,
+                on: recipient
+            )
             remaining -= aid
         }
 
