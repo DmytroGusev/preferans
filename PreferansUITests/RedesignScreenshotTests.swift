@@ -145,8 +145,10 @@ final class RedesignScreenshotTests: XCTestCase {
         if startDeal.waitForExistence(timeout: 3) {
             startDeal.tap()
         }
+        robot.waitForPhase("Bidding")
         recorder.capture(name: "03-deal-started")
 
+        var completedDeal = false
         for i in 0..<60 {
             let phase = app.staticTexts[UIIdentifiers.phaseTitle].label
             recorder.capture(
@@ -156,7 +158,10 @@ final class RedesignScreenshotTests: XCTestCase {
             )
 
             if app.otherElements[UIIdentifiers.Panel.dealFinished.rawValue].exists ||
-               app.otherElements[UIIdentifiers.Panel.gameOver.rawValue].exists {
+               app.otherElements[UIIdentifiers.Panel.gameOver.rawValue].exists ||
+               app.buttons[UIIdentifiers.buttonStartDeal].exists {
+                completedDeal = true
+                print("[playthrough] completed one deal after \(i + 1) bounded iterations")
                 break
             }
 
@@ -167,7 +172,6 @@ final class RedesignScreenshotTests: XCTestCase {
             if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
             if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.4) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
-            if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) { continue }
 
             // Nothing actionable — a bot is on the clock. Wait for the phase
             // label to move instead of sleeping blindly: same worst-case
@@ -183,6 +187,7 @@ final class RedesignScreenshotTests: XCTestCase {
             )
         }
 
+        XCTAssertTrue(completedDeal, "The one-deal playthrough exhausted its 60-iteration bound")
         recorder.capture(name: "99-final")
     }
 
