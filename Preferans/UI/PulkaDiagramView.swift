@@ -13,6 +13,7 @@ import PreferansEngine
 public struct PulkaDiagramView: View {
     public var score: ScoreSheet
     public var rules: PreferansRules
+    public var presentation: ScoreBoardPresentation
     /// Resolves a seat's `PlayerID` (a compass id like `east` online) to the
     /// name the player actually sees. Threaded from the projection so the
     /// diagram never leaks raw seat ids.
@@ -21,10 +22,12 @@ public struct PulkaDiagramView: View {
     public init(
         score: ScoreSheet,
         rules: PreferansRules,
+        presentation: ScoreBoardPresentation = .sheet,
         displayName: @escaping (PlayerID) -> String
     ) {
         self.score = score
         self.rules = rules
+        self.presentation = presentation
         self.displayName = displayName
     }
 
@@ -108,7 +111,7 @@ public struct PulkaDiagramView: View {
                 for point in corners.dropFirst() { path.addLine(to: point) }
                 path.closeSubpath()
             }
-            .stroke(Color.secondary.opacity(0.35), lineWidth: 1)
+            .stroke(presentation.diagramLine.opacity(0.35), lineWidth: 1)
 
             // The interior dividers: diagonals for the square, cevians to the
             // centre for the triangle. Faint and dashed so they read as the
@@ -121,7 +124,10 @@ public struct PulkaDiagramView: View {
                     for corner in corners { path.move(to: corner); path.addLine(to: center) }
                 }
             }
-            .stroke(Color.secondary.opacity(0.2), style: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
+            .stroke(
+                presentation.diagramLine.opacity(0.2),
+                style: StrokeStyle(lineWidth: 0.8, dash: [3, 3])
+            )
         }
     }
 

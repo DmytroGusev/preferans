@@ -303,11 +303,15 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            ScoreBoardView(
-                score: projection.score,
-                rules: projection.rules,
-                displayName: projection.displayName(for:)
-            )
+            ScrollView {
+                ScoreBoardView(
+                    score: projection.score,
+                    rules: projection.rules,
+                    presentation: .feltSidebar,
+                    displayName: projection.displayName(for:)
+                )
+            }
+                .scrollIndicators(.hidden)
                 .frame(width: 360)
         }
         .padding(.vertical, 16)

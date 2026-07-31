@@ -1,6 +1,36 @@
 import SwiftUI
 import PreferansEngine
 
+/// The scoresheet is shown on two fundamentally different surfaces: a system
+/// sheet and the dark iPad felt sidebar. Material-backed player cards can use
+/// semantic system ink in both places, while unbacked labels and diagram lines
+/// need an explicit felt palette in the sidebar.
+public enum ScoreBoardPresentation: Sendable {
+    case sheet
+    case feltSidebar
+
+    var unbackedPrimary: Color {
+        switch self {
+        case .sheet: .primary
+        case .feltSidebar: TableTheme.inkCream
+        }
+    }
+
+    var unbackedSecondary: Color {
+        switch self {
+        case .sheet: .secondary
+        case .feltSidebar: TableTheme.inkCreamSoft
+        }
+    }
+
+    var diagramLine: Color {
+        switch self {
+        case .sheet: .secondary
+        case .feltSidebar: TableTheme.inkCream
+        }
+    }
+}
+
 /// Traditional preferans pulka, one card per player.
 ///
 /// On paper the pulka is drawn as a triangle (3-player) or square (4-player)
@@ -13,6 +43,7 @@ import PreferansEngine
 public struct ScoreBoardView: View {
     public var score: ScoreSheet
     public var rules: PreferansRules
+    public var presentation: ScoreBoardPresentation
     /// Resolves a seat's `PlayerID` to the name the player sees. Threaded
     /// from the projection so the scoresheet shows real names instead of the
     /// raw compass seat ids used online.
@@ -21,17 +52,24 @@ public struct ScoreBoardView: View {
     public init(
         score: ScoreSheet,
         rules: PreferansRules,
+        presentation: ScoreBoardPresentation = .sheet,
         displayName: @escaping (PlayerID) -> String
     ) {
         self.score = score
         self.rules = rules
+        self.presentation = presentation
         self.displayName = displayName
     }
 
     public var body: some View {
         VStack(spacing: 16) {
             if (3...4).contains(score.players.count) {
-                PulkaDiagramView(score: score, rules: rules, displayName: displayName)
+                PulkaDiagramView(
+                    score: score,
+                    rules: rules,
+                    presentation: presentation,
+                    displayName: displayName
+                )
             }
             VStack(spacing: 12) {
                 ForEach(score.players, id: \.self) { player in
@@ -156,13 +194,15 @@ public struct ScoreBoardView: View {
             legendRow(title: "Баланс (balance)", description: "Standings — zero-sum across the table.")
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(presentation.unbackedSecondary)
         .padding(.horizontal, 4)
     }
 
     private func legendRow(title: LocalizedStringKey, description: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 6) {
-            Text(title).fontWeight(.semibold).foregroundStyle(.primary)
+            Text(title)
+                .fontWeight(.semibold)
+                .foregroundStyle(presentation.unbackedPrimary)
             Text(description)
         }
     }
