@@ -4,6 +4,7 @@ import PreferansEngine
 public enum OnlineAccountProvider: String, Codable, Sendable, Equatable {
     case gameCenter
     case apple
+    case guest
     case email
     case dev
 }
@@ -124,6 +125,8 @@ public protocol RoomRealtimeTransport: AnyObject {
     /// leaves instead of freezing on the roster it saw at its own join. Transports
     /// with no server-pushed presence inherit the default empty stream.
     func participantUpdates() -> AsyncStream<[OnlinePeer]>
+    /// Socket lifecycle events that affect player-facing recovery UX.
+    func connectionEvents() -> AsyncStream<RoomTransportEvent>
     func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws
     func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws
     /// Ask the room's authority to convert every still-open (`pending:`) seat into
@@ -131,6 +134,18 @@ public protocol RoomRealtimeTransport: AnyObject {
     /// server-side authority that performed the change (Cloudflare), or `nil` when
     /// the caller should fall back to converting seats locally (in-memory/GameKit).
     func fillPendingSeatsWithBots() async throws -> [OnlinePeer]?
+    /// Durable engine state to adopt if the room authority elects this device
+    /// as a replacement host. Local transports have no remote snapshot.
+    func hostRecoveryContext() async throws -> OnlineResumeContext?
+    /// Commit the host's authoritative snapshot before its projections are
+    /// exposed. Relay-backed transports persist it; local transports are an
+    /// intentional no-op.
+    func reportState(
+        status: PreferansGameStatus,
+        summary: OnlineStateSummary,
+        snapshot: PreferansSnapshot?,
+        snapshotSequence: Int
+    ) async throws
     func disconnect()
 }
 
@@ -140,8 +155,23 @@ public extension RoomRealtimeTransport {
         AsyncStream { $0.finish() }
     }
 
+    func connectionEvents() -> AsyncStream<RoomTransportEvent> {
+        AsyncStream { $0.finish() }
+    }
+
     /// Default: no server-side seat authority — the caller converts seats itself.
     func fillPendingSeatsWithBots() async throws -> [OnlinePeer]? { nil }
+
+    /// Local/in-memory transports elect a fixed host and never recover from a
+    /// server snapshot.
+    func hostRecoveryContext() async throws -> OnlineResumeContext? { nil }
+
+    func reportState(
+        status: PreferansGameStatus,
+        summary: OnlineStateSummary,
+        snapshot: PreferansSnapshot?,
+        snapshotSequence: Int
+    ) async throws {}
 }
 
 /// Whether this client is currently hearing back from the authoritative host.
@@ -153,6 +183,23 @@ public enum OnlineLiveness: Equatable, Sendable {
     case live
     /// No host response within `HeartbeatConfig.hostTimeout` — the table is stalled.
     case hostUnreachable
+}
+
+public enum RoomTransportEvent: Equatable, Sendable {
+    /// A socket frame was received, proving the current connection is usable.
+    case connected
+    /// A transient transport failure is being retried automatically.
+    case reconnecting
+    /// The same account rejoined this seat and rotated its room credential.
+    case seatTakenOver
+}
+
+public enum OnlineTransportStatus: Equatable, Sendable {
+    case connecting
+    case connected
+    case reconnecting
+    case seatTakenOver
+    case disconnected
 }
 
 /// Cadence for the client-side host heartbeat. Injectable so unit tests and the

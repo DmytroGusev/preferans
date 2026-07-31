@@ -43,6 +43,22 @@ public struct OnlineRoomGameScreen: View {
                 )
             }
         }
+        .overlay(alignment: .top) {
+            VStack(spacing: 6) {
+                connectionStatusBanner
+                if let error = coordinator.errorText {
+                    Text(error)
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.regularMaterial, in: Capsule())
+                        .accessibilityIdentifier(UIIdentifiers.errorBanner)
+                }
+            }
+            .padding(.top, 8)
+            .animation(.default, value: coordinator.liveness)
+            .animation(.default, value: coordinator.transportStatus)
+        }
     }
 
     /// The live table is up once the host has dealt the first hand
@@ -94,38 +110,40 @@ public struct OnlineRoomGameScreen: View {
             )
             onlineFlowState(projection: authoritativeProjection)
         }
-        .overlay(alignment: .top) {
-            VStack(spacing: 6) {
-                if !coordinator.isHost, coordinator.liveness == .hostUnreachable {
-                    connectionBanner
-                }
-                if let error = coordinator.errorText {
-                    Text(error)
-                        .font(.caption)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(.regularMaterial, in: Capsule())
-                        .accessibilityIdentifier(UIIdentifiers.errorBanner)
-                }
-            }
-            .padding(.top, 8)
-            .animation(.default, value: coordinator.liveness)
-        }
         // No screen-level id here: it would propagate onto the inner
         // ProjectionGameScreen and shadow its `screenGame` id. The live table
         // is identified by `screenGame`; the pre-deal state by `screenWaitingRoom`.
     }
 
-    private var connectionBanner: some View {
-        Label("Host not responding…", systemImage: "wifi.exclamationmark")
+    @ViewBuilder
+    private var connectionStatusBanner: some View {
+        if coordinator.transportStatus == .seatTakenOver {
+            connectionBanner(
+                "Opened on another device — this table is read-only here.",
+                systemImage: "iphone.gen2.radiowaves.left.and.right",
+                color: .orange
+            )
+        } else if coordinator.transportStatus == .reconnecting {
+            connectionBanner("Reconnecting…", systemImage: "wifi.exclamationmark", color: .orange)
+        } else if !coordinator.isHost, coordinator.liveness == .hostUnreachable {
+            connectionBanner("Recovering host…", systemImage: "arrow.triangle.2.circlepath", color: .orange)
+        }
+    }
+
+    private func connectionBanner(
+        _ text: LocalizedStringKey,
+        systemImage: String,
+        color: Color
+    ) -> some View {
+        Label(text, systemImage: systemImage)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.orange)
+            .foregroundStyle(color)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(.regularMaterial, in: Capsule())
             .accessibilityIdentifier(UIIdentifiers.connectionBanner)
             .accessibilityLabel("Connection status")
-            .accessibilityValue("Host not responding…")
+            .accessibilityValue(Text(text))
     }
 
     private func onlineFlowState(projection: PlayerGameProjection) -> some View {

@@ -1,13 +1,63 @@
 import Foundation
+import Security
+
+/// The v2 account bearer token grants access to every game owned by the
+/// account, so it is kept in Keychain rather than UserDefaults. The service and
+/// account names are versioned: old trust-based identities can never be loaded
+/// accidentally after the clean break.
+public enum OnlineAccountSessionStore {
+    private static let service = "com.mixandmatch.preferans.online-account.v2"
+    private static let account = "active-session"
+
+    public static func token() -> String? {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+            kSecReturnData: true,
+            kSecMatchLimit: kSecMatchLimitOne
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let token = String(data: data, encoding: .utf8),
+              !token.isEmpty else {
+            return nil
+        }
+        return token
+    }
+
+    @discardableResult
+    public static func store(_ token: String) -> Bool {
+        guard let data = token.data(using: .utf8), !data.isEmpty else { return false }
+        remove()
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account,
+            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecValueData: data
+        ]
+        return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
+    }
+
+    public static func remove() {
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword,
+            kSecAttrService: service,
+            kSecAttrAccount: account
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+}
 
 /// Persists the per-seat auth token the worker mints at `/create`/`/join`,
 /// keyed by room code, so lobby flows that run without a live transport —
 /// abandoning a game from "Your games", fetching the resume snapshot — can
 /// still prove seat ownership.
 ///
-/// UserDefaults (not Keychain) is deliberate: a token authorizes actions only
-/// on a single room the account already sits at, has no value once the game
-/// ends, and the same store level protects the account identity itself.
+/// A seat token is scoped to one short-lived room, unlike the account bearer
+/// token above, so UserDefaults remains an appropriate recoverable cache.
 public enum OnlineSeatCredentialStore {
     private static let storageKey = "online.seatCredentials"
     /// Entries older than this are pruned on every write. Preferans matches
@@ -35,6 +85,10 @@ public enum OnlineSeatCredentialStore {
         var entries = load(defaults)
         guard entries.removeValue(forKey: normalize(roomCode)) != nil else { return }
         save(entries, to: defaults)
+    }
+
+    public static func removeAll(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: storageKey)
     }
 
     private static func normalize(_ roomCode: String) -> String {

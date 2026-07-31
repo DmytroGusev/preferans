@@ -26,6 +26,7 @@ public final class LobbyViewModel: ObservableObject {
     /// failure visually distinct.
     @Published public var infoText: String?
     @Published public private(set) var registeredOnlineAccount: RegisteredOnlineAccount?
+    @Published public private(set) var onlineAccountSessionToken: String?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
     /// Online display name, kept entirely separate from the local bot roster.
@@ -34,6 +35,8 @@ public final class LobbyViewModel: ObservableObject {
     /// The online table's own seat composition (you + invite/bot seats),
     /// independent of the local `seats` roster.
     @Published public var onlineComposition: [OnlineSeatSlot] = OnlineSeatSlot.defaultComposition(count: 3)
+    /// Shared convention for bot and online tables. The persisted key keeps its
+    /// historical name, but the choice now seeds both rules and match closure.
     @Published public var onlineVariant: PreferansVariant = .odesa {
         didSet {
             UserDefaults.standard.set(onlineVariant.rawValue, forKey: SettingsKeys.onlineVariant)
@@ -54,18 +57,33 @@ public final class LobbyViewModel: ObservableObject {
             UserDefaults.standard.set(customPulkaPerPlayer, forKey: SettingsKeys.customPulkaPerPlayer)
         }
     }
+    @Published public var customPulkaTableTotal: Int = PulkaLimit.defaultCustomTableTarget {
+        didSet {
+            let clamped = Self.clampedPulkaTableTotal(customPulkaTableTotal)
+            if customPulkaTableTotal != clamped {
+                customPulkaTableTotal = clamped
+                return
+            }
+            UserDefaults.standard.set(customPulkaTableTotal, forKey: SettingsKeys.customPulkaTableTotal)
+        }
+    }
     private var onlineNamePersistenceTask: Task<Void, Never>?
+    private let accountClient: CloudflareAccountClient
     static let onlineNamePersistenceDelay: Duration = .milliseconds(300)
 
-    public init() {
+    public init(accountClient: CloudflareAccountClient = CloudflareAccountClient()) {
+        self.accountClient = accountClient
         let account = Self.loadRegisteredOnlineAccount()
-        registeredOnlineAccount = account
+        let sessionToken = account == nil ? nil : OnlineAccountSessionStore.token()
+        registeredOnlineAccount = sessionToken == nil ? nil : account
+        onlineAccountSessionToken = sessionToken
         onlineDisplayName = account?.displayName
             ?? UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName)
             ?? ""
         onlineVariant = Self.loadOnlineVariant()
         pulkaLimit = Self.loadPulkaLimit()
         customPulkaPerPlayer = Self.loadCustomPulkaPerPlayer()
+        customPulkaTableTotal = Self.loadCustomPulkaTableTotal()
     }
 
     deinit {
@@ -77,7 +95,7 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     public var botCount: Int {
-        seats.filter { $0.kind == .bot }.count
+        seats.filter(\.isBot).count
     }
 
     public var canAddBot: Bool {
@@ -85,7 +103,7 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     public var canRemoveBot: Bool {
-        seats.count > 3 && seats.contains { $0.kind == .bot }
+        seats.count > 3 && seats.contains(where: \.isBot)
     }
 
     public func addBot() {
@@ -95,7 +113,7 @@ public final class LobbyViewModel: ObservableObject {
 
     public func removeBot() {
         guard canRemoveBot,
-              let index = seats.lastIndex(where: { $0.kind == .bot }) else {
+              let index = seats.lastIndex(where: \.isBot) else {
             return
         }
         seats.remove(at: index)
@@ -104,6 +122,11 @@ public final class LobbyViewModel: ObservableObject {
     public func setSeatName(_ name: String, at index: Int) {
         guard seats.indices.contains(index) else { return }
         seats[index].name = name
+    }
+
+    public func setBotProfile(_ profile: BotProfile, at index: Int) {
+        guard seats.indices.contains(index) else { return }
+        seats[index].setBotProfile(profile)
     }
 
     public func quickPlayVsBots() {
@@ -123,12 +146,14 @@ public final class LobbyViewModel: ObservableObject {
             return
         }
         let setup = onlineRoomSetup()
+        guard let accountSessionToken = onlineAccountSessionToken else { return }
         let delay = onlineBotMoveDelay
         let variantTag = onlineVariant.rawValue
         launchCloudRoom {
             try await CloudflareOnlineGameSession.createRoom(
                 peers: setup.peers,
                 localPlayerID: setup.localPlayer,
+                accountSessionToken: accountSessionToken,
                 rules: setup.rules,
                 match: setup.match,
                 variantTag: variantTag,
@@ -147,6 +172,7 @@ public final class LobbyViewModel: ObservableObject {
             return
         }
         let setup = onlineRoomSetup()
+        guard let accountSessionToken = onlineAccountSessionToken else { return }
         guard let localPeer = setup.peers.first(where: { $0.playerID == setup.localPlayer }) else {
             rejectOnlineOperation(String(localized: "Selected seat is not available."))
             return
@@ -157,6 +183,7 @@ public final class LobbyViewModel: ObservableObject {
             try await CloudflareOnlineGameSession.joinRoom(
                 roomCode: roomCode,
                 localPeer: localPeer,
+                accountSessionToken: accountSessionToken,
                 rules: setup.rules,
                 match: setup.match,
                 variantTag: variantTag,
@@ -170,8 +197,8 @@ public final class LobbyViewModel: ObservableObject {
     /// Start and the bot seats play out — without a worker or a second device.
     public func startInMemoryOnlineRoom() {
         do {
-            if let validation = onlineSetupValidationError {
-                rejectOnlineOperation(validation)
+            if currentOnlineDisplayName.isEmpty {
+                rejectOnlineOperation(String(localized: "Enter your name to play online."))
                 return
             }
             let players = OnlineSeatSlot.canonicalPlayerIDs(count: 3)
@@ -229,7 +256,22 @@ public final class LobbyViewModel: ObservableObject {
         PreferansInviteLink.roomCode(from: onlineJoinRoomCode)
     }
 
-    public func completeAppleRegistration(userID: String, fullName: PersonNameComponents?) {
+    public func registerGuestOnlineAccount() {
+        let displayName = onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !displayName.isEmpty else {
+            rejectOnlineOperation(String(localized: "Enter your name to play online."))
+            return
+        }
+        registerOnlineAccount {
+            try await self.accountClient.registerGuest(displayName: displayName)
+        }
+    }
+
+    public func completeAppleRegistration(
+        identityToken: String,
+        nonce: String,
+        fullName: PersonNameComponents?
+    ) {
         let formatter = PersonNameComponentsFormatter()
         formatter.style = .medium
         let formattedName = fullName.map { formatter.string(from: $0) }?
@@ -239,21 +281,20 @@ public final class LobbyViewModel: ObservableObject {
             errorText = String(localized: "Enter your name to play online.")
             return
         }
-        let account = RegisteredOnlineAccount(
-            provider: .apple,
-            accountID: "apple:\(userID)",
-            displayName: displayName
-        )
-        registeredOnlineAccount = account
-        // Identity flows into the online display name only — never the local
-        // bot roster (`seats`), which the online flow no longer touches.
-        onlineDisplayName = displayName
-        Self.saveRegisteredOnlineAccount(account)
-        errorText = nil
+        registerOnlineAccount {
+            try await self.accountClient.registerApple(
+                identityToken: identityToken,
+                nonce: nonce,
+                displayName: displayName
+            )
+        }
     }
 
     public func clearRegisteredOnlineAccount() {
         registeredOnlineAccount = nil
+        onlineAccountSessionToken = nil
+        OnlineAccountSessionStore.remove()
+        OnlineSeatCredentialStore.removeAll()
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
     }
 
@@ -293,7 +334,13 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     public var onlineIdentityValidationError: String? {
-        currentOnlineDisplayName.isEmpty ? String(localized: "Enter your name to play online.") : nil
+        if currentOnlineDisplayName.isEmpty {
+            return String(localized: "Enter your name to play online.")
+        }
+        if registeredOnlineAccount == nil || onlineAccountSessionToken == nil {
+            return String(localized: "Register as a guest or sign in with Apple to play online.")
+        }
+        return nil
     }
 
     public var currentOnlineDisplayName: String {
@@ -304,15 +351,10 @@ public final class LobbyViewModel: ObservableObject {
         return onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// The account the worker indexes this device's games under: the registered
-    /// Apple identity when signed in, otherwise the persisted anonymous ID (which
-    /// only exists once the player has created/joined a room). Nil on a fresh
-    /// install that never played online — the "Your games" list stays empty.
+    /// The server-issued v2 account this device's game library belongs to.
+    /// Nil until the player explicitly registers as a guest or with Apple.
     public var currentOnlineAccountID: String? {
-        if let registeredOnlineAccount {
-            return registeredOnlineAccount.accountID
-        }
-        return UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID)
+        registeredOnlineAccount?.accountID
     }
 
     /// Resume an in-progress online game from the "Your games" list. Rebuilds the
@@ -324,12 +366,17 @@ public final class LobbyViewModel: ObservableObject {
             rejectOnlineOperation(String(localized: "Sign in or set your name to resume your games."))
             return
         }
+        guard let accountSessionToken = onlineAccountSessionToken else {
+            rejectOnlineOperation(String(localized: "Register again to resume your games."))
+            return
+        }
         let delay = onlineBotMoveDelay
         let variantTag = summary.variant ?? onlineVariant.rawValue
         launchCloudRoom {
             try await CloudflareOnlineGameSession.resumeRoom(
                 roomCode: summary.roomCode,
                 localPeer: localPeer,
+                accountSessionToken: accountSessionToken,
                 variantTag: variantTag,
                 botMoveDelay: delay
             )
@@ -361,6 +408,34 @@ public final class LobbyViewModel: ObservableObject {
         }
     }
 
+    private func registerOnlineAccount(
+        operation: @escaping @MainActor () async throws -> OnlineAccountRegistration
+    ) {
+        guard !isOnlineRoomLoading else { return }
+        isOnlineRoomLoading = true
+        errorText = nil
+        infoText = nil
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { isOnlineRoomLoading = false }
+            do {
+                let registration = try await operation()
+                guard OnlineAccountSessionStore.store(registration.sessionToken) else {
+                    throw CloudflareRoomTransportError.serverError("Could not securely save the online session.")
+                }
+                registeredOnlineAccount = registration.account
+                onlineAccountSessionToken = registration.sessionToken
+                onlineDisplayName = registration.account.displayName
+                Self.saveRegisteredOnlineAccount(registration.account)
+                UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
+                errorText = nil
+                infoText = String(localized: "Online account ready.")
+            } catch {
+                errorText = error.localizedDescription
+            }
+        }
+    }
+
     private func rejectOnlineOperation(_ message: String) {
         errorText = message
         infoText = nil
@@ -368,13 +443,18 @@ public final class LobbyViewModel: ObservableObject {
 
     /// Give up an unfinished online game from the list (best-effort). The worker
     /// authorizes by the seat the account holds — proven by the stored seat
-    /// token — so no host secret is needed.
+    /// token plus the authenticated account session.
     public func abandonOnlineGame(_ summary: OnlineGameSummary) async {
         do {
+            guard let seatToken = OnlineSeatCredentialStore.token(for: summary.roomCode),
+                  let accountSessionToken = onlineAccountSessionToken else {
+                throw CloudflareRoomTransportError.serverError("Register again to manage this game.")
+            }
             try await CloudflareRoomTransport.abandon(
                 roomCode: summary.roomCode,
                 playerID: summary.youSeat,
-                seatToken: OnlineSeatCredentialStore.token(for: summary.roomCode)
+                seatToken: seatToken,
+                accountSessionToken: accountSessionToken
             )
             OnlineSeatCredentialStore.remove(roomCode: summary.roomCode)
         } catch {
@@ -424,6 +504,7 @@ public final class LobbyViewModel: ObservableObject {
                 defaults: TestHarness.Defaults(
                     players: lobbyPlayers,
                     firstDealer: defaultDealer,
+                    rules: onlineVariant.rules,
                     match: selectedMatchSettings(playerCount: lobbyPlayers.count)
                 )
             )
@@ -441,10 +522,10 @@ public final class LobbyViewModel: ObservableObject {
             )
 
             if configuration.players.elementsEqual(lobbyPlayers) {
-                let strategy = HeuristicStrategy()
                 for (index, seat) in configuration.players.enumerated()
-                    where seats.indices.contains(index) && seats[index].kind == .bot {
-                    model.botStrategies[seat] = strategy
+                    where seats.indices.contains(index) && seats[index].isBot {
+                    guard let profile = seats[index].botProfile else { continue }
+                    model.botStrategies[seat] = HeuristicStrategy(profile: profile)
                 }
             }
 
@@ -454,7 +535,7 @@ public final class LobbyViewModel: ObservableObject {
                 model.botMoveDelay = (speedOverride ?? botSpeed).delay
             }
 
-            let hasHumanSeat = seats.contains { $0.kind == .human }
+            let hasHumanSeat = seats.contains { !$0.isBot }
             if TestHarness.skipTapToAdvance(in: args) || !hasHumanSeat {
                 model.tapToAdvanceEnabled = false
             }
@@ -485,6 +566,7 @@ public final class LobbyViewModel: ObservableObject {
             defaults: TestHarness.Defaults(
                 players: poolPlayers,
                 firstDealer: poolPlayers.last,
+                rules: onlineVariant.rules,
                 match: selectedMatchSettings(playerCount: poolPlayers.count)
             )
         )
@@ -515,36 +597,30 @@ public final class LobbyViewModel: ObservableObject {
                 )
             }
         }
-        let rules = args.contains(UITestFlags.matchScript)
-            ? configuration.rules
-            : onlineVariant.rules
-        return (peers, localPlayer, rules, configuration.match, configuration.dealSource)
+        return (peers, localPlayer, configuration.rules, configuration.match, configuration.dealSource)
     }
 
     private func normalizedOnlineAccount(for player: PlayerID) -> (provider: OnlineAccountProvider, id: String) {
         if let registeredOnlineAccount {
             return (registeredOnlineAccount.provider, registeredOnlineAccount.accountID)
         }
-
-        return (.dev, anonymousAccountID(for: player))
-    }
-
-    private func anonymousAccountID(for player: PlayerID) -> String {
-        if let stored = UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID),
-           !stored.isEmpty {
-            return stored
-        }
-        @Dependency(\.uuid) var uuid
-        let accountID = "anonymous:\(player.rawValue.lowercased()):\(uuid().uuidString.lowercased())"
-        UserDefaults.standard.set(accountID, forKey: SettingsKeys.onlineAnonymousAccountID)
-        return accountID
+        // Used only by the explicitly in-memory DEBUG/test room. Real worker
+        // paths are gated on a v2 server registration before this is reached.
+        return (.dev, "in-memory:\(player.rawValue.lowercased())")
     }
 
     private static func loadRegisteredOnlineAccount() -> RegisteredOnlineAccount? {
         guard let data = UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount) else {
             return nil
         }
-        return try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data)
+        guard let account = try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data),
+              account.schemaVersion == AppIdentifiers.cloudSchemaVersion,
+              account.provider == .apple || account.provider == .guest else {
+            UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
+            UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
+            return nil
+        }
+        return account
     }
 
     private static func persistOnlineDisplayName(_ name: String) {
@@ -587,16 +663,34 @@ public final class LobbyViewModel: ObservableObject {
         min(max(value, PulkaLimit.customRange.lowerBound), PulkaLimit.customRange.upperBound)
     }
 
+    private static func loadCustomPulkaTableTotal() -> Int {
+        guard let stored = UserDefaults.standard.object(forKey: SettingsKeys.customPulkaTableTotal) as? Int else {
+            return PulkaLimit.defaultCustomTableTarget
+        }
+        return clampedPulkaTableTotal(stored)
+    }
+
+    private static func clampedPulkaTableTotal(_ value: Int) -> Int {
+        min(max(value, PulkaLimit.customTableRange.lowerBound), PulkaLimit.customTableRange.upperBound)
+    }
+
     public var pulkaPerPlayer: Int {
         pulkaLimit.target(custom: customPulkaPerPlayer)
     }
 
     public func totalPulkaTarget(playerCount: Int) -> Int {
-        pulkaPerPlayer * max(1, playerCount)
+        if onlineVariant.poolClosure == .tableTotal, pulkaLimit == .custom {
+            return customPulkaTableTotal
+        }
+        return pulkaPerPlayer * max(1, playerCount)
     }
 
     private func selectedMatchSettings(playerCount: Int) -> MatchSettings {
-        MatchSettings(poolTarget: totalPulkaTarget(playerCount: playerCount))
+        MatchSettings(
+            poolTarget: totalPulkaTarget(playerCount: playerCount),
+            poolClosure: onlineVariant.poolClosure,
+            raspasy: onlineVariant.raspasy
+        )
     }
 
     private func makeRoomCode() -> String {

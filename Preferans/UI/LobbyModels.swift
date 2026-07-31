@@ -34,13 +34,25 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
         case .odesa:
             return .sochi
         case .wien:
-            return PreferansRules(
-                requireWhistOnTenTrickContracts: true,
-                singleWhistScoring: .ownHandOnly,
-                failedDeclarerConsolation: .none,
-                allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false),
-                zeroTricksAllPassPoolBonus: 0
-            )
+            return .leningrad
+        }
+    }
+
+    public var poolClosure: PoolClosurePolicy {
+        switch self {
+        case .odesa:
+            return .individualWithAmericanAid
+        case .wien:
+            return .tableTotal
+        }
+    }
+
+    public var raspasy: RaspasyPolicy {
+        switch self {
+        case .odesa:
+            return .sochi
+        case .wien:
+            return .leningrad
         }
     }
 }
@@ -52,6 +64,8 @@ public enum PulkaLimit: String, CaseIterable, Identifiable, Equatable, Codable {
 
     public static let defaultCustomTarget = 21
     public static let customRange = 1...999
+    public static let defaultCustomTableTarget = 63
+    public static let customTableRange = 1...3_996
 
     public var id: String { rawValue }
 
@@ -105,12 +119,61 @@ public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
     }
 }
 
-public struct RegisteredOnlineAccount: Codable, Equatable {
+extension BotDifficulty {
+    var label: LocalizedStringKey {
+        switch self {
+        case .casual: "Casual"
+        case .seasoned: "Seasoned"
+        case .expert: "Expert"
+        }
+    }
+}
+
+extension BotTemperament {
+    var label: LocalizedStringKey {
+        switch self {
+        case .careful: "Careful"
+        case .adaptive: "Adaptive"
+        case .bold: "Bold"
+        }
+    }
+}
+
+extension BotDecisionRationale {
+    var label: LocalizedStringKey {
+        switch self {
+        case .auctionPass: "bot.insight.auctionPass"
+        case .gameBid: "bot.insight.gameBid"
+        case .misereBid: "bot.insight.misereBid"
+        case .totusBid: "bot.insight.totusBid"
+        case .contractFit: "bot.insight.contractFit"
+        case .contractConcession: "bot.insight.contractConcession"
+        case .discardForContract: "bot.insight.discardForContract"
+        case .discardForMisere: "bot.insight.discardForMisere"
+        case .fullWhist: "bot.insight.fullWhist"
+        case .halfWhist: "bot.insight.halfWhist"
+        case .defensivePass: "bot.insight.defensivePass"
+        case .openDefense: "bot.insight.openDefense"
+        case .closedDefense: "bot.insight.closedDefense"
+        case .forcedSettlement: "bot.insight.forcedSettlement"
+        case .contestSettlement: "bot.insight.contestSettlement"
+        }
+    }
+}
+
+public struct RegisteredOnlineAccount: Codable, Equatable, Sendable {
+    public var schemaVersion: Int
     public var provider: OnlineAccountProvider
     public var accountID: String
     public var displayName: String
 
-    public init(provider: OnlineAccountProvider, accountID: String, displayName: String) {
+    public init(
+        schemaVersion: Int = AppIdentifiers.cloudSchemaVersion,
+        provider: OnlineAccountProvider,
+        accountID: String,
+        displayName: String
+    ) {
+        self.schemaVersion = schemaVersion
         self.provider = provider
         self.accountID = accountID
         self.displayName = displayName
@@ -120,7 +183,10 @@ public struct RegisteredOnlineAccount: Codable, Equatable {
 /// Single seat in the lobby's local-table roster. Folds the seat's
 /// human/bot kind into the same struct as its name so the two can never drift.
 public struct LobbySeat: Identifiable, Equatable {
-    public enum Kind: Equatable { case human, bot }
+    public enum Kind: Equatable {
+        case human
+        case bot(BotProfile)
+    }
 
     public let id: UUID
     public var name: String
@@ -135,6 +201,21 @@ public struct LobbySeat: Identifiable, Equatable {
     public var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    public var isBot: Bool {
+        if case .bot = kind { return true }
+        return false
+    }
+
+    public var botProfile: BotProfile? {
+        guard case let .bot(profile) = kind else { return nil }
+        return profile
+    }
+
+    public mutating func setBotProfile(_ profile: BotProfile) {
+        guard isBot else { return }
+        kind = .bot(profile)
+    }
 }
 
 extension LobbySeat {
@@ -147,7 +228,7 @@ extension LobbySeat {
         return (0..<count).map { index in
             LobbySeat(
                 name: defaultNames[index],
-                kind: index == 0 ? .human : .bot
+                kind: index == 0 ? .human : .bot(stockBotProfile(for: defaultNames[index]))
             )
         }
     }
@@ -158,7 +239,7 @@ extension LobbySeat {
 
     static func demoBots(count: Int) -> [LobbySeat] {
         defaults(count: count).map { seat in
-            LobbySeat(id: seat.id, name: seat.name, kind: .bot)
+            LobbySeat(id: seat.id, name: seat.name, kind: .bot(stockBotProfile(for: seat.name)))
         }
     }
 
@@ -177,8 +258,24 @@ extension LobbySeat {
 
     static func addBot(to existing: [LobbySeat]) -> [LobbySeat] {
         var resized = existing
-        resized.append(LobbySeat(name: nextBotName(existing: existing), kind: .bot))
+        let name = nextBotName(existing: existing)
+        resized.append(LobbySeat(name: name, kind: .bot(stockBotProfile(for: name))))
         return resized
+    }
+
+    private static func stockBotProfile(for name: String) -> BotProfile {
+        switch name {
+        case "Morpheus":
+            return BotProfile(difficulty: .expert, temperament: .careful)
+        case "Trinity":
+            return BotProfile(difficulty: .seasoned, temperament: .bold)
+        case "Agent Smith":
+            return BotProfile(difficulty: .expert, temperament: .adaptive)
+        case "Neo":
+            return BotProfile(difficulty: .seasoned, temperament: .adaptive)
+        default:
+            return BotProfile(difficulty: .casual, temperament: .adaptive)
+        }
     }
 
     private static func nextBotName(existing: [LobbySeat]) -> String {
@@ -196,7 +293,7 @@ extension LobbySeat {
 
 extension Array where Element == LobbySeat {
     var rosterSummary: String {
-        let bots = filter { $0.kind == .bot }.count
+        let bots = filter(\.isBot).count
         let humans = count - bots
         let humanLabel: String = humans == 1
             ? String(localized: "1 human")

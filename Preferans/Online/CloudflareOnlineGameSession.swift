@@ -49,6 +49,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
         peers: [OnlinePeer],
         localPlayerID: PlayerID,
+        accountSessionToken: String,
         rules: PreferansRules = .sochi,
         match: MatchSettings = .unbounded,
         variantTag: String? = nil,
@@ -61,6 +62,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             baseURL: baseURL,
             localPeer: localPeer,
             seats: peers,
+            accountSessionToken: accountSessionToken,
             maxPlayers: min(max(peers.count, 3), 4)
         )
         logOnlineFlow("event=create roomCode=\(transport.roomCode) local=\(localPeer.playerID.rawValue)")
@@ -77,6 +79,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     public static func joinRoom(
         roomCode: String,
         localPeer: OnlinePeer,
+        accountSessionToken: String,
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
         rules: PreferansRules = .sochi,
@@ -90,7 +93,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         let transport = try await CloudflareRoomTransport.joinRoom(
             baseURL: baseURL,
             roomCode: normalizedCode,
-            localPeer: localPeer
+            localPeer: localPeer,
+            accountSessionToken: accountSessionToken
         )
         logOnlineFlow("event=join roomCode=\(transport.roomCode) local=\(localPeer.playerID.rawValue)")
         return CloudflareOnlineGameSession(
@@ -112,6 +116,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     public static func resumeRoom(
         roomCode: String,
         localPeer: OnlinePeer,
+        accountSessionToken: String,
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         inviteBaseURL: URL = AppIdentifiers.inviteBaseURL,
         variantTag: String? = nil,
@@ -123,24 +128,21 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         let transport = try await CloudflareRoomTransport.joinRoom(
             baseURL: baseURL,
             roomCode: normalizedCode,
-            localPeer: localPeer
+            localPeer: localPeer,
+            accountSessionToken: accountSessionToken
         )
 
-        var resume: OnlineResumeContext?
-        do {
-            let payload = try await CloudflareRoomTransport.fetchSnapshot(
-                baseURL: baseURL,
-                roomCode: normalizedCode,
-                playerID: transport.localPeer.playerID,
-                seatToken: transport.seatToken ?? OnlineSeatCredentialStore.token(for: normalizedCode)
-            )
-            if let snapshot = payload.decodedSnapshot {
-                resume = OnlineResumeContext(snapshot: snapshot, sequence: payload.lastSnapshotSequence)
-            }
-        } catch {
-            // Snapshot unavailable (pre-deal lobby, or transient) — rejoin plainly.
-            resume = nil
+        guard let seatToken = transport.seatToken ?? OnlineSeatCredentialStore.token(for: normalizedCode) else {
+            throw CloudflareRoomTransportError.serverError("This device no longer has the room credential.")
         }
+        let payload = try await CloudflareRoomTransport.fetchSnapshot(
+            baseURL: baseURL,
+            roomCode: normalizedCode,
+            playerID: transport.localPeer.playerID,
+            seatToken: seatToken,
+            accountSessionToken: accountSessionToken
+        )
+        let resume = try payload.validatedResumeContext()
 
         logOnlineFlow("event=resume roomCode=\(transport.roomCode) local=\(transport.localPeer.playerID.rawValue) hasSnapshot=\(resume != nil)")
         return CloudflareOnlineGameSession(

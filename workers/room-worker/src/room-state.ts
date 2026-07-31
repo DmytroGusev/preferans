@@ -1,4 +1,4 @@
-export const ROOM_SCHEMA_VERSION = 1;
+export const ROOM_SCHEMA_VERSION = 2;
 export const DEFAULT_MAX_PLAYERS = 4;
 /// Longest accepted display name; anything longer is truncated on the way in
 /// so a client can't grow the stored room (and every presence broadcast)
@@ -27,12 +27,11 @@ export const PENDING_ACCOUNT_PREFIX = "pending:";
 export const BOT_ACCOUNT_PREFIX = "bot:";
 
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const HOST_SECRET_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-const SEAT_TOKEN_ALPHABET = HOST_SECRET_ALPHABET;
-const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "dev"]);
+const SEAT_TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "guest", "dev"]);
 const GAME_STATUSES = new Set<GameStatus>(["lobby", "playing", "finished", "abandoned"]);
 
-export type OnlineAccountProvider = "gameCenter" | "apple" | "email" | "dev";
+export type OnlineAccountProvider = "gameCenter" | "apple" | "email" | "guest" | "dev";
 
 /// Lifecycle of a table, mirrored from the Swift client's `PreferansGameStatus`.
 /// The worker treats it as an opaque-but-validated label the host reports; it
@@ -85,11 +84,10 @@ export interface RoomState {
   schemaVersion: number;
   roomCode: string;
   hostPlayerID: string;
-  /// Secret minted at creation, handed back in the `/create` response and again
-  /// on `/join` when the joiner's account holds the host seat (a resuming host).
-  /// Required to authenticate host-only mutations. Never included in
-  /// `publicRoom`, so it is never broadcast to guests over presence/summary.
-  hostSecret: string;
+  /// Monotonic generation of server-elected host authority. It starts at one
+  /// and advances whenever the live host changes, letting clients distinguish
+  /// a real authority migration from an out-of-order presence frame.
+  hostEpoch: number;
   peers: OnlinePeer[];
   maxPlayers: number;
   createdAt: string;
@@ -112,6 +110,7 @@ export interface PublicRoom {
   schemaVersion: number;
   roomCode: string;
   hostPlayerID: WirePlayerID;
+  hostEpoch: number;
   peers: OnlinePeer[];
   maxPlayers: number;
   createdAt: string;
@@ -129,9 +128,6 @@ export interface CreateRoomInput {
   seats?: unknown[];
   maxPlayers?: number;
   now?: string;
-  /// Optional override for the generated host secret (tests pin it for
-  /// determinism; production lets `createInitialRoom` mint a random one).
-  hostSecret?: string;
 }
 
 export interface RelayEntry {
@@ -177,15 +173,6 @@ export function generateRoomCode(random: () => number = secureRandom): string {
     code += ROOM_CODE_ALPHABET[alphabetIndex] ?? ROOM_CODE_ALPHABET[0];
   }
   return code;
-}
-
-export function generateHostSecret(random: () => number = secureRandom): string {
-  let secret = "";
-  for (let index = 0; index < 24; index += 1) {
-    const alphabetIndex = Math.floor(random() * HOST_SECRET_ALPHABET.length);
-    secret += HOST_SECRET_ALPHABET[alphabetIndex] ?? HOST_SECRET_ALPHABET[0];
-  }
-  return secret;
 }
 
 export function generateSeatToken(random: () => number = secureRandom): string {
@@ -253,6 +240,7 @@ export function publicRoom(room: RoomState): PublicRoom {
     schemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: room.roomCode,
     hostPlayerID: wirePlayerID(room.hostPlayerID),
+    hostEpoch: room.hostEpoch ?? 1,
     peers: room.peers.map(normalizePeer),
     maxPlayers: room.maxPlayers,
     createdAt: room.createdAt,
@@ -268,8 +256,7 @@ export function createInitialRoom({
   localPeer,
   seats,
   maxPlayers = DEFAULT_MAX_PLAYERS,
-  now = new Date().toISOString(),
-  hostSecret
+  now = new Date().toISOString()
 }: CreateRoomInput): RoomState {
   const normalizedRoomCode = normalizeRoomCode(roomCode);
   const normalizedMaxPlayers = clampMaxPlayers(maxPlayers);
@@ -296,8 +283,10 @@ export function createInitialRoom({
   return {
     schemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: normalizedRoomCode,
-    hostPlayerID: peerID(peers[0]),
-    hostSecret: hostSecret && hostSecret.length > 0 ? hostSecret : generateHostSecret(),
+    // The authenticated local peer is the creator even when its requested
+    // table position is not the first item in seat order.
+    hostPlayerID: peerID(local),
+    hostEpoch: 1,
     peers,
     maxPlayers: normalizedMaxPlayers,
     createdAt: now,
@@ -344,16 +333,16 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
   // overwrite — an occupied seat (including the host's). Binding on `accountID`
   // and letting the server own the seat token makes that impossible.
 
-  // Rejoin: this account already holds a seat. Refresh its display fields but
-  // keep the seat it was assigned — and its seat token, so every device of the
-  // account keeps working — so a reconnecting client lands back where it was
-  // instead of consuming a fresh slot.
+  // Rejoin: this account already holds a seat. Refresh its display fields and
+  // keep the seat, but rotate its room credential. The newest join is the sole
+  // active device for that seat; a stale phone can neither reconnect nor keep
+  // reporting host state with a copied credential.
   const heldIndex = peers.findIndex((candidate) => candidate.accountID === peer.accountID);
   if (heldIndex >= 0) {
     peers[heldIndex] = {
       ...peer,
       playerID: peers[heldIndex].playerID,
-      seatToken: peers[heldIndex].seatToken ?? generateSeatToken()
+      seatToken: generateSeatToken()
     };
     return { ...room, peers, updatedAt: now };
   }
@@ -388,6 +377,21 @@ export function routeRecipients(room: RoomState, senderPlayerID: unknown, recipi
   return [...new Set(requested)]
     .filter((id) => id !== sender)
     .filter((id) => known.has(id));
+}
+
+/// Reject wire frames whose message kind is host-authoritative when they come
+/// from any other seat. Clients also validate the sender, but enforcing this in
+/// the relay closes the split-brain window during host migration and avoids
+/// forwarding known forgeries at all.
+export function authorizeRelayMessage(room: RoomState, senderPlayerID: unknown, message: unknown): void {
+  const sender = playerIDValue(senderPlayerID);
+  if (!isRecord(message)) {
+    throw new RoomStateError("invalid_wire_message", "Wire message must be an object.");
+  }
+  const hostOnly = ["seatAssignment", "projection", "hostError"];
+  if (hostOnly.some((kind) => Object.hasOwn(message, kind)) && sender !== room.hostPlayerID) {
+    throw new RoomStateError("forbidden", "Only the current host can send authoritative frames.", 403);
+  }
 }
 
 /// Sequence a relayed message. The entry is delivered to live sockets and then
@@ -437,8 +441,22 @@ export function applyStateReport(
   input: StateReportInput,
   now: string = new Date().toISOString()
 ): StateReportResult {
-  const status = normalizeGameStatus(input.status) ?? room.status ?? "lobby";
-  const summary = normalizeGameSummary(input.summary) ?? room.summary;
+  // Terminal history is immutable. A delayed request from a demoted/old host
+  // must never resurrect a finished or abandoned table.
+  if (room.status === "finished" || room.status === "abandoned") {
+    return { room, changed: false };
+  }
+
+  const candidateSummary = normalizeGameSummary(input.summary);
+  const currentSequence = room.summary?.lastSequence ?? room.lastSnapshotSequence ?? 0;
+  const staleSummary = candidateSummary !== undefined && candidateSummary.lastSequence < currentSequence;
+  const summary = staleSummary ? room.summary : candidateSummary ?? room.summary;
+  const requestedStatus = normalizeGameStatus(input.status) ?? room.status ?? "lobby";
+  // Abandonment is an explicit participant action and carries no summary. All
+  // other stale reports preserve the newer lifecycle alongside the summary.
+  const status = staleSummary && requestedStatus !== "abandoned"
+    ? room.status ?? "lobby"
+    : requestedStatus;
   const terminal = status === "finished" || status === "abandoned";
 
   let latestSnapshot = room.latestSnapshot;
@@ -509,17 +527,14 @@ export function isHumanAccount(accountID: string): boolean {
 /// - an unknown seat is always rejected;
 /// - a presented token that does not match the seat's is always rejected —
 ///   a caller never gets to "downgrade" a wrong credential into legacy access;
-/// - a seat with no token (a room created before seat tokens shipped) passes,
-///   preserving pre-token rooms;
-/// - a missing token is rejected only when `enforce` is set. The WebSocket
-///   path always enforces (its URL is server-built, so even old clients carry
-///   the token); `/snapshot` and `/abandon` enforce behind the
-///   `REQUIRE_SEAT_TOKENS` flag until pre-token clients age out.
+/// - a v2 human seat without a stored token is invalid and rejected;
+/// - a missing token is always rejected. The v2 API has no compatibility
+///   window: clean-break clients must prove seat ownership on every sensitive
+///   path.
 export function authorizeSeat(
   room: RoomState,
   playerID: unknown,
-  token: unknown,
-  enforce: boolean
+  token: unknown
 ): OnlinePeer {
   const id = playerIDValue(playerID);
   const peer = room.peers.find((candidate) => peerID(candidate) === id);
@@ -529,21 +544,69 @@ export function authorizeSeat(
   const expected = peer.seatToken;
   const presented = typeof token === "string" && token.length > 0 ? token : undefined;
   if (expected === undefined) {
-    return peer;
+    throw new RoomStateError("seat_credential_invalid", "This seat has no valid v2 credential.", 403);
   }
   if (presented !== undefined && presented !== expected) {
-    throw new RoomStateError("forbidden", "Seat token does not match this seat.", 403);
+    throw new RoomStateError("seat_credential_invalid", "Seat token does not match this seat.", 403);
   }
-  if (enforce && presented === undefined) {
-    throw new RoomStateError("forbidden", "A seat token is required.", 403);
+  if (presented === undefined) {
+    throw new RoomStateError("seat_credential_invalid", "A seat token is required.", 403);
   }
   return peer;
 }
 
-/// True when `accountID` holds the room's host seat. `/join` uses this to hand
-/// the host secret back to a returning host (resuming on the same or a new
-/// device); a guest's account never matches the host seat, so the secret still
-/// never reaches guests.
+/// Authorize a host-only mutation with both account and current room
+/// credential. Account authentication alone is insufficient: an account can
+/// have several bearer sessions, while exactly one device may own a live seat.
+export function authorizeHostSeat(
+  room: RoomState,
+  accountID: string,
+  playerID: unknown,
+  token: unknown
+): OnlinePeer {
+  const peer = authorizeSeat(room, playerID, token);
+  if (peer.accountID !== accountID) {
+    throw new RoomStateError("forbidden", "This account does not own that seat.", 403);
+  }
+  if (peerID(peer) !== room.hostPlayerID) {
+    throw new RoomStateError("forbidden", "Only the current host can perform this operation.", 403);
+  }
+  return peer;
+}
+
+/// Elect the first connected human in stable seat order when the current host
+/// has no live socket. The Durable Object calls this after connect/close/error,
+/// making migration deterministic and split-brain resistant. Terminal tables
+/// never migrate because they have no authority left to recover.
+export function electLiveHost(
+  room: RoomState,
+  connectedPlayerIDs: Iterable<string>,
+  now = new Date().toISOString()
+): RoomState {
+  if (room.status === "finished" || room.status === "abandoned") {
+    return room;
+  }
+  const connected = new Set(connectedPlayerIDs);
+  if (connected.has(room.hostPlayerID)) {
+    return room;
+  }
+  const successor = room.peers.find(
+    (peer) => isHumanAccount(peer.accountID) && connected.has(peerID(peer))
+  );
+  if (!successor) {
+    return room;
+  }
+  return {
+    ...room,
+    hostPlayerID: peerID(successor),
+    hostEpoch: (room.hostEpoch ?? 1) + 1,
+    updatedAt: now
+  };
+}
+
+/// True when `accountID` holds the room's current server-elected host seat.
+/// Sensitive mutations additionally require ``authorizeHostSeat`` so another
+/// bearer session for the same account cannot impersonate the active device.
 export function isHostAccount(room: RoomState, accountID: string): boolean {
   if (!isHumanAccount(accountID)) {
     return false;

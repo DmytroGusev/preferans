@@ -61,7 +61,7 @@ struct LobbyYourGamesSection: View {
         HStack {
             Spacer()
             Button {
-                Task { await gameLibrary.refresh(accountID: viewModel.currentOnlineAccountID) }
+                Task { await gameLibrary.refresh(sessionToken: viewModel.onlineAccountSessionToken) }
             } label: {
                 if gameLibrary.isLoading {
                     ProgressView().controlSize(.small)

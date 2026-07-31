@@ -10,7 +10,7 @@ public enum AppIdentifiers {
     public static let roomWorkerBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
     public static let inviteBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
 
-    public static let cloudSchemaVersion = 1
+    public static let cloudSchemaVersion = 2
     public static let gameWireSchemaVersion = 2
 }
 
@@ -35,16 +35,15 @@ public enum SettingsKeys {
     /// Persisted Sign in with Apple identity used for worker-backed rooms.
     public static let onlineRegisteredAccount = "settings.onlineRegisteredAccount"
 
-    /// Stable anonymous identity used when joining invite-link rooms without
-    /// registration. The worker still receives it as a development provider
-    /// until the deployed API grows a first-class anonymous provider.
+    /// Legacy v1 key retained only so Settings can erase old local identity
+    /// debris. V2 guest IDs are server-issued and live in RegisteredOnlineAccount.
     public static let onlineAnonymousAccountID = "settings.onlineAnonymousAccountID"
 
     /// Display name the player chose for online rooms when not signed in.
     /// Kept separate from the local bot roster so the two never bleed together.
     public static let onlineDisplayName = "settings.onlineDisplayName"
 
-    /// House-rule variant selected for online rooms.
+    /// House-rule variant selected for both bot and online rooms.
     public static let onlineVariant = "settings.onlineVariant"
 
     /// Local audit flag noting that the user explicitly opened the ATT prompt.
@@ -60,6 +59,10 @@ public enum SettingsKeys {
 
     /// Custom per-player pulka value used when the custom preset is selected.
     public static let customPulkaPerPlayer = "settings.customPulkaPerPlayer"
+
+    /// Custom shared table total for Leningrad/Wien. Kept separate from the
+    /// Sochi per-player value so switching conventions never changes meaning.
+    public static let customPulkaTableTotal = "settings.customPulkaTableTotal"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

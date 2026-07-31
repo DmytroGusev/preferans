@@ -79,6 +79,40 @@ final class WireCompatibilityTests: XCTestCase {
         )
     }
 
+    func testLegacyMatchSettingsDefaultToIndividualAmericanAidClosure() throws {
+        let original = MatchSettings(poolTarget: 21)
+        let encoded = try PreferansJSONCoder.encoder.encode(original)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "poolClosure")
+
+        let legacyData = try JSONSerialization.data(withJSONObject: legacy)
+        let decoded = try PreferansJSONCoder.decoder.decode(MatchSettings.self, from: legacyData)
+
+        XCTAssertEqual(decoded.poolTarget, 21)
+        XCTAssertEqual(decoded.poolClosure, .individualWithAmericanAid)
+        XCTAssertEqual(decoded.raspasy, original.raspasy)
+        XCTAssertEqual(decoded.totus, original.totus)
+    }
+
+    func testLegacySnapshotWithoutRaspasySeriesResumesAtFirstStage() throws {
+        let engine = try PreferansEngine(
+            players: players,
+            rules: .sochi,
+            match: MatchSettings(raspasy: .sochi),
+            firstDealer: "south"
+        )
+        let encoded = try PreferansJSONCoder.encoder.encode(engine.snapshot)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        legacy.removeValue(forKey: "consecutiveAllPassDeals")
+
+        let legacyData = try JSONSerialization.data(withJSONObject: legacy)
+        let decoded = try PreferansJSONCoder.decoder.decode(PreferansSnapshot.self, from: legacyData)
+
+        XCTAssertEqual(decoded.consecutiveAllPassDeals, 0)
+        XCTAssertEqual(decoded.match.raspasy, .sochi)
+        XCTAssertNoThrow(try PreferansEngine(snapshot: decoded))
+    }
+
     func testLegacySeatAssignmentDecodesWithUnboundedMatch() throws {
         let envelope = SeatAssignmentEnvelope(
             tableID: tableID,
@@ -158,6 +192,21 @@ final class WireCompatibilityTests: XCTestCase {
         try assertRoundTrip(summary)
         try assertRoundTrip(appSnapshot)
         try assertRoundTrip(completedDeal)
+    }
+
+    func testOnlineAccountV2RoundTripsAndLegacyIdentityCannotDecode() throws {
+        let account = RegisteredOnlineAccount(
+            provider: .guest,
+            accountID: "guest:server-issued",
+            displayName: "Ada"
+        )
+        try assertRoundTrip(account)
+        XCTAssertEqual(account.schemaVersion, AppIdentifiers.cloudSchemaVersion)
+
+        let legacy = Data(#"{"provider":"apple","accountID":"apple:client-declared","displayName":"Old"}"#.utf8)
+        XCTAssertThrowsError(
+            try PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: legacy)
+        )
     }
 
     private func makeProjection(sequence: Int) throws -> PlayerGameProjection {

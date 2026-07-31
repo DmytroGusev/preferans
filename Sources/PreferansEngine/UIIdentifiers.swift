@@ -129,6 +129,7 @@ public enum UIIdentifiers {
     public static let lobbyAddBot              = "button.addBot"
     public static let lobbyRemoveBot           = "button.removeBot"
     public static func lobbyPlayerNameField(index: Int) -> String { "lobby.playerName.\(index)" }
+    public static func lobbyBotProfile(index: Int) -> String { "lobby.botProfile.\(index)" }
     public static let lobbyBotSpeedPicker     = "lobby.botSpeed"
     public static let lobbyError               = "lobby.error"
     public static let lobbyInfo                = "lobby.info"
@@ -140,8 +141,14 @@ public enum UIIdentifiers {
     public static let settingsLanguagePicker   = "settings.language"
     public static let lobbyHouseConventions    = "lobby.houseConventions"
     public static let conventionLegendSheet    = "lobby.conventionLegend"
+    public static let rulesVariantPicker       = "rules.variantPicker"
+    public static let rulesContractTable       = "rules.contractTable"
+    public static let rulesRaspasyProgression  = "rules.raspasyProgression"
+    public static func rulesVariant(_ variant: String) -> String { "rules.variant.\(variant)" }
+    public static func rulesRaspasyStage(_ stage: Int) -> String { "rules.raspasy.stage.\(stage)" }
     public static let onlineIdentityMode       = "online.identityMode"
     public static let onlineRegisterWithApple  = "online.registerWithApple"
+    public static let onlineRegisterAsGuest    = "online.registerAsGuest"
     public static let onlineDeleteAccount      = "online.deleteAccount"
     public static let trackingPermissionRequest = "privacy.tracking.request"
     public static let onlineAccountEmail       = "online.accountEmail"
@@ -187,6 +194,7 @@ public enum UIIdentifiers {
     /// by tests that want to confirm an action surfaced visibly rather
     /// than only mutating state.
     public static let actionBanner             = "action.banner"
+    public static let botInsightBanner         = "bot.insight.banner"
     /// Tap-to-advance overlay shown on the felt while the table is paused
     /// between card-play beats. Tests can target this to confirm the
     /// gate is up; tapping it resumes the table.
@@ -212,6 +220,7 @@ public enum UIIdentifiers {
     /// score, log, settings, and (in local-table mode) the View-as picker.
     /// XCUITests open this menu before tapping any nested item.
     public static let overflowMenu             = "menu.overflow"
+    public static let buttonActivityLog        = "menu.activityLog"
 
     public enum Panel: String {
         case bidding         = "panel.bidding"
@@ -315,6 +324,7 @@ public enum UIIdentifiers {
     // MARK: - Event log
 
     public static func eventLogEntry(index: Int) -> String { "eventLog.entry.\(index)" }
+    public static func botInsightEntry(index: Int) -> String { "bot.insight.entry.\(index)" }
 
     // MARK: - Match settings status (visible affordance)
 

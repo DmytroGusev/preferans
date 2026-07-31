@@ -7,8 +7,13 @@ interface WirePlayerID {
 interface OnlinePeer {
   playerID: WirePlayerID;
   accountID: string;
-  provider: "dev" | "email";
+  provider: "dev" | "apple" | "guest";
   displayName: string;
+}
+
+interface Registration {
+  account: Omit<OnlinePeer, "playerID"> & { schemaVersion: number };
+  sessionToken: string;
 }
 
 interface RoomResponse {
@@ -31,29 +36,27 @@ console.log(JSON.stringify({
 }, null, 2));
 
 async function smokeRoom(playerCount: 3 | 4) {
-  const peers = seatOrder
+  const seats = seatOrder
     .slice(0, playerCount)
-    .map((seat, index) => peer(
-      seat,
-      titleCase(seat),
-      index === 0 ? `email:${seat}@example.test` : `dev:${seat}`,
-      index === 0 ? "email" : "dev"
-    ));
+    .map((seat) => ({ rawValue: seat }));
+  const registrations = await Promise.all(seats.map((seat) =>
+    postJSON<Registration>("/v2/accounts/guest", { displayName: `${titleCase(seat.rawValue)} Live Smoke` })
+  ));
 
-  const created = await postJSON<RoomResponse>("/rooms", {
-    localPeer: peers[0],
-    seats: peers,
+  const created = await postJSON<RoomResponse>("/v2/rooms", {
+    localPlayerID: seats[0],
+    seats: seats.map((playerID, index) => ({ playerID, kind: index === 0 ? "you" : "open" })),
     maxPlayers: playerCount
-  });
+  }, registrations[0].sessionToken);
   assert.match(created.roomCode, /^[A-Z0-9]{4,12}$/);
   assert.equal(created.peers.length, playerCount);
   assert.match(created.websocketURL, /^wss:\/\//);
 
   const joinedRooms: RoomResponse[] = [];
-  for (const peer of peers.slice(1)) {
-    const joined = await postJSON<RoomResponse>(`/rooms/${created.roomCode}/join`, {
-      localPeer: { ...peer, displayName: `${peer.displayName} Live Smoke` }
-    });
+  for (let index = 1; index < seats.length; index += 1) {
+    const joined = await postJSON<RoomResponse>(`/v2/rooms/${created.roomCode}/join`, {
+      requestedPlayerID: seats[index]
+    }, registrations[index].sessionToken);
     assert.equal(joined.roomCode, created.roomCode);
     assert.equal(joined.peers.length, playerCount);
     joinedRooms.push(joined);
@@ -66,10 +69,10 @@ async function smokeRoom(playerCount: 3 | 4) {
 
   try {
     const relays = sockets.slice(1).map((socket) => waitForMessage(socket, (message) => message.type === "wire"));
-    peers.slice(1).forEach((recipient) => {
+    seats.slice(1).forEach((recipient) => {
       sockets[0].send(JSON.stringify({
         type: "wire",
-        recipients: [recipient.playerID],
+        recipients: [recipient],
         reliable: true,
         message: {
           ping: {
@@ -82,7 +85,7 @@ async function smokeRoom(playerCount: 3 | 4) {
 
     const relayedMessages = await Promise.all(relays);
     for (const relayed of relayedMessages) {
-      assert.deepEqual(relayed.sender?.playerID, peers[0].playerID);
+      assert.deepEqual(relayed.sender?.playerID, seats[0]);
       assert.equal(relayed.message?.ping?.tableID, null);
     }
 
@@ -100,28 +103,16 @@ async function smokeRoom(playerCount: 3 | 4) {
   }
 }
 
-function peer(
-  rawValue: string,
-  displayName: string,
-  accountID: string,
-  provider: OnlinePeer["provider"]
-): OnlinePeer {
-  return {
-    playerID: { rawValue },
-    accountID,
-    provider,
-    displayName
-  };
-}
-
 function titleCase(value: string): string {
   return value.slice(0, 1).toUpperCase() + value.slice(1);
 }
 
-async function postJSON<T>(path: string, body: unknown): Promise<T> {
+async function postJSON<T>(path: string, body: unknown, sessionToken?: string): Promise<T> {
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (sessionToken) headers.authorization = `Bearer ${sessionToken}`;
   const response = await fetch(new URL(path, baseURL), {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers,
     body: JSON.stringify(body)
   });
   const data = await response.json();

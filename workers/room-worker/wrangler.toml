@@ -4,19 +4,17 @@ compatibility_date = "2026-04-07"
 workers_dev = true
 
 [vars]
-# Flip to "true" once pre-seat-token clients (App Store builds <= 24) have aged
-# out. Until then /snapshot and /abandon accept a token-less call for a seat
-# (legacy clients), while a *wrong* token is always rejected and the WebSocket
-# always requires the token (its URL is server-built, so old clients carry it).
-REQUIRE_SEAT_TOKENS = "false"
+# Sign in with Apple identity-token audience. This is the app's bundle ID, not
+# the Team ID-prefixed application identifier used by Universal Links.
+APPLE_CLIENT_ID = "com.mixandmatch.preferans"
 
 [[durable_objects.bindings]]
 name = "ROOMS"
-class_name = "PreferansRoom"
+class_name = "PreferansRoomV2"
 
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
-class_name = "PlayerLibrary"
+class_name = "PlayerAccountV2"
 
 [[migrations]]
 tag = "v1"
@@ -25,3 +23,9 @@ new_sqlite_classes = ["PreferansRoom"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["PlayerLibrary"]
+
+# Clean break: new class names allocate fresh namespaces. Existing rooms,
+# libraries, and client-declared identities are intentionally not imported.
+[[migrations]]
+tag = "v3-authenticated-v2"
+new_sqlite_classes = ["PreferansRoomV2", "PlayerAccountV2"]

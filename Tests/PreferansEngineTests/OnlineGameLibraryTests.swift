@@ -7,7 +7,7 @@ private struct StubDirectory: OnlineGameDirectory {
     var games: [OnlineGameSummary] = []
     var shouldFail = false
 
-    func fetchMyGames(accountID: String) async throws -> [OnlineGameSummary] {
+    func fetchMyGames(sessionToken: String) async throws -> [OnlineGameSummary] {
         if shouldFail {
             throw CloudflareRoomTransportError.serverError("offline")
         }
@@ -24,13 +24,13 @@ private actor ControlledDirectory: OnlineGameDirectory {
     private var observedAccounts: [String] = []
     private var observationWaiters: [CheckedContinuation<String, Never>] = []
 
-    func fetchMyGames(accountID: String) async throws -> [OnlineGameSummary] {
+    func fetchMyGames(sessionToken: String) async throws -> [OnlineGameSummary] {
         try await withCheckedThrowingContinuation { continuation in
-            pending[accountID] = continuation
+            pending[sessionToken] = continuation
             if observationWaiters.isEmpty {
-                observedAccounts.append(accountID)
+                observedAccounts.append(sessionToken)
             } else {
-                observationWaiters.removeFirst().resume(returning: accountID)
+                observationWaiters.removeFirst().resume(returning: sessionToken)
             }
         }
     }
@@ -59,7 +59,7 @@ final class OnlineGameLibraryTests: XCTestCase {
             summary("GONE01", status: .abandoned, updatedAt: "2026-06-04T07:00:00.000Z")
         ]))
 
-        await library.refresh(accountID: "apple:north")
+        await library.refresh(sessionToken: "session:north")
 
         // Continue = playing + lobby (worker order preserved); History = finished;
         // abandoned games surface nowhere.
@@ -74,7 +74,7 @@ final class OnlineGameLibraryTests: XCTestCase {
             summary("PLAY01", status: .playing, updatedAt: "2026-06-04T10:00:00.000Z")
         ]))
 
-        await library.refresh(accountID: nil)
+        await library.refresh(sessionToken: nil)
 
         XCTAssertTrue(library.isEmpty)
         XCTAssertTrue(library.hasLoaded)
@@ -84,7 +84,7 @@ final class OnlineGameLibraryTests: XCTestCase {
     func testFetchFailureSurfacesAnError() async throws {
         let library = OnlineGameLibrary(directory: StubDirectory(shouldFail: true))
 
-        await library.refresh(accountID: "apple:north")
+        await library.refresh(sessionToken: "session:north")
 
         XCTAssertNotNil(library.loadError)
         XCTAssertTrue(library.hasLoaded)
@@ -104,22 +104,22 @@ final class OnlineGameLibraryTests: XCTestCase {
             updatedAt: "2026-06-04T10:00:00.000Z"
         )
 
-        let staleRefresh = Task { await library.refresh(accountID: "apple:old") }
+        let staleRefresh = Task { await library.refresh(sessionToken: "session:old") }
         let staleAccount = await directory.nextRequestedAccount()
-        XCTAssertEqual(staleAccount, "apple:old")
+        XCTAssertEqual(staleAccount, "session:old")
 
-        let currentRefresh = Task { await library.refresh(accountID: "apple:new") }
+        let currentRefresh = Task { await library.refresh(sessionToken: "session:new") }
         let currentAccount = await directory.nextRequestedAccount()
-        XCTAssertEqual(currentAccount, "apple:new")
+        XCTAssertEqual(currentAccount, "session:new")
 
-        await directory.succeed(accountID: "apple:old", with: [staleGame])
+        await directory.succeed(accountID: "session:old", with: [staleGame])
         await staleRefresh.value
 
         XCTAssertTrue(library.isLoading)
         XCTAssertFalse(library.hasLoaded)
         XCTAssertTrue(library.isEmpty)
 
-        await directory.succeed(accountID: "apple:new", with: [currentGame])
+        await directory.succeed(accountID: "session:new", with: [currentGame])
         await currentRefresh.value
 
         XCTAssertFalse(library.isLoading)
@@ -133,7 +133,7 @@ final class OnlineGameLibraryTests: XCTestCase {
             summary("PLAY01", status: .playing, updatedAt: "2026-06-04T10:00:00.000Z"),
             summary("DONE01", status: .finished, updatedAt: "2026-06-04T09:00:00.000Z")
         ]))
-        await library.refresh(accountID: "apple:north")
+        await library.refresh(sessionToken: "session:north")
 
         library.removeLocally(roomCode: "PLAY01")
         XCTAssertEqual(library.inProgress.map(\.roomCode), [])

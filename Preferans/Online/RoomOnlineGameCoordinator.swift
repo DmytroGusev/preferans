@@ -23,6 +23,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     @Published public private(set) var localSeat: PlayerID?
     @Published public private(set) var tableID: UUID?
     @Published public private(set) var liveness: OnlineLiveness = .connecting
+    @Published public private(set) var transportStatus: OnlineTransportStatus = .connecting
     @Published public var errorText: String?
     /// Pre-deal seat occupancy for the online waiting room. Empty once a deal is
     /// underway (the live table reads the projection instead).
@@ -35,6 +36,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var hostActor: HostGameActor?
     private var listenTask: Task<Void, Never>?
     private var participantsTask: Task<Void, Never>?
+    private var transportEventsTask: Task<Void, Never>?
+    private var hostRecoveryTask: Task<Void, Never>?
+    private var durabilityRetryTask: Task<Void, Never>?
+    private var pendingDurableUpdate: HostUpdate?
     private var hostPeer: OnlinePeer?
     private var peersBySeat: [PlayerID: OnlinePeer] = [:]
     private var seats: [PlayerIdentity] = []
@@ -57,6 +62,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// still publishes immediately; each client keeps the completed trick on
     /// screen briefly so humans can read who won before the next state appears.
     private let trickResultHoldDuration: Duration
+    /// Initial backoff for a failed authoritative snapshot commit. Injectable
+    /// so the durability barrier is exercised without slow tests.
+    private let durabilityRetryInitialDelay: Duration
     /// When false, this coordinator never runs the server-side bot loop. The
     /// in-memory demo/test room sets this off because it drives its bots through
     /// separate per-seat coordinators instead.
@@ -75,6 +83,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         heartbeat: HeartbeatConfig = .default,
         botMoveDelay: Duration = BotPacing.interactive,
         trickResultHoldDuration: Duration = .milliseconds(1_400),
+        durabilityRetryInitialDelay: Duration = .milliseconds(500),
         runsServerSideBots: Bool = true
     ) {
         self.cloudStore = cloudStore
@@ -82,12 +91,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.heartbeat = heartbeat
         self.botMoveDelay = botMoveDelay
         self.trickResultHoldDuration = trickResultHoldDuration
+        self.durabilityRetryInitialDelay = durabilityRetryInitialDelay
         self.runsServerSideBots = runsServerSideBots
     }
 
     deinit {
         listenTask?.cancel()
         participantsTask?.cancel()
+        transportEventsTask?.cancel()
+        hostRecoveryTask?.cancel()
+        durabilityRetryTask?.cancel()
         heartbeatTask?.cancel()
         pendingBotTask?.cancel()
         pendingAdvanceTask?.cancel()
@@ -112,14 +125,19 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.errorText = nil
         self.state = .selectingHost
         self.liveness = .connecting
+        self.transportStatus = .connecting
         self.lastHostContact = nil
         self.didAutoStartOnlineDeal = false
         self.transport = transport
         self.listenTask?.cancel()
         self.participantsTask?.cancel()
+        self.transportEventsTask?.cancel()
+        self.hostRecoveryTask?.cancel()
+        self.durabilityRetryTask?.cancel()
+        self.pendingDurableUpdate = nil
         self.heartbeatTask?.cancel()
+        self.transportEventsTask = observeConnectionEvents(of: transport)
         self.listenTask = listen(to: transport)
-        self.participantsTask = observeParticipants(of: transport)
 
         let participants = orderedParticipants(from: transport.participants)
         let seats = participants.map(\.playerIdentity)
@@ -134,12 +152,20 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.isHost = host.playerID == transport.localPeer.playerID
 
         if isHost {
-            await becomeHost(host: host, seats: seats, rules: self.rules, match: self.match, resume: resume)
+            do {
+                try await becomeHost(host: host, seats: seats, rules: self.rules, match: self.match, resume: resume)
+            } catch {
+                beginHostRecovery(as: host, using: transport)
+            }
         } else {
             self.state = .connectedAsClient
             await sendHello()
             startHeartbeat()
         }
+        // Subscribe after the initial authority decision. The transport replays
+        // its latest room state, so a migration that raced attach is still
+        // observed without letting the replay compete with initial setup.
+        self.participantsTask = observeParticipants(of: transport)
     }
 
     public func detach() {
@@ -147,6 +173,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         listenTask = nil
         participantsTask?.cancel()
         participantsTask = nil
+        transportEventsTask?.cancel()
+        transportEventsTask = nil
+        hostRecoveryTask?.cancel()
+        hostRecoveryTask = nil
+        durabilityRetryTask?.cancel()
+        durabilityRetryTask = nil
+        pendingDurableUpdate = nil
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
@@ -163,6 +196,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         localSeat = nil
         tableID = nil
         liveness = .connecting
+        transportStatus = .disconnected
         lastHostContact = nil
         didAutoStartOnlineDeal = false
         botSeats = []
@@ -172,6 +206,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     public func send(_ action: PreferansAction) {
+        guard transportStatus != .seatTakenOver else {
+            errorText = String(localized: "This table is active on another device.")
+            return
+        }
         guard let tableID, let localSeat else {
             errorText = String(localized: "No active online table.")
             return
@@ -235,7 +273,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// Host kicks off the first deal from the waiting room. The actual deck and
     /// dealer are filled in authoritatively by ``HostGameActor`` (`makeAuthoritative`).
     public func startFirstDeal() {
-        guard isHost else { return }
+        guard isHost, transportStatus != .seatTakenOver else { return }
         refreshPeersFromTransport()
         guard allExpectedOnlinePlayersConnected() else {
             errorText = String(localized: "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
@@ -263,7 +301,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// authority (in-memory/GameKit) fall back to converting locally and
     /// advertising the roster over the wire.
     public func fillOpenSeatsWithBots() async {
-        guard isHost else { return }
+        guard isHost, transportStatus != .seatTakenOver else { return }
         do {
             if let peers = try await transport?.fillPendingSeatsWithBots() {
                 adoptParticipantRoster(peers)
@@ -437,54 +475,56 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         rules: PreferansRules,
         match: MatchSettings,
         resume: OnlineResumeContext? = nil
-    ) async {
+    ) async throws {
         let tableID = UUID()
         self.tableID = tableID
-        do {
-            let hostID = host.playerID
-            let actor: HostGameActor
-            if let resume {
-                // Rehydrate the engine from the durable snapshot the previous
-                // host pushed to the worker, rather than starting a fresh deal.
-                actor = try HostGameActor(
-                    tableID: tableID,
-                    hostPlayerID: hostID,
-                    seats: seats,
-                    resumeSnapshot: resume.snapshot,
-                    sequence: resume.sequence,
-                    dealSource: dealSource
-                )
-            } else {
-                actor = try HostGameActor(
-                    tableID: tableID,
-                    hostPlayerID: hostID,
-                    seats: seats,
-                    rules: rules,
-                    match: match,
-                    dealSource: dealSource
-                )
-            }
-            self.hostActor = actor
-            self.state = .connectedAsHost
-            self.liveness = .live
-
-            let assignment = SeatAssignmentEnvelope(
+        let hostID = host.playerID
+        let actor: HostGameActor
+        if let resume {
+            // Rehydrate the engine from the durable snapshot the previous host
+            // pushed to the worker, rather than starting a fresh deal.
+            actor = try HostGameActor(
+                tableID: tableID,
+                hostPlayerID: hostID,
+                seats: seats,
+                resumeSnapshot: resume.snapshot,
+                sequence: resume.sequence,
+                dealSource: dealSource
+            )
+        } else {
+            actor = try HostGameActor(
                 tableID: tableID,
                 hostPlayerID: hostID,
                 seats: seats,
                 rules: rules,
-                match: match
+                match: match,
+                dealSource: dealSource
             )
-            try await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
-
-            let update = await actor.initialUpdate()
-            await publish(update)
-            await persistTableSummary(update)
-            await reportStateToWorker(update)
-        } catch {
-            self.errorText = error.localizedDescription
-            self.state = .disconnected
         }
+        self.hostActor = actor
+
+        // Establish durable truth before announcing this authority or exposing
+        // its projection. Any client action built on a visible state must have
+        // an already-recoverable snapshot behind it.
+        let update = await actor.initialUpdate()
+        try await reportStateToWorker(update)
+
+        guard let transport else {
+            throw CloudflareRoomTransportError.socketNotConnected
+        }
+        let assignment = SeatAssignmentEnvelope(
+            tableID: tableID,
+            hostPlayerID: hostID,
+            seats: seats,
+            rules: rules,
+            match: match
+        )
+        try await transport.sendToAll(.seatAssignment(assignment), reliably: true)
+
+        self.state = .connectedAsHost
+        self.liveness = .live
+        await publish(update)
+        await persistTableSummary(update)
     }
 
     private func sendHello() async {
@@ -524,13 +564,125 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func observeParticipants(of transport: any RoomRealtimeTransport) -> Task<Void, Never> {
         Task { [weak self] in
             for await _ in transport.participantUpdates() {
-                self?.refreshPeersFromTransport()
+                guard let self else { return }
+                self.refreshPeersFromTransport()
+                await self.reconcileHostAuthority(using: transport)
             }
         }
     }
 
+    private func observeConnectionEvents(of transport: any RoomRealtimeTransport) -> Task<Void, Never> {
+        Task { [weak self] in
+            for await event in transport.connectionEvents() {
+                guard let self else { return }
+                switch event {
+                case .connected:
+                    let recovered = self.transportStatus == .reconnecting
+                    self.transportStatus = .connected
+                    if recovered, !self.isHost {
+                        self.requestResync()
+                    }
+                case .reconnecting:
+                    self.transportStatus = .reconnecting
+                case .seatTakenOver:
+                    self.transportStatus = .seatTakenOver
+                    self.stopHeartbeat()
+                    self.pendingBotTask?.cancel()
+                    self.pendingBotTask = nil
+                }
+            }
+        }
+    }
+
+    /// Reconcile the coordinator with the Durable Object's current host. A
+    /// presence frame can promote this seat, demote the previous host, or point
+    /// a client at a new authority. Promotion always hydrates the worker's
+    /// durable snapshot before the replacement emits any projection.
+    private func reconcileHostAuthority(using transport: any RoomRealtimeTransport) async {
+        guard self.transport === transport else { return }
+        guard let elected = await transport.chooseHost() else { return }
+        let previousHost = hostPeer?.playerID
+        guard previousHost != elected.playerID else { return }
+
+        hostPeer = elected
+        if elected.playerID == transport.localPeer.playerID {
+            beginHostRecovery(as: elected, using: transport)
+        } else {
+            becomeClient(of: elected)
+        }
+    }
+
+    private func beginHostRecovery(as elected: OnlinePeer, using transport: any RoomRealtimeTransport) {
+        hostRecoveryTask?.cancel()
+        durabilityRetryTask?.cancel()
+        durabilityRetryTask = nil
+        pendingDurableUpdate = nil
+        stopHeartbeat()
+        pendingBotTask?.cancel()
+        pendingBotTask = nil
+        hostActor = nil
+        isHost = true
+        state = .selectingHost
+        liveness = .connecting
+        errorText = nil
+
+        hostRecoveryTask = Task { @MainActor [weak self, weak transport] in
+            guard let self, let transport else { return }
+            var delay: Duration = .milliseconds(250)
+            while !Task.isCancelled {
+                do {
+                    let resume = try await transport.hostRecoveryContext()
+                    guard !Task.isCancelled,
+                          let current = await transport.chooseHost(),
+                          current.playerID == transport.localPeer.playerID,
+                          self.hostPeer?.playerID == current.playerID else { return }
+                    if let resume {
+                        self.rules = resume.snapshot.rules
+                        self.match = resume.snapshot.match
+                    }
+                    try await self.becomeHost(
+                        host: elected,
+                        seats: self.seats,
+                        rules: self.rules,
+                        match: self.match,
+                        resume: resume
+                    )
+                    self.hostRecoveryTask = nil
+                    return
+                } catch {
+                    self.errorText = String(
+                        localized: "Recovering the table… Your game is safe."
+                    )
+                    try? await Task.sleep(for: delay)
+                    delay = min(delay * 2, .seconds(4))
+                }
+            }
+        }
+    }
+
+    private func becomeClient(of elected: OnlinePeer) {
+        hostRecoveryTask?.cancel()
+        hostRecoveryTask = nil
+        durabilityRetryTask?.cancel()
+        durabilityRetryTask = nil
+        pendingDurableUpdate = nil
+        pendingBotTask?.cancel()
+        pendingBotTask = nil
+        hostActor = nil
+        isHost = false
+        hostPeer = elected
+        state = .connectedAsClient
+        liveness = .connecting
+        lastHostContact = livenessClock.now
+        errorText = nil
+        Task { [weak self] in
+            await self?.sendHello()
+        }
+        startHeartbeat()
+    }
+
     /// True when a wire message came from the seat this client elected as host
-    /// at attach (the worker-pinned `hostPlayerID`). Seat assignments,
+    /// in the latest server presence (`hostPlayerID`). Seat assignments,
     /// projections, and host errors are only ever legitimate from that seat —
     /// the relay routes by recipient, not authority, so any seated peer could
     /// otherwise forge them (and a forged message must not count as host
@@ -544,7 +696,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         case let .seatAssignment(assignment):
             guard !isHost, isFromHost(received.sender) else { return }
             noteHostContact()
+            let authorityChanged = tableID != assignment.tableID
             tableID = assignment.tableID
+            if authorityChanged {
+                // Never let controls from the previous authority remain live
+                // under the replacement table ID. The incoming full projection
+                // will repopulate the UI after snapshot recovery completes.
+                projection = nil
+                pendingAdvance = nil
+                pendingAdvanceTask?.cancel()
+                pendingAdvanceTask = nil
+            }
             rules = assignment.rules
             match = assignment.match
             seats = assignment.seats
@@ -653,13 +815,60 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         onError: (Error) async -> Void
     ) async {
         guard let hostActor else { return }
+        guard pendingDurableUpdate == nil else {
+            await onError(CloudflareRoomTransportError.serverError(
+                String(localized: "Saving the previous move… Try again in a moment.")
+            ))
+            return
+        }
         do {
             let update = try await hostActor.applyClientAction(envelope, sender: sender)
+            do {
+                try await reportStateToWorker(update)
+            } catch {
+                guard isHost else { return }
+                queueDurabilityRetry(update, after: error)
+                return
+            }
+            guard isHost, self.hostActor === hostActor else { return }
             await publish(update)
             await persistAfter(update)
-            await reportStateToWorker(update)
         } catch {
             await onError(error)
+        }
+    }
+
+    private func queueDurabilityRetry(_ update: HostUpdate, after error: Error) {
+        pendingDurableUpdate = update
+        let message = String(localized: "Connection interrupted — saving your move…")
+        errorText = message
+        logOnlineFlow("event=reportStateRetry sequence=\(update.sequence) error=\(error.localizedDescription)")
+        durabilityRetryTask?.cancel()
+        durabilityRetryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            var delay = self.durabilityRetryInitialDelay
+            while !Task.isCancelled {
+                try? await Task.sleep(for: delay)
+                guard !Task.isCancelled,
+                      self.isHost,
+                      let pending = self.pendingDurableUpdate else { return }
+                do {
+                    try await self.reportStateToWorker(pending)
+                    guard self.isHost,
+                          self.pendingDurableUpdate?.sequence == pending.sequence else { return }
+                    await self.publish(pending)
+                    await self.persistAfter(pending)
+                    self.pendingDurableUpdate = nil
+                    self.durabilityRetryTask = nil
+                    if self.errorText == message {
+                        self.errorText = nil
+                    }
+                    return
+                } catch {
+                    logOnlineFlow("event=reportStateRetryFailed sequence=\(pending.sequence) error=\(error.localizedDescription)")
+                    delay = min(delay * 2, .seconds(8))
+                }
+            }
         }
     }
 
@@ -756,10 +965,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// Push the host's latest state into the worker so the durable game directory
     /// — and every participant's "Your games" list — stays current and the table
     /// stays resumable. Host-only, and only over the Cloudflare transport: the
-    /// in-memory/GameKit transports have no worker behind them. Best-effort: a
-    /// dropped report never blocks play (the engine remains the source of truth).
-    private func reportStateToWorker(_ update: HostUpdate) async {
-        guard isHost, let cloud = transport as? CloudflareRoomTransport, let hostActor else { return }
+    /// in-memory/GameKit transports have no worker behind them. For a real room
+    /// this is a commit barrier: projections are not published until it passes.
+    private func reportStateToWorker(_ update: HostUpdate) async throws {
+        guard isHost, let transport, let hostActor else { return }
         let snapshot = await hostActor.engineSnapshot
         let summary = OnlineStateSummary(
             variant: variantTag,
@@ -768,17 +977,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             dealNumber: update.dealNumber,
             result: Self.finishedResult(from: update.snapshot.state)
         )
-        do {
-            try await cloud.reportState(
-                status: update.status,
-                summary: summary,
-                // A finished game is never resumed, so don't ship its snapshot.
-                snapshot: update.status == .finished ? nil : snapshot,
-                snapshotSequence: update.sequence
-            )
-        } catch {
-            logOnlineFlow("event=reportStateFailed sequence=\(update.sequence) error=\(error.localizedDescription)")
-        }
+        try await transport.reportState(
+            status: update.status,
+            summary: summary,
+            // A finished game is never resumed, so don't ship its snapshot.
+            snapshot: update.status == .finished ? nil : snapshot,
+            snapshotSequence: update.sequence
+        )
     }
 
     /// Mark the current table abandoned in the worker directory so it drops out

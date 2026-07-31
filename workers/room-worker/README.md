@@ -1,135 +1,138 @@
 # Preferans Room Worker
 
-Cloudflare Worker + Durable Object backend for Preferans room invites and realtime relay.
+Cloudflare Worker + Durable Objects backend for authenticated Preferans rooms,
+game libraries, resume snapshots, presence, and realtime relay.
 
-This first version is intentionally transport-focused: it creates rooms, lets peers join, accepts WebSocket connections, tracks presence, and relays opaque `GameWireMessage` JSON between peers. The existing Swift host actor still owns game validation. That makes it useful for beta multiplayer and end-to-end transport work, while leaving the later server-authoritative engine move explicit.
+API v2 is an intentional clean break. `PreferansRoomV2` and
+`PlayerAccountV2` use fresh Durable Object namespaces; v1 rooms, libraries,
+client-declared identities, and compatibility access are not imported.
 
-## Run Locally
+The worker owns account/seat/room authority and durable progress. The Swift host
+still validates game actions and generates player projections, so moving the
+engine into the Durable Object remains the final server-authority boundary.
+
+## Local run
 
 ```sh
 cd workers/room-worker
 wrangler dev --local --port 8787
 ```
 
-Health check:
-
 ```sh
 curl http://127.0.0.1:8787/health
 ```
 
-Create a room:
+The response reports both `accountSchemaVersion: 2` and
+`roomSchemaVersion: 2`.
+
+## Register
+
+Guest registration creates a random server-owned account. The response contains
+the public account profile and a bearer session. The raw session is returned
+once; only its SHA-256 digest is stored.
 
 ```sh
-curl -s http://127.0.0.1:8787/rooms \
+curl -s http://127.0.0.1:8787/v2/accounts/guest \
   -H 'content-type: application/json' \
-  -d '{"localPeer":{"playerID":{"rawValue":"north"},"accountID":"email:north@example.test","provider":"email","displayName":"North"},"seats":[{"playerID":{"rawValue":"north"},"accountID":"email:north@example.test","provider":"email","displayName":"North"},{"playerID":{"rawValue":"east"},"accountID":"dev:east","provider":"dev","displayName":"East"},{"playerID":{"rawValue":"south"},"accountID":"dev:south","provider":"dev","displayName":"South"}]}'
+  -d '{"displayName":"North"}'
 ```
 
-Join a room:
+Apple registration uses `POST /v2/accounts/apple` with `identityToken`, the raw
+nonce used by the app, and `displayName`. The worker verifies the RS256
+signature against Apple's current JWKS and validates issuer, audience, expiry,
+subject, and the SHA-256 nonce before deriving the account identity.
+
+All remaining HTTP examples use:
 
 ```sh
-curl -s http://127.0.0.1:8787/rooms/ABC123/join \
+-H 'authorization: Bearer <sessionToken>'
+```
+
+## Create and join
+
+Clients choose only seat IDs and open/bot intent. They never declare account IDs,
+providers, or display names for a human seat; those fields come from the
+authenticated server account.
+
+```sh
+curl -s http://127.0.0.1:8787/v2/rooms \
+  -H 'authorization: Bearer <sessionToken>' \
   -H 'content-type: application/json' \
-  -d '{"localPeer":{"playerID":{"rawValue":"east"},"accountID":"email:east@example.test","provider":"email","displayName":"East"}}'
+  -d '{"localPlayerID":{"rawValue":"north"},"seats":[{"playerID":{"rawValue":"north"},"kind":"you"},{"playerID":{"rawValue":"east"},"kind":"bot"},{"playerID":{"rawValue":"south"},"kind":"open"}],"maxPlayers":3}'
 ```
-
-WebSocket client messages:
-
-```json
-{
-  "type": "wire",
-  "recipients": [{ "rawValue": "east" }],
-  "reliable": true,
-  "message": { "ping": { "schemaVersion": 1, "tableID": null, "sentAt": "2026-05-04T00:00:00Z" } }
-}
-```
-
-Server WebSocket messages:
-
-```json
-{
-  "type": "wire",
-  "sender": {
-    "playerID": { "rawValue": "north" },
-    "accountID": "email:north@example.test",
-    "provider": "email",
-    "displayName": "North"
-  },
-  "message": {}
-}
-```
-
-## Durable Game Library (resume + history)
-
-Beyond live relay, the worker is the durable home for a player's games so the
-lobby can list **Continue** (in-progress) and **History** (finished) games and
-resume an unfinished table from any device. Two pieces back this:
-
-- **`PreferansRoom`** (per room, key = room code) additionally stores a
-  lifecycle `status` (`lobby` | `playing` | `finished` | `abandoned`), a small
-  worker-readable `summary` (variant, deal/phase, final result), and an opaque
-  `latestSnapshot` blob (the authoritative engine state the resuming host
-  hydrates from — the worker never decodes it, and it is dropped once the game
-  is finished/abandoned).
-- **`PlayerLibrary`** (per account, key = `accountID`) holds one
-  `GameSummaryEntry` per room the account is in. Rooms fan their summary into
-  every human participant's library on each material transition, so the lobby
-  lists a player's games with a single read.
-
-### State report (host-only)
-
-The host pushes progress after each validated action, authenticated with the
-host secret. The secret is minted at `/create`, and `/join` hands it back when
-the joining account holds the host seat — so a host that resumes a game (same
-account, any device) regains its authority instead of silently losing the
-ability to report state and fill bot seats. The snapshot is stored
-monotonically (a late, lower-sequence report can't clobber a newer snapshot),
-and only material changes (status/deal/phase) trigger a presence push + library
-fan-out — per-action snapshot refreshes are silent.
 
 ```sh
-curl -s http://127.0.0.1:8787/rooms/ABC123/state \
+curl -s http://127.0.0.1:8787/v2/rooms/ABC123/join \
+  -H 'authorization: Bearer <sessionToken>' \
   -H 'content-type: application/json' \
-  -d '{"hostSecret":"<from /create>","status":"playing","summary":{"variant":"odesa","lastSequence":4,"phase":"bidding","dealNumber":1},"snapshot":{ /* opaque */ },"snapshotSequence":4}'
+  -d '{"requestedPlayerID":{"rawValue":"south"}}'
 ```
 
-### List a player's games
+Create/join returns the caller's `seatToken` and a server-built `websocketURL`.
+The URL embeds that room-scoped token. Public room, presence, and library
+payloads never expose a seat token. Rejoining an already-held seat rotates its
+token: the newest device becomes the only controller, existing sockets receive
+close code `4009` (`seat_replaced`), and stale HTTP/socket credentials fail.
+
+## Authenticated durable game library
+
+- `PreferansRoomV2`, keyed by room code, stores status, a small readable
+  summary, and an opaque latest snapshot. Finished/abandoned rooms drop the
+  snapshot.
+- `PlayerAccountV2`, keyed by server account ID, stores the account profile,
+  up to five active expiring session hashes, and one summary per room.
+- `GET /v2/my-games` derives its account from the bearer token. There is no
+  account ID query parameter.
 
 ```sh
-curl -s "http://127.0.0.1:8787/my-games?accountID=apple:north"
-# → { "games": [ GameSummaryEntry, ... ] }   # most-recently-updated first
+curl -s http://127.0.0.1:8787/v2/my-games \
+  -H 'authorization: Bearer <sessionToken>'
 ```
 
-### Fetch the resume snapshot (seated participant only)
+The host reports progress to `POST /v2/rooms/{code}/state` with its `playerID`
+and current `seatToken`. The worker verifies both the bearer account and the
+rotating credential own the current host seat; no separate host secret exists.
+Snapshots and summaries are monotonic, and terminal lifecycle is immutable, so
+a delayed report cannot roll back or resurrect a game. The iOS coordinator
+commits this snapshot before publishing the corresponding projections.
 
-The snapshot reveals hidden hands, so it is gated on proving ownership of a
-human seat (a `pending:`/`bot:` seat is rejected) via the seat token.
+Resume and abandon require both layers of proof:
+
+- a valid account bearer session; and
+- the token for the claimed room seat.
 
 ```sh
-curl -s "http://127.0.0.1:8787/rooms/ABC123/snapshot?playerID=north&seatToken=<from /create or /join>"
-# → { "roomCode", "status", "summary", "lastSnapshotSequence", "snapshot" }
+curl -s 'http://127.0.0.1:8787/v2/rooms/ABC123/snapshot?playerID=north&seatToken=<seatToken>' \
+  -H 'authorization: Bearer <sessionToken>'
 ```
 
-## Seat tokens
+There is no v1 seat-token compatibility flag. Missing, forged, or legacy
+token-less credentials are rejected on every sensitive v2 path.
 
-Every claimed human seat carries a server-minted `seatToken`, returned only to
-the seat's owner in its `/create`/`/join` response and never included in any
-broadcast payload. It proves seat ownership on three surfaces:
+## Realtime relay
 
-- **WebSocket connect** — always enforced. The socket URL is server-built and
-  embeds the token, so every client (including pre-token builds, which treat
-  the URL as opaque) presents it. Without this, the room code alone let anyone
-  attach as any seat and act as that player.
-- **`GET /rooms/{code}/snapshot`** and **`POST /rooms/{code}/abandon`** —
-  a wrong token is always rejected; a *missing* token is tolerated until the
-  `REQUIRE_SEAT_TOKENS` var (wrangler.toml) flips to `"true"`, closing the
-  compatibility window for clients that predate tokens.
+WebSocket clients send `wire` envelopes containing recipient seat IDs and an
+opaque `GameWireMessage`. The Durable Object binds the socket to the seat proven
+by its URL token, excludes unknown recipients and the sender, sequences frames,
+and does not retain relay history. It rejects projection, seat-assignment, and
+host-error frames from non-host seats.
 
-Room codes, host secrets, and seat tokens are all generated from the platform
-CSPRNG. A `/create` that collides with an existing room code retries with a
-fresh code — it never replies with (or leaks the credentials of) the existing
-room.
+The room exposes a monotonic `hostEpoch`. When the current host has no live
+socket, the Durable Object elects the first connected human in stable seat
+order, advances the epoch, and broadcasts the new authority. The elected iOS
+client fetches and validates the durable snapshot before becoming host; a
+playing room with a missing or corrupt snapshot fails closed instead of dealing
+a new game. Terminal rooms never elect another host.
 
-## Launch Boundary
+## Verification
 
-This worker is the correct room/transport foundation, but it is not yet a public-launch authoritative game server. For public multiplayer, move Preferans validation/projection generation into the Durable Object, either by porting the engine to TypeScript or compiling a shared core to WASM.
+```sh
+bun run typecheck
+bun test
+```
+
+`PREFERANS_WORKER_URL=http://127.0.0.1:8787 swift test --filter OnlineWorkerIntegrationTests`
+exercises guest registration, room creation, authenticated state reporting,
+token takeover/revocation, live WebSocket host migration, exact snapshot
+recovery, former-host rejection, library reads, and abandon across the
+Swift/Worker boundary.

@@ -2,9 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyStateReport,
+  authorizeHostSeat,
+  authorizeRelayMessage,
   authorizeSeat,
   createInitialRoom,
   fillOpenSeatsWithBots,
+  electLiveHost,
   isHostAccount,
   isHumanAccount,
   joinRoom,
@@ -63,7 +66,9 @@ test("creates a room with Swift-compatible player IDs", () => {
 
   assert.equal(room.roomCode, "AB12");
   assert.equal(room.hostPlayerID, "north");
+  assert.equal(room.hostEpoch, 1);
   assert.deepEqual(publicRoom(room).hostPlayerID, { rawValue: "north" });
+  assert.equal(publicRoom(room).hostEpoch, 1);
   assert.deepEqual(publicRoom(room).peers.map((peer: OnlinePeer) => peer.playerID), [
     { rawValue: "north" },
     { rawValue: "east" },
@@ -192,6 +197,21 @@ test("recipient routing excludes the sender and unknown seats", () => {
   assert.deepEqual(routeRecipients(room, "north", [{ rawValue: "south" }, { rawValue: "ghost" }]), ["south"]);
 });
 
+test("relay rejects authoritative frames from a non-host seat", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+
+  assert.doesNotThrow(() => authorizeRelayMessage(room, "north", { projection: { _0: {} } }));
+  assert.doesNotThrow(() => authorizeRelayMessage(room, "east", { clientAction: { _0: {} } }));
+  assert.throws(
+    () => authorizeRelayMessage(room, "east", { seatAssignment: { _0: {} } }),
+    /Only the current host/
+  );
+  assert.throws(
+    () => authorizeRelayMessage(room, "south", { hostError: { _0: {} } }),
+    /Only the current host/
+  );
+});
+
 test("relay entries are sequenced and the room stores no message history", () => {
   let room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
   let lastEntry;
@@ -228,7 +248,7 @@ test("seat tokens: minted for claimed human seats, never exposed publicly", () =
   }
 });
 
-test("seat tokens: a fresh claim mints one, a rejoin keeps it", () => {
+test("seat tokens: a fresh claim mints one and the latest rejoin rotates it", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
   const guest = { playerID: { rawValue: "east" }, accountID: "apple:guest", provider: "apple" as const, displayName: "Guest" };
 
@@ -236,39 +256,38 @@ test("seat tokens: a fresh claim mints one, a rejoin keeps it", () => {
   const minted = joined.peers.find((peer: OnlinePeer) => peer.accountID === "apple:guest")?.seatToken;
   assert.ok((minted?.length ?? 0) >= 16);
 
-  // Rejoining (same account, e.g. a new device) keeps the same credential, so
-  // both the account's devices stay authorized.
+  // Rejoining (same account, e.g. a new device) revokes the old room
+  // credential so two devices cannot both control one seat.
   const rejoined = joinRoom(joined, { ...guest, displayName: "Guest again" });
-  assert.equal(rejoined.peers.find((peer: OnlinePeer) => peer.accountID === "apple:guest")?.seatToken, minted);
+  const rotated = rejoined.peers.find((peer: OnlinePeer) => peer.accountID === "apple:guest")?.seatToken;
+  assert.ok(rotated);
+  assert.notEqual(rotated, minted);
+  assert.throws(() => authorizeSeat(rejoined, "east", minted), /does not match/);
+  assert.equal(peerID(authorizeSeat(rejoined, "east", rotated)), "east");
 });
 
-test("seat authorization: wrong token always rejected, legacy seats pass, enforcement gates missing tokens", () => {
+test("seat authorization is strict for every v2 room", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
   const token = room.peers[0].seatToken;
   assert.ok(token);
 
-  // The matching token passes at either enforcement level.
-  assert.equal(peerID(authorizeSeat(room, "north", token, true)), "north");
-  assert.equal(peerID(authorizeSeat(room, "north", token, false)), "north");
+  assert.equal(peerID(authorizeSeat(room, "north", token)), "north");
 
   // A wrong token is rejected even while enforcement is off — a caller never
   // downgrades a bad credential into legacy access.
-  assert.throws(() => authorizeSeat(room, "north", "forged-token", false), /does not match/);
+  assert.throws(() => authorizeSeat(room, "north", "forged-token"), /does not match/);
 
-  // A missing token passes only during the compatibility window.
-  assert.equal(peerID(authorizeSeat(room, "north", undefined, false)), "north");
-  assert.throws(() => authorizeSeat(room, "north", undefined, true), /required/);
+  assert.throws(() => authorizeSeat(room, "north", undefined), /required/);
 
   // An unknown seat is rejected regardless.
-  assert.throws(() => authorizeSeat(room, "ghost", token, false), /has not joined/);
+  assert.throws(() => authorizeSeat(room, "ghost", token), /has not joined/);
 
-  // A legacy seat (no stored token — room created before tokens shipped)
-  // passes even under strict enforcement: there is nothing to demand.
+  // A token-less legacy seat cannot cross the v2 boundary.
   const legacy = {
     ...room,
     peers: room.peers.map((peer: OnlinePeer) => ({ ...peer, seatToken: undefined }))
   };
-  assert.equal(peerID(authorizeSeat(legacy, "north", undefined, true)), "north");
+  assert.throws(() => authorizeSeat(legacy, "north", undefined), /no valid v2 credential/);
 });
 
 test("converting an open seat to a bot leaves it without a credential", () => {
@@ -288,9 +307,8 @@ test("a returning host account is recognized; guests and placeholder seats are n
     displayName: "Guest"
   });
 
-  // The creator's account holds the host seat — even after rejoining from a
-  // new device (same account), /join hands the host secret back so a resumed
-  // host can keep reporting state and filling bot seats.
+  // The creator's account holds the host seat even after taking the seat over
+  // from a new device with a newly rotated room credential.
   const rejoined = joinRoom(joined, { ...north, displayName: "North's new phone" });
   assert.equal(isHostAccount(rejoined, north.accountID), true);
 
@@ -301,13 +319,61 @@ test("a returning host account is recognized; guests and placeholder seats are n
   assert.equal(isHostAccount(rejoined, "bot:north"), false);
 });
 
-test("mints a host secret that publicRoom never exposes", () => {
-  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+test("host-only mutations require the current host account and rotating seat credential", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const northToken = room.peers.find((peer) => peerID(peer) === "north")?.seatToken;
+  const eastToken = room.peers.find((peer) => peerID(peer) === "east")?.seatToken;
+  assert.ok(northToken);
+  assert.ok(eastToken);
 
-  assert.ok(typeof room.hostSecret === "string" && room.hostSecret.length >= 16);
-  // The secret authenticates host-only mutations, so it must never leak to the
-  // payload guests receive over summary/join/presence.
-  assert.ok(!("hostSecret" in publicRoom(room)));
+  assert.equal(peerID(authorizeHostSeat(room, north.accountID, "north", northToken)), "north");
+  assert.throws(
+    () => authorizeHostSeat(room, north.accountID, "north", "stale-token"),
+    /does not match/
+  );
+  assert.throws(
+    () => authorizeHostSeat(room, east.accountID, "east", eastToken),
+    /Only the current host/
+  );
+  assert.throws(
+    () => authorizeHostSeat(room, "email:impostor@example.test", "north", northToken),
+    /does not own/
+  );
+});
+
+test("host election is deterministic, monotonic, and limited to connected humans", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+
+  // The current host remains authoritative while any of its sockets is live.
+  assert.equal(electLiveHost(room, ["north", "south"]), room);
+
+  // Once north is absent, stable seat order selects east before south.
+  const eastHost = electLiveHost(room, ["east", "south"], "2026-05-04T00:00:10.000Z");
+  assert.equal(eastHost.hostPlayerID, "east");
+  assert.equal(eastHost.hostEpoch, 2);
+  assert.equal(eastHost.updatedAt, "2026-05-04T00:00:10.000Z");
+
+  const southHost = electLiveHost(eastHost, ["south"], "2026-05-04T00:00:11.000Z");
+  assert.equal(southHost.hostPlayerID, "south");
+  assert.equal(southHost.hostEpoch, 3);
+
+  // No socket and non-human-only sockets cannot fabricate an authority.
+  assert.equal(electLiveHost(southHost, []), southHost);
+  const withBot = fillOpenSeatsWithBots(createInitialRoom({
+    roomCode: "ROOM2",
+    localPeer: north,
+    seats: [north, openEast, openSouth]
+  }));
+  assert.equal(electLiveHost(withBot, ["east", "south"]), withBot);
+
+  // Terminal history is immutable and never elects a fresh runtime host.
+  const finished = applyStateReport(southHost, { status: "finished" }).room;
+  assert.equal(electLiveHost(finished, ["north"]), finished);
+});
+
+test("the authenticated local peer is host even when not first in seat order", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: east, seats: [north, east, south] });
+  assert.equal(room.hostPlayerID, "east");
 });
 
 test("fill-bots converts every open seat to a bot and leaves the rest", () => {
@@ -360,9 +426,8 @@ test("a fresh room starts in the lobby and exposes status, never the snapshot", 
 
   const projected = publicRoom(room);
   assert.equal(projected.status, "lobby");
-  // The opaque resume blob and host secret stay server-side only.
+  // The opaque resume blob stays server-side only.
   assert.ok(!("latestSnapshot" in projected));
-  assert.ok(!("hostSecret" in projected));
 });
 
 test("a state report records status, summary, and the resume snapshot", () => {
@@ -406,6 +471,33 @@ test("a stale (out-of-order) snapshot never clobbers a newer one", () => {
   // The newer snapshot (seq 10) survives the late-arriving seq-7 report.
   assert.deepEqual(afterStale.latestSnapshot, { seq: 10 });
   assert.equal(afterStale.lastSnapshotSequence, 10);
+  assert.equal(afterStale.summary?.lastSequence, 10);
+  assert.equal(afterStale.summary?.dealNumber, 2);
+});
+
+test("terminal lifecycle cannot be resurrected by a delayed host report", () => {
+  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const { room: playing } = applyStateReport(base, {
+    status: "playing",
+    summary: { lastSequence: 10, phase: "playing", dealNumber: 2 },
+    snapshot: { seq: 10 },
+    snapshotSequence: 10
+  });
+  const { room: finished } = applyStateReport(playing, {
+    status: "finished",
+    summary: { lastSequence: 11, phase: "finished", dealNumber: 2 }
+  });
+  const result = applyStateReport(finished, {
+    status: "playing",
+    summary: { lastSequence: 12, phase: "playing", dealNumber: 3 },
+    snapshot: { seq: 12 },
+    snapshotSequence: 12
+  });
+
+  assert.equal(result.room, finished);
+  assert.equal(result.changed, false);
+  assert.equal(result.room.status, "finished");
+  assert.equal(result.room.latestSnapshot, undefined);
 });
 
 test("a same-phase snapshot refresh updates the blob but is not a material change", () => {

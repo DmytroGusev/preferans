@@ -4,7 +4,7 @@ title: Privacy Policy
 
 # Privacy Policy
 
-Last updated: July 6, 2026
+Last updated: July 31, 2026
 
 This Privacy Policy explains how Preferans handles information when you use the iOS app.
 
@@ -14,7 +14,7 @@ Preferans is a card game app. The app does not collect real-money payment inform
 
 When you use online play, the app may process:
 
-- Your Sign in with Apple user identifier.
+- A server-issued guest account identifier, or your Sign in with Apple user identifier when you choose Apple sign-in.
 - Your display name.
 - Room codes, room participation details, game state, bids, cards, turns, and score data needed to run an online game.
 - Basic timestamps such as when a room or game event was created or updated.
@@ -28,20 +28,20 @@ We use information only to:
 - Create and manage online game rooms.
 - Let invited players identify who joined a room.
 - Synchronize game actions and scoring between players.
-- Restore your signed-in profile on your device.
+- Authenticate your online account, list your games, and resume unfinished games.
 - Provide support if you contact us.
 
 Preferans does not sell your personal information. If tracking or attribution features are enabled, Preferans asks for permission through Apple's App Tracking Transparency prompt before accessing tracking data. You can decline tracking and continue using the app.
 
 ## Apple Services
 
-Preferans uses Apple services, including Sign in with Apple and iCloud CloudKit, to support account identity and online multiplayer. Information handled by Apple services is also subject to Apple's privacy practices.
+Preferans uses Sign in with Apple when you choose it. The app sends Apple's identity token and a one-time nonce to the Preferans room service so the token's signature, issuer, audience, expiry, and nonce can be verified. The identity token is not used as your ongoing game credential.
 
-Online room and game records may be stored in Apple's iCloud infrastructure through CloudKit so that invited players can access the same room.
+Preferans may use Apple's iCloud CloudKit for Apple-backed app records. Live room accounts, participation, and resume state are processed by the Preferans room service hosted on Cloudflare infrastructure. Information handled by Apple and Cloudflare is also subject to their respective privacy practices.
 
 ## Local Storage
 
-The app may store your online profile on your device using iOS local storage so that you do not need to sign in again each time you open the app.
+The app stores a limited online profile in local app storage and stores the account session credential in iOS Keychain. Room-scoped seat credentials may also be cached locally so you can resume a game.
 
 ## Data Sharing
 
@@ -63,7 +63,7 @@ You can:
 
 - Use local play without joining online rooms.
 - Sign out in the app to remove the locally stored online profile.
-- Use Delete account data in Settings to remove the locally stored online identity, display name, and anonymous room account from your device.
+- Use Delete account data in Settings to remove the locally stored online profile, Keychain session, display name, and room credentials from your device.
 - Delete the app to remove local app data from your device.
 - Contact us to request help with privacy questions.
 

@@ -130,6 +130,66 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         })
     }
 
+    func testNewerDeviceTakeoverMakesTheStaleCoordinatorReadOnly() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
+        let south = OnlinePeer(playerID: "south", accountID: "dev:south", provider: .dev, displayName: "South")
+        let transport = PresenceDrivenTransport(
+            localPeer: host,
+            hostPlayerID: "north",
+            participants: [host, east, south]
+        )
+        let coordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+
+        transport.simulateConnectionEvent(.seatTakenOver)
+        await pump(until: { coordinator.transportStatus == .seatTakenOver })
+        coordinator.send(.startDeal(dealer: nil, deck: nil))
+
+        XCTAssertEqual(coordinator.projection?.sequence, 0)
+        XCTAssertTrue(coordinator.errorText?.contains("another device") == true)
+        coordinator.detach()
+    }
+
+    func testVisibleProjectionWaitsForDurableSnapshotCommit() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
+        let south = OnlinePeer(playerID: "south", accountID: "dev:south", provider: .dev, displayName: "South")
+        let transport = PresenceDrivenTransport(
+            localPeer: host,
+            hostPlayerID: "north",
+            participants: [host, east, south]
+        )
+        let coordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled,
+            durabilityRetryInitialDelay: .milliseconds(10)
+        )
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+
+        transport.blockedReportSequences.insert(1)
+        coordinator.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { transport.events.contains("report-attempt:1") })
+
+        XCTAssertEqual(coordinator.projection?.sequence, 0)
+        XCTAssertFalse(transport.events.contains("projection:1"))
+        XCTAssertTrue(coordinator.errorText?.contains("saving your move") == true)
+
+        transport.blockedReportSequences.remove(1)
+        await pump(until: { coordinator.projection?.sequence == 1 })
+
+        let committed = try XCTUnwrap(transport.events.firstIndex(of: "report-commit:1"))
+        let published = try XCTUnwrap(transport.events.firstIndex(of: "projection:1"))
+        XCTAssertLessThan(committed, published)
+        XCTAssertNil(coordinator.errorText)
+        coordinator.detach()
+    }
+
     func testClientActionFlowsThroughHostAndSpoofedActorIsRejected() async throws {
         let fixture = try await makeFixture()
 
@@ -275,6 +335,79 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         host.detach()
         client.detach()
         south.detach()
+    }
+
+    func testServerElectedSuccessorHydratesSnapshotAndContinuesTheSameDeal() async throws {
+        let room = StallableRoom(peers: peers, hostPlayerID: "north")
+        let transports = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            (peer.playerID, room.transport(for: peer.playerID))
+        })
+        let coordinators = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            (peer.playerID, RoomOnlineGameCoordinator(
+                dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+                heartbeat: .disabled
+            ))
+        })
+
+        for peer in peers {
+            await coordinators[peer.playerID]?.attach(transport: try XCTUnwrap(transports[peer.playerID]))
+        }
+        let north = try XCTUnwrap(coordinators["north"])
+        north.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { coordinators.values.allSatisfy { $0.projection?.sequence == 1 } })
+
+        // Rebuild the exact state the worker persisted for sequence 1. The
+        // successor must hydrate this snapshot; starting a fresh engine would
+        // produce a different table state and fail the continuation below.
+        let durableHost = try HostGameActor(
+            hostPlayerID: "north",
+            seats: peers.map(\.playerIdentity),
+            dealSource: ScriptedDealSource(decks: [Deck.standard32])
+        )
+        let durableUpdate = try await durableHost.applyClientAction(
+            ClientActionEnvelope(
+                tableID: durableHost.tableID,
+                actor: "north",
+                action: .startDeal(dealer: nil, deck: nil),
+                baseHostSequence: 0
+            ),
+            sender: "north"
+        )
+        let durableSnapshot = await durableHost.engineSnapshot
+        XCTAssertEqual(durableUpdate.sequence, 1)
+
+        room.migrateHost(
+            to: "east",
+            recovery: OnlineResumeContext(snapshot: durableSnapshot, sequence: durableUpdate.sequence)
+        )
+
+        let east = try XCTUnwrap(coordinators["east"])
+        await pump(until: {
+            east.isHost &&
+            east.state == .connectedAsHost &&
+            east.projection?.sequence == 1 &&
+            north.isHost == false
+        })
+        let migratedTableID = try XCTUnwrap(east.tableID)
+        await pump(until: {
+            coordinators.values.allSatisfy {
+                $0.tableID == migratedTableID &&
+                $0.projection?.tableID == migratedTableID &&
+                $0.projection?.sequence == 1
+            }
+        })
+
+        let projection = try XCTUnwrap(east.projection)
+        let bidder = try currentBidder(in: projection)
+        try XCTUnwrap(coordinators[bidder]).send(.bid(player: bidder, call: .pass))
+        await pump(until: { coordinators.values.allSatisfy { $0.projection?.sequence == 2 } })
+
+        XCTAssertEqual(east.projection?.sequence, 2)
+        XCTAssertEqual(north.projection?.sequence, 2)
+        XCTAssertTrue(east.isHost)
+        XCTAssertFalse(north.isHost)
+
+        for coordinator in coordinators.values { coordinator.detach() }
     }
 
     func testClientIgnoresForgedHostMessagesAndStaleProjections() async throws {
@@ -709,7 +842,8 @@ private struct RoomFixture {
 @MainActor
 private final class StallableRoom {
     let peers: [OnlinePeer]
-    let hostPlayerID: PlayerID
+    private(set) var hostPlayerID: PlayerID
+    private var recoveryContext: OnlineResumeContext?
     private var transports: [PlayerID: StallableTransport] = [:]
 
     init(peers: [OnlinePeer], hostPlayerID: PlayerID) {
@@ -719,7 +853,7 @@ private final class StallableRoom {
 
     func transport(for playerID: PlayerID) -> StallableTransport {
         let peer = peers.first { $0.playerID == playerID } ?? peers[0]
-        let transport = StallableTransport(room: self, localPeer: peer, hostPlayerID: hostPlayerID)
+        let transport = StallableTransport(room: self, localPeer: peer)
         transports[playerID] = transport
         return transport
     }
@@ -728,6 +862,18 @@ private final class StallableRoom {
         for recipient in recipients where recipient.playerID != sender.playerID {
             transports[recipient.playerID]?.receive(ReceivedRoomMessage(message: message, sender: sender))
         }
+    }
+
+    func migrateHost(to playerID: PlayerID, recovery: OnlineResumeContext?) {
+        hostPlayerID = playerID
+        recoveryContext = recovery
+        for transport in transports.values {
+            transport.receivePresence()
+        }
+    }
+
+    fileprivate func currentRecoveryContext() -> OnlineResumeContext? {
+        recoveryContext
     }
 }
 
@@ -741,15 +887,14 @@ private final class StallableTransport: RoomRealtimeTransport {
     private(set) var sentMessages: [GameWireMessage] = []
 
     private let room: StallableRoom
-    private let hostPlayerID: PlayerID
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
+    private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
     private var backlog: [ReceivedRoomMessage] = []
 
-    init(room: StallableRoom, localPeer: OnlinePeer, hostPlayerID: PlayerID) {
+    init(room: StallableRoom, localPeer: OnlinePeer) {
         self.room = room
         self.localPeer = localPeer
         self.participants = room.peers
-        self.hostPlayerID = hostPlayerID
     }
 
     var resyncRequestCount: Int {
@@ -757,7 +902,7 @@ private final class StallableTransport: RoomRealtimeTransport {
     }
 
     func chooseHost() async -> OnlinePeer? {
-        participants.first { $0.playerID == hostPlayerID }
+        participants.first { $0.playerID == room.hostPlayerID }
     }
 
     func messages() -> AsyncStream<ReceivedRoomMessage> {
@@ -784,9 +929,26 @@ private final class StallableTransport: RoomRealtimeTransport {
         room.deliver(message, from: localPeer, to: participants)
     }
 
+    func participantUpdates() -> AsyncStream<[OnlinePeer]> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            continuation.yield(participants)
+            participantContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.participantContinuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
+    func hostRecoveryContext() async throws -> OnlineResumeContext? {
+        room.currentRecoveryContext()
+    }
+
     func disconnect() {
         for continuation in continuations.values { continuation.finish() }
         continuations.removeAll()
+        for continuation in participantContinuations.values { continuation.finish() }
+        participantContinuations.removeAll()
         backlog.removeAll()
     }
 
@@ -796,6 +958,13 @@ private final class StallableTransport: RoomRealtimeTransport {
             backlog.append(message)
         } else {
             for continuation in continuations.values { continuation.yield(message) }
+        }
+    }
+
+    fileprivate func receivePresence() {
+        guard !isStalled else { return }
+        for continuation in participantContinuations.values {
+            continuation.yield(participants)
         }
     }
 }
@@ -908,9 +1077,12 @@ private final class AccountAddressedTransport: RoomRealtimeTransport {
 private final class PresenceDrivenTransport: RoomRealtimeTransport {
     let localPeer: OnlinePeer
     private(set) var participants: [OnlinePeer]
+    var blockedReportSequences: Set<Int> = []
+    private(set) var events: [String] = []
 
     private let hostPlayerID: PlayerID
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
+    private var connectionContinuations: [UUID: AsyncStream<RoomTransportEvent>.Continuation] = [:]
 
     init(localPeer: OnlinePeer, hostPlayerID: PlayerID, participants: [OnlinePeer]) {
         self.localPeer = localPeer
@@ -937,20 +1109,63 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
         }
     }
 
-    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws {}
-    func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {}
+    func connectionEvents() -> AsyncStream<RoomTransportEvent> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            connectionContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.connectionContinuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
+    func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws {
+        if case let .projection(envelope) = message {
+            events.append("projection:\(envelope.sequence)")
+        }
+    }
+
+    func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {
+        if case .seatAssignment = message {
+            events.append("seat-assignment")
+        }
+    }
+
+    func reportState(
+        status: PreferansGameStatus,
+        summary: OnlineStateSummary,
+        snapshot: PreferansSnapshot?,
+        snapshotSequence: Int
+    ) async throws {
+        events.append("report-attempt:\(snapshotSequence)")
+        if blockedReportSequences.contains(snapshotSequence) {
+            throw URLError(.networkConnectionLost)
+        }
+        events.append("report-commit:\(snapshotSequence)")
+    }
 
     func disconnect() {
         for continuation in participantContinuations.values {
             continuation.finish()
         }
         participantContinuations.removeAll()
+        for continuation in connectionContinuations.values {
+            continuation.finish()
+        }
+        connectionContinuations.removeAll()
     }
 
     func simulatePresence(_ peers: [OnlinePeer]) {
         participants = peers
         for continuation in participantContinuations.values {
             continuation.yield(peers)
+        }
+    }
+
+
+    func simulateConnectionEvent(_ event: RoomTransportEvent) {
+        for continuation in connectionContinuations.values {
+            continuation.yield(event)
         }
     }
 }

@@ -5,24 +5,82 @@ public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
     public var schemaVersion: Int
     public var roomCode: String
     public var hostPlayerID: PlayerID
+    /// Monotonic server authority generation. It advances whenever the Durable
+    /// Object elects a replacement host.
+    public var hostEpoch: Int
     public var peers: [OnlinePeer]
     public var maxPlayers: Int
     public var createdAt: String
     public var updatedAt: String
     public var relaySequence: Int
     public var websocketURL: URL?
-    /// The secret the room's host must present to perform host-only mutations
-    /// (e.g. filling open seats with bots, reporting state). Returned in the
-    /// `/create` response, and again on `/join` when the joining account holds
-    /// the host seat — so a resuming host regains its authority. Absent (`nil`)
-    /// on guest join/summary/presence payloads, so guests never see it.
-    public var hostSecret: String?
     /// Server-minted proof that this caller owns its seat. Returned by `/create`
     /// and `/join` (each caller only ever sees its own), embedded by the server
     /// in `websocketURL`, and required by `/snapshot` and `/abandon` once the
-    /// worker's compatibility window for pre-token clients closes. Absent on
-    /// summary/presence payloads.
+    /// every sensitive v2 path. Absent on summary/presence payloads.
     public var seatToken: String?
+}
+
+public struct OnlineAccountRegistration: Decodable, Sendable, Equatable {
+    public var account: RegisteredOnlineAccount
+    public var sessionToken: String
+}
+
+/// Registration is the only unauthenticated v2 API surface. It exchanges a
+/// display name (guest) or verified Apple identity token + nonce for a
+/// server-issued account and bearer session.
+public struct CloudflareAccountClient: Sendable {
+    public var baseURL: URL
+    public var session: URLSession
+
+    public init(baseURL: URL = AppIdentifiers.roomWorkerBaseURL, session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+
+    public func registerGuest(displayName: String) async throws -> OnlineAccountRegistration {
+        try await register(
+            GuestRegistrationRequest(displayName: displayName),
+            endpoint: "guest"
+        )
+    }
+
+    public func registerApple(
+        identityToken: String,
+        nonce: String,
+        displayName: String
+    ) async throws -> OnlineAccountRegistration {
+        try await register(
+            AppleRegistrationRequest(identityToken: identityToken, nonce: nonce, displayName: displayName),
+            endpoint: "apple"
+        )
+    }
+
+    private func register<Body: Encodable>(_ body: Body, endpoint: String) async throws -> OnlineAccountRegistration {
+        let url = baseURL
+            .appendingPathComponent("v2")
+            .appendingPathComponent("accounts")
+            .appendingPathComponent(endpoint)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.httpBody = try PreferansJSONCoder.encoder.encode(body)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let message = (try? PreferansJSONCoder.decoder.decode(RoomServerError.self, from: data).error)
+                ?? "Account server returned HTTP \(http.statusCode)."
+            throw CloudflareRoomTransportError.serverError(message)
+        }
+        let registration = try PreferansJSONCoder.decoder.decode(OnlineAccountRegistration.self, from: data)
+        guard registration.account.schemaVersion == AppIdentifiers.cloudSchemaVersion,
+              !registration.sessionToken.isEmpty else {
+            throw CloudflareRoomTransportError.serverError("Account server returned an incompatible session.")
+        }
+        return registration
+    }
 }
 
 public enum CloudflareRoomTransportError: LocalizedError {
@@ -56,13 +114,15 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 
     @Published public private(set) var participants: [OnlinePeer]
     @Published public private(set) var hostPlayerID: PlayerID
+    @Published public private(set) var hostEpoch: Int
     @Published public private(set) var lastError: String?
+    @Published public private(set) var latestConnectionEvent: RoomTransportEvent?
 
     private let socketURL: URL
     private let session: URLSession
-    /// The host secret from the `/create` response (or a host's rejoin);
-    /// required to authenticate host-only mutations. `nil` on a guest transport.
-    private let hostSecret: String?
+    /// Account-wide bearer credential. Every v2 HTTP mutation uses it; the
+    /// socket itself uses the narrower room seat token embedded in its URL.
+    private let accountSessionToken: String
     /// This seat's ownership credential from the `/create`/`/join` response.
     /// Exposed so the session can persist it for lobby flows (resume-snapshot
     /// fetch, abandon) that run without a live transport.
@@ -72,11 +132,18 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     private var isClosed = false
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
+    private var connectionEventContinuations: [UUID: AsyncStream<RoomTransportEvent>.Continuation] = [:]
 
     private var encoder: JSONEncoder { PreferansJSONCoder.encoder }
     private var decoder: JSONDecoder { PreferansJSONCoder.decoder }
 
-    public init(baseURL: URL, summary: CloudflareRoomSummary, localPeer: OnlinePeer, session: URLSession = .shared) throws {
+    public init(
+        baseURL: URL,
+        summary: CloudflareRoomSummary,
+        localPeer: OnlinePeer,
+        accountSessionToken: String,
+        session: URLSession = .shared
+    ) throws {
         guard let socketURL = summary.websocketURL else {
             throw CloudflareRoomTransportError.missingSocketURL
         }
@@ -85,8 +152,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.localPeer = localPeer
         self.participants = summary.peers
         self.hostPlayerID = summary.hostPlayerID
+        self.hostEpoch = summary.hostEpoch
         self.socketURL = socketURL
-        self.hostSecret = summary.hostSecret
+        self.accountSessionToken = accountSessionToken
         self.seatToken = summary.seatToken
         self.session = session
     }
@@ -99,29 +167,58 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         baseURL: URL,
         localPeer: OnlinePeer,
         seats: [OnlinePeer],
+        accountSessionToken: String,
         maxPlayers: Int = 4,
         session: URLSession = .shared
     ) async throws -> CloudflareRoomTransport {
-        let request = CreateRoomRequest(localPeer: localPeer, seats: seats, maxPlayers: maxPlayers)
-        let summary = try await postRoomRequest(request, to: endpoint(baseURL, "rooms"), session: session)
-        return try CloudflareRoomTransport(baseURL: baseURL, summary: summary, localPeer: localPeer, session: session)
+        let request = CreateRoomRequest(
+            localPlayerID: localPeer.playerID,
+            seats: seats.map(RoomSeatIntent.init(peer:)),
+            maxPlayers: maxPlayers
+        )
+        let summary = try await postRoomRequest(
+            request,
+            to: endpoint(baseURL, "v2", "rooms"),
+            accountSessionToken: accountSessionToken,
+            session: session
+        )
+        let assignedPeer = summary.peers.first { $0.accountID == localPeer.accountID } ?? localPeer
+        return try CloudflareRoomTransport(
+            baseURL: baseURL,
+            summary: summary,
+            localPeer: assignedPeer,
+            accountSessionToken: accountSessionToken,
+            session: session
+        )
     }
 
     public static func joinRoom(
         baseURL: URL,
         roomCode: String,
         localPeer: OnlinePeer,
+        accountSessionToken: String,
         session: URLSession = .shared
     ) async throws -> CloudflareRoomTransport {
-        let request = JoinRoomRequest(localPeer: localPeer)
-        let summary = try await postRoomRequest(request, to: endpoint(baseURL, "rooms", roomCode, "join"), session: session)
+        let request = JoinRoomRequest(requestedPlayerID: localPeer.playerID)
+        let summary = try await postRoomRequest(
+            request,
+            to: endpoint(baseURL, "v2", "rooms", roomCode, "join"),
+            accountSessionToken: accountSessionToken,
+            session: session
+        )
         // The server binds joiners to a seat by `accountID`: it honors the seat
         // we asked for when it's still open, but redirects us to another open
         // seat if ours was taken. Adopt the seat it actually gave us so
         // `localPeer`, `localSeat`, and the socket identity in
         // `summary.websocketURL` all agree.
         let assignedPeer = summary.peers.first { $0.accountID == localPeer.accountID } ?? localPeer
-        return try CloudflareRoomTransport(baseURL: baseURL, summary: summary, localPeer: assignedPeer, session: session)
+        return try CloudflareRoomTransport(
+            baseURL: baseURL,
+            summary: summary,
+            localPeer: assignedPeer,
+            accountSessionToken: accountSessionToken,
+            session: session
+        )
     }
 
     public func chooseHost() async -> OnlinePeer? {
@@ -153,6 +250,19 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         }
     }
 
+    public func connectionEvents() -> AsyncStream<RoomTransportEvent> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            if let latestConnectionEvent {
+                continuation.yield(latestConnectionEvent)
+            }
+            connectionEventContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.connectionEventContinuations.removeValue(forKey: id) }
+            }
+        }
+    }
+
     public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) async throws {
         try await send(ClientSocketEnvelope(type: .wire, recipients: peers.map(\.playerID), reliable: reliably, message: message))
     }
@@ -162,51 +272,54 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     }
 
     /// Ask the worker to convert every still-open (`pending:`) seat into a bot.
-    /// Authenticated with the host secret from `/create`, so only the host can do
-    /// it. Adopts and re-publishes the roster the server returns so the caller
+    /// Authenticated by the account session; the worker verifies that account
+    /// owns the host seat. Adopts and re-publishes the roster so the caller
     /// sees the change without waiting for the presence broadcast to round-trip.
     public func fillPendingSeatsWithBots() async throws -> [OnlinePeer]? {
-        guard let hostSecret else {
-            throw CloudflareRoomTransportError.serverError("Only the host can fill open seats with bots.")
+        guard let seatToken else {
+            throw CloudflareRoomTransportError.serverError("This device no longer owns the room seat.")
         }
         let summary = try await Self.postRoomRequest(
-            FillBotsRequest(hostSecret: hostSecret),
-            to: Self.endpoint(baseURL, "rooms", roomCode, "seats", "fill-bots"),
+            HostMutationRequest(playerID: localPeer.playerID, seatToken: seatToken),
+            to: Self.endpoint(baseURL, "v2", "rooms", roomCode, "seats", "fill-bots"),
+            accountSessionToken: accountSessionToken,
             session: session
         )
         participants = summary.peers
         hostPlayerID = summary.hostPlayerID
+        hostEpoch = summary.hostEpoch
         emitParticipants()
         return summary.peers
     }
 
     /// Push the host's progress to the worker: lifecycle status, the
     /// worker-readable summary, and the opaque resume snapshot. Authenticated
-    /// with the host secret, so a guest transport (no secret) is a silent no-op.
-    /// Best-effort and called after every host update — the room/engine remain
-    /// the source of truth if a report is lost.
+    /// with the account session; the worker accepts it only from the host account.
+    /// Called as a commit barrier before the coordinator publishes the matching
+    /// projections, so every visible action is already recoverable.
     public func reportState(
         status: PreferansGameStatus,
         summary: OnlineStateSummary,
         snapshot: PreferansSnapshot?,
         snapshotSequence: Int
     ) async throws {
-        guard let hostSecret else { return }
         // Send the snapshot as a *pre-encoded JSON string*, not an inline object:
         // the worker stores the blob via JS `JSON.parse`/`stringify`, which would
         // silently round large engine integers through a double and corrupt them
         // (> 2^53). Keeping it an opaque string makes the round-trip byte-exact.
         let snapshotBlob = try snapshot.map { String(decoding: try encoder.encode($0), as: UTF8.self) }
         let body = StateReportRequest(
-            hostSecret: hostSecret,
+            playerID: localPeer.playerID,
+            seatToken: try requiredSeatToken(),
             status: status,
             summary: summary,
             snapshot: snapshotBlob,
             snapshotSequence: snapshotSequence
         )
-        var request = URLRequest(url: Self.endpoint(baseURL, "rooms", roomCode, "state"))
+        var request = URLRequest(url: Self.endpoint(baseURL, "v2", "rooms", roomCode, "state"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
         request.httpBody = try encoder.encode(body)
 
         let (data, response) = try await session.data(for: request)
@@ -229,23 +342,25 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         roomCode: String,
         playerID: PlayerID,
-        seatToken: String? = nil,
+        seatToken: String,
+        accountSessionToken: String,
         session: URLSession = .shared
     ) async throws -> ResumeSnapshotPayload {
         var components = URLComponents(
-            url: endpoint(baseURL, "rooms", roomCode, "snapshot"),
+            url: endpoint(baseURL, "v2", "rooms", roomCode, "snapshot"),
             resolvingAgainstBaseURL: false
         )
-        var queryItems = [URLQueryItem(name: "playerID", value: playerID.rawValue)]
-        if let seatToken {
-            queryItems.append(URLQueryItem(name: "seatToken", value: seatToken))
-        }
+        let queryItems = [
+            URLQueryItem(name: "playerID", value: playerID.rawValue),
+            URLQueryItem(name: "seatToken", value: seatToken)
+        ]
         components?.queryItems = queryItems
         guard let url = components?.url else {
             throw CloudflareRoomTransportError.invalidHTTPResponse
         }
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -260,20 +375,37 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         return try PreferansJSONCoder.decoder.decode(ResumeSnapshotPayload.self, from: data)
     }
 
+    /// Fetch the durable state this device must adopt after the worker elects
+    /// it host. A playing room without a valid snapshot is not safe to restart:
+    /// fail closed instead of silently dealing a different game.
+    public func hostRecoveryContext() async throws -> OnlineResumeContext? {
+        let payload = try await Self.fetchSnapshot(
+            baseURL: baseURL,
+            roomCode: roomCode,
+            playerID: localPeer.playerID,
+            seatToken: try requiredSeatToken(),
+            accountSessionToken: accountSessionToken,
+            session: session
+        )
+        return try payload.validatedResumeContext()
+    }
+
     /// Abandon an unfinished game from the lobby (a game the player isn't
     /// currently sitting at). Authorized by the seat the account holds, not the
-    /// host secret — so it works even though the original host is gone. Static,
+    /// host role — so it works even though the original host is gone. Static,
     /// since there's no live transport for a game that isn't open.
     public static func abandon(
         baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
         roomCode: String,
         playerID: PlayerID,
-        seatToken: String? = nil,
+        seatToken: String,
+        accountSessionToken: String,
         session: URLSession = .shared
     ) async throws {
-        var request = URLRequest(url: endpoint(baseURL, "rooms", roomCode, "abandon"))
+        var request = URLRequest(url: endpoint(baseURL, "v2", "rooms", roomCode, "abandon"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
         request.httpBody = try PreferansJSONCoder.encoder.encode(AbandonRequest(playerID: playerID, seatToken: seatToken))
 
         let (data, response) = try await session.data(for: request)
@@ -294,6 +426,13 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         }
     }
 
+    private func requiredSeatToken() throws -> String {
+        guard let seatToken, !seatToken.isEmpty else {
+            throw CloudflareRoomTransportError.serverError("This device no longer owns the room seat.")
+        }
+        return seatToken
+    }
+
     public func disconnect() {
         isClosed = true
         connectionTask?.cancel()
@@ -308,6 +447,10 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             continuation.finish()
         }
         participantContinuations.removeAll()
+        for continuation in connectionEventContinuations.values {
+            continuation.finish()
+        }
+        connectionEventContinuations.removeAll()
     }
 
     private func connectIfNeeded() {
@@ -346,12 +489,20 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                         establishedThisSocket = true
                         attempt = 0            // a delivered frame proves the link is healthy
                         lastError = nil
+                        emitConnectionEvent(.connected)
                     }
                     try handleSocketMessage(message)
                 }
             } catch {
                 if Task.isCancelled || isClosed { break }
+                if task.closeCode.rawValue == 4009 {
+                    lastError = String(localized: "This table was opened on another device.")
+                    emitConnectionEvent(.seatTakenOver)
+                    isClosed = true
+                    break
+                }
                 lastError = error.localizedDescription
+                emitConnectionEvent(.reconnecting)
             }
             socketTask?.cancel()
             socketTask = nil
@@ -401,9 +552,10 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         let envelope = try decoder.decode(ServerSocketEnvelope.self, from: data)
         switch envelope.type {
         case .room, .presence:
-            if let room = envelope.room {
+            if let room = envelope.room, room.hostEpoch >= hostEpoch {
                 participants = room.peers
                 hostPlayerID = room.hostPlayerID
+                hostEpoch = room.hostEpoch
                 emitParticipants()
             }
         case .wire:
@@ -413,19 +565,31 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             }
         case .error:
             lastError = envelope.error
+            if envelope.code == "seat_credential_invalid" {
+                emitConnectionEvent(.seatTakenOver)
+            }
         case .pong:
             break
+        }
+    }
+
+    private func emitConnectionEvent(_ event: RoomTransportEvent) {
+        latestConnectionEvent = event
+        for continuation in connectionEventContinuations.values {
+            continuation.yield(event)
         }
     }
 
     private static func postRoomRequest<Request: Encodable>(
         _ body: Request,
         to url: URL,
+        accountSessionToken: String,
         session: URLSession
     ) async throws -> CloudflareRoomSummary {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
         request.httpBody = try PreferansJSONCoder.encoder.encode(body)
 
         let (data, response) = try await session.data(for: request)
@@ -449,21 +613,40 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 }
 
 private struct CreateRoomRequest: Encodable {
-    var localPeer: OnlinePeer
-    var seats: [OnlinePeer]
+    var localPlayerID: PlayerID
+    var seats: [RoomSeatIntent]
     var maxPlayers: Int
 }
 
 private struct JoinRoomRequest: Encodable {
-    var localPeer: OnlinePeer
+    var requestedPlayerID: PlayerID
 }
 
-private struct FillBotsRequest: Encodable {
-    var hostSecret: String
+private struct RoomSeatIntent: Encodable {
+    enum Kind: String, Encodable {
+        case you
+        case open
+        case bot
+    }
+
+    var playerID: PlayerID
+    var kind: Kind
+
+    init(peer: OnlinePeer) {
+        playerID = peer.playerID
+        if peer.isBotSeat {
+            kind = .bot
+        } else if peer.isPendingSeat {
+            kind = .open
+        } else {
+            kind = .you
+        }
+    }
 }
 
 private struct StateReportRequest: Encodable {
-    var hostSecret: String
+    var playerID: PlayerID
+    var seatToken: String
     var status: PreferansGameStatus
     var summary: OnlineStateSummary
     /// The PreferansSnapshot pre-encoded to a JSON string. Sent as a string (not
@@ -473,9 +656,24 @@ private struct StateReportRequest: Encodable {
     var snapshotSequence: Int
 }
 
+private struct HostMutationRequest: Encodable {
+    var playerID: PlayerID
+    var seatToken: String
+}
+
 private struct AbandonRequest: Encodable {
     var playerID: PlayerID
-    var seatToken: String?
+    var seatToken: String
+}
+
+private struct GuestRegistrationRequest: Encodable {
+    var displayName: String
+}
+
+private struct AppleRegistrationRequest: Encodable {
+    var identityToken: String
+    var nonce: String
+    var displayName: String
 }
 
 private struct RoomServerError: Decodable {

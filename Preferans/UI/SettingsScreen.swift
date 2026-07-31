@@ -68,7 +68,7 @@ public struct SettingsScreen: View {
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This removes the saved online identity, display name, anonymous room account, and pending room code from this device. You can create a new identity later.")
+                Text("This removes the saved online account, secure session, display name, and room credentials from this device. You can register again later.")
             }
             .onAppear {
                 refreshAccountStatus()
@@ -182,20 +182,24 @@ public struct SettingsScreen: View {
     }
 
     private static func accountStatusText() -> String {
-        if UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount) != nil {
-            return String(localized: "Signed in with Apple")
+        if let data = UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount),
+           let account = try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data),
+           account.schemaVersion == AppIdentifiers.cloudSchemaVersion,
+           OnlineAccountSessionStore.token() != nil {
+            return account.provider == .apple
+                ? String(localized: "Signed in with Apple")
+                : String(localized: "Guest account registered")
         }
         if let name = UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName),
            !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return String(localized: "Display name saved")
         }
-        if UserDefaults.standard.string(forKey: SettingsKeys.onlineAnonymousAccountID) != nil {
-            return String(localized: "Anonymous room account saved")
-        }
         return String(localized: "No saved account")
     }
 
     private static func deleteAccountData() {
+        OnlineAccountSessionStore.remove()
+        OnlineSeatCredentialStore.removeAll()
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)

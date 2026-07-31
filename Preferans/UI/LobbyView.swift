@@ -22,13 +22,14 @@ public struct LobbyView: View {
     /// The invisible 1×1 automation affordances exist only under XCUITest —
     /// in a shipping build they were VoiceOver-reachable unlabeled buttons
     /// that could start a real table or online room.
-    private let isUIAutomation = TestHarness.isUIAutomation()
+    let isUIAutomation = TestHarness.isUIAutomation()
 
     @StateObject var viewModel = LobbyViewModel()
     @StateObject private var gameLibrary = OnlineGameLibrary()
     @State private var activeSheet: Sheet?
     @State private var showingWatchBotsConfirm = false
     @State private var didRunOnlineHarness = false
+    @State var appleSignInNonce: String?
 
     public init() {}
 
@@ -181,7 +182,7 @@ public struct LobbyView: View {
         .feltBackground()
         .task(id: onlineGamesRefreshKey) {
             guard viewModel.lobbyMode == .online else { return }
-            await gameLibrary.refresh(accountID: viewModel.currentOnlineAccountID)
+            await gameLibrary.refresh(sessionToken: viewModel.onlineAccountSessionToken)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenLobby)

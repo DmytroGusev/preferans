@@ -2,6 +2,7 @@ import SwiftUI
 import PreferansEngine
 #if canImport(AuthenticationServices)
 import AuthenticationServices
+import CryptoKit
 #endif
 
 // MARK: - Online setup card
@@ -27,6 +28,16 @@ extension LobbyView {
     /// from the local `seats` roster.
     private var onlineVariantSection: some View {
         onlinePanel(title: "Variant", icon: "slider.horizontal.3") {
+            variantControls
+            pulkaLimitPicker
+        }
+    }
+
+    /// Shared convention controls for local and online play. A convention is a
+    /// rules choice, not a networking choice, so both lobby paths must seed the
+    /// same engine profile and pool-closing policy.
+    var variantControls: some View {
+        Group {
             Picker("Variant", selection: $viewModel.onlineVariant) {
                 ForEach(PreferansVariant.allCases) { variant in
                     Text(variant.title).tag(variant)
@@ -47,8 +58,6 @@ extension LobbyView {
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
-
-            pulkaLimitPicker
         }
     }
 
@@ -207,11 +216,27 @@ extension LobbyView {
                         }
                         .buttonStyle(.plain)
                         .foregroundStyle(TableTheme.inkCreamSoft)
-                        .accessibilityLabel("Use anonymous identity")
+                        .accessibilityLabel("Sign out")
                     }
                 )
             } else {
                 onlineNameField
+
+                Button {
+                    viewModel.registerGuestOnlineAccount()
+                } label: {
+                    Label("Continue as Guest", systemImage: "person.crop.circle.badge.plus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(TableTheme.gold)
+                .disabled(
+                    viewModel.isOnlineRoomLoading ||
+                    viewModel.onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+                .accessibilityIdentifier(UIIdentifiers.onlineRegisterAsGuest)
 
                 #if canImport(AuthenticationServices)
                 // Full width and 44pt tall: aligned to the same grid (and
@@ -305,7 +330,11 @@ extension LobbyView {
             // down here a quiet pointer explains the disabled CTA without
             // repeating the alert.
             if viewModel.onlineSetupValidationError != nil {
-                Text("Add your name above to create a table.")
+                Text(
+                    viewModel.currentOnlineDisplayName.isEmpty
+                        ? String(localized: "Add your name above to create a table.")
+                        : String(localized: "Finish registration above to create a table.")
+                )
                     .font(.caption2)
                     .foregroundStyle(TableTheme.inkCreamDim)
                     .multilineTextAlignment(.center)
@@ -383,6 +412,11 @@ extension LobbyView {
     #if canImport(AuthenticationServices)
     private func configureAppleSignIn(_ request: ASAuthorizationAppleIDRequest) {
         request.requestedScopes = [.fullName]
+        let nonce = UUID().uuidString.lowercased()
+        appleSignInNonce = nonce
+        request.nonce = SHA256.hash(data: Data(nonce.utf8))
+            .map { String(format: "%02x", $0) }
+            .joined()
     }
 
     private func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
@@ -392,8 +426,15 @@ extension LobbyView {
                 viewModel.errorText = String(localized: "Apple sign-in did not return an app account.")
                 return
             }
+            guard let tokenData = credential.identityToken,
+                  let identityToken = String(data: tokenData, encoding: .utf8),
+                  let nonce = appleSignInNonce else {
+                viewModel.errorText = String(localized: "Apple sign-in did not return a verifiable identity.")
+                return
+            }
             viewModel.completeAppleRegistration(
-                userID: credential.user,
+                identityToken: identityToken,
+                nonce: nonce,
                 fullName: credential.fullName
             )
         case let .failure(error):

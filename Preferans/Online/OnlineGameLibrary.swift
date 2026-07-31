@@ -32,7 +32,7 @@ public struct OnlineGameResult: Codable, Sendable, Equatable {
     public var finalScores: [String: Int]?
 }
 
-/// The host-authored progress summary sent to `POST /rooms/{code}/state`.
+/// The host-authored progress summary sent to `POST /v2/rooms/{code}/state`.
 /// Mirrors the worker's `GameSummary`; the worker stores it verbatim and fans
 /// it out to participant libraries.
 public struct OnlineStateSummary: Codable, Sendable, Equatable {
@@ -57,7 +57,7 @@ public struct OnlineStateSummary: Codable, Sendable, Equatable {
     }
 }
 
-/// Decoded `GET /rooms/{code}/snapshot` payload. `snapshot` is the opaque blob
+/// Decoded `GET /v2/rooms/{code}/snapshot` payload. `snapshot` is the opaque blob
 /// the worker stored — a pre-encoded `PreferansSnapshot` JSON *string* (opaque to
 /// the worker, byte-exact across the round-trip). `decodedSnapshot` rehydrates it
 /// here. Nil when the room has no resumable snapshot (still in lobby, or already
@@ -72,6 +72,30 @@ public struct ResumeSnapshotPayload: Decodable, Sendable {
     public var decodedSnapshot: PreferansSnapshot? {
         guard let snapshot, let data = snapshot.data(using: .utf8) else { return nil }
         return try? PreferansJSONCoder.decoder.decode(PreferansSnapshot.self, from: data)
+    }
+
+    /// Validate the room lifecycle against its durable snapshot. A lobby may
+    /// legitimately have no engine yet; a playing table may not. Treating a
+    /// missing/corrupt playing snapshot as a fresh lobby would fork the match.
+    public func validatedResumeContext() throws -> OnlineResumeContext? {
+        switch status {
+        case .lobby:
+            guard snapshot != nil else { return nil }
+        case .playing:
+            guard snapshot != nil else {
+                throw CloudflareRoomTransportError.serverError(
+                    "This table cannot be recovered because its latest game state is unavailable."
+                )
+            }
+        case .finished, .abandoned:
+            throw CloudflareRoomTransportError.serverError("This table is no longer in progress.")
+        }
+        guard let decodedSnapshot else {
+            throw CloudflareRoomTransportError.serverError(
+                "This table cannot be recovered because its saved game state is invalid."
+            )
+        }
+        return OnlineResumeContext(snapshot: decodedSnapshot, sequence: lastSnapshotSequence)
     }
 }
 
@@ -98,10 +122,10 @@ public extension OnlineGameSummary {
 /// Account-scoped read of a player's games. Abstracted so the lobby's
 /// `OnlineGameLibrary` can be unit-tested against a stub without a worker.
 public protocol OnlineGameDirectory: Sendable {
-    func fetchMyGames(accountID: String) async throws -> [OnlineGameSummary]
+    func fetchMyGames(sessionToken: String) async throws -> [OnlineGameSummary]
 }
 
-/// `OnlineGameDirectory` backed by the Cloudflare worker's `GET /my-games`.
+/// `OnlineGameDirectory` backed by authenticated `GET /v2/my-games`.
 public struct CloudflareGameDirectory: OnlineGameDirectory {
     public var baseURL: URL
     public var session: URLSession
@@ -111,18 +135,11 @@ public struct CloudflareGameDirectory: OnlineGameDirectory {
         self.session = session
     }
 
-    public func fetchMyGames(accountID: String) async throws -> [OnlineGameSummary] {
-        var components = URLComponents(
-            url: baseURL.appendingPathComponent("my-games"),
-            resolvingAgainstBaseURL: false
-        )
-        components?.queryItems = [URLQueryItem(name: "accountID", value: accountID)]
-        guard let url = components?.url else {
-            throw CloudflareRoomTransportError.invalidHTTPResponse
-        }
-
+    public func fetchMyGames(sessionToken: String) async throws -> [OnlineGameSummary] {
+        let url = baseURL.appendingPathComponent("v2").appendingPathComponent("my-games")
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "authorization")
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw CloudflareRoomTransportError.invalidHTTPResponse
@@ -173,13 +190,13 @@ public final class OnlineGameLibrary: ObservableObject {
 
     public var isEmpty: Bool { inProgress.isEmpty && finished.isEmpty }
 
-    /// Reload the list for `accountID`. A nil/empty account (a fresh install
-    /// that never played online) clears the list without a network call.
-    public func refresh(accountID: String?) async {
+    /// Reload the authenticated account's list. A nil/empty session (a fresh
+    /// install or signed-out player) clears the list without a network call.
+    public func refresh(sessionToken: String?) async {
         refreshGeneration &+= 1
         let generation = refreshGeneration
 
-        guard let accountID, !accountID.isEmpty else {
+        guard let sessionToken, !sessionToken.isEmpty else {
             inProgress = []
             finished = []
             isLoading = false
@@ -196,7 +213,7 @@ public final class OnlineGameLibrary: ObservableObject {
             }
         }
         do {
-            let games = try await directory.fetchMyGames(accountID: accountID)
+            let games = try await directory.fetchMyGames(sessionToken: sessionToken)
             guard generation == refreshGeneration else { return }
             // Most-recent-first order arrives from the worker; preserve it.
             inProgress = games.filter(\.isInProgress)

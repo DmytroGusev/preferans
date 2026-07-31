@@ -6,6 +6,36 @@ import XCTest
 /// engine snapshot the previous host pushed lands on the exact same state and
 /// keeps validating play from where the table left off.
 final class OnlineResumeSnapshotTests: XCTestCase {
+    func testPlayingRoomFailsClosedWithoutAValidDurableSnapshot() throws {
+        let missing = ResumeSnapshotPayload(
+            roomCode: "ROOM1",
+            status: .playing,
+            lastSnapshotSequence: 8,
+            snapshot: nil
+        )
+        XCTAssertThrowsError(try missing.validatedResumeContext()) { error in
+            XCTAssertTrue(error.localizedDescription.contains("unavailable"))
+        }
+
+        let corrupt = ResumeSnapshotPayload(
+            roomCode: "ROOM1",
+            status: .playing,
+            lastSnapshotSequence: 8,
+            snapshot: "not-json"
+        )
+        XCTAssertThrowsError(try corrupt.validatedResumeContext()) { error in
+            XCTAssertTrue(error.localizedDescription.contains("invalid"))
+        }
+
+        let lobby = ResumeSnapshotPayload(
+            roomCode: "ROOM1",
+            status: .lobby,
+            lastSnapshotSequence: 0,
+            snapshot: nil
+        )
+        XCTAssertNil(try lobby.validatedResumeContext())
+    }
+
     private let players: [PlayerID] = ["north", "east", "south"]
 
     func testResumeFromSnapshotMatchesStateAndContinuesPlay() async throws {
