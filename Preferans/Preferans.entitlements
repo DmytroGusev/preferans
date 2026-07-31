@@ -13,17 +13,5 @@
 		<string>applinks:preferans.game</string>
 		<string>applinks:preferans-room-worker.ontofractal.workers.dev</string>
 	</array>
-	<key>com.apple.developer.icloud-container-identifiers</key>
-	<array>
-		<string>iCloud.com.mixandmatch.preferans</string>
-	</array>
-	<key>com.apple.developer.icloud-services</key>
-	<array>
-		<string>CloudKit</string>
-	</array>
-	<key>com.apple.developer.ubiquity-container-identifiers</key>
-	<array>
-		<string>iCloud.com.mixandmatch.preferans</string>
-	</array>
 </dict>
 </plist>

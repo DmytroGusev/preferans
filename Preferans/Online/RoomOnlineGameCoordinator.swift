@@ -47,7 +47,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// Variant label (`"odesa"`/`"wien"`) carried into the worker summary so the
     /// lobby's "Your games" rows can name the house rules. Presentation-only.
     private var variantTag: String?
-    private let cloudStore: (any GameArchiveStore)?
     private let dealSource: DealSource
     private var didAutoStartOnlineDeal = false
 
@@ -75,7 +74,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let livenessClock = ContinuousClock()
 
     public init(
-        cloudStore: (any GameArchiveStore)? = nil,
         dealSource: DealSource = RandomDealSource(),
         heartbeat: HeartbeatConfig = .default,
         botMoveDelay: Duration = BotPacing.interactive,
@@ -83,7 +81,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         durabilityRetryInitialDelay: Duration = .milliseconds(500),
         runsServerSideBots: Bool = true
     ) {
-        self.cloudStore = cloudStore
         self.dealSource = dealSource
         self.heartbeat = heartbeat
         self.botMoveDelay = botMoveDelay
@@ -481,7 +478,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.state = .connectedAsHost
         self.liveness = .live
         await publish(update)
-        await persistTableSummary(update)
     }
 
     private func sendHello() async {
@@ -789,7 +785,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             }
             guard isHost, self.hostActor === hostActor else { return }
             await publish(update)
-            await persistAfter(update)
         } catch {
             await onError(error)
         }
@@ -814,7 +809,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     guard self.isHost,
                           self.pendingDurableUpdate?.sequence == pending.sequence else { return }
                     await self.publish(pending)
-                    await self.persistAfter(pending)
                     self.pendingDurableUpdate = nil
                     self.durabilityRetryTask = nil
                     if self.errorText == message {
@@ -864,58 +858,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             } catch {
                 errorText = error.localizedDescription
             }
-        }
-    }
-
-    private func persistTableSummary(_ update: HostUpdate) async {
-        guard let cloudStore, let localSeat, let projection else { return }
-        let summary = CloudTableSummary(
-            tableID: update.tableID,
-            status: update.status,
-            hostPlayerID: localSeat,
-            seats: roster.seats,
-            rules: rules,
-            lastSequence: update.sequence
-        )
-        do {
-            try await cloudStore.upsertTableSummary(summary, latestPublicProjection: projection)
-        } catch {
-            errorText = "CloudKit table save failed: \(error.localizedDescription)"
-        }
-    }
-
-    private func persistAfter(_ update: HostUpdate) async {
-        guard let cloudStore else { return }
-        do {
-            if let action = update.validatedAction {
-                try await cloudStore.appendValidatedAction(action)
-            }
-            try await cloudStore.saveHostSnapshot(update.snapshot, tableID: update.tableID, sequence: update.sequence)
-
-            if let localProjection = projection, let localSeat {
-                let summary = CloudTableSummary(
-                    tableID: update.tableID,
-                    status: update.status,
-                    hostPlayerID: localSeat,
-                    seats: roster.seats,
-                    rules: rules,
-                    lastSequence: update.sequence
-                )
-                try await cloudStore.upsertTableSummary(summary, latestPublicProjection: localProjection)
-            }
-
-            if case let .dealFinished(result) = update.snapshot.state {
-                try await cloudStore.saveCompletedDeal(
-                    CompletedDealArchive(
-                        tableID: update.tableID,
-                        sequence: update.sequence,
-                        result: result,
-                        cumulativeScore: update.snapshot.score
-                    )
-                )
-            }
-        } catch {
-            errorText = "CloudKit archive failed: \(error.localizedDescription)"
         }
     }
 

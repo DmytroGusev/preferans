@@ -1,16 +1,15 @@
 import Foundation
 
 public enum AppIdentifiers {
-    /// Replace this with the iCloud container you create in Signing & Capabilities.
-    public static let cloudKitContainer = "iCloud.com.mixandmatch.preferans"
-
     /// Add this ID in a .gamekit bundle / App Store Connect if you use Game Center Activities.
     public static let gameCenterActivityID = "com.mixandmatch.preferans.activity.table"
 
     public static let roomWorkerBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
     public static let inviteBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
 
-    public static let cloudSchemaVersion = 2
+    /// Clean-break worker account protocol. V1 identities are intentionally
+    /// rejected so every online player registers through the authenticated API.
+    public static let onlineAccountSchemaVersion = 2
     public static let gameWireSchemaVersion = 2
 }
 
@@ -106,7 +105,7 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 
 
 /// JSON encoder/decoder factories for every persistence and wire path
-/// (CloudKit blobs, GameKit messages). Both use ISO-8601 dates so a record
+/// (worker snapshots and GameKit messages). Both use ISO-8601 dates so a record
 /// written by one can be read by the other. Returning a fresh coder for each
 /// access prevents mutable Foundation coder configuration from leaking across
 /// callers or crossing concurrency domains as shared state.

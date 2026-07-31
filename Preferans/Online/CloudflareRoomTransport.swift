@@ -103,7 +103,7 @@ public struct CloudflareAccountClient: Sendable, OnlineAccountServing {
             throw CloudflareRoomTransportError.serverError(message)
         }
         let registration = try PreferansJSONCoder.decoder.decode(OnlineAccountRegistration.self, from: data)
-        guard registration.account.schemaVersion == AppIdentifiers.cloudSchemaVersion,
+        guard registration.account.schemaVersion == AppIdentifiers.onlineAccountSchemaVersion,
               !registration.sessionToken.isEmpty else {
             throw CloudflareRoomTransportError.serverError("Account server returned an incompatible session.")
         }

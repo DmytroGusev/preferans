@@ -37,7 +37,9 @@ Preferans does not sell your personal information. If tracking or attribution fe
 
 Preferans uses Sign in with Apple when you choose it. The app sends Apple's identity token and a one-time nonce to the Preferans room service so the token's signature, issuer, audience, expiry, and nonce can be verified. The identity token is not used as your ongoing game credential.
 
-Preferans may use Apple's iCloud CloudKit for Apple-backed app records. Live room accounts, participation, and resume state are processed by the Preferans room service hosted on Cloudflare infrastructure. Information handled by Apple and Cloudflare is also subject to their respective privacy practices.
+Live room accounts, participation, and resume state are processed by the
+Preferans room service hosted on Cloudflare infrastructure. Information handled
+by Apple and Cloudflare is also subject to their respective privacy practices.
 
 ## Local Storage
 

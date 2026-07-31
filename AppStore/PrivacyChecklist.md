@@ -4,7 +4,10 @@ Use this file when filling in App Store Connect privacy answers.
 
 ## Current shipping assumption
 
-The current shipping app supports local play and online rooms through Sign in with Apple, anonymous room identity, Cloudflare room sync, and optional Apple/iCloud capabilities. Build 21 requests App Tracking Transparency on first launch when iOS tracking status is not determined.
+The current shipping app supports local play and authenticated online rooms
+through Sign in with Apple, guest accounts, and Cloudflare room sync. Build 21
+requests App Tracking Transparency on first launch when iOS tracking status is
+not determined.
 
 Only mark data as "used to track the user" in App Store Connect if the submitted build actually collects that category for tracking, advertising attribution, third-party analytics, or data broker sharing. Do not mark categories that are not collected by the app.
 
@@ -51,7 +54,7 @@ an anonymized seat and score.
 - Analytics SDK
 - Crash reporting SDK
 - A new authentication provider
-- Another backend beyond the current Cloudflare room service and Apple iCloud CloudKit
+- Another backend beyond the current Cloudflare room service
 - Push notifications
 - Deep-link attribution
 

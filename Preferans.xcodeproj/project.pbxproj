@@ -13,14 +13,9 @@
 		629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */; };
 		B00000000000000000000DE1 /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000DE0 /* Dependencies */; };
 		82816EDA29C185CD55470F2D /* PlayerProjectionBuilder+Phase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */; };
-		99464642B7D8B18656ACE012 /* GameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */; };
 		A00000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* Assets.xcassets */; };
-		ACCD7C5D2DD1E2F5E07E4765 /* FakeGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */; };
 		B00000000000000000000001 /* PreferansApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000031 /* PreferansApp.swift */; };
 		B00000000000000000000002 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000032 /* GameViewModel.swift */; };
-		B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000033 /* CloudKitGameArchiveStore.swift */; };
-		B00000000000000000000004 /* CloudKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000034 /* CloudKitModels.swift */; };
-		B00000000000000000000005 /* CloudKitRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000035 /* CloudKitRecords.swift */; };
 		B00000000000000000000D10 /* TrackingPermissionCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000D11 /* TrackingPermissionCenter.swift */; };
 		B00000000000000000000007 /* GameCenterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* GameCenterService.swift */; };
 		B00000000000000000000009 /* GameWireMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000039 /* GameWireMessage.swift */; };
@@ -120,7 +115,6 @@
 		4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "PlayerProjectionBuilder+Phase.swift"; path = "Preferans/Projection/PlayerProjectionBuilder+Phase.swift"; sourceTree = "<group>"; };
 		53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LobbyViewModel.swift; path = Preferans/UI/LobbyViewModel.swift; sourceTree = "<group>"; };
 		591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProjectionBuildFrame.swift; path = Preferans/Projection/ProjectionBuildFrame.swift; sourceTree = "<group>"; };
-		7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GameArchiveStore.swift; path = Preferans/Support/GameArchiveStore.swift; sourceTree = "<group>"; };
 		9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TableLayoutModel.swift; path = Preferans/UI/TableLayoutModel.swift; sourceTree = "<group>"; };
 		A00000000000000000000010 /* Preferans.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Preferans.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -128,9 +122,6 @@
 		A00000000000000000000024 /* AppStore */ = {isa = PBXFileReference; lastKnownFileType = folder; path = AppStore; sourceTree = "<group>"; };
 		B00000000000000000000031 /* PreferansApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansApp.swift; sourceTree = "<group>"; };
 		B00000000000000000000032 /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
-		B00000000000000000000033 /* CloudKitGameArchiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitGameArchiveStore.swift; sourceTree = "<group>"; };
-		B00000000000000000000034 /* CloudKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitModels.swift; sourceTree = "<group>"; };
-		B00000000000000000000035 /* CloudKitRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKit/CloudKitRecords.swift; sourceTree = "<group>"; };
 		B00000000000000000000037 /* GameCenterService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameCenterService.swift; sourceTree = "<group>"; };
 		B00000000000000000000039 /* GameWireMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameKit/GameWireMessage.swift; sourceTree = "<group>"; };
 		B0000000000000000000003B /* GameLogReplayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/GameLogReplayer.swift; sourceTree = "<group>"; };
@@ -199,7 +190,6 @@
 		E0000000000000000000A04A /* AccessibilityContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityContractTests.swift; sourceTree = "<group>"; };
 		E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineWaitingRoomUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000AFB1 /* OnlineScreensScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnlineScreensScreenshotTests.swift; sourceTree = "<group>"; };
-		EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = FakeGameArchiveStore.swift; path = Preferans/Support/FakeGameArchiveStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -234,8 +224,6 @@
 				4BD1C6AE584FAF17893B63E7 /* PlayerProjectionBuilder+Phase.swift */,
 				2A20DD5DCD2B0E3F8897CF17 /* PlayerProjectionBuilder+Visibility.swift */,
 				591D0EB99148BB19AB74FD17 /* ProjectionBuildFrame.swift */,
-				EC4220618BF095699CFC2F1F /* FakeGameArchiveStore.swift */,
-				7EECC91B4320F4AE8DB9B0FD /* GameArchiveStore.swift */,
 				53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */,
 				9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */,
 			);
@@ -246,9 +234,6 @@
 			children = (
 				B00000000000000000000031 /* PreferansApp.swift */,
 				B00000000000000000000032 /* GameViewModel.swift */,
-				B00000000000000000000033 /* CloudKitGameArchiveStore.swift */,
-				B00000000000000000000034 /* CloudKitModels.swift */,
-				B00000000000000000000035 /* CloudKitRecords.swift */,
 				B00000000000000000000037 /* GameCenterService.swift */,
 				B00000000000000000000039 /* GameWireMessage.swift */,
 				B0000000000000000000003B /* GameLogReplayer.swift */,
@@ -452,9 +437,6 @@
 			files = (
 				B00000000000000000000001 /* PreferansApp.swift in Sources */,
 				B00000000000000000000002 /* GameViewModel.swift in Sources */,
-				B00000000000000000000003 /* CloudKitGameArchiveStore.swift in Sources */,
-				B00000000000000000000004 /* CloudKitModels.swift in Sources */,
-				B00000000000000000000005 /* CloudKitRecords.swift in Sources */,
 				B00000000000000000000007 /* GameCenterService.swift in Sources */,
 				B00000000000000000000009 /* GameWireMessage.swift in Sources */,
 				B0000000000000000000000B /* GameLogReplayer.swift in Sources */,
@@ -515,8 +497,6 @@
 				82816EDA29C185CD55470F2D /* PlayerProjectionBuilder+Phase.swift in Sources */,
 				57ACCE90BA16F946A4F7AF39 /* PlayerProjectionBuilder+Visibility.swift in Sources */,
 				5E490BED770B1DF621F6B33C /* ProjectionBuildFrame.swift in Sources */,
-				ACCD7C5D2DD1E2F5E07E4765 /* FakeGameArchiveStore.swift in Sources */,
-				99464642B7D8B18656ACE012 /* GameArchiveStore.swift in Sources */,
 				BEDE1531F75F9F125A779941 /* LobbyViewModel.swift in Sources */,
 				265F5A4613A45F1440C8983C /* TableLayoutModel.swift in Sources */,
 			);

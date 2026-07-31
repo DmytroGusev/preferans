@@ -8,13 +8,12 @@ Preferans is a SwiftUI iOS card game for local play and online rooms with friend
 - SwiftUI app flow for lobby and table
 - Preferans bidding, talon exchange, whist/pass decisions, trick play, claims, and scoring
 - Rule variants such as Sochi, Leningrad, Rostov, and classic-style scoring modes (the lobby surfaces these under our house names — Одеса, Wien, Θεσσαλονίκη, Крути — with hover/tap hints back to the standard names)
-- Online rooms with manual room codes and CloudKit sync
+- Authenticated online rooms with manual room codes and durable Cloudflare sync
 - App Store submission drafts in `AppStore`
 - Public legal pages in `docs`
 
 ## What is not production-ready yet
 
-- CloudKit production schema must be deployed before public release
 - Multiplayer sync needs more real-device race-condition testing
 - Full Preferans convention edge cases need continued QA
 - Universal links need a real hosted domain before one-tap invite links can replace room-code entry
@@ -40,10 +39,12 @@ These pages are intended to be published through GitHub Pages for App Store Conn
 
 ## App Store Notes
 
-The current uploaded build uses Apple services for identity and online sync:
+The current uploaded build uses Sign in with Apple for optional identity and
+the Preferans room service for online sync:
 
 - Sign in with Apple
 - In-app email/Gmail test profile
-- iCloud CloudKit
+- Cloudflare-hosted account, room, and recovery storage
 
-Before public release, deploy the CloudKit schema to Production and test online rooms on at least two real devices under separate accounts.
+Before public release, test online rooms on at least two real devices under
+separate accounts.

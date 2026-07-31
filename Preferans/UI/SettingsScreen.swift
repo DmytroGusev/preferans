@@ -225,7 +225,7 @@ public struct SettingsScreen: View {
     private static func accountStatusText() -> String {
         if let data = UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount),
            let account = try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data),
-           account.schemaVersion == AppIdentifiers.cloudSchemaVersion,
+           account.schemaVersion == AppIdentifiers.onlineAccountSchemaVersion,
            OnlineAccountSessionStore.token() != nil {
             return account.provider == .apple
                 ? String(localized: "Signed in with Apple")

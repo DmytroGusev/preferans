@@ -168,7 +168,7 @@ public struct RegisteredOnlineAccount: Codable, Equatable, Sendable {
     public var displayName: String
 
     public init(
-        schemaVersion: Int = AppIdentifiers.cloudSchemaVersion,
+        schemaVersion: Int = AppIdentifiers.onlineAccountSchemaVersion,
         provider: OnlineAccountProvider,
         accountID: String,
         displayName: String

@@ -642,7 +642,7 @@ public final class LobbyViewModel: ObservableObject {
             return nil
         }
         guard let account = try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data),
-              account.schemaVersion == AppIdentifiers.cloudSchemaVersion,
+              account.schemaVersion == AppIdentifiers.onlineAccountSchemaVersion,
               account.provider == .apple || account.provider == .guest else {
             UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
             UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)

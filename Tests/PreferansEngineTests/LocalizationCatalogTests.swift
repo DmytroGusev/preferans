@@ -53,9 +53,7 @@ final class LocalizationCatalogTests: XCTestCase {
         let strings = try catalogStrings()
         let forbiddenKeys = [
             "Invalid state. Expected %@, got %@.",
-            "Game Center error: %@",
-            "CloudKit table save failed: %@",
-            "CloudKit archive failed: %@"
+            "Game Center error: %@"
         ]
 
         for key in forbiddenKeys {

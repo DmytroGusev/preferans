@@ -22,7 +22,7 @@ For help with the Preferans iOS app, contact the developer at:
 If you have trouble joining an online room, confirm that:
 
 - You are signed in with Apple on the device.
-- iCloud is enabled for the device.
+- Your device has a working internet connection.
 - You entered the room code exactly as shared.
 - All players are using the latest available version of the app.
 

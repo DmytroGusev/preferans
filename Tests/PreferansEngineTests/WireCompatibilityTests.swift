@@ -164,34 +164,13 @@ final class WireCompatibilityTests: XCTestCase {
         XCTAssertEqual(decoded.events, [])
     }
 
-    func testPersistencePayloadsRoundTripThroughConfiguredJSONCoder() throws {
+    func testEngineSnapshotRoundTripsThroughConfiguredJSONCoder() throws {
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
         _ = try engine.startDeal(deck: Deck.standard32)
-        let result = try finishPlayedSixSpades(engine: &engine)
-
-        let summary = CloudTableSummary(
-            tableID: tableID,
-            status: .playing,
-            hostPlayerID: "north",
-            seats: seats(),
-            rules: .sochi,
-            lastSequence: 3,
-            createdAt: date,
-            updatedAt: date,
-            shareURL: URL(string: "https://example.test/table")
-        )
+        _ = try finishPlayedSixSpades(engine: &engine)
         let appSnapshot = AppEngineSnapshot(engine: engine)
-        let completedDeal = CompletedDealArchive(
-            tableID: tableID,
-            sequence: 3,
-            result: result,
-            cumulativeScore: engine.score,
-            completedAt: date
-        )
 
-        try assertRoundTrip(summary)
         try assertRoundTrip(appSnapshot)
-        try assertRoundTrip(completedDeal)
     }
 
     func testOnlineAccountV2RoundTripsAndLegacyIdentityCannotDecode() throws {
@@ -201,7 +180,7 @@ final class WireCompatibilityTests: XCTestCase {
             displayName: "Ada"
         )
         try assertRoundTrip(account)
-        XCTAssertEqual(account.schemaVersion, AppIdentifiers.cloudSchemaVersion)
+        XCTAssertEqual(account.schemaVersion, AppIdentifiers.onlineAccountSchemaVersion)
 
         let legacy = Data(#"{"provider":"apple","accountID":"apple:client-declared","displayName":"Old"}"#.utf8)
         XCTAssertThrowsError(
