@@ -184,7 +184,11 @@ final class ProjectionTests: AppTestCase {
 
     func testStalingradProjectionKeepsForcedWhistHandsClosed() throws {
         let players: [PlayerID] = ["north", "east", "south"]
-        var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "north")
+        var engine = try PreferansEngine(
+            players: players,
+            rules: PreferansRules(forceWhistOnSixSpades: true),
+            firstDealer: "north"
+        )
         _ = try engine.apply(.startDeal(dealer: "north", deck: Deck.standard32))
 
         _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.spades))))))

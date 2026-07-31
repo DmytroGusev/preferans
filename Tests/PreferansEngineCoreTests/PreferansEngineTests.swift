@@ -581,19 +581,9 @@ final class PreferansEngineTests: XCTestCase {
     }
 
     func testStalingradSixSpadesForcesClosedWhistFromBothDefenders() throws {
-        var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
-        try engine.startDeal(deck: Deck.standard32)
-
-        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.spades))))))
-        _ = try engine.apply(.bid(player: "south", call: .pass))
-        _ = try engine.apply(.bid(player: "north", call: .pass))
-
-        guard case let .awaitingDiscard(exchange) = engine.state else {
-            return XCTFail("Expected discard.")
-        }
-        let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
-        _ = try engine.apply(.discard(player: "east", cards: discard))
-        _ = try engine.apply(.declareContract(player: "east", contract: GameContract(6, .suit(.spades))))
+        var engine = try sixSpadesWhistEngine(
+            rules: PreferansRules(forceWhistOnSixSpades: true)
+        )
 
         XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
         XCTAssertThrowsError(try engine.apply(.whist(player: "south", call: .pass)))
@@ -610,6 +600,26 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(context.contract, GameContract(6, .suit(.spades)))
         XCTAssertEqual(context.whisters, ["south", "north"])
         XCTAssertEqual(context.defenderPlayMode, .closed)
+    }
+
+    func testSixSpadesUsesOrdinaryWhistChoicesWithoutStalingrad() throws {
+        var engine = try sixSpadesWhistEngine(rules: .sochi)
+
+        XCTAssertFalse(engine.rules.forceWhistOnSixSpades)
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.pass, .whist])
+        _ = try engine.apply(.whist(player: "south", call: .whist))
+        XCTAssertEqual(engine.legalWhistCalls(for: "north"), [.pass, .whist])
+    }
+
+    func testStalingradRuleRoundTripsAndOldWireFormatDefaultsOff() throws {
+        let enabled = PreferansRules(forceWhistOnSixSpades: true)
+        let encoded = try JSONEncoder().encode(enabled)
+        XCTAssertTrue(try JSONDecoder().decode(PreferansRules.self, from: encoded).forceWhistOnSixSpades)
+
+        let defaultEncoded = try JSONEncoder().encode(PreferansRules.sochi)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: defaultEncoded) as? [String: Any])
+        XCTAssertNil(object["forceWhistOnSixSpades"])
+        XCTAssertFalse(try JSONDecoder().decode(PreferansRules.self, from: defaultEncoded).forceWhistOnSixSpades)
     }
 
     func testSnapshotAndActionsAreCodable() throws {
@@ -637,5 +647,29 @@ final class PreferansEngineTests: XCTestCase {
             throw EngineTestError("Expected bidding state; got \(engine.state.description).")
         }
         return bidding.hands.mapValues { $0.sorted() }
+    }
+
+    private func sixSpadesWhistEngine(rules: PreferansRules) throws -> PreferansEngine {
+        var engine = try PreferansEngine(
+            players: ["north", "east", "south"],
+            rules: rules,
+            firstDealer: "north"
+        )
+        try engine.startDeal(deck: Deck.standard32)
+
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(GameContract(6, .suit(.spades))))))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            throw EngineTestError("Expected discard; got \(engine.state.description).")
+        }
+        let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
+        _ = try engine.apply(.discard(player: "east", cards: discard))
+        _ = try engine.apply(.declareContract(
+            player: "east",
+            contract: GameContract(6, .suit(.spades))
+        ))
+        return engine
     }
 }

@@ -462,7 +462,8 @@ public struct PreferansEngine: Sendable {
     }
 
     private func isStalingradContract(_ contract: GameContract) -> Bool {
-        contract == GameContract(6, .suit(.spades))
+        rules.forceWhistOnSixSpades
+            && contract == GameContract(6, .suit(.spades))
     }
 
     /// Active rotation for a deal with the given dealer. In 3-player matches

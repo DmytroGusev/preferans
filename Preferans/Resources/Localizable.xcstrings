@@ -461,6 +461,42 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Жлобський відповідальний віст: кожен захисник пише свої взятки й повністю відповідає за норму." } }
       }
     },
+    "rules.stalingrad" : {
+      "comment" : "Optional Stalingrad six-spade defense rule title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Six-spade defense" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вист на шести пиках" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Віст на шести піках" } }
+      }
+    },
+    "rules.stalingrad.enabled" : {
+      "comment" : "Explains that the optional Stalingrad convention is active.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Stalingrad is on: both defenders must whist against 6♠ and play with closed hands." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "«Сталинград» включён: против 6♠ оба защитника обязаны вистовать и играть втёмную." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "«Сталінград» увімкнено: проти 6♠ обидва захисники зобов’язані вістувати й грати втемну." } }
+      }
+    },
+    "rules.stalingrad.disabled" : {
+      "comment" : "Explains that six spades uses normal whist decisions when Stalingrad is off.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Standard setting: 6♠ follows the ordinary whist choice; Stalingrad is not implied." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Стандартная настройка: на 6♠ решение о висте принимается как обычно; «Сталинград» не включён." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Стандартне налаштування: на 6♠ рішення про віст ухвалюється як зазвичай; «Сталінград» не ввімкнено." } }
+      }
+    },
+    "rules.tenWhist.required" : {
+      "comment" : "Inline explanation for a mandatory whist on a ten-trick contract.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Both defenders must whist on this 10-trick contract." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "На этой десятерной игре оба защитника обязаны вистовать." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "На цій десятерній грі обидва захисники зобов’язані вістувати." } }
+      }
+    },
     "rules.wien.whist" : {
       "comment" : "Wien whist explanation.",
       "extractionState" : "manual",

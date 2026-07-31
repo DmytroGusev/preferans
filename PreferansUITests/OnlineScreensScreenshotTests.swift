@@ -94,6 +94,15 @@ final class OnlineScreensScreenshotTests: XCTestCase {
                 .waitForExistence(timeout: 3),
             "Rules reference did not expose the four-player dealer convention"
         )
+        let stalingradRule = app.descendants(matching: .any)[UIIdentifiers.rulesStalingrad]
+        XCTAssertTrue(
+            stalingradRule.waitForExistence(timeout: 3),
+            "Rules reference did not expose the active Stalingrad setting"
+        )
+        XCTAssertTrue(
+            stalingradRule.label.contains("Stalingrad is not implied"),
+            "Canonical Odesa unexpectedly presents Stalingrad as active: \(stalingradRule.label)"
+        )
         let isTablet = app.windows.firstMatch.frame.width >= 700
         if isTablet {
             XCTAssertTrue(

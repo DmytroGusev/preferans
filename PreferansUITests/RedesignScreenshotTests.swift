@@ -155,8 +155,8 @@ final class RedesignScreenshotTests: XCTestCase {
 
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            // Stalingrad (6♠) makes whist obligatory — pass never renders,
-            // so take the forced call instead of idling out the loop.
+            // Mandatory-whist table rules (for example a 10-trick game)
+            // omit pass, so take the forced call instead of idling out.
             if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
             if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.4) { continue }
             if robot.discardFirstTwoVisibleCards() { continue }
@@ -357,8 +357,8 @@ final class RedesignScreenshotTests: XCTestCase {
             }
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
             if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            // Stalingrad (6♠) makes whist obligatory — pass never renders,
-            // so take the forced call instead of idling out the loop.
+            // Mandatory-whist table rules (for example a 10-trick game)
+            // omit pass, so take the forced call instead of idling out.
             if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
             // Seat-agnostic: with viewerFollowsActor the interactive hand
             // changes owner every trick, and a hard-coded display name

@@ -46,6 +46,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
 
     public var allowSeniorHandHoldBid: Bool
     public var requireWhistOnTenTrickContracts: Bool
+    /// Optional Stalingrad convention: both defenders must whist, with
+    /// closed hands, against a six-spade contract. This is a table agreement,
+    /// not an intrinsic part of either the Sochi or Leningrad profile.
+    public var forceWhistOnSixSpades: Bool
     public var singleWhistScoring: SingleWhistScoring
     public var failedDeclarerConsolation: FailedDeclarerConsolation
     public var whistResponsibility: WhistResponsibility
@@ -69,6 +73,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public init(
         allowSeniorHandHoldBid: Bool = true,
         requireWhistOnTenTrickContracts: Bool = false,
+        forceWhistOnSixSpades: Bool = false,
         singleWhistScoring: SingleWhistScoring = .greedy,
         failedDeclarerConsolation: FailedDeclarerConsolation = .eachDefender,
         whistResponsibility: WhistResponsibility = .responsible,
@@ -89,6 +94,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         precondition(mountainPointWhistValue > 0, "mountainPointWhistValue must be positive.")
         self.allowSeniorHandHoldBid = allowSeniorHandHoldBid
         self.requireWhistOnTenTrickContracts = requireWhistOnTenTrickContracts
+        self.forceWhistOnSixSpades = forceWhistOnSixSpades
         self.singleWhistScoring = singleWhistScoring
         self.failedDeclarerConsolation = failedDeclarerConsolation
         self.whistResponsibility = whistResponsibility
@@ -140,6 +146,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case allowSeniorHandHoldBid
         case requireWhistOnTenTrickContracts
+        case forceWhistOnSixSpades
         case singleWhistScoring
         case failedDeclarerConsolation
         case whistResponsibility
@@ -165,6 +172,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         self.init(
             allowSeniorHandHoldBid: try values.decode(Bool.self, forKey: .allowSeniorHandHoldBid),
             requireWhistOnTenTrickContracts: try values.decode(Bool.self, forKey: .requireWhistOnTenTrickContracts),
+            forceWhistOnSixSpades: try values.decodeIfPresent(Bool.self, forKey: .forceWhistOnSixSpades) ?? false,
             singleWhistScoring: try values.decode(SingleWhistScoring.self, forKey: .singleWhistScoring),
             failedDeclarerConsolation: try values.decode(FailedDeclarerConsolation.self, forKey: .failedDeclarerConsolation),
             whistResponsibility: try values.decode(WhistResponsibility.self, forKey: .whistResponsibility),
@@ -189,6 +197,9 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         var values = encoder.container(keyedBy: CodingKeys.self)
         try values.encode(allowSeniorHandHoldBid, forKey: .allowSeniorHandHoldBid)
         try values.encode(requireWhistOnTenTrickContracts, forKey: .requireWhistOnTenTrickContracts)
+        if forceWhistOnSixSpades {
+            try values.encode(true, forKey: .forceWhistOnSixSpades)
+        }
         try values.encode(singleWhistScoring, forKey: .singleWhistScoring)
         try values.encode(failedDeclarerConsolation, forKey: .failedDeclarerConsolation)
         try values.encode(whistResponsibility, forKey: .whistResponsibility)

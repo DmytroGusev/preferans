@@ -178,12 +178,12 @@ public struct ActionBarView: View {
         let calls = projection.legal.whistCalls
         return VStack(spacing: 10) {
             actionSectionTitle("Your call")
-            // The Stalingrad convention (6♠) makes whisting obligatory —
-            // the engine offers no pass. Without a word of explanation a
-            // lone "Whist" button reads like a broken screen, so name the
-            // rule right where the missing button would be.
-            if calls == [.whist] {
-                Text("Whist is obligatory against 6♠")
+            // A lone "Whist" button otherwise reads like a broken screen.
+            // Explain the active rule at the exact point where pass would
+            // ordinarily appear; six-spade defense is mandatory only when
+            // the optional Stalingrad convention is enabled.
+            if let explanation = mandatoryWhistExplanation {
+                Text(explanation)
                     .font(.caption)
                     .foregroundStyle(TableTheme.inkCreamSoft)
             }
@@ -199,6 +199,21 @@ public struct ActionBarView: View {
                 }
             }
         }
+    }
+
+    private var mandatoryWhistExplanation: LocalizedStringKey? {
+        guard projection.legal.whistCalls == [.whist],
+              case let .awaitingWhist(_, _, contract) = projection.phase else {
+            return nil
+        }
+        if projection.rules.forceWhistOnSixSpades,
+           contract == GameContract(6, .suit(.spades)) {
+            return "rules.stalingrad.enabled"
+        }
+        if contract.tricks == 10 {
+            return "rules.tenWhist.required"
+        }
+        return nil
     }
 
     /// Whist is the headline choice; half-whist is a real (priced) middle

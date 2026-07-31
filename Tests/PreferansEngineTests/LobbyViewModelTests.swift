@@ -206,6 +206,7 @@ final class LobbyViewModelTests: AppTestCase {
         let rules = PreferansVariant.wien.rules
 
         XCTAssertTrue(rules.requireWhistOnTenTrickContracts)
+        XCTAssertFalse(rules.forceWhistOnSixSpades)
         XCTAssertEqual(rules.singleWhistScoring, .gentleman)
         XCTAssertEqual(rules.failedDeclarerConsolation, .eachDefender)
         XCTAssertEqual(rules.whistResponsibility, .semiResponsible)
@@ -229,6 +230,11 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(game.engine.rules, .leningrad)
         XCTAssertEqual(game.engine.match.poolTarget, 63)
         XCTAssertEqual(game.engine.match.poolClosure, .tableTotal)
+    }
+
+    func testCanonicalLobbyVariantsDoNotImplyStalingrad() {
+        XCTAssertFalse(PreferansVariant.odesa.rules.forceWhistOnSixSpades)
+        XCTAssertFalse(PreferansVariant.wien.rules.forceWhistOnSixSpades)
     }
 
     func testLobbyRosterValidationRejectsBlankAndDuplicateNames() {

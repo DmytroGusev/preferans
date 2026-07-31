@@ -483,6 +483,14 @@ struct ConventionLegendSheet: View {
                     ? "rules.wien.whist"
                     : "rules.odesa.whist"
             )
+            ruleExplanation(
+                title: "rules.stalingrad",
+                text: rules.forceWhistOnSixSpades
+                    ? "rules.stalingrad.enabled"
+                    : "rules.stalingrad.disabled"
+            )
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(UIIdentifiers.rulesStalingrad)
             ruleExplanation(title: "rules.talon", text: "rules.talon.explanation")
             ruleExplanation(
                 title: "rules.dealerTalon",
