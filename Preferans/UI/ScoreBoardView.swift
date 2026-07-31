@@ -112,11 +112,7 @@ public struct ScoreBoardView: View {
 
     private func pulaCell(player: PlayerID) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Bullet")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+            metricHeading("Bullet")
             Text("\(score.pool(for: player))")
                 .font(.title.bold().monospacedDigit())
                 .accessibilityIdentifier(UIIdentifiers.scorePool(player))
@@ -127,11 +123,7 @@ public struct ScoreBoardView: View {
     private func goraCell(player: PlayerID) -> some View {
         let value = score.mountain(for: player)
         return VStack(alignment: .leading, spacing: 2) {
-            Text("Mountain")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+            metricHeading("Mountain")
             Text("\(value)")
                 .font(.title.bold().monospacedDigit())
                 .foregroundStyle(value > 0 ? .red : .primary)
@@ -147,11 +139,7 @@ public struct ScoreBoardView: View {
     /// player's own card.
     private func vistyCell(player: PlayerID) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Whists")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.6)
+            metricHeading("Whists")
             VStack(alignment: .leading, spacing: 1) {
                 ForEach(score.players.filter { $0 != player }, id: \.self) { target in
                     let value = score.whistsWritten(by: player, on: target)
@@ -170,6 +158,16 @@ public struct ScoreBoardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func metricHeading(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .textCase(.uppercase)
+            .tracking(0.6)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
     }
 
     private func balanceBadge(balance: Double, id: String) -> some View {

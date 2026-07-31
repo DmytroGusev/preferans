@@ -285,37 +285,40 @@ public struct ProjectionGameScreen<Menu: View>: View {
     // MARK: - Regular (iPad / wider)
 
     private var regularBody: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(spacing: 0) {
-                headerStrip
-                    .padding(.horizontal, 12)
-                    .padding(.top, 6)
-                    .padding(.bottom, 8)
-                tableView()
-                    .frame(maxHeight: .infinity)
-                if shouldShowHandRail {
-                    viewerHandFan
-                        .padding(.horizontal, 8)
-                        .padding(.top, 4)
+        GeometryReader { geometry in
+            let split = TableLayoutModel.RegularSplit(totalWidth: geometry.size.width)
+            HStack(alignment: .top, spacing: split.spacing) {
+                VStack(spacing: 0) {
+                    headerStrip
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
+                        .padding(.bottom, 8)
+                    tableView()
+                        .frame(maxHeight: .infinity)
+                    if shouldShowHandRail {
+                        viewerHandFan
+                            .padding(.horizontal, 8)
+                            .padding(.top, 4)
+                    }
+                    if shouldShowActionBar {
+                        ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                    }
                 }
-                if shouldShowActionBar {
-                    ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                .frame(width: split.tableWidth)
+                ScrollView {
+                    ScoreBoardView(
+                        score: projection.score,
+                        rules: projection.rules,
+                        presentation: .feltSidebar,
+                        displayName: projection.displayName(for:)
+                    )
                 }
+                    .scrollIndicators(.hidden)
+                    .frame(width: split.sidebarWidth)
             }
-            .frame(maxWidth: .infinity)
-            ScrollView {
-                ScoreBoardView(
-                    score: projection.score,
-                    rules: projection.rules,
-                    presentation: .feltSidebar,
-                    displayName: projection.displayName(for:)
-                )
-            }
-                .scrollIndicators(.hidden)
-                .frame(width: 360)
+            .padding(.vertical, 16)
+            .padding(.trailing, split.trailingInset)
         }
-        .padding(.vertical, 16)
-        .padding(.trailing, 16)
         .feltBackground()
     }
 

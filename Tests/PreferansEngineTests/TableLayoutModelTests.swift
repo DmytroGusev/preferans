@@ -3,6 +3,33 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testRegularSplitKeepsGameplayPrimaryAcrossIPadWidths() {
+        let compactPortrait = TableLayoutModel.RegularSplit(totalWidth: 744)
+        XCTAssertEqual(compactPortrait.sidebarWidth, 280, accuracy: 0.001)
+        XCTAssertEqual(compactPortrait.tableWidth, 432, accuracy: 0.001)
+
+        let largePortrait = TableLayoutModel.RegularSplit(totalWidth: 1_024)
+        XCTAssertEqual(largePortrait.sidebarWidth, 286.72, accuracy: 0.001)
+        XCTAssertEqual(largePortrait.tableWidth, 705.28, accuracy: 0.001)
+
+        let landscape = TableLayoutModel.RegularSplit(totalWidth: 1_366)
+        XCTAssertEqual(landscape.sidebarWidth, 340, accuracy: 0.001)
+        XCTAssertEqual(landscape.tableWidth, 994, accuracy: 0.001)
+    }
+
+    func testRegularSplitClampsInvalidDimensions() {
+        let split = TableLayoutModel.RegularSplit(
+            totalWidth: -10,
+            spacing: -4,
+            trailingInset: -8
+        )
+
+        XCTAssertEqual(split.totalWidth, 0)
+        XCTAssertEqual(split.spacing, 0)
+        XCTAssertEqual(split.trailingInset, 0)
+        XCTAssertEqual(split.tableWidth, 0)
+    }
+
     func testClockwiseOpponentsRotateFromEveryViewer() {
         let players: [PlayerID] = ["north", "east", "south", "west"]
 

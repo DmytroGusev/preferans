@@ -2,6 +2,33 @@ import SwiftUI
 import PreferansEngine
 
 public struct TableLayoutModel: Equatable {
+    /// Width allocation for the persistent iPad score sheet. The live table
+    /// remains the primary surface while the score sheet stays readable at a
+    /// stable, bounded width across iPad sizes and orientations.
+    public struct RegularSplit: Equatable {
+        public var totalWidth: CGFloat
+        public var spacing: CGFloat
+        public var trailingInset: CGFloat
+
+        public init(
+            totalWidth: CGFloat,
+            spacing: CGFloat = 16,
+            trailingInset: CGFloat = 16
+        ) {
+            self.totalWidth = max(0, totalWidth)
+            self.spacing = max(0, spacing)
+            self.trailingInset = max(0, trailingInset)
+        }
+
+        public var sidebarWidth: CGFloat {
+            min(340, max(280, totalWidth * 0.28))
+        }
+
+        public var tableWidth: CGFloat {
+            max(0, totalWidth - sidebarWidth - spacing - trailingInset)
+        }
+    }
+
     public struct OpponentSlot: Equatable, Identifiable {
         public var seat: SeatProjection
         public var position: CGPoint

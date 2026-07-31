@@ -113,6 +113,7 @@ public struct TableView: View {
     public var onTakeTalon: (() -> Void)?
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     public init(
         projection: PlayerGameProjection,
         animationNamespace: Namespace.ID,
@@ -429,9 +430,10 @@ public struct TableView: View {
     @ViewBuilder
     private func talonContext(
         title: LocalizedStringKey = "Prikup",
-        size: CardView.Size = .standard,
+        size: CardView.Size? = nil,
         action: (() -> Void)? = nil
     ) -> some View {
+        let cardSize = size ?? (horizontalSizeClass == .regular ? .large : .standard)
         let content = VStack(spacing: 8) {
             Text(title)
                 .font(.caption.weight(.bold))
@@ -440,7 +442,7 @@ public struct TableView: View {
                 .foregroundStyle(TableTheme.goldBright)
             HStack(spacing: 6) {
                 ForEach(Array(projection.talon.enumerated()), id: \.offset) { _, card in
-                    CardView(card: card, size: size, region: .talon)
+                    CardView(card: card, size: cardSize, region: .talon)
                 }
             }
             if action != nil {

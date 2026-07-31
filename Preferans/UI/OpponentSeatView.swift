@@ -47,6 +47,7 @@ public struct OpponentSeatView: View {
     public var onSelectCard: ((Card) -> Void)?
     public var onPlayCard: ((Card) -> Void)?
     public var onDragCard: ((Card) -> Void)?
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public enum Orientation: Equatable {
         case top
@@ -324,7 +325,13 @@ public struct OpponentSeatView: View {
 
     private var hiddenFan: some View {
         let count = seat.hand.count
-        let size: CardView.Size = isDeemphasized ? .compact : .standard
+        let size: CardView.Size = if isDeemphasized {
+            .compact
+        } else if horizontalSizeClass == .regular {
+            .large
+        } else {
+            .standard
+        }
         let dims = size.dimensions
         let cardsPerRow = 5
         let rows = splitIntoRows(seat.hand, perRow: cardsPerRow)
@@ -340,7 +347,7 @@ public struct OpponentSeatView: View {
     /// hands get two readable rows, bigger cards, and a wider step so every
     /// rank+pip remains visible without claiming four rows of vertical space.
     private var openFan: some View {
-        let cardSize: CardView.Size = .standard
+        let cardSize: CardView.Size = horizontalSizeClass == .regular ? .large : .standard
         let dims = cardSize.dimensions
         let rows = openHandRows(seat.hand)
         let rowHeight = dims.height + 12
