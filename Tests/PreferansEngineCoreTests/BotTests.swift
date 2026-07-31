@@ -8,6 +8,19 @@ import XCTest
 final class BotTests: XCTestCase {
     private let players: [PlayerID] = ["N", "E", "S"]
 
+    private enum OpeningExpectation {
+        case exact(BidCall)
+        case gameLevel(Int)
+    }
+
+    private struct OpeningScenario {
+        var name: String
+        var hand: [Card]
+        var profile: BotProfile
+        var precedingAllPassDeals: Int
+        var expectation: OpeningExpectation
+    }
+
     func testDifficultyControlsPlannerDepth() {
         XCTAssertEqual(
             HeuristicStrategy(profile: BotProfile(difficulty: .casual)).planner.samples,
@@ -21,6 +34,117 @@ final class BotTests: XCTestCase {
             HeuristicStrategy(profile: BotProfile(difficulty: .expert)).planner.samples,
             32
         )
+    }
+
+    func testOpeningDecisionCorpusCoversStrengthStyleAndRaspasyExit() async throws {
+        let strongSpades = cards(.spades, Rank.allCases)
+            + cards(.clubs, [.ace])
+            + cards(.hearts, [.ace])
+        let cleanMisere = cards(.spades, [.seven, .eight, .nine])
+            + cards(.clubs, [.seven, .eight])
+            + cards(.diamonds, [.seven, .eight])
+            + cards(.hearts, [.seven, .eight, .nine])
+        let deadMiddles = cards(.spades, [.nine, .ten, .jack])
+            + cards(.clubs, [.nine, .ten, .jack])
+            + cards(.diamonds, [.nine, .ten])
+            + cards(.hearts, [.nine, .ten])
+        let borderline = cards(.spades, [.ace, .king])
+            + cards(.clubs, [.ace, .eight, .nine])
+            + cards(.diamonds, [.king, .seven])
+            + cards(.hearts, [.nine, .ten, .jack])
+
+        let scenarios = [
+            OpeningScenario(
+                name: "obvious six-spade opener",
+                hand: strongSpades,
+                profile: .standard,
+                precedingAllPassDeals: 0,
+                expectation: .exact(.bid(.game(GameContract(6, .suit(.spades)))))
+            ),
+            OpeningScenario(
+                name: "clean low-card misere",
+                hand: cleanMisere,
+                profile: .standard,
+                precedingAllPassDeals: 0,
+                expectation: .exact(.bid(.misere))
+            ),
+            OpeningScenario(
+                name: "neither a game nor a misere",
+                hand: deadMiddles,
+                profile: .standard,
+                precedingAllPassDeals: 0,
+                expectation: .exact(.pass)
+            ),
+            OpeningScenario(
+                name: "careful profile declines a borderline six",
+                hand: borderline,
+                profile: BotProfile(difficulty: .seasoned, temperament: .careful),
+                precedingAllPassDeals: 0,
+                expectation: .exact(.pass)
+            ),
+            OpeningScenario(
+                name: "bold profile accepts the same borderline six",
+                hand: borderline,
+                profile: BotProfile(difficulty: .seasoned, temperament: .bold),
+                precedingAllPassDeals: 0,
+                expectation: .gameLevel(6)
+            ),
+            OpeningScenario(
+                name: "strict third-stage raspasy exit starts at eight",
+                hand: strongSpades,
+                profile: .standard,
+                precedingAllPassDeals: 2,
+                expectation: .exact(.bid(.game(GameContract(8, .suit(.spades)))))
+            ),
+        ]
+
+        for scenario in scenarios {
+            let engine = try makeBiddingEngine(
+                northHand: scenario.hand,
+                precedingAllPassDeals: scenario.precedingAllPassDeals
+            )
+            let strategy = HeuristicStrategy(
+                profile: scenario.profile,
+                planner: CardPlayPlanner(samples: 1)
+            )
+            let action = await strategy.decide(snapshot: engine.snapshot, viewer: "N")
+            guard case let .bid(player, call) = action else {
+                XCTFail("\(scenario.name): expected a bidding action, got \(String(describing: action))")
+                continue
+            }
+
+            XCTAssertEqual(player, "N", scenario.name)
+            XCTAssertTrue(engine.legalBidCalls(for: "N").contains(call), scenario.name)
+            switch scenario.expectation {
+            case let .exact(expected):
+                XCTAssertEqual(call, expected, scenario.name)
+            case let .gameLevel(expectedLevel):
+                guard case let .bid(.game(contract)) = call else {
+                    XCTFail("\(scenario.name): expected a game bid, got \(call)")
+                    continue
+                }
+                XCTAssertEqual(contract.tricks, expectedLevel, scenario.name)
+            }
+        }
+    }
+
+    func testMisereDiscardCorpusDropsTheTwoTalonHonors() async throws {
+        var engine = try PreferansEngine(players: players, firstDealer: "S")
+        _ = try engine.startDeal(deck: makeDeck(.misereForNorth))
+        _ = try engine.apply(.bid(player: "N", call: .bid(.misere)))
+        _ = try engine.apply(.bid(player: "E", call: .pass))
+        _ = try engine.apply(.bid(player: "S", call: .pass))
+
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1))
+        let proposed = await strategy.decide(snapshot: engine.snapshot, viewer: "N")
+        guard let action = proposed,
+              case let .discard(player, discarded) = action else {
+            return XCTFail("Expected the misere declarer to discard, got \(String(describing: proposed))")
+        }
+
+        XCTAssertEqual(player, "N")
+        XCTAssertEqual(Set(discarded), Set(cards(.hearts, [.king, .ace])))
+        XCTAssertNoThrow(try engine.apply(action))
     }
 
     func testDefenderRolloutTakesCheapestWinningCard() {
@@ -223,6 +347,29 @@ final class BotTests: XCTestCase {
         default: break
         }
         return DealOutcome(result: result, stepCount: drive.steps)
+    }
+
+    private func makeBiddingEngine(
+        northHand: [Card],
+        precedingAllPassDeals: Int
+    ) throws -> PreferansEngine {
+        XCTAssertEqual(northHand.count, 10)
+        XCTAssertEqual(Set(northHand).count, 10)
+        let remaining = Deck.standard32.filter { !northHand.contains($0) }
+        XCTAssertEqual(remaining.count, 22)
+        let east = Array(remaining.prefix(10))
+        let south = Array(remaining.dropFirst(10).prefix(10))
+        let talon = Array(remaining.suffix(2))
+
+        var engine = try PreferansEngine(players: players, firstDealer: "S")
+        _ = try engine.startDeal(
+            deck: assemble(north: northHand, east: east, south: south, talon: talon)
+        )
+        guard precedingAllPassDeals > 0 else { return engine }
+
+        var snapshot = engine.snapshot
+        snapshot.consecutiveAllPassDeals = precedingAllPassDeals
+        return try PreferansEngine(snapshot: snapshot)
     }
 
     private func rolloutState(
