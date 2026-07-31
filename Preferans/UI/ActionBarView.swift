@@ -14,6 +14,8 @@ public struct ActionBarView: View {
     /// is sent. Only honored while the viewer may actually settle, so a stale
     /// `true` between deals stays dormant.
     @State private var isComposingSettlement = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     public init(
         projection: PlayerGameProjection,
@@ -57,19 +59,41 @@ public struct ActionBarView: View {
         .feltBand()
     }
 
-    /// Bidding row: one clear title plus a horizontal rail of every legal
-    /// bid. The rail keeps high bids discoverable without hiding them
-    /// behind a secondary "More" menu.
+    /// Bidding row: one clear title plus every legal bid. Portrait iPhone uses
+    /// two rows so pass and the complete opening level are visible at once;
+    /// iPad and landscape keep the shallower single-row rail.
     private var bidRow: some View {
         return VStack(spacing: 10) {
             actionSectionTitle("Your bid")
             scrollableRow {
-                HStack(spacing: 8) {
-                    ForEach(projection.legal.bidCalls, id: \.self) { call in
-                        bidChip(call: call)
+                if usesTwoRowBidRail {
+                    LazyHGrid(
+                        rows: [
+                            GridItem(.fixed(44), spacing: 8),
+                            GridItem(.fixed(44))
+                        ],
+                        spacing: 8
+                    ) {
+                        bidChips
+                    }
+                    .frame(height: 96)
+                } else {
+                    HStack(spacing: 8) {
+                        bidChips
                     }
                 }
             }
+        }
+    }
+
+    private var usesTwoRowBidRail: Bool {
+        horizontalSizeClass == .compact && verticalSizeClass != .compact
+    }
+
+    @ViewBuilder
+    private var bidChips: some View {
+        ForEach(projection.legal.bidCalls, id: \.self) { call in
+            bidChip(call: call)
         }
     }
 
@@ -149,9 +173,9 @@ public struct ActionBarView: View {
         }
     }
 
-    /// Horizontal scroller with a leading + trailing fade so users get a
-    /// visual hint that more options exist beyond the screen edge. Without
-    /// this, the bid bar silently clips the rightmost chips.
+    /// Horizontal scroller with a trailing fade so users get a visual hint
+    /// that higher options continue beyond the screen. Keeping the leading
+    /// edge opaque avoids muting the first (usually Pass) action at rest.
     @ViewBuilder
     private func scrollableRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -164,8 +188,7 @@ public struct ActionBarView: View {
     private var scrollFadeMask: some View {
         LinearGradient(
             stops: [
-                .init(color: .clear, location: 0.0),
-                .init(color: .black, location: 0.04),
+                .init(color: .black, location: 0.0),
                 .init(color: .black, location: 0.96),
                 .init(color: .clear, location: 1.0)
             ],
@@ -460,6 +483,7 @@ public struct ActionBarView: View {
 
     // MARK: - Helpers
 
+    @MainActor
     private struct BidLabel {
         enum Kind { case pass, game, misere, totus }
         var text: LocalizedStringKey
