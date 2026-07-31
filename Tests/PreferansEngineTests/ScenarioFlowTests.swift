@@ -53,7 +53,7 @@ final class ScenarioFlowTests: AppTestCase {
     /// Drives the auction prelude: north opens 6♠, east and south pass.
     /// Returns the resulting `awaitingDiscard` state, or fails the test.
     @discardableResult
-    private func winSixSpadesAuction(_ model: GameViewModel, file: StaticString = #file, line: UInt = #line) -> ExchangeState? {
+    private func winSixSpadesAuction(_ model: GameViewModel, file: StaticString = #filePath, line: UInt = #line) -> ExchangeState? {
         model.send(.bid(player: "north", call: .bid(Self.sixSpades)))
         model.send(.bid(player: "east", call: .pass))
         model.send(.bid(player: "south", call: .pass))
@@ -68,7 +68,7 @@ final class ScenarioFlowTests: AppTestCase {
     /// Drives auction → talon discard → contract declaration → both whist,
     /// landing in `playing.game` with north as declarer and leader.
     @discardableResult
-    private func progressToPlayInSixSpades(_ model: GameViewModel, file: StaticString = #file, line: UInt = #line) -> PlayingState? {
+    private func progressToPlayInSixSpades(_ model: GameViewModel, file: StaticString = #filePath, line: UInt = #line) -> PlayingState? {
         guard let exchange = winSixSpadesAuction(model, file: file, line: line) else { return nil }
         model.send(.discard(player: "north", cards: exchange.talon))
         model.send(.declareContract(player: "north", contract: GameContract(6, .suit(.spades))))

@@ -393,7 +393,7 @@ extension RecentAction.Label {
     /// The render hint used by both the center banner and the seat badge.
     /// Returns a small view that already encodes suit color so callers don't
     /// have to reason about strain → color themselves.
-    @ViewBuilder
+    @MainActor @ViewBuilder
     func glyph(emphasis: Emphasis = .seat) -> some View {
         switch self {
         case let .bid(bid):
