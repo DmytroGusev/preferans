@@ -41,8 +41,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var durabilityRetryTask: Task<Void, Never>?
     private var pendingDurableUpdate: HostUpdate?
     private var hostPeer: OnlinePeer?
-    private var peersBySeat: [PlayerID: OnlinePeer] = [:]
-    private var seats: [PlayerIdentity] = []
+    private var roster = RoomParticipantRoster()
     private var rules: PreferansRules = .sochi
     private var match: MatchSettings = .unbounded
     /// Variant label (`"odesa"`/`"wien"`) carried into the worker summary so the
@@ -52,8 +51,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let dealSource: DealSource
     private var didAutoStartOnlineDeal = false
 
-    /// Seats this host drives as server-side bots (derived from `bot:` peers).
-    private var botSeats: Set<PlayerID> = []
     /// Shared strategy for every bot seat — a value type, safe to reuse.
     private let botStrategy: any PlayerStrategy = HeuristicStrategy()
     /// Pacing for host-driven bot moves. Only the host runs the loop.
@@ -139,11 +136,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.transportEventsTask = observeConnectionEvents(of: transport)
         self.listenTask = listen(to: transport)
 
-        let participants = orderedParticipants(from: transport.participants)
-        let seats = participants.map(\.playerIdentity)
-        self.seats = seats
-        self.peersBySeat = Dictionary(uniqueKeysWithValues: participants.map { ($0.playerID, $0) })
-        self.botSeats = Set(participants.filter(\.isBotSeat).map(\.playerID))
+        let participants = RoomParticipantRoster.ordered(transport.participants)
+        self.roster = RoomParticipantRoster(participants: participants)
         self.localSeat = transport.localPeer.playerID
         recomputeRoster()
 
@@ -153,7 +147,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         if isHost {
             do {
-                try await becomeHost(host: host, seats: seats, rules: self.rules, match: self.match, resume: resume)
+                try await becomeHost(host: host, seats: roster.seats, rules: self.rules, match: self.match, resume: resume)
             } catch {
                 beginHostRecovery(as: host, using: transport)
             }
@@ -199,7 +193,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         transportStatus = .disconnected
         lastHostContact = nil
         didAutoStartOnlineDeal = false
-        botSeats = []
+        roster.reset()
         rosterSeats = []
         canHostStart = false
         state = .disconnected
@@ -305,7 +299,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         do {
             if let peers = try await transport?.fillPendingSeatsWithBots() {
                 adoptParticipantRoster(peers)
-                await hostActor?.updateIdentities(seats)
+                await hostActor?.updateIdentities(roster.seats)
                 return
             }
         } catch {
@@ -313,34 +307,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             return
         }
         refreshPeersFromTransport()
-        var changed = false
-        for index in seats.indices {
-            let identity = seats[index]
-            guard let peer = peersBySeat[identity.playerID], peer.isPendingSeat else { continue }
-            let accountID = "\(OnlinePeer.botAccountPrefix)\(identity.playerID.rawValue)"
-            let displayName = botDisplayName(at: index)
-            peersBySeat[identity.playerID] = OnlinePeer(
-                playerID: identity.playerID,
-                accountID: accountID,
-                provider: .dev,
-                displayName: displayName
-            )
-            seats[index] = PlayerIdentity(
-                playerID: identity.playerID,
-                gamePlayerID: accountID,
-                displayName: displayName
-            )
-            botSeats.insert(identity.playerID)
-            changed = true
-        }
-        guard changed else { return }
-        await hostActor?.updateIdentities(seats)
+        guard roster.fillPendingSeatsWithBots() else { return }
+        await hostActor?.updateIdentities(roster.seats)
         recomputeRoster()
         if let tableID, let localSeat {
             let assignment = SeatAssignmentEnvelope(
                 tableID: tableID,
                 hostPlayerID: localSeat,
-                seats: seats,
+                seats: roster.seats,
                 rules: rules,
                 match: match
             )
@@ -358,26 +332,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// Recompute the published `rosterSeats` / `canHostStart` from the current
     /// seat list + peer map. Cheap; called wherever the peer mapping changes.
     private func recomputeRoster() {
-        let roster = seats.map { identity -> WaitingRoomSeat in
-            let peer = peersBySeat[identity.playerID]
-            let occupancy: WaitingRoomSeat.Occupancy
-            if identity.playerID == localSeat {
-                occupancy = .you(name: identity.displayName)
-            } else if let peer, peer.isBotSeat {
-                occupancy = .bot(name: peer.displayName)
-            } else if peer?.isPendingSeat == true {
-                occupancy = .openWaiting
-            } else {
-                occupancy = .human(name: peer?.displayName ?? identity.displayName)
-            }
-            return WaitingRoomSeat(player: identity.playerID, occupancy: occupancy)
-        }
-        let canStart = !roster.isEmpty && roster.allSatisfy { seat in
-            if case .openWaiting = seat.occupancy { return false }
-            return true
-        }
-        if rosterSeats != roster { rosterSeats = roster }
-        if canHostStart != canStart { canHostStart = canStart }
+        let seats = roster.waitingRoomSeats(localSeat: localSeat)
+        if rosterSeats != seats { rosterSeats = seats }
+        if canHostStart != roster.isReadyToStart { canHostStart = roster.isReadyToStart }
     }
 
     // MARK: - Server-side bots
@@ -390,8 +347,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func scheduleBotMoveIfNeeded() {
         pendingBotTask?.cancel()
         pendingBotTask = nil
-        guard runsServerSideBots, isHost, let hostActor, let tableID, !botSeats.isEmpty else { return }
-        let botSeats = self.botSeats
+        guard runsServerSideBots, isHost, let hostActor, let tableID, !roster.botSeats.isEmpty else { return }
+        let botSeats = roster.botSeats
         let delay = botMoveDelay
         let strategy = botStrategy
         pendingBotTask = Task { @MainActor [weak self] in
@@ -528,7 +485,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func sendHello() async {
-        guard let localSeat, let identity = seats.first(where: { $0.playerID == localSeat }) else { return }
+        guard let localSeat, let identity = roster.identity(for: localSeat) else { return }
         let hello = GameWireMessage.hello(
             HelloEnvelope(
                 tableID: tableID,
@@ -642,7 +599,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     }
                     try await self.becomeHost(
                         host: elected,
-                        seats: self.seats,
+                        seats: self.roster.seats,
                         rules: self.rules,
                         match: self.match,
                         resume: resume
@@ -709,8 +666,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             }
             rules = assignment.rules
             match = assignment.match
-            seats = assignment.seats
-            hostPeer = peersBySeat[assignment.hostPlayerID] ?? hostPeer
+            roster.replaceSeats(assignment.seats)
+            hostPeer = roster.peer(for: assignment.hostPlayerID) ?? hostPeer
             localSeat = transport?.localPeer.playerID
             state = .connectedAsClient
             recomputeRoster()
@@ -721,13 +678,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             if tableID == nil { tableID = hello.tableID }
             guard shouldAcceptHello(from: received.sender, identity: hello.player) else { return }
             await refreshPeerMapping(peer: received.sender, identity: hello.player)
-            if let hostActor, let peer = peersBySeat[hello.player.playerID] {
+            if let hostActor, let peer = roster.peer(for: hello.player.playerID) {
                 do {
                     if let tableID, let localSeat {
                         let assignment = SeatAssignmentEnvelope(
                             tableID: tableID,
                             hostPlayerID: localSeat,
-                            seats: seats,
+                            seats: roster.seats,
                             rules: rules,
                             match: match
                         )
@@ -789,7 +746,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 let envelope = try await hostActor.fullResync(for: request.requester)
                 if request.requester == localSeat {
                     projection = envelope.projection
-                } else if let peer = peersBySeat[request.requester] {
+                } else if let peer = roster.peer(for: request.requester) {
                     try await transport?.send(.projection(envelope), to: [peer], reliably: true)
                 }
             } catch {
@@ -892,7 +849,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         for (viewer, projection) in update.projections where viewer != localSeat {
             // Bot seats have no socket — they never receive wire projections;
             // the host advances them through its own engine.
-            guard let peer = peersBySeat[viewer], !peer.isBotSeat else { continue }
+            guard let peer = roster.peer(for: viewer), !peer.isBotSeat else { continue }
             do {
                 let envelope = ProjectionEnvelope(
                     tableID: update.tableID,
@@ -916,7 +873,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             tableID: update.tableID,
             status: update.status,
             hostPlayerID: localSeat,
-            seats: seats,
+            seats: roster.seats,
             rules: rules,
             lastSequence: update.sequence
         )
@@ -940,7 +897,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     tableID: update.tableID,
                     status: update.status,
                     hostPlayerID: localSeat,
-                    seats: seats,
+                    seats: roster.seats,
                     rules: rules,
                     lastSequence: update.sequence
                 )
@@ -1148,90 +1105,25 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func orderedParticipants(from peers: [OnlinePeer]) -> [OnlinePeer] {
-        peers.sorted { $0.playerID.rawValue < $1.playerID.rawValue }
-    }
-
     private func refreshPeersFromTransport() {
         guard let transport else { return }
-        for peer in transport.participants {
-            let existing = peersBySeat[peer.playerID]
-            if shouldReplacePeer(existing, with: peer) {
-                peersBySeat[peer.playerID] = peer
-            }
-            // Adopt any seat the relay reports as a bot so the host engine drives
-            // it. Insert-only: a seat never un-bots, so this can't drop a bot the
-            // local-authority path inserted before the roster echoed back.
-            if peer.isBotSeat { botSeats.insert(peer.playerID) }
-        }
+        roster.refresh(with: transport.participants)
         recomputeRoster()
     }
 
     private func refreshPeerMapping(peer: OnlinePeer, identity: PlayerIdentity) async {
-        peersBySeat[peer.playerID] = peer
-        peersBySeat[identity.playerID] = peer
-        if let index = seats.firstIndex(where: { $0.playerID == identity.playerID }) {
-            seats[index] = identity
-        }
-        await hostActor?.updateIdentities(seats)
+        roster.claim(peer: peer, as: identity)
+        await hostActor?.updateIdentities(roster.seats)
         recomputeRoster()
-    }
-
-    private func shouldReplacePeer(_ existing: OnlinePeer?, with candidate: OnlinePeer) -> Bool {
-        guard let existing else { return true }
-        if existing.isPendingSeat {
-            return true
-        }
-        if candidate.isPendingSeat {
-            return false
-        }
-        return true
     }
 
     private func shouldAcceptHello(from sender: OnlinePeer, identity: PlayerIdentity) -> Bool {
-        guard !sender.isPendingSeat else { return false }
-        guard let existing = peersBySeat[identity.playerID] else { return true }
-        if existing.isBotSeat { return false }
-        if existing.isPendingSeat { return true }
-        return existing.accountID == sender.accountID
+        roster.acceptsHello(from: sender, identity: identity)
     }
 
     private func adoptParticipantRoster(_ participants: [OnlinePeer]) {
-        for peer in participants {
-            let candidate = normalizedBotPeer(peer)
-            let existing = peersBySeat[candidate.playerID]
-            if shouldReplacePeer(existing, with: candidate) {
-                peersBySeat[candidate.playerID] = candidate
-                updateSeatIdentity(from: candidate)
-            }
-            if candidate.isBotSeat { botSeats.insert(candidate.playerID) }
-        }
+        roster.adopt(participants)
         recomputeRoster()
-    }
-
-    private func updateSeatIdentity(from peer: OnlinePeer) {
-        guard !peer.isPendingSeat,
-              let index = seats.firstIndex(where: { $0.playerID == peer.playerID }) else { return }
-        seats[index] = peer.playerIdentity
-    }
-
-    private func normalizedBotPeer(_ peer: OnlinePeer) -> OnlinePeer {
-        guard peer.isBotSeat,
-              let index = seats.firstIndex(where: { $0.playerID == peer.playerID }) else {
-            return peer
-        }
-        let displayName = botDisplayName(at: index)
-        guard peer.displayName != displayName else { return peer }
-        return OnlinePeer(
-            playerID: peer.playerID,
-            accountID: peer.accountID,
-            provider: peer.provider,
-            displayName: displayName
-        )
-    }
-
-    private func botDisplayName(at seatIndex: Int) -> String {
-        "\(String(localized: "Bot")) \(seatIndex + 1)"
     }
 
     private func autoStartOnlineDealIfNeeded(afterJoin joinedPlayer: PlayerID) async {
@@ -1258,13 +1150,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func allExpectedOnlinePlayersConnected() -> Bool {
-        seats.allSatisfy { identity in
-            guard let peer = peersBySeat[identity.playerID] else { return false }
-            // A seat counts as filled when a human has claimed it or a bot owns
-            // it; only an unclaimed `pending:` seat is still missing a player.
-            // (`bot:` accounts are non-`pending:`, so this covers them too.)
-            return !peer.isPendingSeat
-        }
+        roster.isReadyToStart
     }
 
     private func logOnlineFlowProjection(_ projection: PlayerGameProjection, source: String) {

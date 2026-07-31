@@ -24,6 +24,133 @@ final class OnlineBotSeatTests: XCTestCase {
         XCTAssertFalse(human.isPendingSeat)
     }
 
+    func testRosterNeverLetsDelayedPendingPresenceEvictAHuman() {
+        let host = OnlinePeer(
+            playerID: "north",
+            accountID: "apple:host",
+            provider: .apple,
+            displayName: "Host"
+        )
+        let pendingEast = OnlinePeer(
+            playerID: "east",
+            accountID: "pending:east",
+            provider: .dev,
+            displayName: "East"
+        )
+        var roster = RoomParticipantRoster(participants: [host, pendingEast])
+
+        XCTAssertEqual(roster.seats.map(\.playerID), ["east", "north"])
+        XCTAssertFalse(roster.isReadyToStart)
+
+        let joinedEast = OnlinePeer(
+            playerID: "east",
+            accountID: "apple:east",
+            provider: .apple,
+            displayName: "Eve"
+        )
+        roster.refresh(with: [joinedEast])
+        roster.refresh(with: [pendingEast])
+
+        XCTAssertEqual(roster.peer(for: "east"), joinedEast)
+        XCTAssertTrue(roster.isReadyToStart)
+        XCTAssertEqual(
+            roster.waitingRoomSeats(localSeat: "north"),
+            [
+                WaitingRoomSeat(player: "east", occupancy: .human(name: "Eve")),
+                WaitingRoomSeat(player: "north", occupancy: .you(name: "Host"))
+            ]
+        )
+    }
+
+    func testRosterDeduplicatesSeatsAndPrefersOccupiedParticipant() {
+        let pending = OnlinePeer(
+            playerID: "east",
+            accountID: "pending:east",
+            provider: .dev,
+            displayName: "East"
+        )
+        let human = OnlinePeer(
+            playerID: "east",
+            accountID: "apple:east",
+            provider: .apple,
+            displayName: "Eve"
+        )
+
+        let roster = RoomParticipantRoster(participants: [pending, human])
+
+        XCTAssertEqual(roster.seats.count, 1)
+        XCTAssertEqual(roster.seats.first?.displayName, "Eve")
+        XCTAssertEqual(roster.peer(for: "east"), human)
+        XCTAssertTrue(roster.isReadyToStart)
+    }
+
+    func testRosterHelloPolicyProtectsClaimedAndBotSeats() {
+        let claimed = OnlinePeer(
+            playerID: "north",
+            accountID: "apple:north",
+            provider: .apple,
+            displayName: "North"
+        )
+        let pending = OnlinePeer(
+            playerID: "east",
+            accountID: "pending:east",
+            provider: .dev,
+            displayName: "East"
+        )
+        let bot = OnlinePeer(
+            playerID: "south",
+            accountID: "bot:south",
+            provider: .dev,
+            displayName: "Bot 3"
+        )
+        let roster = RoomParticipantRoster(participants: [claimed, pending, bot])
+        let eastHuman = OnlinePeer(
+            playerID: "east",
+            accountID: "apple:east",
+            provider: .apple,
+            displayName: "East"
+        )
+        let northImpostor = OnlinePeer(
+            playerID: "north",
+            accountID: "apple:other",
+            provider: .apple,
+            displayName: "Other"
+        )
+        let northIdentity = claimed.playerIdentity
+
+        XCTAssertTrue(roster.acceptsHello(from: eastHuman, identity: eastHuman.playerIdentity))
+        XCTAssertTrue(roster.acceptsHello(from: claimed, identity: northIdentity))
+        XCTAssertFalse(roster.acceptsHello(from: northImpostor, identity: northIdentity))
+        XCTAssertFalse(roster.acceptsHello(from: pending, identity: pending.playerIdentity))
+        XCTAssertFalse(roster.acceptsHello(from: eastHuman, identity: bot.playerIdentity))
+    }
+
+    func testRosterBotConversionUpdatesPeerIdentityAndReadinessTogether() {
+        let host = OnlinePeer(
+            playerID: "north",
+            accountID: "apple:host",
+            provider: .apple,
+            displayName: "Host"
+        )
+        let pendingEast = OnlinePeer(
+            playerID: "east",
+            accountID: "pending:east",
+            provider: .dev,
+            displayName: "East"
+        )
+        var roster = RoomParticipantRoster(participants: [pendingEast, host])
+
+        XCTAssertTrue(roster.fillPendingSeatsWithBots())
+        XCTAssertFalse(roster.fillPendingSeatsWithBots(), "Bot conversion must be idempotent.")
+
+        let east = roster.peer(for: "east")
+        XCTAssertEqual(east?.accountID, "bot:east")
+        XCTAssertEqual(east?.displayName, "Bot 1")
+        XCTAssertEqual(roster.identity(for: "east")?.displayName, "Bot 1")
+        XCTAssertEqual(roster.botSeats, ["east"])
+        XCTAssertTrue(roster.isReadyToStart)
+    }
+
     // MARK: - HostGameActor bot decision plan
 
     func testHostActorReportsBotPlanOnlyForBotControlledSeats() async throws {
