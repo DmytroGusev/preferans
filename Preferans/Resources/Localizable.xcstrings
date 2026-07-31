@@ -488,6 +488,51 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Дві карти прикупу задають масть перших двох взяток на розпасах; ранг карти не враховується." } }
       }
     },
+    "rules.dealerTalon" : {
+      "comment" : "Four-player sitting-out dealer compensation rule label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Four-player dealer" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сдатчик вчетвером" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Здавач учетверо" } }
+      }
+    },
+    "rules.dealerTalon.classic" : {
+      "comment" : "Compact label for enabled classic dealer talon compensation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Talon compensation" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Компенсация за прикуп" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Компенсація за прикуп" } }
+      }
+    },
+    "rules.dealerTalon.none" : {
+      "comment" : "Compact label for disabled dealer talon compensation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No talon bonus" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Без бонуса за прикуп" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Без бонусу за прикуп" } }
+      }
+    },
+    "rules.dealerTalon.explanation" : {
+      "comment" : "Explains classic talon compensation for the sitting-out fourth player.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The sitting-out dealer writes whists on the declarer for classic talon combinations: two aces, a suited ace–king, one ace, or a suited king–queen. On misère, sevens are compensated." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Не играющий сдатчик пишет висты на разыгрывающего за комбинации в прикупе: два туза, туз–король одной масти, один туз или марьяж король–дама. На мизере учитываются семёрки." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Здавач, який не грає, пише вісти на розігрувача за комбінації в прикупі: два тузи, туз–король однієї масті, один туз або мар'яж король–дама. На мізері враховуються сімки." } }
+      }
+    },
+    "rules.dealerTalon.none.explanation" : {
+      "comment" : "Explains that dealer talon compensation is disabled.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The sitting-out dealer receives no score from the talon." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Не играющий сдатчик не получает записей за прикуп." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Здавач, який не грає, не отримує записів за прикуп." } }
+      }
+    },
     "Continue as Guest" : {
       "comment" : "Online registration button that creates a server-issued guest account.",
       "extractionState" : "manual",

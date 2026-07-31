@@ -29,6 +29,15 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         case perTrick(multiplier: Int, amnesty: Bool)
     }
 
+    /// Compensation written by the sitting-out dealer in a four-player game
+    /// when the talon contains established trick combinations. It is a table
+    /// agreement in some circles, so it remains explicit even though the
+    /// canonical app profiles enable it.
+    public enum DealerTalonCompensation: String, Codable, Sendable {
+        case none
+        case classic
+    }
+
     public var allowSeniorHandHoldBid: Bool
     public var requireWhistOnTenTrickContracts: Bool
     public var singleWhistScoring: SingleWhistScoring
@@ -37,6 +46,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public var allPassTalonPolicy: AllPassTalonPolicy
     public var allPassPenaltyPolicy: AllPassPenaltyPolicy
     public var zeroTricksAllPassPoolBonus: Int
+    public var dealerTalonCompensation: DealerTalonCompensation
     /// Recording scales are deliberately separate. In Leningrad a made
     /// contract keeps the standard 2/4/6/8/10 pool value, while direct
     /// whists and declarer remise mountain entries are doubled.
@@ -59,6 +69,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         allPassTalonPolicy: AllPassTalonPolicy = .leadSuitOnly,
         allPassPenaltyPolicy: AllPassPenaltyPolicy = .perTrick(multiplier: 1, amnesty: true),
         zeroTricksAllPassPoolBonus: Int = 1,
+        dealerTalonCompensation: DealerTalonCompensation = .classic,
         poolValueMultiplier: Int = 1,
         mountainValueMultiplier: Int = 1,
         whistValueMultiplier: Int = 1,
@@ -78,6 +89,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         self.allPassTalonPolicy = allPassTalonPolicy
         self.allPassPenaltyPolicy = allPassPenaltyPolicy
         self.zeroTricksAllPassPoolBonus = zeroTricksAllPassPoolBonus
+        self.dealerTalonCompensation = dealerTalonCompensation
         self.poolValueMultiplier = poolValueMultiplier
         self.mountainValueMultiplier = mountainValueMultiplier
         self.whistValueMultiplier = whistValueMultiplier
@@ -128,6 +140,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         case allPassTalonPolicy
         case allPassPenaltyPolicy
         case zeroTricksAllPassPoolBonus
+        case dealerTalonCompensation
         case poolValueMultiplier
         case mountainValueMultiplier
         case whistValueMultiplier
@@ -152,6 +165,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             allPassTalonPolicy: try values.decode(AllPassTalonPolicy.self, forKey: .allPassTalonPolicy),
             allPassPenaltyPolicy: try values.decode(AllPassPenaltyPolicy.self, forKey: .allPassPenaltyPolicy),
             zeroTricksAllPassPoolBonus: try values.decode(Int.self, forKey: .zeroTricksAllPassPoolBonus),
+            dealerTalonCompensation: try values.decodeIfPresent(
+                DealerTalonCompensation.self,
+                forKey: .dealerTalonCompensation
+            ) ?? .classic,
             poolValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .poolValueMultiplier) ?? legacyMultiplier ?? 1,
             mountainValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .mountainValueMultiplier) ?? legacyMultiplier ?? 1,
             whistValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .whistValueMultiplier) ?? legacyMultiplier ?? 1,
@@ -172,6 +189,9 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         try values.encode(allPassTalonPolicy, forKey: .allPassTalonPolicy)
         try values.encode(allPassPenaltyPolicy, forKey: .allPassPenaltyPolicy)
         try values.encode(zeroTricksAllPassPoolBonus, forKey: .zeroTricksAllPassPoolBonus)
+        if dealerTalonCompensation != .classic {
+            try values.encode(dealerTalonCompensation, forKey: .dealerTalonCompensation)
+        }
         if poolValueMultiplier != 1 { try values.encode(poolValueMultiplier, forKey: .poolValueMultiplier) }
         if mountainValueMultiplier != 1 { try values.encode(mountainValueMultiplier, forKey: .mountainValueMultiplier) }
         if whistValueMultiplier != 1 { try values.encode(whistValueMultiplier, forKey: .whistValueMultiplier) }

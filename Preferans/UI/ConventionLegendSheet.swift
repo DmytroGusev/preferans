@@ -261,6 +261,13 @@ struct ConventionLegendSheet: View {
                         ? "rules.semiResponsible"
                         : "rules.responsible"
                 )
+                localizedMetricCard(
+                    title: "rules.dealerTalon",
+                    value: rules.dealerTalonCompensation == .classic
+                        ? "rules.dealerTalon.classic"
+                        : "rules.dealerTalon.none"
+                )
+                .accessibilityIdentifier(UIIdentifiers.rulesDealerTalon)
                 metricCard(
                     title: "rules.raspasyPrice",
                     value: examples.raspasy.map(\.trickPrice).map(String.init).joined(separator: "–")
@@ -477,6 +484,12 @@ struct ConventionLegendSheet: View {
                     : "rules.odesa.whist"
             )
             ruleExplanation(title: "rules.talon", text: "rules.talon.explanation")
+            ruleExplanation(
+                title: "rules.dealerTalon",
+                text: rules.dealerTalonCompensation == .classic
+                    ? "rules.dealerTalon.explanation"
+                    : "rules.dealerTalon.none.explanation"
+            )
         }
     }
 

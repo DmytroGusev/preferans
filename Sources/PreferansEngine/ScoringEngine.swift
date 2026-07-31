@@ -21,6 +21,14 @@ struct PreferansScoring {
     func passedOut(_ whist: WhistState) -> DealResult {
         var delta = ScoreDelta(players: players)
         delta.addPool(poolValue(whist.contract) + whist.bonusPoolOnSuccess, to: whist.declarer)
+        applyDealerGameTalonCompensation(
+            dealer: whist.dealer,
+            activePlayers: whist.activePlayers,
+            talon: whist.talon,
+            declarer: whist.declarer,
+            contract: whist.contract,
+            delta: &delta
+        )
         return .unplayed(
             kind: .passedOut,
             activePlayers: whist.activePlayers,
@@ -36,6 +44,14 @@ struct PreferansScoring {
             whistValue(whist.contract) * (effectiveWhistRequirement(for: whist.contract) / 2),
             writer: halfWhister,
             on: whist.declarer
+        )
+        applyDealerGameTalonCompensation(
+            dealer: whist.dealer,
+            activePlayers: whist.activePlayers,
+            talon: whist.talon,
+            declarer: whist.declarer,
+            contract: whist.contract,
+            delta: &delta
         )
         return .unplayed(
             kind: .halfWhist(declarer: whist.declarer, contract: whist.contract, halfWhister: halfWhister),
@@ -124,6 +140,15 @@ struct PreferansScoring {
             )
         }
 
+        applyDealerGameTalonCompensation(
+            dealer: playing.dealer,
+            activePlayers: playing.activePlayers,
+            talon: playing.talon,
+            declarer: context.declarer,
+            contract: context.contract,
+            delta: &delta
+        )
+
         return DealResult(
             kind: .game(declarer: context.declarer, contract: context.contract, whisters: context.whisters),
             activePlayers: playing.activePlayers,
@@ -211,6 +236,13 @@ struct PreferansScoring {
                 to: context.declarer
             )
         }
+        applyDealerMisereTalonCompensation(
+            dealer: playing.dealer,
+            activePlayers: playing.activePlayers,
+            talon: playing.talon,
+            declarer: context.declarer,
+            delta: &delta
+        )
         return DealResult(
             kind: .misere(declarer: context.declarer),
             activePlayers: playing.activePlayers,
@@ -271,6 +303,67 @@ struct PreferansScoring {
 
     private func whistValue(_ contract: GameContract) -> Int {
         contract.value * rules.whistValueMultiplier
+    }
+
+    private func applyDealerGameTalonCompensation(
+        dealer: PlayerID,
+        activePlayers: [PlayerID],
+        talon: [Card],
+        declarer: PlayerID,
+        contract: GameContract,
+        delta: inout ScoreDelta
+    ) {
+        guard rules.dealerTalonCompensation == .classic,
+              players.count == 4,
+              !activePlayers.contains(dealer) else { return }
+        let bonusTricks = dealerGameTalonTricks(talon)
+        guard bonusTricks > 0 else { return }
+        delta.addWhists(
+            whistValue(contract) * bonusTricks,
+            writer: dealer,
+            on: declarer
+        )
+    }
+
+    private func applyDealerMisereTalonCompensation(
+        dealer: PlayerID,
+        activePlayers: [PlayerID],
+        talon: [Card],
+        declarer: PlayerID,
+        delta: inout ScoreDelta
+    ) {
+        guard rules.dealerTalonCompensation == .classic,
+              players.count == 4,
+              !activePlayers.contains(dealer) else { return }
+        let bonusWhists = dealerMisereTalonWhists(talon) * rules.whistValueMultiplier
+        guard bonusWhists > 0 else { return }
+        delta.addWhists(bonusWhists, writer: dealer, on: declarer)
+    }
+
+    /// Two aces count as three tricks; suited ace-king as two; one ace or a
+    /// suited king-queen marriage as one. Higher combinations take precedence
+    /// because a two-card talon can satisfy more than one lower condition.
+    private func dealerGameTalonTricks(_ talon: [Card]) -> Int {
+        guard talon.count == 2 else { return 0 }
+        let aceCount = talon.filter { $0.rank == .ace }.count
+        if aceCount == 2 { return 3 }
+        if suited(talon, ranks: [.ace, .king]) { return 2 }
+        if aceCount == 1 || suited(talon, ranks: [.king, .queen]) { return 1 }
+        return 0
+    }
+
+    /// Misère pays ten whists per seven. A suited seven-eight combination is
+    /// conventionally valued as twenty even though it contains one seven.
+    private func dealerMisereTalonWhists(_ talon: [Card]) -> Int {
+        guard talon.count == 2 else { return 0 }
+        if suited(talon, ranks: [.seven, .eight]) { return 20 }
+        return talon.filter { $0.rank == .seven }.count * 10
+    }
+
+    private func suited(_ cards: [Card], ranks: Set<Rank>) -> Bool {
+        cards.count == 2
+            && cards[0].suit == cards[1].suit
+            && Set(cards.map(\.rank)) == ranks
     }
 
     private func applyDeclarerRemiseConsolation(

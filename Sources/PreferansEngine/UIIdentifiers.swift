@@ -143,6 +143,7 @@ public enum UIIdentifiers {
     public static let conventionLegendSheet    = "lobby.conventionLegend"
     public static let rulesVariantPicker       = "rules.variantPicker"
     public static let rulesContractTable       = "rules.contractTable"
+    public static let rulesDealerTalon         = "rules.dealerTalon"
     public static let rulesRaspasyProgression  = "rules.raspasyProgression"
     public static func rulesVariant(_ variant: String) -> String { "rules.variant.\(variant)" }
     public static func rulesRaspasyStage(_ stage: Int) -> String { "rules.raspasy.stage.\(stage)" }

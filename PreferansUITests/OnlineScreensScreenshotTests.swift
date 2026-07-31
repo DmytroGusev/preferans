@@ -89,6 +89,11 @@ final class OnlineScreensScreenshotTests: XCTestCase {
 
         let rulesSheet = app.otherElements[UIIdentifiers.conventionLegendSheet]
         XCTAssertTrue(rulesSheet.waitForExistence(timeout: 3), "Rules reference never opened")
+        XCTAssertTrue(
+            app.descendants(matching: .any)[UIIdentifiers.rulesDealerTalon]
+                .waitForExistence(timeout: 3),
+            "Rules reference did not expose the four-player dealer convention"
+        )
         let isTablet = app.windows.firstMatch.frame.width >= 700
         if isTablet {
             XCTAssertTrue(

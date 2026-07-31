@@ -138,6 +138,8 @@ final class ScoringVariantTests: XCTestCase {
 
     func testCanonicalSochiRaspasyUsesTalonLeadAndAmnesty() {
         XCTAssertEqual(PreferansRules.sochi.allPassTalonPolicy, .leadSuitOnly)
+        XCTAssertEqual(PreferansRules.sochi.dealerTalonCompensation, .classic)
+        XCTAssertEqual(PreferansRules.leningrad.dealerTalonCompensation, .classic)
         guard case let .perTrick(multiplier, amnesty) = PreferansRules.sochi.allPassPenaltyPolicy else {
             return XCTFail("Expected per-trick Sochi raspasy scoring.")
         }
@@ -247,6 +249,80 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(failed.mountain["north"], 20)
     }
 
+    // MARK: - Four-player dealer talon compensation
+
+    func testClassicDealerTalonCombinationsWriteContractWhists() {
+        let contract = GameContract(6, .suit(.clubs))
+        let cases: [(name: String, talon: [Card], expected: Int)] = [
+            ("two aces count as three tricks", [Card(.spades, .ace), Card(.hearts, .ace)], 6),
+            ("suited ace king counts as two", [Card(.spades, .ace), Card(.spades, .king)], 4),
+            ("one ace counts as one", [Card(.spades, .ace), Card(.hearts, .nine)], 2),
+            ("suited marriage counts as one", [Card(.clubs, .king), Card(.clubs, .queen)], 2),
+            ("ordinary talon pays nothing", [Card(.clubs, .nine), Card(.hearts, .ten)], 0),
+        ]
+
+        for example in cases {
+            let delta = scoreFourPlayerGame(
+                contract: contract,
+                talon: example.talon,
+                rules: .sochi
+            )
+            XCTAssertEqual(
+                delta.whists["west"]?["north"] ?? 0,
+                example.expected,
+                example.name
+            )
+        }
+    }
+
+    func testDealerTalonCompensationCanBeDisabled() {
+        let rules = PreferansRules(dealerTalonCompensation: .none)
+        let delta = scoreFourPlayerGame(
+            contract: GameContract(6, .suit(.clubs)),
+            talon: [Card(.spades, .ace), Card(.hearts, .ace)],
+            rules: rules
+        )
+
+        XCTAssertEqual(delta.whists["west"]?["north"] ?? 0, 0)
+    }
+
+    func testMisereDealerTalonCompensationUsesTheVariantWhistScale() {
+        let suitedSevenEight = [Card(.diamonds, .seven), Card(.diamonds, .eight)]
+        let twoSevens = [Card(.spades, .seven), Card(.hearts, .seven)]
+
+        XCTAssertEqual(
+            scoreFourPlayerMisere(talon: suitedSevenEight, rules: .sochi)
+                .whists["west"]?["north"],
+            20
+        )
+        XCTAssertEqual(
+            scoreFourPlayerMisere(talon: twoSevens, rules: .sochi)
+                .whists["west"]?["north"],
+            20
+        )
+        XCTAssertEqual(
+            scoreFourPlayerMisere(talon: suitedSevenEight, rules: .leningrad)
+                .whists["west"]?["north"],
+            40
+        )
+    }
+
+    func testDealerTalonCompensationSurvivesPassOutAndHalfWhist() {
+        let talon = [Card(.spades, .ace), Card(.hearts, .ace)]
+        let whist = fourPlayerWhistState(talon: talon)
+        let scoring = PreferansScoring(
+            players: fourPlayers,
+            rules: .sochi,
+            match: .unbounded
+        )
+
+        let passedOut = scoring.passedOut(whist).scoreDelta
+        let halfWhist = scoring.halfWhist(whist, halfWhister: "east").scoreDelta
+
+        XCTAssertEqual(passedOut.whists["west"]?["north"], 6)
+        XCTAssertEqual(halfWhist.whists["west"]?["north"], 6)
+    }
+
     // MARK: - Failed misère
 
     func testFailedMisereChargesTenMountainPerDeclarerTrick() {
@@ -310,6 +386,71 @@ final class ScoringVariantTests: XCTestCase {
             }
         )
         return score(kind: .game(context), trickCounts: trickCounts, rules: rules, match: match)
+    }
+
+    private var fourPlayers: [PlayerID] { ["north", "east", "south", "west"] }
+
+    private func scoreFourPlayerGame(
+        contract: GameContract,
+        talon: [Card],
+        rules: PreferansRules
+    ) -> ScoreDelta {
+        let active: [PlayerID] = ["north", "east", "south"]
+        let defenders: [PlayerID] = ["east", "south"]
+        let context = GamePlayContext(
+            declarer: "north",
+            contract: contract,
+            defenders: defenders,
+            whisters: defenders,
+            defenderPlayMode: .closed,
+            whistCalls: defenders.map { WhistCallRecord(player: $0, call: .whist) }
+        )
+        let playing = PlayingState(
+            dealer: "west",
+            activePlayers: active,
+            hands: active.dictionary(filledWith: []),
+            talon: talon,
+            leader: "north",
+            currentPlayer: "north",
+            trickCounts: ["north": 6, "east": 2, "south": 2],
+            kind: .game(context)
+        )
+        return PreferansScoring(players: fourPlayers, rules: rules, match: .unbounded)
+            .completedPlay(playing).scoreDelta
+    }
+
+    private func scoreFourPlayerMisere(
+        talon: [Card],
+        rules: PreferansRules
+    ) -> ScoreDelta {
+        let active: [PlayerID] = ["north", "east", "south"]
+        let playing = PlayingState(
+            dealer: "west",
+            activePlayers: active,
+            hands: active.dictionary(filledWith: []),
+            talon: talon,
+            leader: "north",
+            currentPlayer: "north",
+            trickCounts: ["north": 0, "east": 5, "south": 5],
+            kind: .misere(MiserePlayContext(declarer: "north"))
+        )
+        return PreferansScoring(players: fourPlayers, rules: rules, match: .unbounded)
+            .completedPlay(playing).scoreDelta
+    }
+
+    private func fourPlayerWhistState(talon: [Card]) -> WhistState {
+        let active: [PlayerID] = ["north", "east", "south"]
+        return WhistState(
+            dealer: "west",
+            activePlayers: active,
+            hands: active.dictionary(filledWith: []),
+            talon: talon,
+            discard: [],
+            declarer: "north",
+            contract: GameContract(6, .suit(.clubs)),
+            defenders: ["east", "south"],
+            currentPlayer: "east"
+        )
     }
 
     private func scoreAllPass(
