@@ -67,7 +67,7 @@ final class PreferansEngineTests: XCTestCase {
             var engine = try PreferansEngine(players: table.players, firstDealer: table.dealer)
             try engine.startDeal(deck: Deck.standard32)
             for player in table.expectedActive {
-                try engine.apply(.bid(player: player, call: .pass))
+                _ = try engine.apply(.bid(player: player, call: .pass))
             }
 
             guard case let .playing(playing) = engine.state,
@@ -171,24 +171,24 @@ final class PreferansEngineTests: XCTestCase {
         try engine.startDeal(deck: Deck.standard32)
 
         let contract = GameContract(10, .suit(.clubs))
-        try engine.apply(.bid(player: "north", call: .bid(.game(contract))))
-        try engine.apply(.bid(player: "east", call: .pass))
-        try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .bid(.game(contract))))
+        _ = try engine.apply(.bid(player: "east", call: .pass))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
 
         guard case let .awaitingDiscard(exchange) = engine.state else {
             return XCTFail("Expected the declarer to receive the talon.")
         }
-        try engine.apply(.discard(player: "north", cards: exchange.talon))
-        try engine.apply(.declareContract(player: "north", contract: contract))
+        _ = try engine.apply(.discard(player: "north", cards: exchange.talon))
+        _ = try engine.apply(.declareContract(player: "north", contract: contract))
 
         guard case let .awaitingWhist(whist) = engine.state else {
             return XCTFail("Required-whist ten must enter the defenders' decision phase.")
         }
         XCTAssertEqual(whist.currentPlayer, "east")
         XCTAssertEqual(engine.legalWhistCalls(for: "east"), [.whist])
-        try engine.apply(.whist(player: "east", call: .whist))
+        _ = try engine.apply(.whist(player: "east", call: .whist))
         XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
-        try engine.apply(.whist(player: "south", call: .whist))
+        _ = try engine.apply(.whist(player: "south", call: .whist))
 
         guard case let .playing(playing) = engine.state,
               case let .game(context) = playing.kind else {
