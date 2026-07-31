@@ -78,11 +78,11 @@ final class RedesignScreenshotTests: XCTestCase {
 
         robot.startNextDeal()
         robot.waitForPhase("Bidding")
-        let sixHearts = app.buttons[
-            UIIdentifiers.bidButton(.bid(.game(GameContract(6, .suit(.hearts)))))
+        let sixNoTrump = app.buttons[
+            UIIdentifiers.bidButton(.bid(.game(GameContract(6, .noTrump))))
         ]
         XCTAssertTrue(
-            sixHearts.waitForExistence(timeout: 1) && sixHearts.isHittable,
+            sixNoTrump.waitForExistence(timeout: 1) && sixNoTrump.isHittable,
             "The complete opening bid level must be immediately reachable without scrolling"
         )
         recorder.capture(name: "03-bidding-east")

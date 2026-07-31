@@ -59,35 +59,20 @@ public struct ActionBarView: View {
         .feltBand()
     }
 
-    /// Bidding row: one clear title plus every legal bid. Portrait iPhone uses
+    /// Bidding row: one clear title plus every legal bid. Taller layouts use
     /// two rows so pass and the complete opening level are visible at once;
-    /// iPad and landscape keep the shallower single-row rail.
+    /// only compact landscape keeps the shallower single-row rail.
     private var bidRow: some View {
         return VStack(spacing: 10) {
             actionSectionTitle("Your bid")
-            scrollableRow {
-                if usesTwoRowBidRail {
-                    LazyHGrid(
-                        rows: [
-                            GridItem(.fixed(44), spacing: 8),
-                            GridItem(.fixed(44))
-                        ],
-                        spacing: 8
-                    ) {
-                        bidChips
-                    }
-                    .frame(height: 96)
-                } else {
-                    HStack(spacing: 8) {
-                        bidChips
-                    }
-                }
+            adaptiveChoiceRail {
+                bidChips
             }
         }
     }
 
-    private var usesTwoRowBidRail: Bool {
-        horizontalSizeClass == .compact && verticalSizeClass != .compact
+    private var usesTwoRowChoiceRail: Bool {
+        verticalSizeClass != .compact
     }
 
     @ViewBuilder
@@ -139,35 +124,60 @@ public struct ActionBarView: View {
 
     private var contractRow: some View {
         let isTotus = isTotusDeclaration
-        return scrollableRow {
-            HStack(spacing: 8) {
-                ForEach(projection.legal.contractOptions, id: \.self) { contract in
-                    Button {
-                        onSend(.declareContract(player: projection.viewer, contract: contract))
-                    } label: {
-                        HStack(spacing: 3) {
-                            if !isTotus {
-                                Text("\(contract.tricks)")
-                                    .fontWeight(.bold)
-                            }
-                            Text(Localized.strain(contract.strain))
-                                .foregroundStyle(strainColor(contract.strain))
+        return adaptiveChoiceRail {
+            ForEach(projection.legal.contractOptions, id: \.self) { contract in
+                Button {
+                    onSend(.declareContract(player: projection.viewer, contract: contract))
+                } label: {
+                    HStack(spacing: 3) {
+                        if !isTotus {
+                            Text("\(contract.tricks)")
                                 .fontWeight(.bold)
                         }
+                        Text(Localized.strain(contract.strain))
+                            .foregroundStyle(strainColor(contract.strain))
+                            .fontWeight(.bold)
                     }
-                    .buttonStyle(.feltSecondary)
-                    .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
                 }
-                if canConcedeWithoutThree {
-                    Button {
-                        onSend(.concedeWithoutThree(player: projection.viewer))
-                    } label: {
-                        Label("Without 3", systemImage: "flag.slash")
-                            .fontWeight(.semibold)
-                            .frame(minWidth: 112, minHeight: 24)
-                    }
-                    .buttonStyle(.feltDim)
-                    .accessibilityIdentifier(UIIdentifiers.buttonConcedeWithoutThree)
+                .buttonStyle(.feltSecondary)
+                .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
+            }
+            if canConcedeWithoutThree {
+                Button {
+                    onSend(.concedeWithoutThree(player: projection.viewer))
+                } label: {
+                    Label("Without 3", systemImage: "flag.slash")
+                        .fontWeight(.semibold)
+                        .frame(minWidth: 112, minHeight: 24)
+                }
+                .buttonStyle(.feltDim)
+                .accessibilityIdentifier(UIIdentifiers.buttonConcedeWithoutThree)
+            }
+        }
+    }
+
+    /// Reuse the same device-specific density for both auction calls and the
+    /// post-prikup contract declaration. Keeping this in one helper prevents
+    /// the two adjacent choice phases from drifting into different behavior.
+    @ViewBuilder
+    private func adaptiveChoiceRail<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        scrollableRow {
+            if usesTwoRowChoiceRail {
+                LazyHGrid(
+                    rows: [
+                        GridItem(.fixed(44), spacing: 8),
+                        GridItem(.fixed(44))
+                    ],
+                    spacing: 8
+                ) {
+                    content()
+                }
+                .frame(height: 96)
+            } else {
+                HStack(spacing: 8) {
+                    content()
                 }
             }
         }
