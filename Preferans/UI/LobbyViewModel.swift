@@ -29,6 +29,7 @@ public final class LobbyViewModel: ObservableObject {
     @Published public private(set) var onlineAccountSessionToken: String?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
+    @Published public private(set) var isDeletingOnlineAccount = false
     /// Online display name, kept entirely separate from the local bot roster.
     /// Signing in overwrites this — never `seats`.
     @Published public var onlineDisplayName: String = ""
@@ -68,10 +69,10 @@ public final class LobbyViewModel: ObservableObject {
         }
     }
     private var onlineNamePersistenceTask: Task<Void, Never>?
-    private let accountClient: CloudflareAccountClient
+    private let accountClient: any OnlineAccountServing
     static let onlineNamePersistenceDelay: Duration = .milliseconds(300)
 
-    public init(accountClient: CloudflareAccountClient = CloudflareAccountClient()) {
+    public init(accountClient: any OnlineAccountServing = CloudflareAccountClient()) {
         self.accountClient = accountClient
         let account = Self.loadRegisteredOnlineAccount()
         let sessionToken = account == nil ? nil : OnlineAccountSessionStore.token()
@@ -291,11 +292,38 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     public func clearRegisteredOnlineAccount() {
+        clearOnlineAccountData(removeDisplayName: false)
+    }
+
+    public func deleteRegisteredOnlineAccount() async throws {
+        guard !isDeletingOnlineAccount else { return }
+        guard registeredOnlineAccount != nil,
+              let sessionToken = onlineAccountSessionToken else {
+            clearOnlineAccountData(removeDisplayName: true)
+            return
+        }
+
+        isDeletingOnlineAccount = true
+        defer { isDeletingOnlineAccount = false }
+        try await accountClient.deleteAccount(sessionToken: sessionToken)
+        clearOnlineAccountData(removeDisplayName: true)
+        errorText = nil
+        infoText = String(localized: "Online account deleted.")
+    }
+
+    private func clearOnlineAccountData(removeDisplayName: Bool) {
         registeredOnlineAccount = nil
         onlineAccountSessionToken = nil
         OnlineAccountSessionStore.remove()
         OnlineSeatCredentialStore.removeAll()
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
+        if removeDisplayName {
+            onlineNamePersistenceTask?.cancel()
+            onlineNamePersistenceTask = nil
+            onlineDisplayName = ""
+            UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
+        }
     }
 
     public func setOnlineDisplayName(_ name: String) {

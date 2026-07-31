@@ -160,6 +160,58 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
         takeover.disconnect()
     }
 
+    func testAccountDeletionRevokesSessionAndScrubsLobbySeat() async throws {
+        guard let baseURL else {
+            throw XCTSkip("Set PREFERANS_WORKER_URL to exercise the live worker.")
+        }
+
+        let client = CloudflareAccountClient(baseURL: baseURL)
+        let registration = try await client.registerGuest(displayName: "Delete me")
+        let account = registration.account
+        let host = OnlinePeer(
+            playerID: "north",
+            accountID: account.accountID,
+            provider: account.provider,
+            displayName: account.displayName
+        )
+        let transport = try await CloudflareRoomTransport.createRoom(
+            baseURL: baseURL,
+            localPeer: host,
+            seats: [
+                host,
+                OnlinePeer(playerID: "east", accountID: "bot:east", provider: .dev, displayName: "Bot 2"),
+                OnlinePeer(playerID: "south", accountID: "pending:south", provider: .dev, displayName: "Open")
+            ],
+            accountSessionToken: registration.sessionToken,
+            maxPlayers: 3
+        )
+        defer { transport.disconnect() }
+
+        try await client.deleteAccount(sessionToken: registration.sessionToken)
+
+        do {
+            _ = try await CloudflareGameDirectory(baseURL: baseURL)
+                .fetchMyGames(sessionToken: registration.sessionToken)
+            XCTFail("A deleted account session must be revoked.")
+        } catch let error as CloudflareRoomTransportError {
+            guard case .serverError = error else {
+                return XCTFail("Expected an account authorization error, got \(error).")
+            }
+        }
+
+        let summaryURL = baseURL
+            .appendingPathComponent("v2")
+            .appendingPathComponent("rooms")
+            .appendingPathComponent(transport.roomCode)
+        let (summaryData, summaryResponse) = try await URLSession.shared.data(from: summaryURL)
+        XCTAssertEqual((summaryResponse as? HTTPURLResponse)?.statusCode, 200)
+        let summary = try PreferansJSONCoder.decoder.decode(CloudflareRoomSummary.self, from: summaryData)
+        let north = try XCTUnwrap(summary.peers.first { $0.playerID == "north" })
+        XCTAssertEqual(north.accountID, "pending:north")
+        XCTAssertEqual(north.displayName, "Open seat")
+        XCTAssertNotEqual(north.accountID, account.accountID)
+    }
+
     func testDisconnectedHostMigratesToAConnectedSeatAndKeepsTheSnapshot() async throws {
         guard let baseURL else {
             throw XCTSkip("Set PREFERANS_WORKER_URL to exercise the live worker.")

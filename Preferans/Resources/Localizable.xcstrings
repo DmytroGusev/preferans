@@ -605,6 +605,78 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-акаунт готовий." } }
       }
     },
+    "Online account deleted." : {
+      "comment" : "Confirmation after authenticated online-account deletion succeeds.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Online account deleted." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-аккаунт удалён." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-акаунт видалено." } }
+      }
+    },
+    "settings.account.delete.confirmation.title" : {
+      "comment" : "Destructive online-account deletion confirmation title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete online account?" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Удалить онлайн-аккаунт?" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Видалити онлайн-акаунт?" } }
+      }
+    },
+    "Delete online account" : {
+      "comment" : "Destructive action that permanently deletes the online account.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete online account" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Удалить онлайн-аккаунт" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Видалити онлайн-акаунт" } }
+      }
+    },
+    "This permanently deletes the server account and game library, removes your identity from rooms, and clears this device. Active games you joined will be abandoned. You can register again later." : {
+      "comment" : "Consequences shown before permanent online-account deletion.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This permanently deletes the server account and game library, removes your identity from rooms, and clears this device. Active games you joined will be abandoned. You can register again later." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-аккаунт и библиотека игр будут безвозвратно удалены с сервера, ваши данные — из комнат, а данные аккаунта — с этого устройства. Активные игры с вашим участием будут прекращены. Позже можно зарегистрироваться снова." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-акаунт і бібліотеку ігор буде безповоротно видалено із сервера, ваші дані — з кімнат, а дані акаунта — із цього пристрою. Активні ігри за вашої участі буде припинено. Пізніше можна зареєструватися знову." } }
+      }
+    },
+    "Account deletion failed" : {
+      "comment" : "Alert title when online-account deletion fails.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account deletion failed" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Не удалось удалить аккаунт" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Не вдалося видалити акаунт" } }
+      }
+    },
+    "Deleting online account…" : {
+      "comment" : "Progress label while online-account deletion is in flight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deleting online account…" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Удаление онлайн-аккаунта…" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Видалення онлайн-акаунта…" } }
+      }
+    },
+    "Return to the lobby before deleting the online account." : {
+      "comment" : "Settings footer when account deletion is unavailable during a table.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Return to the lobby before deleting the online account." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вернитесь в лобби, чтобы удалить онлайн-аккаунт." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Поверніться до лобі, щоб видалити онлайн-акаунт." } }
+      }
+    },
+    "Permanently deletes the server account, revokes its sessions and room credentials, and clears local account data. Shared game results retain only an anonymized seat." : {
+      "comment" : "Settings footer explaining permanent online-account deletion.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Permanently deletes the server account, revokes its sessions and room credentials, and clears local account data. Shared game results retain only an anonymized seat." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Безвозвратно удаляет аккаунт с сервера, отзывает его сессии и доступ к комнатам и очищает локальные данные. В общих результатах игр останется только обезличенное место." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Безповоротно видаляє акаунт із сервера, відкликає його сесії та доступ до кімнат і очищає локальні дані. У спільних результатах ігор залишиться лише знеособлене місце." } }
+      }
+    },
     "Guest account registered" : {
       "comment" : "Settings status for a registered guest account.",
       "extractionState" : "manual",

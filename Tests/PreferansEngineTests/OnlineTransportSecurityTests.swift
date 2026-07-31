@@ -71,6 +71,26 @@ final class OnlineTransportSecurityTests: XCTestCase {
     }
 
     @MainActor
+    func testAccountDeletionUsesAuthenticatedV2Endpoint() async throws {
+        var captured: URLRequest?
+        CapturingURLProtocol.handler = { request in
+            captured = request
+            return (204, Data())
+        }
+
+        try await CloudflareAccountClient(baseURL: baseURL, session: session)
+            .deleteAccount(sessionToken: "pref2.account.secret")
+
+        XCTAssertEqual(captured?.httpMethod, "DELETE")
+        XCTAssertEqual(captured?.url?.path, "/v2/account")
+        XCTAssertNil(captured?.httpBody)
+        XCTAssertEqual(
+            captured?.value(forHTTPHeaderField: "authorization"),
+            "Bearer pref2.account.secret"
+        )
+    }
+
+    @MainActor
     func testGameLibraryDerivesAccountFromBearerWithoutAccountQuery() async throws {
         var captured: URLRequest?
         CapturingURLProtocol.handler = { request in

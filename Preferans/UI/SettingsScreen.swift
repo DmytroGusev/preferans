@@ -16,11 +16,19 @@ public struct SettingsScreen: View {
 
     @State private var showRelaunchPrompt = false
     @State private var showDeleteAccountConfirm = false
+    @State private var isDeletingAccount = false
+    @State private var accountDeletionError: String?
     @State private var accountStatusText = Self.accountStatusText()
     @State private var trackingStatusText = TrackingPermissionCenter.statusText
     @State private var canRequestTrackingPermission = TrackingPermissionCenter.canRequestPermission
 
-    public init() {}
+    private let onDeleteOnlineAccount: (@MainActor () async throws -> Void)?
+
+    public init(
+        onDeleteOnlineAccount: (@MainActor () async throws -> Void)? = nil
+    ) {
+        self.onDeleteOnlineAccount = onDeleteOnlineAccount
+    }
 
     public var body: some View {
         NavigationStack {
@@ -57,18 +65,21 @@ public struct SettingsScreen: View {
             } message: {
                 Text("Language will switch on next launch.")
             }
-            .confirmationDialog(
-                "Delete account data?",
-                isPresented: $showDeleteAccountConfirm,
-                titleVisibility: .visible
+            .alert(
+                "settings.account.delete.confirmation.title",
+                isPresented: $showDeleteAccountConfirm
             ) {
-                Button("Delete account data", role: .destructive) {
-                    Self.deleteAccountData()
-                    refreshAccountStatus()
+                Button("Delete online account", role: .destructive) {
+                    Task { await deleteOnlineAccount() }
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This removes the saved online account, secure session, display name, and room credentials from this device. You can register again later.")
+                Text("This permanently deletes the server account and game library, removes your identity from rooms, and clears this device. Active games you joined will be abandoned. You can register again later.")
+            }
+            .alert("Account deletion failed", isPresented: accountDeletionErrorBinding) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(accountDeletionError ?? "")
             }
             .onAppear {
                 refreshAccountStatus()
@@ -84,13 +95,23 @@ public struct SettingsScreen: View {
             Button(role: .destructive) {
                 showDeleteAccountConfirm = true
             } label: {
-                Label("Delete account data", systemImage: "trash")
+                if isDeletingAccount {
+                    HStack {
+                        ProgressView()
+                        Text("Deleting online account…")
+                    }
+                } else {
+                    Label("Delete online account", systemImage: "trash")
+                }
             }
+            .disabled(onDeleteOnlineAccount == nil || isDeletingAccount)
             .accessibilityIdentifier(UIIdentifiers.onlineDeleteAccount)
         } header: {
             Text("Account")
         } footer: {
-            Text("Deletes the locally stored online identity used for invite rooms. This app does not keep a separate server-side profile database.")
+            Text(onDeleteOnlineAccount == nil
+                ? "Return to the lobby before deleting the online account."
+                : "Permanently deletes the server account, revokes its sessions and room credentials, and clears local account data. Shared game results retain only an anonymized seat.")
                 .font(.footnote)
         }
     }
@@ -181,6 +202,26 @@ public struct SettingsScreen: View {
         accountStatusText = Self.accountStatusText()
     }
 
+    private var accountDeletionErrorBinding: Binding<Bool> {
+        Binding(
+            get: { accountDeletionError != nil },
+            set: { if !$0 { accountDeletionError = nil } }
+        )
+    }
+
+    private func deleteOnlineAccount() async {
+        guard let onDeleteOnlineAccount else { return }
+        isDeletingAccount = true
+        accountDeletionError = nil
+        do {
+            try await onDeleteOnlineAccount()
+            refreshAccountStatus()
+        } catch {
+            accountDeletionError = error.localizedDescription
+        }
+        isDeletingAccount = false
+    }
+
     private static func accountStatusText() -> String {
         if let data = UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount),
            let account = try? PreferansJSONCoder.decoder.decode(RegisteredOnlineAccount.self, from: data),
@@ -197,11 +238,4 @@ public struct SettingsScreen: View {
         return String(localized: "No saved account")
     }
 
-    private static func deleteAccountData() {
-        OnlineAccountSessionStore.remove()
-        OnlineSeatCredentialStore.removeAll()
-        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
-        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
-        UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineDisplayName)
-    }
 }

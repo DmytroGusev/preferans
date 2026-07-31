@@ -50,10 +50,13 @@ The app includes account deletion in Settings:
 
 - Open Settings from the app.
 - Go to Account.
-- Tap Delete account data.
+- Tap Delete online account.
 - Confirm deletion.
 
-The flow clears the locally stored Sign in with Apple identity, anonymous room account ID, and display name. The current app does not maintain a separate server-side profile database.
+The flow deletes the authenticated Cloudflare account, sessions, game library,
+room identity, and room credentials before clearing the locally stored profile,
+Keychain session, and display name. Shared completed-game history retains only
+an anonymized seat and score.
 
 ## Screenshots
 
@@ -69,6 +72,6 @@ Thank you for the review. We reviewed the app and confirmed that the current iOS
 
 The App Privacy answers in App Store Connect were too broad and incorrectly marked data as used for tracking. We updated App Privacy to show that the app does not track users. Online room identity and display name are used only for app functionality so invited players can join and identify seats in the same game room.
 
-Account deletion is available in the app from Settings -> Account -> Delete account data.
+Account deletion is available in the app from Settings -> Account -> Delete online account.
 
 Please review the updated submission.

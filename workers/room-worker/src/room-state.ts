@@ -26,6 +26,11 @@ export const PENDING_ACCOUNT_PREFIX = "pending:";
 /// taken by a late joiner.
 export const BOT_ACCOUNT_PREFIX = "bot:";
 
+/// Tombstone used after an account is permanently deleted. Unlike an open
+/// `pending:` seat it cannot be claimed in a completed/abandoned game, and it
+/// is excluded from account-library fan-out just like bots and open seats.
+export const DELETED_ACCOUNT_PREFIX = "deleted:";
+
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const SEAT_TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "guest", "dev"]);
@@ -367,6 +372,45 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
   throw new RoomStateError("room_full", "Room is full.", 409);
 }
 
+export interface AccountRemovalResult {
+  room: RoomState;
+  removedPlayerIDs: string[];
+}
+
+/// Remove every durable identity and credential owned by an account. Lobby
+/// seats reopen for another invitee; an in-progress table is abandoned because
+/// its engine snapshot can no longer have a complete authenticated roster.
+/// Finished history keeps seat/result facts but anonymizes the deleted player.
+export function removeAccountFromRoom(
+  room: RoomState,
+  accountID: string,
+  now = new Date().toISOString()
+): AccountRemovalResult {
+  const removedPlayerIDs = room.peers
+    .filter((peer) => peer.accountID === accountID)
+    .map(peerID);
+  if (removedPlayerIDs.length === 0) {
+    return { room, removedPlayerIDs };
+  }
+
+  const lobby = (room.status ?? "lobby") === "lobby";
+  const peers = room.peers.map((peer): OnlinePeer => {
+    if (peer.accountID !== accountID) return peer;
+    const playerID = peerID(peer);
+    return {
+      playerID: peer.playerID,
+      accountID: `${lobby ? PENDING_ACCOUNT_PREFIX : DELETED_ACCOUNT_PREFIX}${playerID}`,
+      provider: "dev",
+      displayName: lobby ? "Open seat" : "Deleted player"
+    };
+  });
+  let updated: RoomState = { ...room, peers, updatedAt: now };
+  if (room.status === "playing") {
+    updated = applyStateReport(updated, { status: "abandoned" }, now).room;
+  }
+  return { room: updated, removedPlayerIDs };
+}
+
 export function routeRecipients(room: RoomState, senderPlayerID: unknown, recipients?: unknown[]): string[] {
   const sender = playerIDValue(senderPlayerID);
   const known = new Set(room.peers.map(peerID));
@@ -518,7 +562,9 @@ export function normalizeGameSummary(value: unknown): GameSummary | undefined {
 /// A participant the lobby should list a game for: any seat that is neither a
 /// reserved-but-unclaimed (`pending:`) seat nor a host-driven bot (`bot:`).
 export function isHumanAccount(accountID: string): boolean {
-  return !accountID.startsWith(PENDING_ACCOUNT_PREFIX) && !accountID.startsWith(BOT_ACCOUNT_PREFIX);
+  return !accountID.startsWith(PENDING_ACCOUNT_PREFIX)
+    && !accountID.startsWith(BOT_ACCOUNT_PREFIX)
+    && !accountID.startsWith(DELETED_ACCOUNT_PREFIX);
 }
 
 /// Authorize a caller claiming `playerID`'s seat, returning the seat on

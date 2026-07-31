@@ -48,6 +48,20 @@ All remaining HTTP examples use:
 -H 'authorization: Bearer <sessionToken>'
 ```
 
+## Delete an account
+
+`DELETE /v2/account` permanently deletes the authenticated account, its active
+sessions, and game library. The worker also removes its identity and room
+credential from every indexed room before deleting the account record: lobby
+seats reopen, active games are abandoned and lose their resume snapshot, and
+shared terminal history retains only an anonymized seat. A later Apple sign-in
+or guest registration creates a fresh account state.
+
+```sh
+curl -i -X DELETE http://127.0.0.1:8787/v2/account \
+  -H 'authorization: Bearer <sessionToken>'
+```
+
 ## Create and join
 
 Clients choose only seat IDs and open/bot intent. They never declare account IDs,

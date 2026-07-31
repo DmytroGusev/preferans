@@ -39,5 +39,14 @@ final class AccessibilityContractTests: XCTestCase {
 
         robot.waitForElement(UIIdentifiers.screenSettings)
         robot.waitForElement(UIIdentifiers.settingsLanguagePicker)
+        let deleteAccount = app.buttons[UIIdentifiers.onlineDeleteAccount]
+        XCTAssertTrue(deleteAccount.waitForExistence(timeout: 3))
+        XCTAssertTrue(deleteAccount.isEnabled, "Lobby settings must expose server-backed account deletion")
+        deleteAccount.tap()
+        XCTAssertTrue(
+            app.staticTexts["Delete online account?"].waitForExistence(timeout: 3),
+            "Permanent deletion consequences were not presented"
+        )
+        app.buttons["Cancel"].tap()
     }
 }

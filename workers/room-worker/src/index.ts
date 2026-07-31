@@ -5,6 +5,7 @@ import {
   type RoomState,
   type WirePlayerID,
   BOT_ACCOUNT_PREFIX,
+  DELETED_ACCOUNT_PREFIX,
   MAX_SOCKET_MESSAGE_BYTES,
   PENDING_ACCOUNT_PREFIX,
   ROOM_SCHEMA_VERSION,
@@ -25,6 +26,7 @@ import {
   playerIDValue,
   publicRoom,
   recordRelay,
+  removeAccountFromRoom,
   routeRecipients,
   humanPeers
 } from "./room-state";
@@ -196,6 +198,10 @@ export default {
         return env.ACCOUNTS.get(id).fetch("https://account/list");
       }
 
+      if (request.method === "DELETE" && url.pathname === "/v2/account") {
+        return deleteAuthenticatedAccount(request, env);
+      }
+
       if (
         request.method === "GET" &&
         (url.pathname === "/.well-known/apple-app-site-association" || url.pathname === "/apple-app-site-association")
@@ -330,8 +336,15 @@ export class PreferansRoomV2 {
           throw new RoomStateError("room_exists", "Room code is already in use.", 409);
         }
         const room = createInitialRoom(body);
+        const creator = room.peers.find((peer) => peerID(peer) === room.hostPlayerID);
+        if (!creator) {
+          throw new RoomStateError("invalid_host", "Room creator does not own a seat.", 500);
+        }
+        // Account deletion enumerates this durable membership index. A room
+        // must not become visible until its creator can later find and delete
+        // it; transition-only refreshes remain best-effort below.
+        await this.upsertLibraryEntry(room, creator);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
-        await this.fanOutToLibraries(room);
         return json(createResult(room), 201);
       }
 
@@ -340,11 +353,18 @@ export class PreferansRoomV2 {
         const room = await this.loadRequiredRoom();
         const joiner = normalizePeer(body.localPeer);
         const updated = joinRoom(room, joiner);
+        const joinedSeat = updated.peers.find((peer) => peer.accountID === joiner.accountID);
+        if (!joinedSeat) {
+          throw new RoomStateError("invalid_join", "Joined account does not own a seat.", 500);
+        }
+        // Make membership durable before publishing the roster. This is the
+        // account's authoritative room index for resume and later deletion.
+        await this.upsertLibraryEntry(updated, joinedSeat);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
         await this.broadcastPresence(updated);
         // A join changes the roster — refresh every participant's library entry
         // (and seed the new joiner's) so the game shows up under "Your games".
-        await this.fanOutToLibraries(updated);
+        await this.fanOutToLibraries(updated, new Set([joiner.accountID]));
         // The joiner gets only its own seat credential. Host-only HTTP actions
         // are authorized by the authenticated account session, so there is no
         // second long-lived host secret to leak or synchronize.
@@ -402,6 +422,28 @@ export class PreferansRoomV2 {
           await this.broadcastPresence(updated);
           await this.fanOutToLibraries(updated);
         }
+        return json(publicRoom(updated));
+      }
+
+      if (request.method === "POST" && url.pathname === "/account-deleted") {
+        const body = await readJSON<{ accountID?: unknown }>(request);
+        const accountID = String(body.accountID ?? "");
+        if (!accountID || accountID.startsWith(DELETED_ACCOUNT_PREFIX)) {
+          throw new RoomStateError("invalid_account", "A current account ID is required.");
+        }
+        const room = await this.loadRequiredRoom();
+        const { room: scrubbed, removedPlayerIDs } = removeAccountFromRoom(room, accountID);
+        if (removedPlayerIDs.length === 0) {
+          return json(publicRoom(room));
+        }
+
+        const remainingLivePlayers = this.activePlayerIDs()
+          .filter((playerID) => !removedPlayerIDs.includes(playerID));
+        const updated = electLiveHost(scrubbed, remainingLivePlayers);
+        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+        this.closeSocketsForPlayers(removedPlayerIDs, 4010, "account_deleted");
+        await this.broadcastPresence(updated);
+        await this.fanOutToLibraries(updated);
         return json(publicRoom(updated));
       }
 
@@ -562,22 +604,39 @@ export class PreferansRoomV2 {
   /// `PlayerLibrary`, one entry per seat. Bots and reserved (`pending:`) seats
   /// are skipped — only real accounts get a "Your games" row. Failures are
   /// swallowed per-account so one unreachable index never blocks the others.
-  async fanOutToLibraries(room: RoomState): Promise<void> {
+  async fanOutToLibraries(
+    room: RoomState,
+    excludingAccountIDs: ReadonlySet<string> = new Set()
+  ): Promise<void> {
     await Promise.all(
-      humanPeers(room).map(async (peer) => {
-        const entry = buildSummaryEntry(room, peer);
-        try {
-          const id = this.env.ACCOUNTS.idFromName(peer.accountID);
-          await this.env.ACCOUNTS.get(id).fetch("https://account/upsert", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(entry)
-          });
-        } catch {
-          // Best-effort index update; the room state remains the source of truth.
-        }
-      })
+      humanPeers(room)
+        .filter((peer) => !excludingAccountIDs.has(peer.accountID))
+        .map(async (peer) => {
+          try {
+            await this.upsertLibraryEntry(room, peer);
+          } catch {
+            // Best-effort index update; the room state remains the source of truth.
+          }
+        })
     );
+  }
+
+  private async upsertLibraryEntry(room: RoomState, peer: OnlinePeer): Promise<void> {
+    const entry = buildSummaryEntry(room, peer);
+    const id = this.env.ACCOUNTS.idFromName(peer.accountID);
+    const response = await this.env.ACCOUNTS.get(id).fetch("https://account/upsert", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(entry)
+    });
+    if (!response.ok) {
+      const data = await response.json() as { code?: string; error?: string };
+      throw new AccountStateError(
+        data.code ?? "account_index_failed",
+        data.error ?? "Could not index the room for this account.",
+        response.status
+      );
+    }
   }
 
   sendToPlayers(playerIDs: string[], message: string): void {
@@ -596,6 +655,16 @@ export class PreferansRoomV2 {
       const attachment = socket.deserializeAttachment() as SocketAttachment | undefined ?? {};
       if (attachment.playerID === playerID) {
         socket.close(4009, "seat_replaced");
+      }
+    }
+  }
+
+  private closeSocketsForPlayers(playerIDs: string[], code: number, reason: string): void {
+    const removed = new Set(playerIDs);
+    for (const socket of this.ctx.getWebSockets()) {
+      const attachment = socket.deserializeAttachment() as SocketAttachment | undefined ?? {};
+      if (attachment.playerID && removed.has(attachment.playerID)) {
+        socket.close(code, reason);
       }
     }
   }
@@ -700,6 +769,12 @@ export class PlayerAccountV2 {
         return json({ games: listGames(await this.loadRequired()) });
       }
 
+      if (request.method === "DELETE" && url.pathname === "/delete") {
+        await this.loadRequired();
+        await this.ctx.storage.deleteAll();
+        return new Response(null, { status: 204 });
+      }
+
       return json({ error: "Method not allowed." }, 405);
     } catch (error: unknown) {
       return errorResponse(error);
@@ -759,6 +834,49 @@ async function authenticateAccount(request: Request, env: Env): Promise<PublicAc
     throw new AccountStateError(data.code ?? "unauthorized", data.error ?? "Register again to use online play.", 401);
   }
   return data.account;
+}
+
+async function deleteAuthenticatedAccount(request: Request, env: Env): Promise<Response> {
+  const account = await authenticateAccount(request, env);
+  const id = env.ACCOUNTS.idFromName(account.accountID);
+  const accountStub = env.ACCOUNTS.get(id);
+  const listResponse = await accountStub.fetch("https://account/list");
+  const library = await listResponse.json() as { games?: Array<{ roomCode?: unknown }> };
+  if (!listResponse.ok) {
+    throw new AccountStateError("account_error", "Could not read the account game index.", listResponse.status);
+  }
+
+  for (const entry of library.games ?? []) {
+    let roomCode: string;
+    try {
+      roomCode = normalizeRoomCode(entry.roomCode);
+    } catch {
+      continue;
+    }
+    const roomID = env.ROOMS.idFromName(roomCode);
+    const response = await env.ROOMS.get(roomID).fetch("https://room/account-deleted", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ accountID: account.accountID })
+    });
+    // A stale library row must not make an otherwise valid account impossible
+    // to delete. Current rooms, however, must be scrubbed successfully before
+    // the account record and its sessions disappear.
+    if (!response.ok && response.status !== 404 && response.status !== 410) {
+      const data = await response.json() as { code?: string; error?: string };
+      throw new RoomStateError(
+        data.code ?? "room_cleanup_failed",
+        data.error ?? "Could not remove the account from an active room.",
+        response.status
+      );
+    }
+  }
+
+  const deleteResponse = await accountStub.fetch("https://account/delete", { method: "DELETE" });
+  if (!deleteResponse.ok) {
+    throw new AccountStateError("account_error", "Could not delete the account.", deleteResponse.status);
+  }
+  return new Response(null, { status: 204, headers: corsHeaders() });
 }
 
 function authenticatedPeer(account: PublicAccount, playerID: unknown): OnlinePeer {
@@ -946,7 +1064,7 @@ function peerPlayerID(peer: unknown): unknown {
 function corsHeaders(): HeadersInit {
   return {
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
     "access-control-allow-headers": "authorization,content-type"
   };
 }

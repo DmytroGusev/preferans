@@ -51,7 +51,7 @@ We may disclose information if required by law or to protect the app, users, or 
 
 ## Data Retention
 
-Online room and gameplay records are kept only as long as reasonably needed to operate multiplayer and maintain app functionality. Local profile data remains on your device until you sign out, delete the app, or clear the app's data.
+Online room and gameplay records are kept only as long as reasonably needed to operate multiplayer and maintain app functionality. Local profile data remains on your device until you sign out, delete the app, or clear the app's data. Deleting an online account removes its server profile, sessions, game library, room credentials, and display identity. Shared game results may retain the deleted player's seat and score in anonymized form so the remaining participants' match history stays coherent.
 
 ## Children
 
@@ -63,7 +63,7 @@ You can:
 
 - Use local play without joining online rooms.
 - Sign out in the app to remove the locally stored online profile.
-- Use Delete account data in Settings to remove the locally stored online profile, Keychain session, display name, and room credentials from your device.
+- Use Delete online account in Settings to permanently delete the server account and game library, remove your identity and credentials from rooms, and clear the local profile and Keychain session from your device.
 - Delete the app to remove local app data from your device.
 - Contact us to request help with privacy questions.
 

@@ -12,6 +12,7 @@ import {
   isHumanAccount,
   joinRoom,
   normalizeGameStatus,
+  removeAccountFromRoom,
   type OnlinePeer,
   peerID,
   playerIDValue,
@@ -165,6 +166,44 @@ test("a join is rejected once every reserved seat is taken", () => {
     () => joinRoom(room, { playerID: { rawValue: "r" }, accountID: "apple:three", provider: "apple", displayName: "Three" }),
     /Room is full/
   );
+});
+
+test("deleting an account reopens its lobby seat without retaining identity or credentials", () => {
+  const room = createInitialRoom({
+    roomCode: "ROOM1",
+    localPeer: north,
+    seats: [north, east, openSouth],
+    now: "2026-07-31T00:00:00.000Z"
+  });
+  const removed = removeAccountFromRoom(room, east.accountID, "2026-07-31T00:01:00.000Z");
+  const eastSeat = removed.room.peers.find((peer) => peerID(peer) === "east");
+
+  assert.deepEqual(removed.removedPlayerIDs, ["east"]);
+  assert.equal(removed.room.status, "lobby");
+  assert.equal(eastSeat?.accountID, "pending:east");
+  assert.equal(eastSeat?.displayName, "Open seat");
+  assert.equal(eastSeat?.seatToken, undefined);
+  assert.ok(!JSON.stringify(removed.room).includes(east.accountID));
+});
+
+test("deleting a player abandons an active room, drops its snapshot, and anonymizes history", () => {
+  const lobby = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const playing = {
+    ...lobby,
+    status: "playing" as const,
+    latestSnapshot: { hiddenHands: true },
+    lastSnapshotSequence: 4
+  };
+  const removed = removeAccountFromRoom(playing, north.accountID, "2026-07-31T00:02:00.000Z");
+  const northSeat = removed.room.peers.find((peer) => peerID(peer) === "north");
+
+  assert.equal(removed.room.status, "abandoned");
+  assert.equal(removed.room.latestSnapshot, undefined);
+  assert.equal(northSeat?.accountID, "deleted:north");
+  assert.equal(northSeat?.displayName, "Deleted player");
+  assert.equal(northSeat?.seatToken, undefined);
+  assert.equal(isHumanAccount("deleted:north"), false);
+  assert.ok(!JSON.stringify(removed.room).includes(north.accountID));
 });
 
 test("a bot seat is not claimable — a joiner is routed to an open seat instead", () => {

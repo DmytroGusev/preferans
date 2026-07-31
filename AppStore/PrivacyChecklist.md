@@ -39,14 +39,19 @@ Code may access the advertising identifier only through `TrackingPermissionCente
 
 ## Account deletion
 
-The app includes an in-app **Delete account data** action in **Settings → Account**. It clears locally stored Sign in with Apple identity, anonymous room account ID, and display name from the device. The current app does not maintain a separate server-side profile database.
+The app includes an authenticated **Delete online account** action in
+**Settings → Account**. It deletes the Cloudflare account record, active bearer
+sessions, game library, room identity, and room credentials before clearing the
+local Keychain session and profile. Active games containing the account are
+abandoned and lose their resume snapshot; shared finished history retains only
+an anonymized seat and score.
 
 ## Update before submission if you add any of these
 
 - Analytics SDK
 - Crash reporting SDK
-- Authentication
-- A backend beyond Apple iCloud CloudKit
+- A new authentication provider
+- Another backend beyond the current Cloudflare room service and Apple iCloud CloudKit
 - Push notifications
 - Deep-link attribution
 

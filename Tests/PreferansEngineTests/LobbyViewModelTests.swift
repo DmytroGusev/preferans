@@ -4,6 +4,31 @@ import XCTest
 @testable import PreferansApp
 import PreferansEngine
 
+private actor AccountClientStub: OnlineAccountServing {
+    let registration: OnlineAccountRegistration
+    private(set) var deletedSessionTokens: [String] = []
+
+    init(registration: OnlineAccountRegistration) {
+        self.registration = registration
+    }
+
+    func registerGuest(displayName: String) async throws -> OnlineAccountRegistration {
+        registration
+    }
+
+    func registerApple(
+        identityToken: String,
+        nonce: String,
+        displayName: String
+    ) async throws -> OnlineAccountRegistration {
+        registration
+    }
+
+    func deleteAccount(sessionToken: String) async throws {
+        deletedSessionTokens.append(sessionToken)
+    }
+}
+
 @MainActor
 final class LobbyViewModelTests: AppTestCase {
     func testBotStepperAddsAndRemovesFourthBot() {
@@ -133,6 +158,39 @@ final class LobbyViewModelTests: AppTestCase {
             UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName),
             "Ada"
         )
+    }
+
+    func testAccountDeletionRevokesServerBeforeClearingLobbyIdentity() async throws {
+        resetOnlineIdentityDefaults()
+        let registration = OnlineAccountRegistration(
+            account: RegisteredOnlineAccount(
+                provider: .guest,
+                accountID: "guest:server-owned",
+                displayName: "Ada"
+            ),
+            sessionToken: "pref2.account.secret"
+        )
+        let client = AccountClientStub(registration: registration)
+        let model = LobbyViewModel(accountClient: client)
+        model.onlineDisplayName = "Ada"
+        model.registerGuestOnlineAccount()
+        for _ in 0..<100 where model.isOnlineRoomLoading {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(model.registeredOnlineAccount, registration.account)
+        XCTAssertEqual(model.onlineAccountSessionToken, registration.sessionToken)
+
+        try await model.deleteRegisteredOnlineAccount()
+
+        let deletedSessionTokens = await client.deletedSessionTokens
+        XCTAssertEqual(deletedSessionTokens, [registration.sessionToken])
+        XCTAssertNil(model.registeredOnlineAccount)
+        XCTAssertNil(model.onlineAccountSessionToken)
+        XCTAssertEqual(model.onlineDisplayName, "")
+        XCTAssertEqual(model.infoText, "Online account deleted.")
+        XCTAssertNil(UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount))
+        XCTAssertNil(UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName))
     }
 
     func testOnlineVariantDefaultsToOdesaAndPersists() {

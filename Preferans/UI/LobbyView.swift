@@ -105,7 +105,9 @@ public struct LobbyView: View {
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .settings:
-                    SettingsScreen()
+                    SettingsScreen {
+                        try await viewModel.deleteRegisteredOnlineAccount()
+                    }
                 case .conventionLegend:
                     ConventionLegendSheet(initialVariant: viewModel.onlineVariant)
                 case let .gameSummary(game):

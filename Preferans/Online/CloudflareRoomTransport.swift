@@ -26,10 +26,20 @@ public struct OnlineAccountRegistration: Decodable, Sendable, Equatable {
     public var sessionToken: String
 }
 
+public protocol OnlineAccountServing: Sendable {
+    func registerGuest(displayName: String) async throws -> OnlineAccountRegistration
+    func registerApple(
+        identityToken: String,
+        nonce: String,
+        displayName: String
+    ) async throws -> OnlineAccountRegistration
+    func deleteAccount(sessionToken: String) async throws
+}
+
 /// Registration is the only unauthenticated v2 API surface. It exchanges a
 /// display name (guest) or verified Apple identity token + nonce for a
 /// server-issued account and bearer session.
-public struct CloudflareAccountClient: Sendable {
+public struct CloudflareAccountClient: Sendable, OnlineAccountServing {
     public var baseURL: URL
     public var session: URLSession
 
@@ -54,6 +64,24 @@ public struct CloudflareAccountClient: Sendable {
             AppleRegistrationRequest(identityToken: identityToken, nonce: nonce, displayName: displayName),
             endpoint: "apple"
         )
+    }
+
+    public func deleteAccount(sessionToken: String) async throws {
+        let url = baseURL
+            .appendingPathComponent("v2")
+            .appendingPathComponent("account")
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "authorization")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let message = (try? PreferansJSONCoder.decoder.decode(RoomServerError.self, from: data).error)
+                ?? "Account server returned HTTP \(http.statusCode)."
+            throw CloudflareRoomTransportError.serverError(message)
+        }
     }
 
     private func register<Body: Encodable>(_ body: Body, endpoint: String) async throws -> OnlineAccountRegistration {
