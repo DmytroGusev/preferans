@@ -2,6 +2,546 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "bot.insight.section" : {
+      "comment" : "Activity-log section containing recent bot decision explanations.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Bot notes" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Решения ботов" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Рішення ботів" } }
+      }
+    },
+    "bot.insight.auctionPass" : {
+      "comment" : "Bot explanation after passing in the auction.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This hand missed my safety margin, so I passed." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Рука не прошла мой запас надёжности, поэтому я спасовал." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Рука не пройшла мій запас надійності, тому я спасував." } }
+      }
+    },
+    "bot.insight.gameBid" : {
+      "comment" : "Bot explanation after bidding a regular game.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The hand cleared my game threshold at the lowest useful level." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Рука прошла мой порог игры на минимально полезном уровне." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Рука пройшла мій поріг гри на найнижчому корисному рівні." } }
+      }
+    },
+    "bot.insight.misereBid" : {
+      "comment" : "Bot explanation after bidding misere.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The hand looked lean enough to try misère." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Рука достаточно слаба по взяткам, чтобы попробовать мизер." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Рука досить слабка за взятками, щоб спробувати мізер." } }
+      }
+    },
+    "bot.insight.totusBid" : {
+      "comment" : "Bot explanation after bidding totus.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The hand showed enough control to chase all ten tricks." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В руке достаточно контроля, чтобы побороться за все десять взяток." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "У руці достатньо контролю, щоб поборотися за всі десять взяток." } }
+      }
+    },
+    "bot.insight.contractFit" : {
+      "comment" : "Bot explanation after declaring its final contract strain.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I chose the strain that best fits the final ten cards." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Я выбрал масть, которая лучше всего подходит итоговым десяти картам." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Я обрав масть, що найкраще пасує підсумковим десяти картам." } }
+      }
+    },
+    "bot.insight.contractConcession" : {
+      "comment" : "Bot explanation after conceding without three.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The final hand could not support the auction; conceding limits the damage." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Итоговая рука не поддерживает торговлю; игра без трёх ограничивает ущерб." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Підсумкова рука не підтримує торгівлю; гра без трьох обмежує втрати." } }
+      }
+    },
+    "bot.insight.discardForContract" : {
+      "comment" : "Bot explanation after discarding for a regular contract.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I shed the weakest fit to strengthen the contract hand." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Я снёс слабейшее сочетание, чтобы усилить контрактную руку." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Я зніс найслабше поєднання, щоб посилити контрактну руку." } }
+      }
+    },
+    "bot.insight.discardForMisere" : {
+      "comment" : "Bot explanation after discarding for misere.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "I discarded the cards most likely to force a trick." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Я снёс карты, которые чаще всего вынуждают брать взятку." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Я зніс карти, що найчастіше змушують брати взятку." } }
+      }
+    },
+    "bot.insight.fullWhist" : {
+      "comment" : "Bot explanation after calling full whist.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "My defensive estimate cleared the full-whist threshold." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Моя оценка защиты прошла порог полного виста." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Моя оцінка захисту пройшла поріг повного вісту." } }
+      }
+    },
+    "bot.insight.halfWhist" : {
+      "comment" : "Bot explanation after calling half-whist.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Half-whist keeps responsibility proportional to this hand." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Полвиста соразмеряет ответственность с силой этой руки." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Піввіста узгоджує відповідальність із силою цієї руки." } }
+      }
+    },
+    "bot.insight.defensivePass" : {
+      "comment" : "Bot explanation after passing during whist decisions.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The defensive hand did not justify taking whist responsibility." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Рука не оправдывает ответственность за вист." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Рука не виправдовує відповідальність за віст." } }
+      }
+    },
+    "bot.insight.openDefense" : {
+      "comment" : "Bot explanation after choosing open defender play.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open defense gives the partnership better coordination." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Открытый вист помогает партнёрам координировать защиту." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкритий віст допомагає партнерам координувати захист." } }
+      }
+    },
+    "bot.insight.closedDefense" : {
+      "comment" : "Bot explanation after choosing closed defender play.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Closed defense keeps the cards concealed and the line flexible." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закрытый вист скрывает карты и сохраняет гибкость розыгрыша." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Закритий віст приховує карти й зберігає гнучкість розіграшу." } }
+      }
+    },
+    "bot.insight.forcedSettlement" : {
+      "comment" : "Bot explanation after accepting a forced settlement.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The remaining tricks are forced, so I accepted the result." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Оставшиеся взятки определены, поэтому я принял результат." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Решту взяток визначено, тому я прийняв результат." } }
+      }
+    },
+    "bot.insight.contestSettlement" : {
+      "comment" : "Bot explanation after rejecting a speculative settlement.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "A playable line remains, so I chose to continue." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ещё есть игровой шанс, поэтому я решил продолжить." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ще є ігровий шанс, тому я вирішив продовжити." } }
+      }
+    },
+    "rules.reference.title" : {
+      "comment" : "Title for the executable rules and scoring reference.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rules & scoring" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Правила и подсчёт" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Правила й підрахунок" } }
+      }
+    },
+    "rules.reference.intro" : {
+      "comment" : "Explains that the reference uses production scoring logic.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Every number below is calculated by the same game engine that scores the table." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Все числа ниже рассчитывает тот же игровой движок, который ведёт счёт за столом." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Усі числа нижче обчислює той самий ігровий рушій, що веде рахунок за столом." } }
+      }
+    },
+    "rules.convention" : {
+      "comment" : "Label for choosing a Preferans convention.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Convention" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Конвенция" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Конвенція" } }
+      }
+    },
+    "rules.engineBacked" : {
+      "comment" : "Badge confirming examples come from active scoring rules.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Examples are calculated from the active table rules." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Примеры рассчитаны по активным правилам стола." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Приклади обчислено за чинними правилами столу." } }
+      }
+    },
+    "rules.houseVariationNote" : {
+      "comment" : "Caveat that Preferans conventions can vary by table.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preferans allows house agreements. This screen documents the defaults this table is executing." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "В преферансе возможны договорённости. Здесь показаны правила, которые исполняет этот стол." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "У преферансі можливі домовленості. Тут показано правила, за якими грає цей стіл." } }
+      }
+    },
+    "rules.atAGlance" : {
+      "comment" : "Heading for a compact rules summary.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "At a glance" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Кратко" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Коротко" } }
+      }
+    },
+    "rules.poolClosing" : {
+      "comment" : "Pool-closing rule label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pool closing" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Закрытие пули" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Закриття пулі" } }
+      }
+    },
+    "rules.sharedTableTotal" : {
+      "comment" : "Shared table pool target value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shared table total" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Общий итог стола" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Спільний підсумок столу" } }
+      }
+    },
+    "rules.perPlayer" : {
+      "comment" : "Individual pool target value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Per player" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Для каждого игрока" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Для кожного гравця" } }
+      }
+    },
+    "rules.whist" : {
+      "comment" : "Whist convention label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Whist" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вист" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Віст" } }
+      }
+    },
+    "rules.semiResponsible" : {
+      "comment" : "Semi-responsible whist value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Semi-responsible" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Полуответственный" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Напіввідповідальний" } }
+      }
+    },
+    "rules.responsible" : {
+      "comment" : "Responsible whist value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Responsible" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ответственный" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відповідальний" } }
+      }
+    },
+    "rules.raspasyPrice" : {
+      "comment" : "Raspasy trick-price progression label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Raspasy price" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Цена распасов" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ціна розпасів" } }
+      }
+    },
+    "rules.exitMinimum" : {
+      "comment" : "Minimum contract level needed to exit a raspasy series.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exit minimum" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Минимум для выхода" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Мінімум для виходу" } }
+      }
+    },
+    "rules.contracts" : {
+      "comment" : "Contract scoring section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Contracts" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Контракты" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Контракти" } }
+      }
+    },
+    "rules.contracts.caption" : {
+      "comment" : "Description above the contract scoring grid.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Made, one undertrick, and one defender trick are calculated for every level." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Для каждого уровня рассчитаны сыгранная игра, один ремиз и одна взятка вистующего." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Для кожного рівня обчислено зіграну гру, один реміз і одну взятку вістувальника." } }
+      }
+    },
+    "rules.contract" : {
+      "comment" : "Contract column heading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Contract" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Игра" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Гра" } }
+      }
+    },
+    "rules.madePool" : {
+      "comment" : "Made-contract pool column heading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Made · pool" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сыграно · пуля" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Зіграно · пуля" } }
+      }
+    },
+    "rules.undertrick" : {
+      "comment" : "Failed-contract mountain column heading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Undertrick · mountain" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ремиз · гора" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Реміз · гора" } }
+      }
+    },
+    "rules.whistTrick" : {
+      "comment" : "Defender whist-per-trick column heading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Whist / trick" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вист / взятка" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Віст / взятка" } }
+      }
+    },
+    "rules.misere" : {
+      "comment" : "Misere scoring section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Misère" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Мизер" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Мізер" } }
+      }
+    },
+    "rules.made" : {
+      "comment" : "Successful-result label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Made" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Сыгран" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Зіграно" } }
+      }
+    },
+    "rules.oneTrick" : {
+      "comment" : "Single-trick result label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "One trick" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Одна взятка" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Одна взятка" } }
+      }
+    },
+    "rules.pool" : {
+      "comment" : "Pool score suffix.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "pool" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "пуля" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "пуля" } }
+      }
+    },
+    "rules.mountain" : {
+      "comment" : "Mountain score suffix.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "mountain" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "гора" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "гора" } }
+      }
+    },
+    "rules.raspasy" : {
+      "comment" : "Raspasy scoring section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Raspasy" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Распасы" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Розпаси" } }
+      }
+    },
+    "rules.raspasy.caption" : {
+      "comment" : "Description above raspasy scoring examples.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The 0 / 4 / 6 trick example is scored live by the game engine." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Пример с 0 / 4 / 6 взятками рассчитан игровым движком." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Приклад із 0 / 4 / 6 взятками обчислено ігровим рушієм." } }
+      }
+    },
+    "rules.raspasy.reset" : {
+      "comment" : "Explains when progressive raspasy scoring resets.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Any contract or misère ends the series; the next raspasy returns to deal 1." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Любая игра или мизер завершает серию; следующие распасы снова считаются первой раздачей." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Будь-яка гра або мізер завершує серію; наступні розпаси знову рахуються першою роздачею." } }
+      }
+    },
+    "rules.deal" : {
+      "comment" : "Deal number label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Deal" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Раздача" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Роздача" } }
+      }
+    },
+    "rules.cleanExit" : {
+      "comment" : "Zero-trick raspasy result label.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clean exit" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ноль взяток" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Нуль взяток" } }
+      }
+    },
+    "rules.zeroFourSixTricks" : {
+      "comment" : "Label for the raspasy example trick distribution.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "0 / 4 / 6 tricks" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "0 / 4 / 6 взяток" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "0 / 4 / 6 взяток" } }
+      }
+    },
+    "rules.tableRules" : {
+      "comment" : "Detailed table-rules section title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Table rules" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Правила стола" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Правила столу" } }
+      }
+    },
+    "rules.odesa.poolClosing" : {
+      "comment" : "Odesa pool-closing explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Each player closes an individual pool. Surplus is transferred through American aid." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Каждый игрок закрывает свою пулю. Избыток переносится через американскую помощь." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Кожен гравець закриває власну пулю. Надлишок переноситься через американську допомогу." } }
+      }
+    },
+    "rules.wien.poolClosing" : {
+      "comment" : "Wien shared-pool explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Individual pools stay open; the match ends when the shared table total is reached." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Личные пули остаются открытыми; матч заканчивается при достижении общего итога стола." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Особисті пулі залишаються відкритими; матч завершується після досягнення спільного підсумку столу." } }
+      }
+    },
+    "rules.odesa.whist" : {
+      "comment" : "Odesa whist explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Greedy, responsible whist: each defender writes their own tricks and bears the full quota penalty." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Жлобский ответственный вист: каждый защитник пишет свои взятки и полностью отвечает за норму." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Жлобський відповідальний віст: кожен захисник пише свої взятки й повністю відповідає за норму." } }
+      }
+    },
+    "rules.wien.whist" : {
+      "comment" : "Wien whist explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gentleman’s, semi-responsible whist: defenders split remuneration and a whist remise costs half." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменский полуответственный вист: защитники делят выигрыш, а ремиз на висте стоит половину." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменський напіввідповідальний віст: захисники ділять виграш, а реміз на вісті коштує половину." } }
+      }
+    },
+    "rules.talon" : {
+      "comment" : "Raspasy talon-lead rule title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Talon lead" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ход прикупа" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Хід прикупу" } }
+      }
+    },
+    "rules.talon.explanation" : {
+      "comment" : "Explains the first two raspasy trick leads.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The two talon cards set the led suit on the first two raspasy tricks; rank is ignored." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Две карты прикупа задают масть первых двух взяток на распасах; достоинство карты не учитывается." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Дві карти прикупу задають масть перших двох взяток на розпасах; ранг карти не враховується." } }
+      }
+    },
+    "Continue as Guest" : {
+      "comment" : "Online registration button that creates a server-issued guest account.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue as Guest" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Продолжить как гость" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Продовжити як гість" } }
+      }
+    },
+    "Register as a guest or sign in with Apple to play online." : {
+      "comment" : "Online identity validation shown until a server account exists.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Register as a guest or sign in with Apple to play online." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Зарегистрируйтесь как гость или войдите с Apple, чтобы играть онлайн." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Зареєструйтеся як гість або увійдіть з Apple, щоб грати онлайн." } }
+      }
+    },
+    "Finish registration above to create a table." : {
+      "comment" : "Hint below the disabled create-room button after a name has been entered.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Finish registration above to create a table." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Завершите регистрацию выше, чтобы создать стол." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Завершіть реєстрацію вище, щоб створити стіл." } }
+      }
+    },
+    "Online account ready." : {
+      "comment" : "Confirmation after guest or Apple registration succeeds.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Online account ready." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-аккаунт готов." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-акаунт готовий." } }
+      }
+    },
+    "Guest account registered" : {
+      "comment" : "Settings status for a registered guest account.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Guest account registered" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Гостевой аккаунт зарегистрирован" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Гостьовий акаунт зареєстровано" } }
+      }
+    },
+    "Apple sign-in did not return a verifiable identity." : {
+      "comment" : "Error when Apple sign-in omits its identity token or nonce.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Apple sign-in did not return a verifiable identity." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Вход с Apple не вернул проверяемые данные." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Вхід з Apple не повернув дані для перевірки." } }
+      }
+    },
     "Start a table" : {
       "comment" : "Lobby online panel title for the host path (variant/seats/create-invite).",
       "extractionState" : "manual",
@@ -660,6 +1200,190 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стан з'єднання"
+          }
+        }
+      }
+    },
+    "Connection interrupted — saving your move…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connection interrupted — saving your move…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Соединение прервано — сохраняем ваш ход…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "З'єднання перервано — зберігаємо ваш хід…"
+          }
+        }
+      }
+    },
+    "Opened on another device — this table is read-only here." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opened on another device — this table is read-only here."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стол открыт на другом устройстве — здесь доступен только просмотр."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стіл відкрито на іншому пристрої — тут доступний лише перегляд."
+          }
+        }
+      }
+    },
+    "Reconnecting…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnecting…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переподключение…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторне підключення…"
+          }
+        }
+      }
+    },
+    "Recovering host…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovering host…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстанавливаем хоста…"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відновлюємо хоста…"
+          }
+        }
+      }
+    },
+    "Recovering the table… Your game is safe." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recovering the table… Your game is safe."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстанавливаем стол… Ваша игра сохранена."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відновлюємо стіл… Вашу гру збережено."
+          }
+        }
+      }
+    },
+    "Saving the previous move… Try again in a moment." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saving the previous move… Try again in a moment."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохраняем предыдущий ход… Повторите через мгновение."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зберігаємо попередній хід… Повторіть за мить."
+          }
+        }
+      }
+    },
+    "This table is active on another device." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This table is active on another device."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот стол активен на другом устройстве."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цей стіл активний на іншому пристрої."
+          }
+        }
+      }
+    },
+    "This table was opened on another device." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This table was opened on another device."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот стол открыт на другом устройстве."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цей стіл відкрито на іншому пристрої."
           }
         }
       }
@@ -1524,6 +2248,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Пулька на гравця"
+          }
+        }
+      }
+    },
+    "Table pool total": {
+      "comment": "Leningrad/Wien lobby picker label — the shared pool sum that closes the table.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Table pool total"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Общая сумма пули"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загальна сума пулі"
+          }
+        }
+      }
+    },
+    "Table total": {
+      "comment": "Placeholder for a custom shared table-pool target.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Table total"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Общая сумма"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загальна сума"
           }
         }
       }
@@ -3266,12 +4038,12 @@
       }
     },
     "variant.wien.summary": {
-      "comment": "Online lobby short summary for the Wien variant.",
+      "comment": "Lobby short summary for the Wien variant, including its shared-total closure rule.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Stricter whist and all-pass scoring." } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Строже вистование и распасы." } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Строгіший віст і розпаси." } }
+        "en": { "stringUnit": { "state": "translated", "value": "Double whists, hard all-pass, and one shared table pool." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Двойные висты, жёсткие распасы и общая сумма пули." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Подвійні вісти, жорсткі розпаси й спільна сума пулі." } }
       }
     },
     "convention.tagline.help": {
