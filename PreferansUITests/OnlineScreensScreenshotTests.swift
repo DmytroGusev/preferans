@@ -43,6 +43,21 @@ final class OnlineScreensScreenshotTests: XCTestCase {
 
         app.swipeUp()
         recorder.capture(name: "02-online-fresh-bottom", force: true)
+
+        let wien = app.buttons["Wien"]
+        XCTAssertTrue(wien.waitForExistence(timeout: 3), "Wien segment never appeared")
+        wien.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)[UIIdentifiers.matchPoolTarget]
+                .waitForExistence(timeout: 3),
+            "Wien did not expose the shared table pool target"
+        )
+        XCTAssertTrue(app.buttons["63"].exists, "Three-player standard Wien target should display 63")
+        recorder.capture(name: "03-online-wien-total", force: true)
+
+        let odesa = app.buttons["Odesa"]
+        XCTAssertTrue(odesa.waitForExistence(timeout: 3), "Odesa segment never appeared")
+        odesa.tap()
         app.swipeDown()
 
         let nameField = app.textFields[UIIdentifiers.onlineDisplayNameField]
@@ -50,13 +65,54 @@ final class OnlineScreensScreenshotTests: XCTestCase {
         // The trailing newline hits the return key, which resigns focus —
         // tapping another view does NOT dismiss the keyboard in SwiftUI.
         typeFocused(app: app, field: nameField, text: "Anya\n")
-        recorder.capture(name: "03-online-named", force: true)
+        recorder.capture(name: "04-online-named", force: true)
 
         app.swipeUp()
         let joinField = app.textFields[UIIdentifiers.onlineJoinRoomCode]
         XCTAssertTrue(joinField.waitForExistence(timeout: 3), "Join code field never appeared")
         typeFocused(app: app, field: joinField, text: "TABLE42\n")
-        recorder.capture(name: "04-online-join-pending", force: true)
+        recorder.capture(name: "05-online-join-pending", force: true)
+
+        let rulesButton = app.buttons[UIIdentifiers.lobbyHouseConventions]
+        XCTAssertTrue(rulesButton.waitForExistence(timeout: 3), "Rules reference button never appeared")
+        if !rulesButton.isHittable {
+            for _ in 0..<4 {
+                app.swipeUp()
+                if waitUntilHittable(rulesButton, timeout: 0.75) { break }
+            }
+        }
+        XCTAssertTrue(
+            rulesButton.isHittable,
+            "Rules reference button never became hittable"
+        )
+        rulesButton.tap()
+
+        let rulesSheet = app.otherElements[UIIdentifiers.conventionLegendSheet]
+        XCTAssertTrue(rulesSheet.waitForExistence(timeout: 3), "Rules reference never opened")
+        let isTablet = app.windows.firstMatch.frame.width >= 700
+        if isTablet {
+            XCTAssertTrue(
+                app.descendants(matching: .any)[UIIdentifiers.rulesVariant("odesa")].exists,
+                "Tablet rules reference did not expose its persistent convention sidebar"
+            )
+        } else {
+            XCTAssertTrue(
+                app.buttons[UIIdentifiers.rulesVariantPicker].exists
+                    || app.segmentedControls[UIIdentifiers.rulesVariantPicker].exists,
+                "Phone rules reference did not expose its compact convention picker"
+            )
+        }
+        recorder.capture(name: "06-rules-reference-top", force: true)
+
+        let rulesScroll = rulesSheet.scrollViews.firstMatch
+        XCTAssertTrue(rulesScroll.exists, "Rules reference is not scrollable on phone")
+        rulesScroll.swipeUp()
+        rulesScroll.swipeUp()
+        XCTAssertTrue(
+            app.staticTexts[UIIdentifiers.rulesRaspasyStage(3)].waitForExistence(timeout: 3),
+            "Third raspasy stage never appeared in the executable rules reference"
+        )
+        recorder.capture(name: "07-rules-reference-raspasy", force: true)
     }
 
     /// Tap until the keyboard is actually up, then replace the field's

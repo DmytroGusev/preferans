@@ -9,6 +9,7 @@ import PreferansEngine
 /// look-up; this view handles "something just happened — look here".
 public struct CenterActionBanner: View {
     public var action: RecentAction?
+    public var insight: BotDecisionExplanation?
     public var displayName: (PlayerID) -> String
 
     /// How long the toast stays at full opacity before fading. The user's
@@ -18,10 +19,12 @@ public struct CenterActionBanner: View {
 
     public init(
         action: RecentAction?,
+        insight: BotDecisionExplanation? = nil,
         displayName: @escaping (PlayerID) -> String,
         holdDuration: Duration = .milliseconds(1400)
     ) {
         self.action = action
+        self.insight = insight
         self.displayName = displayName
         self.holdDuration = holdDuration
     }
@@ -55,26 +58,45 @@ public struct CenterActionBanner: View {
     }
 
     private func pill(for action: RecentAction) -> some View {
-        HStack(spacing: 8) {
-            Text(displayName(action.player))
-                .font(.headline.weight(.bold))
-                .foregroundStyle(TableTheme.inkCream)
-                .lineLimit(1)
-            Text("·")
-                .font(.headline)
-                .foregroundStyle(TableTheme.inkCreamDim)
-            action.label.glyph(emphasis: .banner)
-                .font(.title3.weight(.bold))
+        VStack(alignment: .leading, spacing: matchingInsight(for: action) == nil ? 0 : 7) {
+            HStack(spacing: 8) {
+                Text(displayName(action.player))
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(TableTheme.inkCream)
+                    .lineLimit(1)
+                Text("·")
+                    .font(.headline)
+                    .foregroundStyle(TableTheme.inkCreamDim)
+                action.label.glyph(emphasis: .banner)
+                    .font(.title3.weight(.bold))
+            }
+
+            if let insight = matchingInsight(for: action) {
+                Divider().overlay(TableTheme.gold.opacity(0.28))
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(TableTheme.goldBright)
+                    Text(insight.rationale.label)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .accessibilityIdentifier(UIIdentifiers.botInsightBanner)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(
-            Capsule().fill(Color.black.opacity(0.62))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.black.opacity(0.68))
         )
         .overlay(
-            Capsule().strokeBorder(TableTheme.gold.opacity(0.55), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(TableTheme.gold.opacity(0.55), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.45), radius: 12, y: 4)
+        .frame(maxWidth: 340)
     }
 
     private func handle(_ next: RecentAction?) {
@@ -86,7 +108,9 @@ public struct CenterActionBanner: View {
         if current?.id == next.id { return }
         current = next
         dismissTask?.cancel()
-        let hold = holdDuration
+        let hold: Duration = matchingInsight(for: next) == nil
+            ? holdDuration
+            : .milliseconds(2800)
         @Dependency(\.continuousClock) var clock
         dismissTask = Task { @MainActor [clock] in
             try? await clock.sleep(for: hold)
@@ -96,6 +120,32 @@ public struct CenterActionBanner: View {
                     current = nil
                 }
             }
+        }
+    }
+
+    private func matchingInsight(for action: RecentAction) -> BotDecisionExplanation? {
+        guard let insight,
+              insight.actor == action.player,
+              insight.rationale.category == action.label.botDecisionCategory else {
+            return nil
+        }
+        return insight
+    }
+}
+
+private extension RecentAction.Label {
+    var botDecisionCategory: BotDecisionCategory {
+        switch self {
+        case .bid, .pass:
+            return .auction
+        case .declared, .withoutThree:
+            return .contract
+        case .discarded:
+            return .discard
+        case .whist, .halfWhist, .whistPass:
+            return .whist
+        case .defenderMode:
+            return .defenderMode
         }
     }
 }

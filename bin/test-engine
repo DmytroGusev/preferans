@@ -19,10 +19,11 @@ preferans_cd_repo_root
 
 export PREFERANS_ENGINE_TESTS_ONLY=1
 export SWIFTPM_MODULECACHE_OVERRIDE="${SWIFTPM_MODULECACHE_OVERRIDE:-/tmp/preferans-swiftpm-module-cache}"
+export CLANG_MODULE_CACHE_PATH="${CLANG_MODULE_CACHE_PATH:-/tmp/preferans-clang-module-cache}"
 active_developer_dir="$(xcode-select -p)"
-swift_test_args=()
+swift_test_command=(swift test)
 if [[ "$active_developer_dir" == */CommandLineTools ]]; then
-  swift_test_args+=(
+  swift_test_command+=(
     -Xswiftc -plugin-path
     -Xswiftc "$active_developer_dir/usr/lib/swift/host/plugins/testing"
     -Xlinker -rpath
@@ -32,13 +33,14 @@ if [[ "$active_developer_dir" == */CommandLineTools ]]; then
   )
 fi
 mkdir -p "$SWIFTPM_MODULECACHE_OVERRIDE"
+mkdir -p "$CLANG_MODULE_CACHE_PATH"
 
 if [[ "${WATCH:-0}" == "1" ]]; then
   if ! command -v watchexec >/dev/null 2>&1; then
     echo "WATCH=1 requires watchexec." >&2
     exit 1
   fi
-  exec watchexec --exts swift --restart -- swift test "${swift_test_args[@]}" "$@"
+  exec watchexec --exts swift --restart -- "${swift_test_command[@]}" "$@"
 fi
 
-exec swift test "${swift_test_args[@]}" "$@"
+exec "${swift_test_command[@]}" "$@"

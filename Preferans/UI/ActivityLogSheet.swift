@@ -3,32 +3,72 @@ import PreferansEngine
 
 struct ActivityLogSheet: View {
     var entries: [ActivityLogEntry]
+    var botInsights: [BotDecisionExplanation]
+    var displayName: (PlayerID) -> String
     var onDone: () -> Void
+
+    init(
+        entries: [ActivityLogEntry],
+        botInsights: [BotDecisionExplanation] = [],
+        displayName: @escaping (PlayerID) -> String = { $0.rawValue },
+        onDone: @escaping () -> Void
+    ) {
+        self.entries = entries
+        self.botInsights = botInsights
+        self.displayName = displayName
+        self.onDone = onDone
+    }
 
     private var newestFirst: [ActivityLogEntry] {
         Array(entries.reversed())
     }
 
+    private var newestBotInsights: [BotDecisionExplanation] {
+        Array(botInsights.suffix(12).reversed())
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if entries.isEmpty {
+                if entries.isEmpty && botInsights.isEmpty {
                     ActivityLogEmptyState()
                 } else {
                     List {
-                        Section {
-                            ForEach(newestFirst) { entry in
-                                ActivityLogRow(entry: entry)
+                        if !newestBotInsights.isEmpty {
+                            Section {
+                                ForEach(Array(newestBotInsights.enumerated()), id: \.offset) { index, insight in
+                                    BotInsightRow(
+                                        insight: insight,
+                                        displayName: displayName(insight.actor)
+                                    )
                                     .listRowInsets(.init(top: 6, leading: 14, bottom: 6, trailing: 14))
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
-                                    .accessibilityIdentifier(UIIdentifiers.eventLogEntry(index: entry.id))
+                                    .accessibilityIdentifier(UIIdentifiers.botInsightEntry(index: index))
+                                }
+                            } header: {
+                                Text("bot.insight.section")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(TableTheme.gold)
+                                    .textCase(.uppercase)
                             }
-                        } header: {
-                            Text("Latest activity")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(TableTheme.inkCreamSoft)
-                                .textCase(.uppercase)
+                        }
+
+                        if !entries.isEmpty {
+                            Section {
+                                ForEach(newestFirst) { entry in
+                                    ActivityLogRow(entry: entry)
+                                        .listRowInsets(.init(top: 6, leading: 14, bottom: 6, trailing: 14))
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
+                                        .accessibilityIdentifier(UIIdentifiers.eventLogEntry(index: entry.id))
+                                }
+                            } header: {
+                                Text("Latest activity")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(TableTheme.inkCreamSoft)
+                                    .textCase(.uppercase)
+                            }
                         }
                     }
                     .listStyle(.plain)
@@ -53,6 +93,48 @@ struct ActivityLogSheet: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.Panel.eventLog.rawValue)
         }
+    }
+}
+
+private struct BotInsightRow: View {
+    var insight: BotDecisionExplanation
+    var displayName: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle().fill(TableTheme.gold.opacity(0.18))
+                Image(systemName: "sparkles")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(TableTheme.goldBright)
+            }
+            .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 5) {
+                    Text(verbatim: displayName)
+                        .font(.callout.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCream)
+                    Text("·")
+                        .foregroundStyle(TableTheme.inkCreamDim)
+                    Text(insight.profile.temperament.label)
+                    Text(insight.profile.difficulty.label)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(TableTheme.gold)
+                .lineLimit(1)
+
+                Text(insight.rationale.label)
+                    .font(.caption)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .feltSurface(.chip, radius: TableTheme.Radius.xs)
+        .accessibilityElement(children: .combine)
     }
 }
 

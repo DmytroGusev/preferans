@@ -20,6 +20,10 @@ public final class GameViewModel: ObservableObject {
     /// badge both derive from this stream, walking backward to the most
     /// recent `dealStarted` so stale actions never leak across deals.
     @Published public private(set) var recentEvents: [PreferansEvent] = []
+    /// Rolling, hidden-information-safe notes explaining recent bot choices.
+    /// They are presentation metadata only: engine replay and multiplayer
+    /// authority never depend on them.
+    @Published public private(set) var botInsights: [BotDecisionExplanation] = []
     @Published public var selectedViewer: PlayerID
     public var viewerPolicy: ViewerPolicy
     public var dealSource: DealSource
@@ -330,7 +334,7 @@ public final class GameViewModel: ObservableObject {
                 try? await clock.sleep(for: delay)
             }
             if Task.isCancelled { return }
-            guard let action = await strategy.decide(snapshot: snap, viewer: decider),
+            guard let decision = await strategy.decision(snapshot: snap, viewer: decider),
                   !Task.isCancelled else { return }
             await MainActor.run {
                 // The snapshot equality re-check catches the case where a
@@ -338,7 +342,13 @@ public final class GameViewModel: ObservableObject {
                 // computing. Without it, a stale action could be applied
                 // against a state where it's no longer legal.
                 guard let self, self.engine.snapshot.state == snap.state else { return }
-                self.send(action)
+                if let explanation = decision.explanation {
+                    self.botInsights.append(explanation)
+                    if self.botInsights.count > 24 {
+                        self.botInsights.removeFirst(self.botInsights.count - 24)
+                    }
+                }
+                self.send(decision.action)
             }
         }
     }
@@ -424,7 +434,7 @@ extension GameViewModel {
                  .illegalBid, .illegalWhist, .illegalSettlement,
                  .invalidContract, .notPlayersTurn:
                 self = .uiValidatable
-            case .invalidPlayer, .invalidPlayers, .invalidDeck, .invalidState:
+            case .invalidPlayer, .invalidPlayers, .invalidMatch, .invalidDeck, .invalidState:
                 self = .system
             }
         }

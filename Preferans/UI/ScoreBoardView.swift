@@ -12,20 +12,26 @@ import PreferansEngine
 /// players without rewrapping a tabular layout.
 public struct ScoreBoardView: View {
     public var score: ScoreSheet
+    public var rules: PreferansRules
     /// Resolves a seat's `PlayerID` to the name the player sees. Threaded
     /// from the projection so the scoresheet shows real names instead of the
     /// raw compass seat ids used online.
     public var displayName: (PlayerID) -> String
 
-    public init(score: ScoreSheet, displayName: @escaping (PlayerID) -> String) {
+    public init(
+        score: ScoreSheet,
+        rules: PreferansRules,
+        displayName: @escaping (PlayerID) -> String
+    ) {
         self.score = score
+        self.rules = rules
         self.displayName = displayName
     }
 
     public var body: some View {
         VStack(spacing: 16) {
             if (3...4).contains(score.players.count) {
-                PulkaDiagramView(score: score, displayName: displayName)
+                PulkaDiagramView(score: score, rules: rules, displayName: displayName)
             }
             VStack(spacing: 12) {
                 ForEach(score.players, id: \.self) { player in
@@ -41,7 +47,7 @@ public struct ScoreBoardView: View {
     // MARK: - Per-player card
 
     private func playerCard(player: PlayerID) -> some View {
-        let balance = score.balance(for: player)
+        let balance = score.balance(for: player, rules: rules)
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text(displayName(player))

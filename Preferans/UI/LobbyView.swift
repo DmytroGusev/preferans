@@ -19,6 +19,8 @@ public struct LobbyView: View {
         }
     }
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     /// The invisible 1×1 automation affordances exist only under XCUITest —
     /// in a shipping build they were VoiceOver-reachable unlabeled buttons
     /// that could start a real table or online room.
@@ -40,6 +42,26 @@ public struct LobbyView: View {
         viewModel.lobbyMode == .online
             ? "online:\(viewModel.currentOnlineAccountID ?? "anonymous-none")"
             : "local"
+    }
+
+    private var usesTabletLobby: Bool {
+        horizontalSizeClass == .regular
+    }
+
+    private var adaptiveLobbyLayout: AnyLayout {
+        if usesTabletLobby {
+            AnyLayout(HStackLayout(alignment: .top, spacing: 32))
+        } else {
+            AnyLayout(VStackLayout(spacing: 18))
+        }
+    }
+
+    private var adaptiveModeLayout: AnyLayout {
+        if usesTabletLobby {
+            AnyLayout(VStackLayout(spacing: 10))
+        } else {
+            AnyLayout(HStackLayout(spacing: 8))
+        }
     }
 
     public var body: some View {
@@ -85,7 +107,7 @@ public struct LobbyView: View {
                 case .settings:
                     SettingsScreen()
                 case .conventionLegend:
-                    ConventionLegendSheet()
+                    ConventionLegendSheet(initialVariant: viewModel.onlineVariant)
                 case let .gameSummary(game):
                     OnlineGameSummarySheet(game: game)
                 }
@@ -137,42 +159,17 @@ public struct LobbyView: View {
 
     private var lobbyContent: some View {
         ScrollView {
-            VStack(spacing: 18) {
-                hero
-                modeSegment
-                if viewModel.lobbyMode == .local {
-                    localTableCard
-                    if isUIAutomation { onlineHiddenAffordances }
-                } else {
-                    LobbyYourGamesSection(
-                        viewModel: viewModel,
-                        gameLibrary: gameLibrary,
-                        onSelectFinishedGame: { activeSheet = .gameSummary($0) }
-                    )
-                    onlineSetupCard
-                    if isUIAutomation { localHiddenAffordances }
-                }
-                if let infoText = viewModel.infoText {
-                    Label(infoText, systemImage: "checkmark.seal.fill")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(TableTheme.goldBright)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .accessibilityIdentifier(UIIdentifiers.lobbyInfo)
-                }
-                if let errorText = viewModel.errorText {
-                    Text(errorText)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(TableTheme.errorInk)
-                        .multilineTextAlignment(.center)
-                        .accessibilityIdentifier(UIIdentifiers.lobbyError)
-                }
-                conventionsFooterLink
+            adaptiveLobbyLayout {
+                lobbyNavigationRegion
+                    .frame(maxWidth: usesTabletLobby ? 340 : .infinity)
+
+                lobbyModeRegion
+                    .frame(maxWidth: usesTabletLobby ? 620 : .infinity)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 18)
+            .padding(.horizontal, usesTabletLobby ? 36 : 18)
+            .padding(.top, usesTabletLobby ? 44 : 18)
             .padding(.bottom, 24)
-            .frame(maxWidth: 560)
+            .frame(maxWidth: usesTabletLobby ? 1080 : 560)
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
@@ -180,12 +177,82 @@ public struct LobbyView: View {
         // put the keyboard away instead of trapping it on screen.
         .scrollDismissesKeyboard(.interactively)
         .feltBackground()
+        // Keep scrolled form controls from becoming visual noise behind the
+        // status bar and settings button. The lobby is always dark felt, so
+        // the navigation chrome also owns a dark, opaque contrast surface.
+        .lobbyNavigationChrome()
         .task(id: onlineGamesRefreshKey) {
             guard viewModel.lobbyMode == .online else { return }
             await gameLibrary.refresh(sessionToken: viewModel.onlineAccountSessionToken)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenLobby)
+    }
+
+    private var lobbyNavigationRegion: some View {
+        VStack(spacing: 18) {
+            hero
+            modeSegment
+
+            if usesTabletLobby {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("A complete table at a glance", systemImage: "rectangle.split.2x1")
+                        .font(.headline)
+                        .foregroundStyle(TableTheme.inkCream)
+                    Text("Choose how to play here, then set up the table alongside it. Your current game always takes over the full screen.")
+                        .font(.subheadline)
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 14))
+            }
+        }
+        .padding(usesTabletLobby ? 24 : 0)
+        .background {
+            if usesTabletLobby {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.black.opacity(0.20))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .strokeBorder(TableTheme.gold.opacity(0.18), lineWidth: 0.5)
+                    )
+            }
+        }
+    }
+
+    private var lobbyModeRegion: some View {
+        VStack(spacing: 18) {
+            if viewModel.lobbyMode == .local {
+                localTableCard
+                if isUIAutomation { onlineHiddenAffordances }
+            } else {
+                LobbyYourGamesSection(
+                    viewModel: viewModel,
+                    gameLibrary: gameLibrary,
+                    onSelectFinishedGame: { activeSheet = .gameSummary($0) }
+                )
+                onlineSetupCard
+                if isUIAutomation { localHiddenAffordances }
+            }
+            if let infoText = viewModel.infoText {
+                Label(infoText, systemImage: "checkmark.seal.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(TableTheme.goldBright)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyInfo)
+            }
+            if let errorText = viewModel.errorText {
+                Text(errorText)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(TableTheme.errorInk)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyError)
+            }
+            conventionsFooterLink
+        }
     }
 
     /// Hero on the felt: gold suit glyph, large cream title. The house-
@@ -217,7 +284,7 @@ public struct LobbyView: View {
     /// set up an online room with friends. Picking a mode swaps the composition
     /// card below — the two flows no longer share any state.
     private var modeSegment: some View {
-        HStack(spacing: 8) {
+        adaptiveModeLayout {
             modeButton(.local, title: "Play with bots", icon: "cpu",
                        identifier: UIIdentifiers.lobbyModeLocal)
             modeButton(.online, title: "Play online", icon: "person.2.wave.2.fill",
@@ -261,7 +328,7 @@ public struct LobbyView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "info.circle")
-                Text("House conventions")
+                Text("rules.reference.title")
             }
             .font(.footnote.weight(.semibold))
             .foregroundStyle(TableTheme.gold)
@@ -334,6 +401,7 @@ public struct LobbyView: View {
                 }
                 if isUIAutomation { legacySeatCountAccessibilityButtons }
 
+                variantControls
                 botSpeedPicker
                 pulkaLimitPicker
 
@@ -457,18 +525,50 @@ public struct LobbyView: View {
     }
 
     private func seatRow(index: Int) -> some View {
-        let isBot = viewModel.seats[index].kind == .bot
+        let profile = viewModel.seats[index].botProfile
+        let isBot = profile != nil
         let isViewer = index == 0 && !isBot
         return HStack(spacing: 10) {
             Image(systemName: isBot ? "cpu" : "person.crop.circle.fill")
                 .foregroundStyle(isBot ? TableTheme.gold : TableTheme.goldBright)
                 .font(.title3)
-            TextField("Seat \(index + 1)", text: nameBinding(for: index))
-                .textFieldStyle(.plain)
-                .submitLabel(.done)
-                .foregroundStyle(TableTheme.inkCream)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
+            VStack(alignment: .leading, spacing: 4) {
+                TextField("Seat \(index + 1)", text: nameBinding(for: index))
+                    .textFieldStyle(.plain)
+                    .submitLabel(.done)
+                    .foregroundStyle(TableTheme.inkCream)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
+
+                if let profile {
+                    Menu {
+                        Picker("Strength", selection: botDifficultyBinding(for: index)) {
+                            ForEach(BotDifficulty.allCases, id: \.self) { difficulty in
+                                Text(difficulty.label).tag(difficulty)
+                            }
+                        }
+                        Picker("Style", selection: botTemperamentBinding(for: index)) {
+                            ForEach(BotTemperament.allCases, id: \.self) { temperament in
+                                Text(temperament.label).tag(temperament)
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(profile.temperament.label)
+                            Text("·")
+                            Text(profile.difficulty.label)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                        }
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(TableTheme.gold.opacity(0.9))
+                    }
+                    .accessibilityLabel("Bot profile")
+                    .accessibilityValue("\(profile.temperament.rawValue), \(profile.difficulty.rawValue)")
+                    .accessibilityIdentifier(UIIdentifiers.lobbyBotProfile(index: index))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if isViewer {
                 Text("badge.you")
                     .font(.caption2.weight(.bold))
@@ -510,15 +610,40 @@ public struct LobbyView: View {
     }
 
     var pulkaLimitPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Pulka per player")
+        let usesTableTotal = viewModel.onlineVariant.poolClosure == .tableTotal
+        let playerCount = viewModel.lobbyMode == .online
+            ? viewModel.onlineComposition.count
+            : viewModel.seats.count
+        let title: LocalizedStringKey = usesTableTotal ? "Table pool total" : "Pulka per player"
+        let customPrompt: LocalizedStringKey = usesTableTotal ? "Table total" : "Per player"
+        let customTarget = Binding<Int>(
+            get: {
+                usesTableTotal
+                    ? viewModel.customPulkaTableTotal
+                    : viewModel.customPulkaPerPlayer
+            },
+            set: { value in
+                if usesTableTotal {
+                    viewModel.customPulkaTableTotal = value
+                } else {
+                    viewModel.customPulkaPerPlayer = value
+                }
+            }
+        )
+
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(title)
                 .font(.caption.weight(.semibold))
                 .tracking(1.0)
                 .textCase(.uppercase)
                 .foregroundStyle(TableTheme.gold)
-            Picker("Pulka per player", selection: $viewModel.pulkaLimit) {
+            Picker(title, selection: $viewModel.pulkaLimit) {
                 ForEach(PulkaLimit.allCases) { limit in
-                    Text(limit.label).tag(limit)
+                    if usesTableTotal, limit != .custom {
+                        Text(verbatim: "\(limit.target * max(1, playerCount))").tag(limit)
+                    } else {
+                        Text(limit.label).tag(limit)
+                    }
                 }
             }
             .pickerStyle(.segmented)
@@ -530,10 +655,10 @@ public struct LobbyView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(TableTheme.goldBright)
                     TextField(
-                        "Per player",
-                        value: $viewModel.customPulkaPerPlayer,
+                        customPrompt,
+                        value: customTarget,
                         format: .number,
-                        prompt: Text("Per player").foregroundStyle(TableTheme.inkCreamDim)
+                        prompt: Text(customPrompt).foregroundStyle(TableTheme.inkCreamDim)
                     )
                     .textFieldStyle(.plain)
                     #if canImport(UIKit)
@@ -580,5 +705,49 @@ public struct LobbyView: View {
                 viewModel.setSeatName(newValue, at: index)
             }
         )
+    }
+
+    private func botDifficultyBinding(for index: Int) -> Binding<BotDifficulty> {
+        Binding(
+            get: {
+                guard viewModel.seats.indices.contains(index) else { return .seasoned }
+                return viewModel.seats[index].botProfile?.difficulty ?? .seasoned
+            },
+            set: { difficulty in
+                guard viewModel.seats.indices.contains(index),
+                      var profile = viewModel.seats[index].botProfile else { return }
+                profile.difficulty = difficulty
+                viewModel.setBotProfile(profile, at: index)
+            }
+        )
+    }
+
+    private func botTemperamentBinding(for index: Int) -> Binding<BotTemperament> {
+        Binding(
+            get: {
+                guard viewModel.seats.indices.contains(index) else { return .adaptive }
+                return viewModel.seats[index].botProfile?.temperament ?? .adaptive
+            },
+            set: { temperament in
+                guard viewModel.seats.indices.contains(index),
+                      var profile = viewModel.seats[index].botProfile else { return }
+                profile.temperament = temperament
+                viewModel.setBotProfile(profile, at: index)
+            }
+        )
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func lobbyNavigationChrome() -> some View {
+        #if os(iOS)
+        self
+            .toolbarBackground(TableTheme.feltDeep, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        #else
+        self
+        #endif
     }
 }

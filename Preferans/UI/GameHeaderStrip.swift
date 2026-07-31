@@ -149,6 +149,12 @@ extension ProjectionGameScreen {
             } label: {
                 Label("Activity log", systemImage: "scroll")
             }
+            .accessibilityIdentifier(UIIdentifiers.buttonActivityLog)
+            Button {
+                activeSheet = .rules
+            } label: {
+                Label("rules.reference.title", systemImage: "book.closed")
+            }
             Divider()
             Button {
                 activeSheet = .settings

@@ -9,6 +9,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// have access to the typed stream — they get the legacy UX without
     /// notifications.
     public var recentEvents: [PreferansEvent]
+    /// Recent strategic notes from local bot seats. Online callers omit this
+    /// presentation-only stream until the protocol transports an equivalent
+    /// public-safe note explicitly.
+    public var botInsights: [BotDecisionExplanation]
     /// Active tap-to-advance pause descriptor. When non-nil, the felt
     /// shows a "tap to continue" overlay and any tap on the table area
     /// invokes `onTapToAdvance`.
@@ -48,6 +52,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         projection: PlayerGameProjection,
         eventLog: [String] = [],
         recentEvents: [PreferansEvent] = [],
+        botInsights: [BotDecisionExplanation] = [],
         pendingAdvance: PendingAdvance? = nil,
         idleHintActive: Bool = false,
         onSend: @escaping (PreferansAction) -> Void,
@@ -59,6 +64,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         self.projection = projection
         self.eventLog = eventLog
         self.recentEvents = recentEvents
+        self.botInsights = botInsights
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = idleHintActive
         self.onSend = onSend
@@ -104,7 +110,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
             GameDetailSheet(
                 destination: sheet,
                 projection: projection,
-                activityEntries: Array(activityEntries.suffix(60))
+                activityEntries: Array(activityEntries.suffix(60)),
+                botInsights: botInsights
             ) {
                 activeSheet = nil
             }
@@ -244,6 +251,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
             seatActions: seatActions,
             seatRoleBadges: seatRoleBadges,
             bannerAction: bannerAction,
+            botInsight: botInsights.last,
             pendingAdvance: pendingAdvance,
             cardSuitOrder: cardSuitDisplayOrder,
             selectedPlayCard: selectedPlayCard
@@ -295,7 +303,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            ScoreBoardView(score: projection.score, displayName: projection.displayName(for:))
+            ScoreBoardView(
+                score: projection.score,
+                rules: projection.rules,
+                displayName: projection.displayName(for:)
+            )
                 .frame(width: 360)
         }
         .padding(.vertical, 16)

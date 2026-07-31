@@ -86,6 +86,9 @@ public struct TableView: View {
     /// The most recent banner-worthy action across the whole table. Drives
     /// the centered toast that fades out after a short hold.
     public var bannerAction: RecentAction?
+    /// Most recent public-safe strategic explanation from a local bot.
+    /// It enriches the matching action toast without affecting table state.
+    public var botInsight: BotDecisionExplanation?
     /// When non-nil, the felt is paused on a beat the human just observed
     /// (their card landing, a bot's reply, a completed trick). The table
     /// renders a "tap to continue" overlay and any tap on the felt fires
@@ -118,6 +121,7 @@ public struct TableView: View {
         seatActions: [PlayerID: RecentAction] = [:],
         seatRoleBadges: [PlayerID: SeatRoleBadge],
         bannerAction: RecentAction? = nil,
+        botInsight: BotDecisionExplanation? = nil,
         pendingAdvance: PendingAdvance? = nil,
         cardSuitOrder: CardSuitDisplayOrder = .default,
         selectedPlayCard: Card? = nil
@@ -132,6 +136,7 @@ public struct TableView: View {
         self.seatActions = seatActions
         self.seatRoleBadges = seatRoleBadges
         self.bannerAction = bannerAction
+        self.botInsight = botInsight
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = display.idleHintActive
         self.isTalonTakePending = display.isTalonTakePending
@@ -316,6 +321,7 @@ public struct TableView: View {
                 if showsActionBanner {
                     CenterActionBanner(
                         action: bannerAction,
+                        insight: botInsight,
                         displayName: { projection.displayName(for: $0) }
                     )
                     .position(layout.bannerPosition)

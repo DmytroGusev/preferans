@@ -120,6 +120,29 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
                      "with the gate off the engine cascades exactly as it always did")
     }
 
+    func testBotStrategicActionAppendsAPlayerFacingInsight() async throws {
+        let model = try makeModel()
+        let profile = BotProfile(difficulty: .expert, temperament: .careful)
+        model.botStrategies["east"] = HeuristicStrategy(
+            profile: profile,
+            planner: CardPlayPlanner(samples: 1)
+        )
+        model.botMoveDelay = .zero
+        model.tapToAdvanceEnabled = false
+
+        model.startDeal()
+        model.send(.bid(player: "north", call: .pass))
+
+        for _ in 0..<40 where model.botInsights.isEmpty {
+            await Task.yield()
+        }
+
+        let insight = try XCTUnwrap(model.botInsights.last)
+        XCTAssertEqual(insight.actor, "east")
+        XCTAssertEqual(insight.profile, profile)
+        XCTAssertEqual(insight.rationale.category, .auction)
+    }
+
     func testIdleHintFiresImmediatelyWhenDelayIsZero() throws {
         let model = try makeModel()
         // A zero delay flips `idleHintActive` synchronously inside

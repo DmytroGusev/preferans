@@ -4,6 +4,7 @@ import PreferansEngine
 enum GameSheetDestination: String, Identifiable {
     case score
     case log
+    case rules
     case settings
     case lastTrick
 
@@ -17,6 +18,7 @@ struct GameDetailSheet: View {
     let destination: GameSheetDestination
     let projection: PlayerGameProjection
     let activityEntries: [ActivityLogEntry]
+    let botInsights: [BotDecisionExplanation]
     let onDismiss: () -> Void
 
     @ViewBuilder
@@ -25,7 +27,14 @@ struct GameDetailSheet: View {
         case .score:
             scoreSheet
         case .log:
-            ActivityLogSheet(entries: activityEntries, onDone: onDismiss)
+            ActivityLogSheet(
+                entries: activityEntries,
+                botInsights: botInsights,
+                displayName: projection.displayName(for:),
+                onDone: onDismiss
+            )
+        case .rules:
+            ConventionLegendSheet(rules: projection.rules, match: projection.match)
         case .settings:
             SettingsScreen()
         case .lastTrick:
@@ -36,7 +45,11 @@ struct GameDetailSheet: View {
     private var scoreSheet: some View {
         NavigationStack {
             ScrollView {
-                ScoreBoardView(score: projection.score, displayName: projection.displayName(for:))
+                ScoreBoardView(
+                    score: projection.score,
+                    rules: projection.rules,
+                    displayName: projection.displayName(for:)
+                )
                     .padding()
             }
             .navigationTitle("Scoresheet")

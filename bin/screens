@@ -9,8 +9,11 @@
 # Usage:
 #   bin/screens                 # build-for-testing + run + extract PNGs
 #   bin/screens --no-build      # skip the build phase (after first run)
+#   bin/screens --only-testing PreferansUITests/RedesignScreenshotTests/testCaptureRedesignScreens
+#   bin/screens --no-open       # keep the run fully headless
 #   bin/screens --keep-runs 5   # prune older runs
 #   DEST_NAME='iPhone 17 Pro' bin/screens
+#   DEST_ID='<simulator UDID>' bin/screens  # exact runtime, preferred in CI
 
 set -euo pipefail
 
@@ -22,11 +25,15 @@ DEST_NAME="${DEST_NAME:-iPhone 17 Pro}"
 DERIVED="${DERIVED:-build/DerivedData}"
 KEEP_RUNS="${KEEP_RUNS:-3}"
 DO_BUILD=1
+OPEN_OUTPUT=1
+ONLY_TESTS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --keep-runs) KEEP_RUNS="$2"; shift 2;;
     --no-build)  DO_BUILD=0; shift;;
+    --no-open)   OPEN_OUTPUT=0; shift;;
+    --only-testing) ONLY_TESTS+=("$2"); shift 2;;
     -h|--help)
       preferans_help_from_header "$0"
       exit 0;;
@@ -52,7 +59,11 @@ if [[ -d "$OUT_ROOT" ]]; then
   ls -1dt "$OUT_ROOT"/*.xcresult 2>/dev/null | tail -n +"$((KEEP_RUNS + 1))" | xargs -I{} rm -rf {} || true
 fi
 
-DEST="$(preferans_destination "$DEST_NAME")"
+if [[ -n "${DEST_ID:-}" ]]; then
+  DEST="platform=iOS Simulator,id=$DEST_ID"
+else
+  DEST="$(preferans_destination "$DEST_NAME")"
+fi
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
   echo "[screens] build-for-testing ($DEST_NAME)"
@@ -66,10 +77,19 @@ echo "[screens] running RedesignScreenshotTests on $DEST_NAME"
 # the TEST_RUNNER_ prefix (it strips the prefix before injecting them
 # into the runner), so a bare PREFERANS_SCREEN_DIR never arrives.
 export TEST_RUNNER_PREFERANS_SCREEN_DIR="$(pwd)/build"
+TEST_SELECTORS=()
+if [[ ${#ONLY_TESTS[@]} -eq 0 ]]; then
+  ONLY_TESTS=(
+    "PreferansUITests/RedesignScreenshotTests"
+    "PreferansUITests/OnlineScreensScreenshotTests"
+  )
+fi
+for test_id in "${ONLY_TESTS[@]}"; do
+  TEST_SELECTORS+=("-only-testing:$test_id")
+done
 set +e
 preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED" \
-  -only-testing:PreferansUITests/RedesignScreenshotTests \
-  -only-testing:PreferansUITests/OnlineScreensScreenshotTests \
+  "${TEST_SELECTORS[@]}" \
   -resultBundlePath "$RESULT_BUNDLE" \
   -quiet
 TEST_STATUS=$?
@@ -104,7 +124,7 @@ done < <(find build -mindepth 1 -maxdepth 1 -type d -name 'screens*' -print)
 # Surface a flat, human-readable PNG list.
 COUNT="$(find "$OUT_DIR" -name '*.png' | wc -l | tr -d ' ')"
 echo "[screens] captured $COUNT PNG(s) in $OUT_DIR"
-if [[ "$COUNT" -gt 0 ]]; then
+if [[ "$COUNT" -gt 0 && "$OPEN_OUTPUT" -eq 1 ]]; then
   open "$OUT_DIR"
 fi
 

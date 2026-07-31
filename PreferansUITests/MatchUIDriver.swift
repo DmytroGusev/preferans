@@ -74,6 +74,8 @@ struct MatchUIDriver {
             robot.discard(cards)
         case let .declareContract(_, contract):
             robot.declareContract(contract)
+        case .concedeWithoutThree:
+            robot.concedeWithoutThree()
         case let .whist(_, call):
             robot.whist(call)
         case let .chooseDefenderMode(_, mode):

@@ -179,6 +179,68 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "99-final")
     }
 
+    /// A strategic bot action should explain itself briefly on the felt and
+    /// remain available in the activity log after the toast fades. The test
+    /// always passes as the human so one of the two bots must own the auction.
+    func testBotDecisionInsightAndActivityLog() {
+        let screenDir = screenDir("screens-bot-insights")
+        try? FileManager.default.removeItem(at: screenDir)
+
+        let app = XCUIApplication()
+        app.pinTestLocaleEnglish()
+        app.launchArguments += [
+            UITestFlags.disableAnimations,
+            UITestFlags.fastBotDelay,
+            UITestFlags.skipTapToAdvance,
+        ]
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        let recorder = MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: screenDir,
+            filePrefix: "bot-insight"
+        )
+
+        let sitDown = app.buttons[UIIdentifiers.lobbyStartLocalTable]
+        XCTAssertTrue(sitDown.waitForExistence(timeout: 5))
+        sitDown.tap()
+        XCTAssertTrue(app.buttons[UIIdentifiers.buttonStartDeal].waitForExistence(timeout: 3))
+        app.buttons[UIIdentifiers.buttonStartDeal].tap()
+
+        var sawInsight = false
+        for _ in 0..<8 {
+            if app.descendants(matching: .any)[UIIdentifiers.botInsightBanner]
+                .waitForExistence(timeout: 0.6) {
+                sawInsight = true
+                break
+            }
+            if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) {
+                continue
+            }
+        }
+        XCTAssertTrue(sawInsight, "No bot decision explanation appeared after the human passed")
+        recorder.capture(name: "01-table-explanation", force: true, attach: false)
+
+        let overflow = app.buttons[UIIdentifiers.overflowMenu]
+        XCTAssertTrue(overflow.waitForExistence(timeout: 3))
+        overflow.tap()
+        let activity = app.buttons[UIIdentifiers.buttonActivityLog]
+        XCTAssertTrue(activity.waitForExistence(timeout: 2))
+        activity.tap()
+
+        XCTAssertTrue(
+            app.descendants(matching: .any)[UIIdentifiers.Panel.eventLog.rawValue]
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)[UIIdentifiers.botInsightEntry(index: 0)]
+                .waitForExistence(timeout: 3),
+            "Bot explanation was not retained in the activity log"
+        )
+        recorder.capture(name: "02-activity-log-notes", force: true, attach: false)
+    }
+
     /// Captures the 4-player scoresheet immediately after sit-down so we
     /// can eyeball the diamond Pulka-diagram geometry. No deals are
     /// played — the diagram lays out on all-zero balances, which is
@@ -195,7 +257,6 @@ final class RedesignScreenshotTests: XCTestCase {
             UITestFlags.fastBotDelay,
         ]
         app.launch()
-        let robot = MatchUIRobot(app: app)
         let recorder = MatchScreenshotRecorder(
             testCase: self,
             app: app,

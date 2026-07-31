@@ -129,7 +129,7 @@ public enum TestHarness {
         // players, firstDealer, rules, match, and the scripted deal source.
         var players = defaults.players
         var firstDealer = defaults.firstDealer
-        var rules = PreferansRules.sochi
+        var rules = defaults.rules
         var match = defaults.match
         var dealSource: DealSource = dealSource(from: arguments)
 
@@ -151,15 +151,30 @@ public enum TestHarness {
             firstDealer = PlayerID(raw)
         }
         if let raw = value(after: Flag.poolTarget, in: arguments), let target = Int(raw) {
-            match = MatchSettings(poolTarget: target, raspasy: match.raspasy, totus: match.totus)
+            match = MatchSettings(
+                poolTarget: target,
+                poolClosure: match.poolClosure,
+                raspasy: match.raspasy,
+                totus: match.totus
+            )
         }
         if let raw = value(after: Flag.raspasyPolicy, in: arguments),
            let parsed = parseRaspasyPolicy(raw) {
-            match = MatchSettings(poolTarget: match.poolTarget, raspasy: parsed, totus: match.totus)
+            match = MatchSettings(
+                poolTarget: match.poolTarget,
+                poolClosure: match.poolClosure,
+                raspasy: parsed,
+                totus: match.totus
+            )
         }
         if let raw = value(after: Flag.totusPolicy, in: arguments),
            let parsed = parseTotusPolicy(raw) {
-            match = MatchSettings(poolTarget: match.poolTarget, raspasy: match.raspasy, totus: parsed)
+            match = MatchSettings(
+                poolTarget: match.poolTarget,
+                poolClosure: match.poolClosure,
+                raspasy: match.raspasy,
+                totus: parsed
+            )
         }
 
         return Configuration(
@@ -175,10 +190,17 @@ public enum TestHarness {
     public struct Defaults {
         public let players: [PlayerID]
         public let firstDealer: PlayerID?
+        public let rules: PreferansRules
         public let match: MatchSettings
-        public init(players: [PlayerID], firstDealer: PlayerID? = nil, match: MatchSettings = .unbounded) {
+        public init(
+            players: [PlayerID],
+            firstDealer: PlayerID? = nil,
+            rules: PreferansRules = .sochi,
+            match: MatchSettings = .unbounded
+        ) {
             self.players = players
             self.firstDealer = firstDealer
+            self.rules = rules
             self.match = match
         }
     }
@@ -213,6 +235,10 @@ public enum TestHarness {
     private static func parseRaspasyPolicy(_ raw: String) -> RaspasyPolicy? {
         switch raw.lowercased() {
         case "singleshot", "single", "single_shot": return .singleShot
+        case "sochi", "arithmetic", "1-2-3": return .sochi
+        case "leningrad", "piter", "2-4-6": return .leningrad
+        case "geometric", "1-2-4":
+            return .progressive(penalties: .geometric, exit: .strict)
         default: return nil
         }
     }

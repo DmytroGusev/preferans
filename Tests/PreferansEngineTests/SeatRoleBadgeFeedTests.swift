@@ -78,6 +78,8 @@ final class SeatRoleBadgeFeedTests: XCTestCase {
             players: players,
             identities: [],
             rules: .sochi,
+            match: MatchSettings(raspasy: .sochi),
+            consecutiveAllPassDeals: 0,
             score: ScoreSheet(players: players),
             phase: phase,
             seats: seats,

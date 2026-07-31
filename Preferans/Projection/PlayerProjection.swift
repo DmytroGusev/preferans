@@ -184,6 +184,8 @@ public struct PlayerGameProjection: Codable, Sendable, Equatable, Identifiable {
     public var players: [PlayerID]
     public var identities: [PlayerIdentity]
     public var rules: PreferansRules
+    public var match: MatchSettings
+    public var consecutiveAllPassDeals: Int
     public var score: ScoreSheet
     public var phase: ProjectedPhase
     public var seats: [SeatProjection]
@@ -269,6 +271,8 @@ public enum PlayerProjectionBuilder {
             players: engine.players,
             identities: identities,
             rules: engine.rules,
+            match: engine.match,
+            consecutiveAllPassDeals: engine.consecutiveAllPassDeals,
             score: engine.score,
             phase: frame.phase,
             seats: seats,

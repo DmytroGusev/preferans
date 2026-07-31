@@ -60,6 +60,13 @@ final class MatchUIRobot {
         tapButton(id: UIIdentifiers.contractButton(contract), descriptor: "declare \(contract)")
     }
 
+    func concedeWithoutThree() {
+        tapButton(
+            id: UIIdentifiers.buttonConcedeWithoutThree,
+            descriptor: "concede without three"
+        )
+    }
+
     func whist(_ call: WhistCall) {
         tapButton(id: UIIdentifiers.whistButton(call), descriptor: "whist \(call)")
     }

@@ -12,13 +12,19 @@ import PreferansEngine
 /// a list.
 public struct PulkaDiagramView: View {
     public var score: ScoreSheet
+    public var rules: PreferansRules
     /// Resolves a seat's `PlayerID` (a compass id like `east` online) to the
     /// name the player actually sees. Threaded from the projection so the
     /// diagram never leaks raw seat ids.
     public var displayName: (PlayerID) -> String
 
-    public init(score: ScoreSheet, displayName: @escaping (PlayerID) -> String) {
+    public init(
+        score: ScoreSheet,
+        rules: PreferansRules,
+        displayName: @escaping (PlayerID) -> String
+    ) {
         self.score = score
+        self.rules = rules
         self.displayName = displayName
     }
 
@@ -146,7 +152,7 @@ public struct PulkaDiagramView: View {
     // MARK: - Corner card
 
     private func cornerCard(player: PlayerID) -> some View {
-        let balance = score.balance(for: player)
+        let balance = score.balance(for: player, rules: rules)
         let balanceColor: Color = balance > 0.05 ? .green : (balance < -0.05 ? .red : .secondary)
         return VStack(spacing: 3) {
             Text(displayName(player))

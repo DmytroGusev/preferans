@@ -29,6 +29,7 @@ public struct LocalGameScreen: View {
             projection: projection,
             eventLog: model.eventLog,
             recentEvents: model.recentEvents,
+            botInsights: model.botInsights,
             pendingAdvance: model.pendingAdvance,
             idleHintActive: model.idleHintActive,
             onSend: sendLocalAction,
