@@ -57,12 +57,13 @@ public struct TableLayoutModel: Equatable {
         playArea(for: []).position
     }
 
-    public var bannerPosition: CGPoint {
-        // Just above the center-felt panels: the auction panel / prikup
-        // title tops out around y ≈ 0.47, so the toast floats in the open
-        // band between the opponent fans and the panel instead of landing
-        // on the panel's header text.
-        CGPoint(x: bounds.width * 0.5, y: bounds.height * 0.42)
+    public func bannerPosition(centerIsAvailable: Bool) -> CGPoint {
+        // Whist and defender-mode decisions leave the center felt empty, so
+        // their potentially two-line bot explanation can sit lower without
+        // colliding with an opponent fan. Prikup and trick play reserve that
+        // lower lane for cards and keep the banner above their center panel.
+        let yFactor: CGFloat = centerIsAvailable ? 0.52 : 0.42
+        return CGPoint(x: bounds.width * 0.5, y: bounds.height * yFactor)
     }
 
     /// Returns the play-area frame for the current opponents. When at

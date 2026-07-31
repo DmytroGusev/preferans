@@ -30,6 +30,19 @@ final class TableLayoutModelTests: XCTestCase {
         XCTAssertEqual(split.tableWidth, 0)
     }
 
+    func testBannerUsesLowerLaneOnlyWhenCenterFeltIsAvailable() {
+        let layout = TableLayoutModel(bounds: CGSize(width: 390, height: 700))
+
+        assertEqual(
+            layout.bannerPosition(centerIsAvailable: false),
+            CGPoint(x: 195, y: 294)
+        )
+        assertEqual(
+            layout.bannerPosition(centerIsAvailable: true),
+            CGPoint(x: 195, y: 364)
+        )
+    }
+
     func testClockwiseOpponentsRotateFromEveryViewer() {
         let players: [PlayerID] = ["north", "east", "south", "west"]
 

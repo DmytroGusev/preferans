@@ -325,7 +325,7 @@ public struct TableView: View {
                         insight: botInsight,
                         displayName: { projection.displayName(for: $0) }
                     )
-                    .position(layout.bannerPosition)
+                    .position(layout.bannerPosition(centerIsAvailable: centerIsAvailableForBanner))
                 }
 
                 // Sitting-out dealer(s) are rendered as a dedicated band above
@@ -627,6 +627,18 @@ public struct TableView: View {
             return false
         default:
             return true
+        }
+    }
+
+    /// Whist and defender-mode phases have no talon, auction panel, or trick
+    /// in the middle of the felt. Use that open lane for the transient banner
+    /// instead of allowing a longer bot explanation to touch opponent cards.
+    private var centerIsAvailableForBanner: Bool {
+        switch projection.phase {
+        case .awaitingWhist, .awaitingDefenderMode:
+            return true
+        default:
+            return false
         }
     }
 
