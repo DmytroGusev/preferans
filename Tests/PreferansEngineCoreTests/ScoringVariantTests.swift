@@ -518,6 +518,19 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.whists["south"]?["north"], nil)
     }
 
+    func testRostovFailedMisereKeepsCanonicalMountainPenalty() {
+        let delta = scoreMisere(
+            trickCounts: ["north": 2, "east": 4, "south": 4],
+            rules: .rostov
+        )
+
+        // Rostov's ten-whist declarer-remise consolation is for contract
+        // games; a failed misère remains ten mountain points per trick.
+        XCTAssertEqual(delta.mountain["north"], 20)
+        XCTAssertEqual(delta.whists["east"]?["north"], nil)
+        XCTAssertEqual(delta.whists["south"]?["north"], nil)
+    }
+
     func testMisereDeclarerForcedToTakeEveryTrickMountainsOneHundred() throws {
         var engine = try PreferansEngine(players: players, firstDealer: "south")
         try engine.startDeal(deck: Self.trappedMisereDeck)

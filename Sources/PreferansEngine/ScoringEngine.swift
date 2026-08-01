@@ -281,19 +281,14 @@ struct PreferansScoring {
             delta.addPool(10 * rules.poolValueMultiplier, to: context.declarer)
         } else {
             switch rules.declarerRemisePolicy {
-            case .mountainAndConsolation:
+            case .mountainAndConsolation, .directWhistsPerDefender:
+                // Declarer-remise direct consolation is a contract-game
+                // convention. Misère keeps its canonical ten-mountain-point
+                // penalty in every profile, including Rostov.
                 delta.addMountain(
                     10 * rules.mountainValueMultiplier * declarerTricks,
                     to: context.declarer
                 )
-            case let .directWhistsPerDefender(whistsPerUndertrick):
-                for defender in playing.activePlayers where defender != context.declarer {
-                    delta.addWhists(
-                        whistsPerUndertrick * declarerTricks,
-                        writer: defender,
-                        on: context.declarer
-                    )
-                }
             }
         }
         applyDealerMisereTalonCompensation(
