@@ -777,17 +777,21 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         var sequence = try await driveRoomToPlaying(fixture)
         let host = try XCTUnwrap(fixture.coordinators["north"])
         let completedBefore = host.projection?.completedTrickCount ?? 0
+        var preCloseProjection: PlayerGameProjection?
 
         for _ in 0..<4 {
             guard let action = nextRoomPlayAction(in: fixture) else {
                 return XCTFail("Expected a legal card play while driving the first trick.")
             }
+            let projectionBeforeAction = host.projection
             try await apply(action.action, from: action.sender, in: fixture, sequence: &sequence)
             if (host.projection?.completedTrickCount ?? 0) > completedBefore {
+                preCloseProjection = projectionBeforeAction
                 break
             }
         }
 
+        let preClose = try XCTUnwrap(preCloseProjection)
         let authoritative = try XCTUnwrap(host.projection)
         let pending = try XCTUnwrap(host.pendingAdvance)
         let display = try XCTUnwrap(host.displayProjection)
@@ -796,6 +800,8 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertEqual(pending.trickPlays?.count, authoritative.seats.filter(\.isActive).count)
         XCTAssertEqual(display.currentTrick, pending.trickPlays)
         XCTAssertEqual(display.completedTrickCount, completedBefore)
+        XCTAssertEqual(pending.phaseOverride, preClose.phase)
+        XCTAssertEqual(display.phase, preClose.phase)
         XCTAssertTrue(display.legal.playableCards.isEmpty)
         XCTAssertFalse(display.legal.canStartDeal)
 

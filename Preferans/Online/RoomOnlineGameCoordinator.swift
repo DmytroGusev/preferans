@@ -770,9 +770,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                envelope.projection.sequence < currentSequence {
                 return
             }
+            let preProjection = projection
             tableID = envelope.tableID
             projection = envelope.projection
-            beginTrickResultHoldIfNeeded(events: envelope.events, projection: envelope.projection)
+            beginTrickResultHoldIfNeeded(
+                events: envelope.events,
+                preProjection: preProjection,
+                projection: envelope.projection
+            )
             logOnlineFlowProjection(envelope.projection, source: "receive")
             eventLog.append(contentsOf: envelope.eventSummaries)
             appendRecentEvents(envelope.events)
@@ -893,8 +898,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         tableID = update.tableID
         refreshPeersFromTransport()
         if let localSeat, let localProjection = update.projections[localSeat] {
+            let preProjection = projection
             projection = localProjection
-            beginTrickResultHoldIfNeeded(events: update.events, projection: localProjection)
+            beginTrickResultHoldIfNeeded(
+                events: update.events,
+                preProjection: preProjection,
+                projection: localProjection
+            )
             logOnlineFlowProjection(localProjection, source: "publishLocal")
         }
         eventLog.append(contentsOf: update.eventSummaries)
@@ -1055,40 +1065,23 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         RecentActionFeed.append(events, to: &recentEvents)
     }
 
-    /// Online counterpart of the local `GameViewModel.makePendingAdvance`
-    /// tap-to-advance gate. The two hold policies are intentionally
-    /// different — local play waits for the human's tap (with an idle hint),
-    /// while online tables clear the hold on a timer so one distracted
-    /// player can't stall three others — but both freeze the same
-    /// `PendingAdvance` descriptor through `applyingAdvanceFreeze`. If you
-    /// change what a hold freezes here, mirror it there.
-    private func beginTrickResultHoldIfNeeded(events: [PreferansEvent], projection: PlayerGameProjection) {
-        guard let trick = events.compactMap({ event -> Trick? in
-            if case let .trickCompleted(trick) = event { return trick }
-            return nil
-        }).first else { return }
-
-        let pending = PendingAdvance(
-            waitingOn: localSeat ?? projection.viewer,
-            trickPlays: trick.tablePlays,
-            trickWinner: trick.winner,
-            talonOverride: talonBeforeCompletedTrick(trick, projection: projection),
-            phaseOverride: phaseOverrideForCompletedTrick(trick, in: projection),
-            completedTrickCountOverride: max(0, projection.completedTrickCount - 1)
-        )
+    /// Online uses the same exact pre-action hold as local play, but clears it
+    /// on a timer so one distracted player cannot stall the shared table.
+    private func beginTrickResultHoldIfNeeded(
+        events: [PreferansEvent],
+        preProjection: PlayerGameProjection?,
+        projection: PlayerGameProjection
+    ) {
+        guard let preProjection,
+              preProjection.tableID == projection.tableID,
+              let pending = AdvancePresentation.completedTrickHold(
+                  events: events,
+                  viewer: localSeat ?? projection.viewer,
+                  preProjection: preProjection,
+                  visibleTalonBeforeAction: preProjection.talon
+              ) else { return }
         pendingAdvance = pending
         scheduleTrickResultHoldClear(for: pending)
-    }
-
-    private func talonBeforeCompletedTrick(
-        _ trick: Trick,
-        projection: PlayerGameProjection
-    ) -> [ProjectedCard]? {
-        guard trick.talonLead != nil else { return nil }
-        let visibleCount = max(1, projection.completedTrickCount)
-        return projection.talon.enumerated().map { index, card in
-            index < visibleCount ? card : .hidden
-        }
     }
 
     private func scheduleTrickResultHoldClear(for pending: PendingAdvance) {
@@ -1105,54 +1098,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard let self, self.pendingAdvance == pending else { return }
             self.pendingAdvance = nil
             self.pendingAdvanceTask = nil
-        }
-    }
-
-    private func phaseOverrideForCompletedTrick(_ trick: Trick, in projection: PlayerGameProjection) -> ProjectedPhase? {
-        switch projection.phase {
-        case .playing:
-            return nil
-        case let .dealFinished(result):
-            return playingPhase(for: result, trick: trick)
-        case let .gameOver(summary):
-            return playingPhase(for: summary.lastDeal, trick: trick)
-        default:
-            return nil
-        }
-    }
-
-    private func playingPhase(for result: DealResult, trick: Trick) -> ProjectedPhase {
-        .playing(
-            currentPlayer: trick.winner,
-            leader: trick.winner,
-            kind: playKind(for: result)
-        )
-    }
-
-    private func playKind(for result: DealResult) -> ProjectedPlayKind {
-        switch result.kind {
-        case let .game(declarer, contract, whisters):
-            return .game(
-                declarer: declarer,
-                contract: contract,
-                defenders: result.activePlayers.filter { $0 != declarer },
-                whisters: whisters,
-                defenderPlayMode: .closed
-            )
-        case let .misere(declarer):
-            return .misere(declarer: declarer)
-        case .allPass:
-            return .allPass
-        case let .halfWhist(declarer, contract, halfWhister):
-            return .game(
-                declarer: declarer,
-                contract: contract,
-                defenders: result.activePlayers.filter { $0 != declarer },
-                whisters: [halfWhister],
-                defenderPlayMode: .closed
-            )
-        case .passedOut, .withoutThree:
-            return .allPass
         }
     }
 

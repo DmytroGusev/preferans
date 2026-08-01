@@ -45,4 +45,54 @@ final class OnlineWaitingRoomUITests: XCTestCase {
         // The table goes live.
         robot.waitForElement(UIIdentifiers.screenGame)
     }
+
+    func testOnlineCompletedTrickShowsTimedResultHold() {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launchArguments += [
+            UITestFlags.autoCreateInMemoryRoom,
+            UITestFlags.onlineFlowLogging,
+        ]
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+
+        robot.waitForElement(UIIdentifiers.screenWaitingRoom)
+        let start = app.buttons[UIIdentifiers.onlineStartGame]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        start.tap()
+        robot.waitForElement(UIIdentifiers.screenGame)
+
+        let hold = app.descendants(matching: .any)
+            .matching(identifier: UIIdentifiers.trickResultHold)
+            .firstMatch
+        var sawHold = false
+        for iteration in 0..<5 {
+            let flow = app.descendants(matching: .any)[UIIdentifiers.onlineFlowState]
+            print("[online-hold] iteration=\(iteration) flow=\(flow.value ?? "missing")")
+            if hold.exists {
+                sawHold = true
+                break
+            }
+            if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
+            if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
+            if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
+            if robot.tapIfPresent(UIIdentifiers.defenderModeButton(.closed)) { continue }
+            if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.4) { continue }
+            if hold.waitForExistence(timeout: 0.5) {
+                sawHold = true
+                break
+            }
+        }
+
+        XCTAssertTrue(sawHold, "Online play never exposed the completed-trick result hold.")
+        let gone = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: hold
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [gone], timeout: 3),
+            .completed,
+            "The online result hold should clear automatically without blocking the table."
+        )
+    }
 }

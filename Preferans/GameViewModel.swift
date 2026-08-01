@@ -166,10 +166,9 @@ public final class GameViewModel: ObservableObject {
     /// visible beat, while the completed trick provides the single tap that
     /// prevents the last card from vanishing.
     ///
-    /// Online counterpart: `RoomOnlineGameCoordinator.beginTrickResultHoldIfNeeded`
-    /// builds the same `PendingAdvance` but clears it on a timer (no tap, no
-    /// idle hint) so one distracted player can't stall the table. If you
-    /// change what a hold freezes here, mirror it there.
+    /// Online play calls the same `AdvancePresentation` factory but clears the
+    /// resulting hold on a timer (no tap or idle hint), so one distracted
+    /// player cannot stall the shared table.
     private func makePendingAdvance(
         events: [PreferansEvent],
         preProjection: PlayerGameProjection,
@@ -178,29 +177,18 @@ public final class GameViewModel: ObservableObject {
         guard tapToAdvanceEnabled else { return nil }
         // Watch-bots demo / all-bot table: no human to tap, just cascade.
         guard !isBotSeat(selectedViewer) else { return nil }
-        var completedTrick: Trick?
-        var auctionDeclarer: PlayerID?
-        for event in events {
-            if case let .trickCompleted(trick) = event, completedTrick == nil { completedTrick = trick }
-            if case let .auctionWon(declarer, _) = event { auctionDeclarer = declarer }
+        if let hold = AdvancePresentation.completedTrickHold(
+            events: events,
+            viewer: selectedViewer,
+            preProjection: preProjection,
+            visibleTalonBeforeAction: publicTalonBeforeAction
+        ) {
+            return hold
         }
 
-        // Trick close always freezes — the viewer needs to see who won
-        // before the felt sweeps and a new leader takes over.
-        if let trick = completedTrick {
-            // Engine has already cleared `currentTrick` and rotated the
-            // leader; the projection's phase may even have moved past
-            // `.playingTrick` (e.g., to `.dealScored` on the closing
-            // trick of the deal). Snapshot the pre-action phase / count
-            // so the override holds the felt on the completed trick.
-            return PendingAdvance(
-                waitingOn: selectedViewer,
-                trickPlays: trick.tablePlays,
-                trickWinner: trick.winner,
-                talonOverride: trick.talonLead == nil ? nil : publicTalonBeforeAction,
-                phaseOverride: preProjection.phase,
-                completedTrickCountOverride: preProjection.completedTrickCount
-            )
+        var auctionDeclarer: PlayerID?
+        for event in events {
+            if case let .auctionWon(declarer, _) = event { auctionDeclarer = declarer }
         }
 
         // Auction just resolved — the prikup is now face-up on the felt.
@@ -361,93 +349,6 @@ public final class GameViewModel: ObservableObject {
                 self.send(decision.action)
             }
         }
-    }
-}
-
-extension PlayerGameProjection {
-    /// Presentation-only freeze used by both local tap-to-advance and online
-    /// timed trick holds. The engine/host sequence has already advanced; this
-    /// method only keeps the just-finished public beat visible for the viewer.
-    public func applyingAdvanceFreeze(_ advance: PendingAdvance?) -> PlayerGameProjection {
-        var p = self
-        guard let advance else { return p }
-        if let plays = advance.trickPlays {
-            p.currentTrick = plays
-        }
-        if let winner = advance.trickWinner {
-            // Roll the winner's count back to its pre-close value so the tally
-            // on the felt matches the still-visible trick.
-            let prev = p.trickCounts[winner] ?? 0
-            p.trickCounts[winner] = max(0, prev - 1)
-            if let i = p.seats.firstIndex(where: { $0.player == winner }) {
-                p.seats[i].trickCount = max(0, p.seats[i].trickCount - 1)
-            }
-        }
-        if let talon = advance.talonOverride {
-            p.talon = talon
-        }
-        if let count = advance.completedTrickCountOverride {
-            p.completedTrickCount = count
-        }
-        if let phase = advance.phaseOverride {
-            p.phase = phase
-        }
-        // While the hold is up, suppress legal-action affordances so the next
-        // actor cannot skip past the visible trick result.
-        p.legal.playableCards = []
-        p.legal.playableCardsOwner = nil
-        p.legal.settlementOptions = []
-        p.legal.canAcceptSettlement = false
-        p.legal.canRejectSettlement = false
-        p.legal.canStartDeal = false
-        return p
-    }
-}
-
-/// Tap-to-advance pause descriptor. When non-nil on the view model, the
-/// table is frozen on a completed trick or public-information reveal. The
-/// view model holds the gate up until ``GameViewModel/advance()`` is called
-/// (typically by a tap on the felt). Bidding, discard, and other phases skip
-/// the gate entirely; they're already driven by explicit user taps.
-public struct PendingAdvance: Equatable, Sendable {
-    /// Seat that must tap to advance. Today this is always the on-screen
-    /// viewer; the field exists so the "Waiting for X" hint reads from a
-    /// single source rather than re-deriving the seat in every view.
-    public let waitingOn: PlayerID
-    /// When set, render these plays as the current trick on the felt.
-    /// Used after `trickCompleted` to hold the four-card trick visible
-    /// even though the engine has already cleared its `currentTrick`.
-    public let trickPlays: [CardPlay]?
-    /// Seat that just won the trick. Used to roll the displayed
-    /// trick-count back to its pre-close value while the trick is frozen.
-    public let trickWinner: PlayerID?
-    /// Public talon state from immediately before the trick closed. This
-    /// prevents the second raspasy lead from being revealed early while the
-    /// first completed trick is still frozen on screen.
-    public let talonOverride: [ProjectedCard]?
-    /// Phase to display while the gate is up. Lets the felt stay on
-    /// `.playingTrick` even when the engine has moved to `.dealScored`
-    /// or `.matchOver` (the closing trick of a deal).
-    public let phaseOverride: ProjectedPhase?
-    /// Completed-trick count to display while the gate is up. Held at the
-    /// pre-close value so the auction-trail / felt indicators don't tick
-    /// the trick number forward before the user has acknowledged it.
-    public let completedTrickCountOverride: Int?
-
-    public init(
-        waitingOn: PlayerID,
-        trickPlays: [CardPlay]?,
-        trickWinner: PlayerID?,
-        talonOverride: [ProjectedCard]? = nil,
-        phaseOverride: ProjectedPhase?,
-        completedTrickCountOverride: Int?
-    ) {
-        self.waitingOn = waitingOn
-        self.trickPlays = trickPlays
-        self.trickWinner = trickWinner
-        self.talonOverride = talonOverride
-        self.phaseOverride = phaseOverride
-        self.completedTrickCountOverride = completedTrickCountOverride
     }
 }
 

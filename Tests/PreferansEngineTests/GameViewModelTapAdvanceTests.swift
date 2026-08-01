@@ -125,6 +125,49 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
                        "the frozen table must not reveal that second lead before acknowledgement")
     }
 
+    func testSharedTrickPresentationPreservesExactOpenPhaseAndPublicTalon() throws {
+        var preProjection = try makeModel().projection(revealAll: false)
+        let openPhase = ProjectedPhase.playing(
+            currentPlayer: "south",
+            leader: "north",
+            kind: .game(
+                declarer: "north",
+                contract: GameContract(6, .suit(.spades)),
+                defenders: ["east", "south"],
+                whisters: ["east"],
+                defenderPlayMode: .open
+            )
+        )
+        let visibleTalon: [ProjectedCard] = [.known(Card(.hearts, .ace)), .hidden]
+        preProjection.phase = openPhase
+        preProjection.completedTrickCount = 9
+        preProjection.talon = visibleTalon
+
+        let trick = Trick(
+            leader: "west",
+            leadSuit: .hearts,
+            talonLead: CardPlay(player: "west", card: Card(.hearts, .ace)),
+            plays: [
+                CardPlay(player: "north", card: Card(.hearts, .king)),
+                CardPlay(player: "east", card: Card(.hearts, .queen)),
+                CardPlay(player: "south", card: Card(.hearts, .jack)),
+            ],
+            winner: "west"
+        )
+
+        let hold = try XCTUnwrap(AdvancePresentation.completedTrickHold(
+            events: [.trickCompleted(trick)],
+            viewer: "east",
+            preProjection: preProjection,
+            visibleTalonBeforeAction: visibleTalon
+        ))
+
+        XCTAssertEqual(hold.phaseOverride, openPhase)
+        XCTAssertEqual(hold.completedTrickCountOverride, 9)
+        XCTAssertEqual(hold.talonOverride, visibleTalon)
+        XCTAssertEqual(hold.trickPlays, trick.tablePlays)
+    }
+
     func testAdvanceReleasesTheFreeze() throws {
         let model = try makeModel()
         driveToPlay(model)
