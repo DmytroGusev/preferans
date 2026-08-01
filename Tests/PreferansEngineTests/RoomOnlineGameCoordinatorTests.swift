@@ -796,6 +796,37 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         coordinator.detach()
     }
 
+    func testStartFirstDealRejectsDisconnectedHumanAndCanRetryAfterPresence() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let guest = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
+        let bot = OnlinePeer(playerID: "south", accountID: "bot:south", provider: .dev, displayName: "Bot 3")
+        let transport = PresenceDrivenTransport(
+            localPeer: host,
+            hostPlayerID: host.playerID,
+            participants: [host, guest, bot],
+            connectedPlayerIDs: [host.playerID, bot.playerID]
+        )
+        let coordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled,
+            runsServerSideBots: false
+        )
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+
+        XCTAssertFalse(coordinator.startFirstDeal())
+        XCTAssertTrue(coordinator.errorText?.contains("every seat is filled") == true)
+        XCTAssertEqual(coordinator.projection?.sequence, 0)
+
+        transport.simulateConnectedPlayerIDs([host.playerID, guest.playerID, bot.playerID])
+        await pump(until: { coordinator.canHostStart })
+
+        XCTAssertTrue(coordinator.startFirstDeal())
+        await pump(until: { coordinator.projection?.sequence == 1 })
+        XCTAssertNil(coordinator.errorText)
+        coordinator.detach()
+    }
+
     func testVisibleProjectionWaitsForDurableSnapshotCommit() async throws {
         let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
         let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
@@ -1832,6 +1863,7 @@ private final class AccountAddressedTransport: RoomRealtimeTransport {
 private final class PresenceDrivenTransport: RoomRealtimeTransport {
     let localPeer: OnlinePeer
     private(set) var participants: [OnlinePeer]
+    private(set) var connectedPlayerIDs: Set<PlayerID>
     var blockedReportSequences: Set<Int> = []
     var fillPendingSeatsError: Error?
     var failsSeatAssignmentBroadcast = false
@@ -1845,10 +1877,16 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
 
     var connectionObserverCount: Int { connectionContinuations.count }
 
-    init(localPeer: OnlinePeer, hostPlayerID: PlayerID, participants: [OnlinePeer]) {
+    init(
+        localPeer: OnlinePeer,
+        hostPlayerID: PlayerID,
+        participants: [OnlinePeer],
+        connectedPlayerIDs: Set<PlayerID>? = nil
+    ) {
         self.localPeer = localPeer
         self.hostPlayerID = hostPlayerID
         self.participants = participants
+        self.connectedPlayerIDs = connectedPlayerIDs ?? Set(participants.map(\.playerID))
     }
 
     func chooseHost() async -> OnlinePeer? {
@@ -1937,8 +1975,16 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
 
     func simulatePresence(_ peers: [OnlinePeer]) {
         participants = peers
+        connectedPlayerIDs.formIntersection(Set(peers.map(\.playerID)))
         for continuation in participantContinuations.values {
             continuation.yield(peers)
+        }
+    }
+
+    func simulateConnectedPlayerIDs(_ ids: Set<PlayerID>) {
+        connectedPlayerIDs = ids
+        for continuation in participantContinuations.values {
+            continuation.yield(participants)
         }
     }
 

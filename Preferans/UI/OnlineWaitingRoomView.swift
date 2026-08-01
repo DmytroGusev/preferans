@@ -346,7 +346,9 @@ public struct OnlineWaitingRoomView: View {
             Button {
                 guard !isStarting else { return }
                 isStarting = true
-                coordinator.startFirstDeal()
+                if !coordinator.startFirstDeal() {
+                    isStarting = false
+                }
             } label: {
                 HStack {
                     Image(systemName: "play.fill")

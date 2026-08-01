@@ -301,12 +301,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     /// Host kicks off the first deal from the waiting room. The actual deck and
     /// dealer are filled in authoritatively by ``HostGameActor`` (`makeAuthoritative`).
-    public func startFirstDeal() {
-        guard isHost, transportStatus != .seatTakenOver else { return }
+    @discardableResult
+    public func startFirstDeal() -> Bool {
+        guard isHost, transportStatus != .seatTakenOver else { return false }
+        // Clear a previous validation/network message before every attempt so
+        // the waiting room can reliably leave its in-flight state even when a
+        // retry produces the same localized error text.
+        errorText = nil
         refreshPeersFromTransport()
         guard allExpectedOnlinePlayersConnected() else {
             errorText = String(localized: "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
-            return
+            return false
         }
         // Surface the not-ready case instead of falling into send(_:)'s
         // silent duplicate-startDeal guard: the waiting room disables its
@@ -314,9 +319,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         // would wedge the host behind a disabled button.
         guard projection?.legal.canStartDeal == true else {
             errorText = String(localized: "The table isn't ready to deal yet — try again in a moment.")
-            return
+            return false
         }
         send(.startDeal(dealer: nil, deck: nil))
+        return true
     }
 
     /// Convert every still-open (`pending:`) seat into a host-driven bot, then
