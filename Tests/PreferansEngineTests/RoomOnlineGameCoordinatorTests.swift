@@ -5,6 +5,43 @@ import XCTest
 
 @MainActor
 final class RoomOnlineGameCoordinatorTests: XCTestCase {
+    func testDurabilityBarrierIsSingleFlightAndTicketScoped() {
+        var barrier = RoomDurabilityBarrier<Int>(initialRetryDelay: .milliseconds(10))
+
+        let first = try! XCTUnwrap(barrier.stage(11))
+        XCTAssertFalse(barrier.acceptsAction)
+        XCTAssertNil(barrier.stage(12))
+        XCTAssertEqual(barrier.update(for: first), 11)
+        XCTAssertEqual(barrier.delay(for: first), .milliseconds(10))
+
+        XCTAssertEqual(barrier.complete(first), 11)
+        XCTAssertTrue(barrier.acceptsAction)
+        let second = try! XCTUnwrap(barrier.stage(12))
+        XCTAssertNil(barrier.update(for: first))
+        XCTAssertNil(barrier.complete(first), "a stale retry task must not clear the newer move")
+        XCTAssertEqual(barrier.update(for: second), 12)
+    }
+
+    func testDurabilityBarrierBackoffCapsAndResetInvalidatesTicket() {
+        var barrier = RoomDurabilityBarrier<Int>(
+            initialRetryDelay: .seconds(1),
+            maximumRetryDelay: .seconds(4)
+        )
+        let ticket = try! XCTUnwrap(barrier.stage(1))
+
+        XCTAssertTrue(barrier.recordFailure(for: ticket))
+        XCTAssertEqual(barrier.delay(for: ticket), .seconds(2))
+        XCTAssertTrue(barrier.recordFailure(for: ticket))
+        XCTAssertEqual(barrier.delay(for: ticket), .seconds(4))
+        XCTAssertTrue(barrier.recordFailure(for: ticket))
+        XCTAssertEqual(barrier.delay(for: ticket), .seconds(4))
+
+        barrier.reset()
+        XCTAssertTrue(barrier.acceptsAction)
+        XCTAssertNil(barrier.delay(for: ticket))
+        XCTAssertFalse(barrier.recordFailure(for: ticket))
+    }
+
     private let peers: [OnlinePeer] = [
         OnlinePeer(playerID: "north", accountID: "dev:north@example.test", provider: .dev, displayName: "North"),
         OnlinePeer(playerID: "east", accountID: "dev:east@example.test", provider: .dev, displayName: "East"),

@@ -39,7 +39,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var transportEventsTask: Task<Void, Never>?
     private var hostRecoveryTask: Task<Void, Never>?
     private var durabilityRetryTask: Task<Void, Never>?
-    private var pendingDurableUpdate: HostUpdate?
+    private var durabilityBarrier: RoomDurabilityBarrier<HostUpdate>
     private var hostPeer: OnlinePeer?
     private var roster = RoomParticipantRoster()
     private var rules: PreferansRules = .sochi
@@ -58,9 +58,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// still publishes immediately; each client keeps the completed trick on
     /// screen briefly so humans can read who won before the next state appears.
     private let trickResultHoldDuration: Duration
-    /// Initial backoff for a failed authoritative snapshot commit. Injectable
-    /// so the durability barrier is exercised without slow tests.
-    private let durabilityRetryInitialDelay: Duration
     /// When false, this coordinator never runs the server-side bot loop. The
     /// in-memory demo/test room sets this off because it drives its bots through
     /// separate per-seat coordinators instead.
@@ -85,7 +82,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.heartbeat = heartbeat
         self.botMoveDelay = botMoveDelay
         self.trickResultHoldDuration = trickResultHoldDuration
-        self.durabilityRetryInitialDelay = durabilityRetryInitialDelay
+        self.durabilityBarrier = RoomDurabilityBarrier(
+            initialRetryDelay: durabilityRetryInitialDelay
+        )
         self.runsServerSideBots = runsServerSideBots
     }
 
@@ -128,7 +127,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.transportEventsTask?.cancel()
         self.hostRecoveryTask?.cancel()
         self.durabilityRetryTask?.cancel()
-        self.pendingDurableUpdate = nil
+        self.durabilityBarrier.reset()
         self.heartbeatTask?.cancel()
         self.transportEventsTask = observeConnectionEvents(of: transport)
         self.listenTask = listen(to: transport)
@@ -170,7 +169,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         hostRecoveryTask = nil
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
-        pendingDurableUpdate = nil
+        durabilityBarrier.reset()
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
@@ -569,7 +568,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         hostRecoveryTask?.cancel()
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
-        pendingDurableUpdate = nil
+        durabilityBarrier.reset()
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
@@ -618,7 +617,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         hostRecoveryTask = nil
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
-        pendingDurableUpdate = nil
+        durabilityBarrier.reset()
         pendingBotTask?.cancel()
         pendingBotTask = nil
         hostActor = nil
@@ -768,7 +767,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         onError: (Error) async -> Void
     ) async {
         guard let hostActor else { return }
-        guard pendingDurableUpdate == nil else {
+        guard durabilityBarrier.acceptsAction else {
             await onError(CloudflareRoomTransportError.serverError(
                 String(localized: "Saving the previous move… Try again in a moment.")
             ))
@@ -791,25 +790,28 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func queueDurabilityRetry(_ update: HostUpdate, after error: Error) {
-        pendingDurableUpdate = update
+        guard let ticket = durabilityBarrier.stage(update) else {
+            assertionFailure("Durability barrier accepted two pending host updates")
+            return
+        }
         let message = String(localized: "Connection interrupted — saving your move…")
         errorText = message
         logOnlineFlow("event=reportStateRetry sequence=\(update.sequence) error=\(error.localizedDescription)")
         durabilityRetryTask?.cancel()
         durabilityRetryTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            var delay = self.durabilityRetryInitialDelay
             while !Task.isCancelled {
+                guard let delay = self.durabilityBarrier.delay(for: ticket) else { return }
                 try? await Task.sleep(for: delay)
                 guard !Task.isCancelled,
                       self.isHost,
-                      let pending = self.pendingDurableUpdate else { return }
+                      let pending = self.durabilityBarrier.update(for: ticket) else { return }
                 do {
                     try await self.reportStateToWorker(pending)
                     guard self.isHost,
-                          self.pendingDurableUpdate?.sequence == pending.sequence else { return }
+                          self.durabilityBarrier.update(for: ticket) != nil else { return }
                     await self.publish(pending)
-                    self.pendingDurableUpdate = nil
+                    guard self.durabilityBarrier.complete(ticket) != nil else { return }
                     self.durabilityRetryTask = nil
                     if self.errorText == message {
                         self.errorText = nil
@@ -817,7 +819,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     return
                 } catch {
                     logOnlineFlow("event=reportStateRetryFailed sequence=\(pending.sequence) error=\(error.localizedDescription)")
-                    delay = min(delay * 2, .seconds(8))
+                    guard self.durabilityBarrier.recordFailure(for: ticket) else { return }
                 }
             }
         }
