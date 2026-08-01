@@ -59,7 +59,13 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public var failedDeclarerConsolation: FailedDeclarerConsolation
     public var whistResponsibility: WhistResponsibility
     public var allPassTalonPolicy: AllPassTalonPolicy
+    /// Mountain penalty multiplier for each trick on an all-pass deal. This
+    /// does not scale the separate clean-exit pool credit below.
     public var allPassPenaltyPolicy: AllPassPenaltyPolicy
+    /// Pool points awarded to a player who takes zero tricks on an all-pass
+    /// deal. The value follows the raspasy progression, not the mountain
+    /// penalty multiplier (Leningrad records 1/2/3 in the pool while its
+    /// trick penalties are 2/4/6 in the mountain).
     public var zeroTricksAllPassPoolBonus: Int
     public var dealerTalonCompensation: DealerTalonCompensation
     /// Recording scales are deliberately separate. In Leningrad a made

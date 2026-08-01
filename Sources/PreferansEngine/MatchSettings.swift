@@ -165,7 +165,8 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
     /// App defaults used until the table chooses its house settings. Raspasy
     /// price and exit progressions are negotiated options in both named
     /// conventions; the lobby transports the selected pair in MatchSettings.
-    /// Leningrad's doubled base all-pass value turns 1–2–3 into 2–4–6.
+    /// Leningrad's doubled base all-pass value turns trick penalties into
+    /// 2–4–6; the separate clean-exit pool credit remains 1–2–3.
     public static let sochi = RaspasyPolicy.progressive(
         penalties: .arithmetic,
         exit: .strict

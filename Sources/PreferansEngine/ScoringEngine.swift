@@ -265,14 +265,18 @@ struct PreferansScoring {
             baseMultiplier = m
             amnesty = a
         }
-        let multiplier = baseMultiplier
-            * match.raspasy.scoreMultiplier(precededBy: consecutiveAllPassDeals)
+        let progressionMultiplier = match.raspasy.scoreMultiplier(precededBy: consecutiveAllPassDeals)
+        let multiplier = baseMultiplier * progressionMultiplier
         let scoringPlayers = playing.trickTakingPlayers
         let minimum = scoringPlayers.map { tricks($0, in: playing.trickCounts) }.min() ?? 0
         for player in scoringPlayers {
             let tricks = tricks(player, in: playing.trickCounts)
             if tricks == 0, rules.zeroTricksAllPassPoolBonus > 0 {
-                delta.addPool(rules.zeroTricksAllPassPoolBonus * multiplier, to: player)
+                // A clean exit is a pool credit, not an all-pass mountain
+                // penalty. Leningrad doubles mountain/whist recording while
+                // keeping pool entries at their normal value; only the
+                // raspasy progression changes the clean-exit pool credit.
+                delta.addPool(rules.zeroTricksAllPassPoolBonus * progressionMultiplier, to: player)
             }
             let chargeable = amnesty ? max(0, tricks - minimum) : tricks
             delta.addMountain(chargeable * multiplier, to: player)

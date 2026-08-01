@@ -107,7 +107,7 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.mountain["south"], 5)
     }
 
-    func testAllPassDoubledMultiplierDoublesMountainAndZeroTrickBonus() {
+    func testAllPassPenaltyMultiplierDoublesMountainButNotPoolExitBonus() {
         let rules = PreferansRules(allPassPenaltyPolicy: .perTrick(multiplier: 2, amnesty: false))
         let delta = scoreAllPass(
             trickCounts: ["north": 0, "east": 6, "south": 4],
@@ -115,8 +115,10 @@ final class ScoringVariantTests: XCTestCase {
         )
 
         // Every trick costs 2: east mountains 6 * 2 = 12, south 4 * 2 = 8.
-        // The clean exit bonus is also multiplied: 1 * 2 = 2 pool.
-        XCTAssertEqual(delta.pool["north"], 2)
+        // The clean exit is a pool credit, so the penalty multiplier does not
+        // double it. The canonical Leningrad profile applies the same rule;
+        // only raspasy progression scales this credit.
+        XCTAssertEqual(delta.pool["north"], 1)
         XCTAssertEqual(delta.mountain["north"], 0)
         XCTAssertEqual(delta.mountain["east"], 12)
         XCTAssertEqual(delta.mountain["south"], 8)
@@ -168,7 +170,7 @@ final class ScoringVariantTests: XCTestCase {
         }
     }
 
-    func testLeningradRaspasyUsesDoubledTwoFourSixSeries() {
+    func testLeningradRaspasyDoublesMountainSeriesButKeepsPoolExitAtProgressionPrice() {
         let delta = scoreAllPass(
             trickCounts: ["north": 0, "east": 4, "south": 6],
             rules: .leningrad,
@@ -177,7 +179,9 @@ final class ScoringVariantTests: XCTestCase {
         )
 
         // Leningrad's base price is 2 and the third arithmetic stage is x3.
-        XCTAssertEqual(delta.pool["north"], 6)
+        // The third Leningrad stage doubles mountain entries to 6 per trick,
+        // but its clean-exit pool credit remains the progression price 3.
+        XCTAssertEqual(delta.pool["north"], 3)
         XCTAssertEqual(delta.mountain["east"], 24)
         XCTAssertEqual(delta.mountain["south"], 36)
     }
@@ -207,7 +211,7 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(leningrad.contracts.map(\.whistPerDefenderTrick), [4, 8, 12, 16, 20])
         XCTAssertEqual(leningrad.misere, MisereRuleExample(madePool: 10, failedOneTrickMountain: 20))
         XCTAssertEqual(leningrad.raspasy.map(\.trickPrice), [2, 4, 6])
-        XCTAssertEqual(leningrad.raspasy.map(\.cleanExitPool), [2, 4, 6])
+        XCTAssertEqual(leningrad.raspasy.map(\.cleanExitPool), [1, 2, 3])
         XCTAssertEqual(leningrad.raspasy.map(\.minimumGameTricks), [6, 7, 8])
     }
 
