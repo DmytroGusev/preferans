@@ -90,7 +90,7 @@ public enum BotDecisionCategory: String, Codable, Hashable, Sendable {
 /// A lightweight player-facing note attached to a bot move. It contains only
 /// stable profile metadata and a categorical rationale, so retaining it in an
 /// activity window cannot leak hidden cards.
-public struct BotDecisionExplanation: Equatable, Hashable, Sendable {
+public struct BotDecisionExplanation: Codable, Equatable, Hashable, Sendable {
     public var actor: PlayerID
     public var profile: BotProfile
     public var rationale: BotDecisionRationale

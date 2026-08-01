@@ -397,6 +397,91 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         })
     }
 
+    func testClientAdoptsCurrentHostBotInsightsWithoutRegressingFromAStaleFrame() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let clientPeer = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
+        let bot = OnlinePeer(playerID: "south", accountID: "bot:south", provider: .dev, displayName: "Bot 3")
+        let participants = [host, clientPeer, bot]
+        let transport = PresenceDrivenTransport(
+            localPeer: clientPeer,
+            hostPlayerID: host.playerID,
+            participants: participants
+        )
+        let client = RoomOnlineGameCoordinator(heartbeat: .disabled)
+        await client.attach(transport: transport)
+
+        let actor = try HostGameActor(
+            hostPlayerID: host.playerID,
+            seats: participants.map { peer in
+                PlayerIdentity(
+                    playerID: peer.playerID,
+                    gamePlayerID: peer.accountID,
+                    displayName: peer.displayName
+                )
+            },
+            dealSource: ScriptedDealSource(decks: [Deck.standard32])
+        )
+        let initialProjection = try await actor.projection(for: clientPeer.playerID)
+        let start = ClientActionEnvelope(
+            tableID: actor.tableID,
+            actor: host.playerID,
+            action: .startDeal(dealer: nil, deck: nil),
+            baseHostSequence: 0
+        )
+        let update = try await actor.applyClientAction(start, sender: host.playerID)
+        let currentProjection = try XCTUnwrap(update.projections[clientPeer.playerID])
+        let currentInsight = BotDecisionExplanation(
+            actor: bot.playerID,
+            profile: BotProfile(difficulty: .expert, temperament: .bold),
+            rationale: .gameBid
+        )
+        transport.simulateMessage(
+            .projection(ProjectionEnvelope(
+                tableID: actor.tableID,
+                sequence: update.sequence,
+                viewer: clientPeer.playerID,
+                projection: currentProjection,
+                eventSummaries: update.eventSummaries,
+                events: update.events,
+                botInsights: [currentInsight]
+            )),
+            sender: host
+        )
+        await pump(until: { client.botInsights == [currentInsight] })
+
+        let staleInsight = BotDecisionExplanation(
+            actor: bot.playerID,
+            profile: .standard,
+            rationale: .defensivePass
+        )
+        transport.simulateMessage(
+            .projection(ProjectionEnvelope(
+                tableID: actor.tableID,
+                sequence: initialProjection.sequence,
+                viewer: clientPeer.playerID,
+                projection: initialProjection,
+                eventSummaries: [],
+                botInsights: [staleInsight]
+            )),
+            sender: host
+        )
+        transport.simulateMessage(
+            .hostError(HostErrorEnvelope(
+                tableID: actor.tableID,
+                sequence: update.sequence,
+                recipient: clientPeer.playerID,
+                clientNonce: nil,
+                message: "sentinel"
+            )),
+            sender: host
+        )
+        await pump(until: { client.errorText == "sentinel" })
+
+        XCTAssertEqual(client.projection?.sequence, update.sequence)
+        XCTAssertEqual(client.botInsights, [currentInsight])
+        client.detach()
+    }
+
     func testReattachDisconnectsOldTransportAndClearsOldTableState() async throws {
         let north = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
         let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
@@ -538,6 +623,52 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertTrue(coordinator.canHostStart)
         XCTAssertTrue(
             coordinator.rosterSeats.first { $0.player == "east" }?.occupancy.isBot == true
+        )
+        XCTAssertNil(coordinator.errorText)
+        coordinator.detach()
+    }
+
+    func testBotInsightCommitsWithItsDurableMoveAndNotBefore() async throws {
+        let hostPeer = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let botPeer = OnlinePeer(playerID: "east", accountID: "bot:east", provider: .dev, displayName: "Bot 2")
+        let southPeer = OnlinePeer(playerID: "south", accountID: "bot:south", provider: .dev, displayName: "Bot 3")
+        let transport = PresenceDrivenTransport(
+            localPeer: hostPeer,
+            hostPlayerID: hostPeer.playerID,
+            participants: [hostPeer, botPeer, southPeer]
+        )
+        let coordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled,
+            botMoveDelay: .zero,
+            durabilityRetryInitialDelay: .milliseconds(5)
+        )
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+
+        coordinator.startFirstDeal()
+        await pump(until: { coordinator.projection?.sequence == 1 })
+        let opening = try XCTUnwrap(coordinator.projection)
+        XCTAssertEqual(try currentBidder(in: opening), hostPeer.playerID)
+
+        transport.blockedReportSequences.insert(3)
+        coordinator.send(.bid(player: hostPeer.playerID, call: .pass))
+        await pump(until: { transport.events.contains("report-attempt:3") })
+
+        XCTAssertEqual(coordinator.projection?.sequence, 2)
+        XCTAssertTrue(
+            coordinator.botInsights.isEmpty,
+            "A rationale must not describe a bot move that the durable room has not committed."
+        )
+
+        transport.blockedReportSequences.remove(3)
+        await pump(
+            until: { coordinator.projection?.sequence ?? 0 >= 3 && !coordinator.botInsights.isEmpty },
+            timeout: .seconds(1)
+        )
+
+        XCTAssertTrue(
+            [botPeer.playerID, southPeer.playerID].contains(coordinator.botInsights.last?.actor)
         )
         XCTAssertNil(coordinator.errorText)
         coordinator.detach()
@@ -1586,6 +1717,7 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
     private(set) var disconnectCount = 0
 
     private let hostPlayerID: PlayerID
+    private var messageContinuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
     private var connectionContinuations: [UUID: AsyncStream<RoomTransportEvent>.Continuation] = [:]
 
@@ -1602,7 +1734,13 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
     }
 
     func messages() -> AsyncStream<ReceivedRoomMessage> {
-        AsyncStream { $0.finish() }
+        let id = UUID()
+        return AsyncStream { continuation in
+            messageContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.messageContinuations.removeValue(forKey: id) }
+            }
+        }
     }
 
     func participantUpdates() -> AsyncStream<[OnlinePeer]> {
@@ -1661,6 +1799,10 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
 
     func disconnect() {
         disconnectCount += 1
+        for continuation in messageContinuations.values {
+            continuation.finish()
+        }
+        messageContinuations.removeAll()
         for continuation in participantContinuations.values {
             continuation.finish()
         }
@@ -1675,6 +1817,13 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
         participants = peers
         for continuation in participantContinuations.values {
             continuation.yield(peers)
+        }
+    }
+
+    func simulateMessage(_ message: GameWireMessage, sender: OnlinePeer) {
+        let received = ReceivedRoomMessage(message: message, sender: sender)
+        for continuation in messageContinuations.values {
+            continuation.yield(received)
         }
     }
 

@@ -22,6 +22,7 @@ public final class InMemoryOnlineGameSession: ObservableObject {
     private let automatedPlayerIDs: Set<PlayerID>
     private let dealSource: DealSource
     private let botDelay: Duration
+    private let runsServerSideBots: Bool
     private var transports: [PlayerID: InMemoryRoomTransport] = [:]
     private var remoteCoordinators: [PlayerID: RoomOnlineGameCoordinator] = [:]
     private var cancellables: Set<AnyCancellable> = []
@@ -34,7 +35,8 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         hostPlayerID: PlayerID? = nil,
         automatedPlayerIDs: Set<PlayerID> = [],
         dealSource: DealSource = RandomDealSource(),
-        botDelay: Duration = BotPacing.testFast
+        botDelay: Duration = BotPacing.testFast,
+        runsServerSideBots: Bool = false
     ) throws {
         precondition(!peers.isEmpty, "InMemoryOnlineGameSession requires at least one peer.")
         guard let localPeer = peers.first(where: { $0.playerID == localPlayerID }) else {
@@ -46,9 +48,15 @@ public final class InMemoryOnlineGameSession: ObservableObject {
         self.automatedPlayerIDs = automatedPlayerIDs
         self.dealSource = dealSource
         self.botDelay = botDelay
+        self.runsServerSideBots = runsServerSideBots
         self.room = InMemoryRoom(code: roomCode, peers: peers, hostPlayerID: self.hostPlayerID)
         self.roomCode = roomCode
-        self.localCoordinator = RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled, runsServerSideBots: false)
+        self.localCoordinator = RoomOnlineGameCoordinator(
+            dealSource: dealSource,
+            heartbeat: .disabled,
+            botMoveDelay: botDelay,
+            runsServerSideBots: runsServerSideBots
+        )
     }
 
     deinit {
@@ -66,7 +74,9 @@ public final class InMemoryOnlineGameSession: ObservableObject {
             .filter { $0.playerID != localPeer.playerID }
             .map { ($0.playerID, RoomOnlineGameCoordinator(dealSource: dealSource, heartbeat: .disabled, runsServerSideBots: false)) })
 
-        installBotObservers()
+        if !runsServerSideBots {
+            installBotObservers()
+        }
 
         for peer in peers {
             let coordinator = coordinator(for: peer.playerID)
@@ -74,8 +84,10 @@ public final class InMemoryOnlineGameSession: ObservableObject {
             await coordinator.attach(transport: transport, rules: rules, match: match)
         }
 
-        for playerID in automatedPlayerIDs {
-            scheduleBotIfNeeded(for: playerID)
+        if !runsServerSideBots {
+            for playerID in automatedPlayerIDs {
+                scheduleBotIfNeeded(for: playerID)
+            }
         }
     }
 

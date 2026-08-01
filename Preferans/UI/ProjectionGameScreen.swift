@@ -9,9 +9,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// have access to the typed stream — they get the legacy UX without
     /// notifications.
     public var recentEvents: [PreferansEvent]
-    /// Recent strategic notes from local bot seats. Online callers omit this
-    /// presentation-only stream until the protocol transports an equivalent
-    /// public-safe note explicitly.
+    /// Recent public-safe strategic notes from local or host-driven online bots.
     public var botInsights: [BotDecisionExplanation]
     /// Active tap-to-advance pause descriptor. When non-nil, the felt
     /// shows a "tap to continue" overlay and any tap on the table area

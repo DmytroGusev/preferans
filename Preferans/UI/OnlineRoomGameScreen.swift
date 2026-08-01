@@ -81,6 +81,7 @@ public struct OnlineRoomGameScreen: View {
                 projection: projection,
                 eventLog: coordinator.eventLog,
                 recentEvents: coordinator.recentEvents,
+                botInsights: coordinator.botInsights,
                 pendingAdvance: coordinator.pendingAdvance,
                 onSend: coordinator.send,
                 onLeaveTable: onLeaveTable,

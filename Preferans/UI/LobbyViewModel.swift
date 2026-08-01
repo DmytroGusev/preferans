@@ -252,9 +252,10 @@ public final class LobbyViewModel: ObservableObject {
                     displayName: String(localized: "Bot \(index + 1)")
                 )
             }
-            // Remote coordinators stay dormant while their seats are pending;
-            // once the host converts them, the same deterministic observers
-            // drive the bot seats through the live-table smoke path.
+            // The DEBUG room uses the same host-driven bot path as production,
+            // while its remote coordinators remain attached as protocol peers.
+            // This keeps the waiting-room/live-table smoke path realistic and
+            // exercises public-safe online bot explanations without a worker.
             let automatedPlayers = Set(peers.map(\.playerID).filter { $0 != localPlayer })
             let session = try InMemoryOnlineGameSession(
                 roomCode: makeRoomCode(),
@@ -263,7 +264,8 @@ public final class LobbyViewModel: ObservableObject {
                 hostPlayerID: peers.first?.playerID,
                 automatedPlayerIDs: automatedPlayers,
                 dealSource: RandomDealSource(),
-                botDelay: onlineBotMoveDelay
+                botDelay: onlineBotMoveDelay,
+                runsServerSideBots: true
             )
             Task { @MainActor [weak self] in
                 guard let self else { return }

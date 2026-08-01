@@ -19,6 +19,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     @Published public private(set) var pendingAdvance: PendingAdvance?
     @Published public private(set) var eventLog: [String] = []
     @Published public private(set) var recentEvents: [PreferansEvent] = []
+    /// Rolling public-safe explanations for host-driven bot choices. The host
+    /// commits a note only with the durable move it describes; clients replace
+    /// their window from each accepted projection so reconnect is idempotent.
+    @Published public private(set) var botInsights: [BotDecisionExplanation] = []
     @Published public private(set) var isHost: Bool = false
     @Published public private(set) var localSeat: PlayerID?
     @Published public private(set) var tableID: UUID?
@@ -66,6 +70,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// separate per-seat coordinators instead.
     private let runsServerSideBots: Bool
     private var pendingBotTask: Task<Void, Never>?
+    private var stagedBotInsights: [Int: BotDecisionExplanation] = [:]
     private var pendingAdvanceTask: Task<Void, Never>?
 
     private let heartbeat: HeartbeatConfig
@@ -214,6 +219,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         pendingAdvance = nil
         eventLog = []
         recentEvents = []
+        botInsights = []
+        stagedBotInsights = [:]
         isHost = false
         localSeat = nil
         tableID = nil
@@ -413,7 +420,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 try? await Task.sleep(for: delay)
             }
             if Task.isCancelled { return }
-            guard let action = await strategy.decide(snapshot: plan.snapshot, viewer: plan.decider),
+            guard let decision = await strategy.decision(snapshot: plan.snapshot, viewer: plan.decider),
                   !Task.isCancelled else { return }
             // A human action (or a prior bot move) may have advanced the engine
             // while we paced/decided — drop the now-stale move; the publish that
@@ -421,11 +428,15 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard await hostActor.stillAwaiting(plan.snapshot.state) else { return }
             let envelope = ClientActionEnvelope(
                 tableID: tableID,
-                actor: action.actor ?? plan.decider,
-                action: action,
+                actor: decision.action.actor ?? plan.decider,
+                action: decision.action,
                 baseHostSequence: plan.baseSequence
             )
-            await self.applyClientAction(envelope, sender: plan.decider) { error in
+            await self.applyClientAction(
+                envelope,
+                sender: plan.decider,
+                botInsight: decision.explanation
+            ) { error in
                 self.errorText = error.localizedDescription
             }
         }
@@ -630,6 +641,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             stopHeartbeat()
             pendingBotTask?.cancel()
             pendingBotTask = nil
+            stagedBotInsights = [:]
         }
     }
 
@@ -660,6 +672,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
+        stagedBotInsights = [:]
         hostActor = nil
         let authorityGeneration = advanceAuthorityGeneration()
         isHost = true
@@ -719,6 +732,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         advanceAuthorityGeneration()
         pendingBotTask?.cancel()
         pendingBotTask = nil
+        stagedBotInsights = [:]
         hostActor = nil
         isHost = false
         hostPeer = elected
@@ -754,6 +768,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 // will repopulate the UI after snapshot recovery completes.
                 projection = nil
                 pendingAdvance = nil
+                botInsights = []
                 pendingAdvanceTask?.cancel()
                 pendingAdvanceTask = nil
             }
@@ -783,7 +798,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                         )
                         try await transport?.send(.seatAssignment(assignment), to: [peer], reliably: true)
                     }
-                    let envelope = try await hostActor.fullResync(for: hello.player.playerID)
+                    var envelope = try await hostActor.fullResync(for: hello.player.playerID)
+                    envelope.botInsights = botInsights
                     try await transport?.send(.projection(envelope), to: [peer], reliably: true)
                     await autoStartOnlineDealIfNeeded(afterJoin: hello.player.playerID)
                 } catch {
@@ -818,6 +834,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             let preProjection = projection
             tableID = envelope.tableID
             projection = envelope.projection
+            botInsights = envelope.botInsights
             beginTrickResultHoldIfNeeded(
                 events: envelope.events,
                 preProjection: preProjection,
@@ -841,7 +858,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard isHost, let hostActor else { return }
             guard request.tableID == tableID else { return }
             do {
-                let envelope = try await hostActor.fullResync(for: request.requester)
+                var envelope = try await hostActor.fullResync(for: request.requester)
+                envelope.botInsights = botInsights
                 if request.requester == localSeat {
                     projection = envelope.projection
                 } else if let peer = roster.peer(for: request.requester) {
@@ -867,6 +885,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func applyClientAction(
         _ envelope: ClientActionEnvelope,
         sender: PlayerID?,
+        botInsight: BotDecisionExplanation? = nil,
         onError: (Error) async -> Void
     ) async {
         guard let hostActor else { return }
@@ -879,6 +898,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
         do {
             let update = try await hostActor.applyClientAction(envelope, sender: sender)
+            if let botInsight {
+                stagedBotInsights[update.sequence] = botInsight
+            }
             do {
                 try await reportStateToWorker(update)
             } catch {
@@ -940,6 +962,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func publish(_ update: HostUpdate, authorityGeneration: UInt64) async {
         guard ownsHostAuthority(authorityGeneration) else { return }
+        commitBotInsight(for: update.sequence)
+        // A zero-delay bot may advance again at the first transport await below.
+        // Freeze this update's presentation metadata alongside its projection so
+        // sequence N can never carry an explanation committed by sequence N+1.
+        let botInsightsForUpdate = botInsights
         tableID = update.tableID
         refreshPeersFromTransport()
         if let localSeat, let localProjection = update.projections[localSeat] {
@@ -977,13 +1004,22 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     viewer: viewer,
                     projection: projection,
                     eventSummaries: update.eventSummaries,
-                    events: update.events
+                    events: update.events,
+                    botInsights: botInsightsForUpdate
                 )
                 try await transport.send(.projection(envelope), to: [peer], reliably: true)
                 logOnlineFlow("event=sendProjection recipient=\(viewer.rawValue) sequence=\(projection.sequence) phase=\(projection.phase.token)")
             } catch {
                 errorText = error.localizedDescription
             }
+        }
+    }
+
+    private func commitBotInsight(for sequence: Int) {
+        guard let insight = stagedBotInsights.removeValue(forKey: sequence) else { return }
+        botInsights.append(insight)
+        if botInsights.count > 24 {
+            botInsights.removeFirst(botInsights.count - 24)
         }
     }
 

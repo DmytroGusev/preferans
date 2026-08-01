@@ -34,7 +34,12 @@ final class WireCompatibilityTests: XCTestCase {
                 viewer: "north",
                 projection: projection,
                 eventSummaries: ["north passed"],
-                events: [.bidAccepted(AuctionCall(player: "north", call: .pass))]
+                events: [.bidAccepted(AuctionCall(player: "north", call: .pass))],
+                botInsights: [BotDecisionExplanation(
+                    actor: "north",
+                    profile: .standard,
+                    rationale: .auctionPass
+                )]
             )),
             .hostError(HostErrorEnvelope(
                 tableID: tableID,
@@ -152,6 +157,7 @@ final class WireCompatibilityTests: XCTestCase {
         legacy.removeValue(forKey: "schemaVersion")
         legacy.removeValue(forKey: "eventSummaries")
         legacy.removeValue(forKey: "events")
+        legacy.removeValue(forKey: "botInsights")
 
         let legacyData = try JSONSerialization.data(withJSONObject: legacy)
         let decoded = try PreferansJSONCoder.decoder.decode(ProjectionEnvelope.self, from: legacyData)
@@ -162,6 +168,7 @@ final class WireCompatibilityTests: XCTestCase {
         XCTAssertEqual(decoded.viewer, envelope.viewer)
         XCTAssertEqual(decoded.eventSummaries, [])
         XCTAssertEqual(decoded.events, [])
+        XCTAssertEqual(decoded.botInsights, [])
     }
 
     func testEngineSnapshotRoundTripsThroughConfiguredJSONCoder() throws {

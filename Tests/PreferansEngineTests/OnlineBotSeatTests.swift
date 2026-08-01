@@ -374,6 +374,8 @@ final class OnlineBotSeatTests: XCTestCase {
 
         // The loop must advance the engine with zero human input.
         await pump(until: { (host.projection?.sequence ?? 0) >= 3 }, timeout: .seconds(5))
+        XCTAssertFalse(host.botInsights.isEmpty, "Online bots should expose their public-safe strategic rationale.")
+        XCTAssertTrue(host.botInsights.allSatisfy { peers.map(\.playerID).contains($0.actor) })
 
         // ...all the way to a scored deal.
         await pump(until: {

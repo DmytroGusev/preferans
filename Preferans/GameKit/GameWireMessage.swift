@@ -101,6 +101,10 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
     public var projection: PlayerGameProjection
     public var eventSummaries: [String]
     public var events: [PreferansEvent]
+    /// Rolling, public-safe strategy notes for host-driven bots. These contain
+    /// only categorical rationale/profile metadata and never sampled hands or
+    /// evaluator scores. A rolling window makes reconnect/resync idempotent.
+    public var botInsights: [BotDecisionExplanation]
 
     public init(
         tableID: UUID,
@@ -108,7 +112,8 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
         viewer: PlayerID,
         projection: PlayerGameProjection,
         eventSummaries: [String],
-        events: [PreferansEvent] = []
+        events: [PreferansEvent] = [],
+        botInsights: [BotDecisionExplanation] = []
     ) {
         self.tableID = tableID
         self.sequence = sequence
@@ -116,6 +121,7 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
         self.projection = projection
         self.eventSummaries = eventSummaries
         self.events = events
+        self.botInsights = botInsights
     }
 
     public init(from decoder: Decoder) throws {
@@ -127,6 +133,7 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
         self.projection = try container.decode(PlayerGameProjection.self, forKey: .projection)
         self.eventSummaries = try container.decodeIfPresent([String].self, forKey: .eventSummaries) ?? []
         self.events = try container.decodeIfPresent([PreferansEvent].self, forKey: .events) ?? []
+        self.botInsights = try container.decodeIfPresent([BotDecisionExplanation].self, forKey: .botInsights) ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -137,6 +144,7 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
         case projection
         case eventSummaries
         case events
+        case botInsights
     }
 }
 

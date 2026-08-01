@@ -44,6 +44,21 @@ final class OnlineWaitingRoomUITests: XCTestCase {
 
         // The table goes live.
         robot.waitForElement(UIIdentifiers.screenGame)
+
+        // Once the human yields the auction, the production-style host bot
+        // should publish the same public-safe rationale available in local play.
+        var sawInsight = false
+        for _ in 0..<8 {
+            if app.descendants(matching: .any)[UIIdentifiers.botInsightBanner]
+                .waitForExistence(timeout: 0.6) {
+                sawInsight = true
+                break
+            }
+            if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) {
+                continue
+            }
+        }
+        XCTAssertTrue(sawInsight, "Online bot rationale never reached the live table.")
     }
 
     func testHostFillsOpenSeatsTransactionallyThenStarts() {

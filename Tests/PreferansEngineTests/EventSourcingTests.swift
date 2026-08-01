@@ -169,7 +169,12 @@ final class EventSourcingTests: XCTestCase {
             viewer: projection.viewer,
             projection: projection,
             eventSummaries: ValidatedActionRecord.summaries(for: events),
-            events: events
+            events: events,
+            botInsights: [BotDecisionExplanation(
+                actor: "east",
+                profile: BotProfile(difficulty: .expert, temperament: .bold),
+                rationale: .gameBid
+            )]
         )
 
         let data = try PreferansJSONCoder.encoder.encode(envelope)
@@ -177,6 +182,7 @@ final class EventSourcingTests: XCTestCase {
 
         XCTAssertEqual(decoded.events, events)
         XCTAssertEqual(decoded.eventSummaries, envelope.eventSummaries)
+        XCTAssertEqual(decoded.botInsights, envelope.botInsights)
     }
 
     private func makeHost(firstDealer: PlayerID) throws -> HostGameActor {
