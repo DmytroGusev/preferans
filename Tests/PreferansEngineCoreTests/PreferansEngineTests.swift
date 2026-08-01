@@ -43,6 +43,28 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(playing.currentPlayer, "east")
     }
 
+    func testRostovAllPassKeepsTalonHiddenAndStartsFromForehand() throws {
+        var engine = try PreferansEngine(
+            players: ["north", "east", "south"],
+            rules: .rostov,
+            firstDealer: "north"
+        )
+        try engine.startDeal(deck: Deck.standard32)
+
+        _ = try engine.apply(.bid(player: "east", call: .pass))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+
+        guard case let .playing(playing) = engine.state,
+              case let .allPass(context) = playing.kind else {
+            return XCTFail("Expected Rostov all-pass play.")
+        }
+        XCTAssertEqual(context.talonPolicy, .ignored)
+        XCTAssertTrue(playing.talon.isEmpty == false, "The engine retains the private talon for replay.")
+        XCTAssertEqual(playing.leader, "east")
+        XCTAssertNil(playing.currentTalonLead)
+    }
+
     func testAllPassLeadStartsWithForehandAtThreePlayersAndDealerAtFour() throws {
         struct TableCase {
             let players: [PlayerID]
@@ -626,6 +648,23 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertFalse(try JSONDecoder().decode(PreferansRules.self, from: defaultEncoded).forceWhistOnSixSpades)
     }
 
+    func testRostovRuleRoundTripsWithoutChangingLegacyWireShape() throws {
+        let encoded = try JSONEncoder().encode(PreferansRules.rostov)
+        let decoded = try JSONDecoder().decode(PreferansRules.self, from: encoded)
+        XCTAssertEqual(decoded, .rostov)
+
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(object["whistValueDivisor"] as? Int, 2)
+        XCTAssertNotNil(object["declarerRemisePolicy"])
+        XCTAssertNotNil(object["whistResponsibility"])
+
+        let legacyEncoded = try JSONEncoder().encode(PreferansRules.sochi)
+        let legacyObject = try XCTUnwrap(JSONSerialization.jsonObject(with: legacyEncoded) as? [String: Any])
+        XCTAssertNil(legacyObject["whistValueDivisor"])
+        XCTAssertNil(legacyObject["declarerRemisePolicy"])
+        XCTAssertEqual(legacyObject["whistResponsibility"] as? String, "responsible")
+    }
+
     func testRulesDecoderRejectsUnsafeScoringValuesWithoutTrapping() throws {
         let encoded = try JSONEncoder().encode(PreferansRules.sochi)
         let valid = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
@@ -634,6 +673,7 @@ final class PreferansEngineTests: XCTestCase {
             ("poolValueMultiplier", 0),
             ("mountainValueMultiplier", 0),
             ("whistValueMultiplier", 0),
+            ("whistValueDivisor", 0),
             ("poolPointWhistValue", 0),
             ("mountainPointWhistValue", 0),
             ("scoringMultiplier", 0),

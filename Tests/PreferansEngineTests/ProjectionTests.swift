@@ -98,6 +98,33 @@ final class ProjectionTests: AppTestCase {
         try assertPublicTalon(in: engine, viewers: players, label: "second talon-led trick")
     }
 
+    func testRostovAllPassKeepsTalonHiddenForEveryViewer() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        let recipe = HandRecipe.raspasyCleanExit(cleaner: "north", talonLeadSuit: .clubs)
+        var engine = try PreferansEngine(
+            players: players,
+            rules: .rostov,
+            firstDealer: "south"
+        )
+        _ = try engine.apply(.startDeal(dealer: "south", deck: recipe.deck(for: players)))
+        try EngineTestDriver.passOutAuction(engine: &engine)
+
+        guard case let .playing(playing) = engine.state else {
+            return XCTFail("Expected Rostov all-pass play.")
+        }
+        XCTAssertNil(playing.currentTalonLead)
+        for viewer in players {
+            let projection = PlayerProjectionBuilder.projection(
+                for: viewer,
+                tableID: UUID(),
+                sequence: 0,
+                engine: engine,
+                policy: .online
+            )
+            XCTAssertTrue(projection.talon.allSatisfy { $0.knownCard == nil })
+        }
+    }
+
     func testProjectionCarriesLastCompletedTrickForEveryViewer() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")

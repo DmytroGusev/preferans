@@ -175,6 +175,12 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
         penalties: .arithmetic,
         exit: .strict
     )
+    /// Rostov raspasy do not progress: every all-pass deal keeps the same
+    /// price and the next ordinary contract remains six tricks.
+    public static let rostov = RaspasyPolicy.progressive(
+        penalties: .flat,
+        exit: .simple
+    )
 
     /// Multiplier for the *current* raspasy deal. `precedingDeals` is the
     /// number of immediately preceding deals that were also raspasy, so zero

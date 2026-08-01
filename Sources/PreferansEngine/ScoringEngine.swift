@@ -102,13 +102,24 @@ struct PreferansScoring {
             delta.addPool(poolUnit + context.bonusPoolOnSuccess, to: context.declarer)
         } else {
             let undertricks = context.contract.tricks - declarerTricks
-            delta.addMountain(mountainUnit * undertricks, to: context.declarer)
-            applyDeclarerRemiseConsolation(
-                undertricks: undertricks,
-                context: context,
-                whistValue: whistUnit,
-                delta: &delta
-            )
+            switch rules.declarerRemisePolicy {
+            case .mountainAndConsolation:
+                delta.addMountain(mountainUnit * undertricks, to: context.declarer)
+                applyDeclarerRemiseConsolation(
+                    undertricks: undertricks,
+                    context: context,
+                    whistValue: whistUnit,
+                    delta: &delta
+                )
+            case let .directWhistsPerDefender(pointsPerMountainPoint):
+                for defender in context.defenders {
+                    delta.addWhists(
+                        pointsPerMountainPoint * mountainUnit * undertricks,
+                        writer: defender,
+                        on: context.declarer
+                    )
+                }
+            }
         }
 
         switch (rules.singleWhistScoring, context.whisters.count) {
@@ -135,6 +146,8 @@ struct PreferansScoring {
             applyWhistResponsibility(
                 contract: context.contract,
                 whisters: context.whisters,
+                declarer: context.declarer,
+                defenders: context.defenders,
                 trickCounts: playing.trickCounts,
                 defenderTricks: defenderTricks,
                 mountainValue: mountainUnit,
@@ -165,6 +178,8 @@ struct PreferansScoring {
     private func applyWhistResponsibility(
         contract: GameContract,
         whisters: [PlayerID],
+        declarer: PlayerID,
+        defenders: [PlayerID],
         trickCounts: [PlayerID: Int],
         defenderTricks: Int,
         mountainValue: Int,
@@ -176,9 +191,13 @@ struct PreferansScoring {
 
         if whisters.count == 1, let whister = whisters.first {
             let missing = max(0, requirement - defenderTricks)
-            delta.addMountain(
-                whistRemiseMountain(missing: missing, mountainValue: mountainValue),
-                to: whister
+            applyWhistRemise(
+                missing: missing,
+                whister: whister,
+                declarer: declarer,
+                defenders: defenders,
+                mountainValue: mountainValue,
+                delta: &delta
             )
             return
         }
@@ -190,9 +209,13 @@ struct PreferansScoring {
 
         if requirement == 1 {
             if defenderTricks == 0, let second = whisters.last {
-                delta.addMountain(
-                    whistRemiseMountain(missing: 1, mountainValue: mountainValue),
-                    to: second
+                applyWhistRemise(
+                    missing: 1,
+                    whister: second,
+                    declarer: declarer,
+                    defenders: defenders,
+                    mountainValue: mountainValue,
+                    delta: &delta
                 )
             }
             return
@@ -205,21 +228,45 @@ struct PreferansScoring {
             // When the partnership missed its target, falling below the
             // half-share is a fixed one-unit whist remise, not one penalty
             // per individually missing trick.
-            delta.addMountain(
-                whistRemiseMountain(missing: 1, mountainValue: mountainValue),
-                to: whister
+            applyWhistRemise(
+                missing: 1,
+                whister: whister,
+                declarer: declarer,
+                defenders: defenders,
+                mountainValue: mountainValue,
+                delta: &delta
             )
         }
     }
 
-    private func whistRemiseMountain(missing: Int, mountainValue: Int) -> Int {
+    private func applyWhistRemise(
+        missing: Int,
+        whister: PlayerID,
+        declarer: PlayerID,
+        defenders: [PlayerID],
+        mountainValue: Int,
+        delta: inout ScoreDelta
+    ) {
+        guard missing > 0 else { return }
         switch rules.whistResponsibility {
         case .responsible:
-            return missing * mountainValue
+            delta.addMountain(missing * mountainValue, to: whister)
         case .semiResponsible:
-            return missing * mountainValue / 2
+            delta.addMountain(missing * mountainValue / 2, to: whister)
+        case let .directWhists(pointsPerMountainPoint):
+            // Rostov halves the ordinary whister-remise mountain penalty
+            // before replacing each mountain point with a five-whist payment.
+            let directUnits = missing * mountainValue / 2
+            let targets = [declarer] + defenders.filter { $0 != whister }
+            for target in targets {
+                delta.addWhists(
+                    directUnits * pointsPerMountainPoint,
+                    writer: whister,
+                    on: target
+                )
+            }
         case .none:
-            return 0
+            break
         }
     }
 
@@ -233,10 +280,21 @@ struct PreferansScoring {
         if declarerTricks == 0 {
             delta.addPool(10 * rules.poolValueMultiplier, to: context.declarer)
         } else {
-            delta.addMountain(
-                10 * rules.mountainValueMultiplier * declarerTricks,
-                to: context.declarer
-            )
+            switch rules.declarerRemisePolicy {
+            case .mountainAndConsolation:
+                delta.addMountain(
+                    10 * rules.mountainValueMultiplier * declarerTricks,
+                    to: context.declarer
+                )
+            case let .directWhistsPerDefender(pointsPerMountainPoint):
+                for defender in playing.activePlayers where defender != context.declarer {
+                    delta.addWhists(
+                        pointsPerMountainPoint * 10 * declarerTricks,
+                        writer: defender,
+                        on: context.declarer
+                    )
+                }
+            }
         }
         applyDealerMisereTalonCompensation(
             dealer: playing.dealer,
@@ -258,28 +316,22 @@ struct PreferansScoring {
 
     private func scoreAllPass(_ playing: PlayingState, settlement: TrickSettlement? = nil) -> DealResult {
         var delta = ScoreDelta(players: players)
-        let baseMultiplier: Int
-        let amnesty: Bool
+        let progressionMultiplier = match.raspasy.scoreMultiplier(precededBy: consecutiveAllPassDeals)
         switch rules.allPassPenaltyPolicy {
         case let .perTrick(m, a):
-            baseMultiplier = m
-            amnesty = a
-        }
-        let progressionMultiplier = match.raspasy.scoreMultiplier(precededBy: consecutiveAllPassDeals)
-        let multiplier = baseMultiplier * progressionMultiplier
-        let scoringPlayers = playing.trickTakingPlayers
-        let minimum = scoringPlayers.map { tricks($0, in: playing.trickCounts) }.min() ?? 0
-        for player in scoringPlayers {
-            let tricks = tricks(player, in: playing.trickCounts)
-            if tricks == 0, rules.zeroTricksAllPassPoolBonus > 0 {
-                // A clean exit is a pool credit, not an all-pass mountain
-                // penalty. Leningrad doubles mountain/whist recording while
-                // keeping pool entries at their normal value; only the
-                // raspasy progression changes the clean-exit pool credit.
-                delta.addPool(rules.zeroTricksAllPassPoolBonus * progressionMultiplier, to: player)
-            }
-            let chargeable = amnesty ? max(0, tricks - minimum) : tricks
-            delta.addMountain(chargeable * multiplier, to: player)
+            scoreMountainAllPass(
+                playing,
+                baseMultiplier: m,
+                amnesty: a,
+                progressionMultiplier: progressionMultiplier,
+                delta: &delta
+            )
+        case let .directWhistsToLowest(pointsPerTrick):
+            scoreDirectWhistAllPass(
+                playing,
+                pointsPerTrick: pointsPerTrick,
+                delta: &delta
+            )
         }
         return DealResult(
             kind: .allPass,
@@ -290,6 +342,65 @@ struct PreferansScoring {
             initialHands: openingHands(from: playing),
             settlement: settlement
         )
+    }
+
+    private func scoreMountainAllPass(
+        _ playing: PlayingState,
+        baseMultiplier: Int,
+        amnesty: Bool,
+        progressionMultiplier: Int,
+        delta: inout ScoreDelta
+    ) {
+        let multiplier = baseMultiplier * progressionMultiplier
+        let scoringPlayers = playing.trickTakingPlayers
+        let minimum = scoringPlayers.map { tricks($0, in: playing.trickCounts) }.min() ?? 0
+        for player in scoringPlayers {
+            let trickCount = tricks(player, in: playing.trickCounts)
+            if trickCount == 0, rules.zeroTricksAllPassPoolBonus > 0 {
+                // A clean exit is a pool credit, not an all-pass mountain
+                // penalty. Leningrad doubles mountain/whist recording while
+                // keeping pool entries at their normal value; only the
+                // raspasy progression changes the clean-exit pool credit.
+                delta.addPool(rules.zeroTricksAllPassPoolBonus * progressionMultiplier, to: player)
+            }
+            let chargeable = amnesty ? max(0, trickCount - minimum) : trickCount
+            delta.addMountain(chargeable * multiplier, to: player)
+        }
+    }
+
+    private func scoreDirectWhistAllPass(
+        _ playing: PlayingState,
+        pointsPerTrick: Int,
+        delta: inout ScoreDelta
+    ) {
+        let scoringPlayers = playing.trickTakingPlayers
+        let minimum = scoringPlayers.map { tricks($0, in: playing.trickCounts) }.min() ?? 0
+        let winners = scoringPlayers.filter { tricks($0, in: playing.trickCounts) == minimum }
+        guard !winners.isEmpty else { return }
+
+        // Rostov keeps the four-player dealer out of the hand and still
+        // awards that sitting-out seat the clean-exit pool point.
+        if players.count == 4,
+           !playing.activePlayers.contains(playing.dealer),
+           rules.zeroTricksAllPassPoolBonus > 0 {
+            delta.addPool(rules.zeroTricksAllPassPoolBonus, to: playing.dealer)
+        }
+        if rules.zeroTricksAllPassPoolBonus > 0 {
+            for winner in winners where tricks(winner, in: playing.trickCounts) == 0 {
+                delta.addPool(rules.zeroTricksAllPassPoolBonus, to: winner)
+            }
+        }
+
+        for loser in scoringPlayers where !winners.contains(loser) {
+            let total = pointsPerTrick * tricks(loser, in: playing.trickCounts)
+            guard total > 0 else { continue }
+            let base = total / winners.count
+            let remainder = total % winners.count
+            for (index, winner) in winners.enumerated() {
+                let amount = base + (index < remainder ? 1 : 0)
+                delta.addWhists(amount, writer: loser, on: winner)
+            }
+        }
     }
 
     private func effectiveWhistRequirement(for contract: GameContract) -> Int {
@@ -309,7 +420,7 @@ struct PreferansScoring {
     }
 
     private func whistValue(_ contract: GameContract) -> Int {
-        contract.value * rules.whistValueMultiplier
+        rules.recordedWhistValue(for: contract)
     }
 
     private func applyDealerGameTalonCompensation(
@@ -490,17 +601,22 @@ public struct ContractRuleExample: Equatable, Sendable {
     public let tricks: Int
     public let madePool: Int
     public let failedByOneMountain: Int
+    /// Total direct whists written to the declarer for one undertrick. It is
+    /// populated for direct-remise conventions such as Rostov.
+    public let failedByOneDirectWhists: Int
     public let whistPerDefenderTrick: Int
 
     public init(
         tricks: Int,
         madePool: Int,
         failedByOneMountain: Int,
+        failedByOneDirectWhists: Int = 0,
         whistPerDefenderTrick: Int
     ) {
         self.tricks = tricks
         self.madePool = madePool
         self.failedByOneMountain = failedByOneMountain
+        self.failedByOneDirectWhists = failedByOneDirectWhists
         self.whistPerDefenderTrick = whistPerDefenderTrick
     }
 }
@@ -523,19 +639,24 @@ public struct RaspasyRuleExample: Equatable, Sendable {
     public let minimumGameTricks: Int
     /// Score for the fixed 0/4/6-trick example in seat order.
     public let mountainForZeroFourSix: [Int]
+    /// Direct whists received by each seat for the same example. Classic
+    /// profiles leave this empty; Rostov uses it instead of mountain entries.
+    public let directWhistsForZeroFourSix: [Int]
 
     public init(
         stage: Int,
         trickPrice: Int,
         cleanExitPool: Int,
         minimumGameTricks: Int,
-        mountainForZeroFourSix: [Int]
+        mountainForZeroFourSix: [Int],
+        directWhistsForZeroFourSix: [Int] = []
     ) {
         self.stage = stage
         self.trickPrice = trickPrice
         self.cleanExitPool = cleanExitPool
         self.minimumGameTricks = minimumGameTricks
         self.mountainForZeroFourSix = mountainForZeroFourSix
+        self.directWhistsForZeroFourSix = directWhistsForZeroFourSix
     }
 }
 
@@ -596,11 +717,19 @@ public enum PreferansRulebook {
             kind: .game(context),
             trickCounts: [players[0]: tricks - 1, players[1]: 11 - tricks, players[2]: 0]
         ))
+        let directRemiseWhists: Int
+        switch rules.declarerRemisePolicy {
+        case .mountainAndConsolation:
+            directRemiseWhists = 0
+        case let .directWhistsPerDefender(pointsPerMountainPoint):
+            directRemiseWhists = pointsPerMountainPoint * contract.value * defenders.count
+        }
         return ContractRuleExample(
             tricks: tricks,
             madePool: made.scoreDelta.pool[players[0]] ?? 0,
             failedByOneMountain: failed.scoreDelta.mountain[players[0]] ?? 0,
-            whistPerDefenderTrick: contract.value * rules.whistValueMultiplier
+            failedByOneDirectWhists: directRemiseWhists,
+            whistPerDefenderTrick: rules.recordedWhistValue(for: contract)
         )
     }
 
@@ -641,13 +770,25 @@ public enum PreferansRulebook {
             trickCounts: counts
         ))
         let mountains = players.map { result.scoreDelta.mountain[$0] ?? 0 }
-        let trickPrice = (result.scoreDelta.mountain[players[1]] ?? 0) / 4
+        let directWhists = players.map { player in
+            result.scoreDelta.whists.values.reduce(0) { total, writes in
+                total + (writes[player] ?? 0)
+            }
+        }
+        let trickPrice: Int
+        switch rules.allPassPenaltyPolicy {
+        case let .perTrick(multiplier, _):
+            trickPrice = multiplier * match.raspasy.scoreMultiplier(precededBy: precedingDeals)
+        case let .directWhistsToLowest(pointsPerTrick):
+            trickPrice = pointsPerTrick
+        }
         return RaspasyRuleExample(
             stage: precedingDeals + 1,
             trickPrice: trickPrice,
             cleanExitPool: result.scoreDelta.pool[players[0]] ?? 0,
             minimumGameTricks: match.raspasy.minimumGameTricks(after: precedingDeals),
-            mountainForZeroFourSix: mountains
+            mountainForZeroFourSix: mountains,
+            directWhistsForZeroFourSix: directWhists
         )
     }
 

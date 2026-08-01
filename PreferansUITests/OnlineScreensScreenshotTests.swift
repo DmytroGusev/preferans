@@ -55,6 +55,19 @@ final class OnlineScreensScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons["63"].exists, "Three-player standard Wien target should display 63")
         recorder.capture(name: "03-online-wien-total", force: true)
 
+        let thessaloniki = app.buttons["Thessaloniki"]
+        XCTAssertTrue(thessaloniki.waitForExistence(timeout: 3), "Thessaloniki segment never appeared")
+        thessaloniki.tap()
+        XCTAssertTrue(
+            app.staticTexts["Thessaloniki · Rostov"].waitForExistence(timeout: 3),
+            "Thessaloniki did not expose its Rostov standard name"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Half-value whists, direct remise payments, and fixed-price hidden-talon raspasy."].exists,
+            "Thessaloniki did not explain its Rostov scoring"
+        )
+        recorder.capture(name: "04-online-thessaloniki-rostov", force: true)
+
         let kruty = app.buttons["Kruty"]
         XCTAssertTrue(kruty.waitForExistence(timeout: 3), "Kruty segment never appeared")
         kruty.tap()
@@ -77,13 +90,13 @@ final class OnlineScreensScreenshotTests: XCTestCase {
         // The trailing newline hits the return key, which resigns focus —
         // tapping another view does NOT dismiss the keyboard in SwiftUI.
         typeFocused(app: app, field: nameField, text: "Anya\n")
-        recorder.capture(name: "04-online-named", force: true)
+        recorder.capture(name: "05-online-named", force: true)
 
         app.swipeUp()
         let joinField = app.textFields[UIIdentifiers.onlineJoinRoomCode]
         XCTAssertTrue(joinField.waitForExistence(timeout: 3), "Join code field never appeared")
         typeFocused(app: app, field: joinField, text: "TABLE42\n")
-        recorder.capture(name: "05-online-join-pending", force: true)
+        recorder.capture(name: "06-online-join-pending", force: true)
 
         let rulesButton = app.buttons[UIIdentifiers.lobbyHouseConventions]
         XCTAssertTrue(rulesButton.waitForExistence(timeout: 3), "Rules reference button never appeared")

@@ -33,10 +33,12 @@ struct ConventionLegendSheet: View {
     /// convention while a deal is in progress.
     init(rules: PreferansRules, match: MatchSettings) {
         let variant: PreferansVariant
-        if rules == .leningrad {
-            variant = .wien
-        } else if rules.forceWhistOnSixSpades {
+        if rules.forceWhistOnSixSpades {
             variant = .kruty
+        } else if rules == .leningrad {
+            variant = .wien
+        } else if rules == .rostov {
+            variant = .thessaloniki
         } else {
             variant = .odesa
         }
@@ -331,7 +333,7 @@ struct ConventionLegendSheet: View {
                 GridRow {
                     tableHeader("rules.contract")
                     tableHeader("rules.madePool")
-                    tableHeader("rules.undertrick")
+                    tableHeader(usesDirectRemise ? "rules.directRemise" : "rules.undertrick")
                     tableHeader("rules.whistTrick")
                 }
                 Divider().gridCellColumns(4)
@@ -340,7 +342,9 @@ struct ConventionLegendSheet: View {
                         Text(verbatim: "\(example.tricks)")
                             .font(.headline.monospacedDigit())
                         tableNumber(example.madePool)
-                        tableNumber(example.failedByOneMountain)
+                        tableNumber(usesDirectRemise
+                            ? example.failedByOneDirectWhists
+                            : example.failedByOneMountain)
                         tableNumber(example.whistPerDefenderTrick)
                     }
                 }
@@ -348,6 +352,11 @@ struct ConventionLegendSheet: View {
             .foregroundStyle(TableTheme.inkCream)
             .accessibilityIdentifier(UIIdentifiers.rulesContractTable)
         }
+    }
+
+    private var usesDirectRemise: Bool {
+        if case .directWhistsPerDefender = rules.declarerRemisePolicy { return true }
+        return false
     }
 
     private func tableHeader(_ key: LocalizedStringKey) -> some View {
@@ -456,8 +465,12 @@ struct ConventionLegendSheet: View {
                 .font(.caption2)
                 .foregroundStyle(TableTheme.inkCreamDim)
             valueRow(
-                "rules.mountain",
-                value: example.mountainForZeroFourSix.map(String.init).joined(separator: " / ")
+                rules.allPassPenaltyPolicy.isDirectWhist ? "rules.directWhists" : "rules.mountain",
+                value: (rules.allPassPenaltyPolicy.isDirectWhist
+                    ? example.directWhistsForZeroFourSix
+                    : example.mountainForZeroFourSix)
+                    .map(String.init)
+                    .joined(separator: " / ")
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -487,7 +500,9 @@ struct ConventionLegendSheet: View {
             )
             ruleExplanation(
                 title: "rules.whist",
-                text: rules.whistResponsibility == .semiResponsible
+                text: rules == .rostov
+                    ? "rules.rostov.whist"
+                    : rules.whistResponsibility == .semiResponsible
                     ? "rules.wien.whist"
                     : "rules.odesa.whist"
             )
@@ -499,7 +514,12 @@ struct ConventionLegendSheet: View {
             )
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier(UIIdentifiers.rulesStalingrad)
-            ruleExplanation(title: "rules.talon", text: "rules.talon.explanation")
+            ruleExplanation(
+                title: "rules.talon",
+                text: rules.allPassTalonPolicy == .ignored
+                    ? "rules.rostov.talon"
+                    : "rules.talon.explanation"
+            )
             ruleExplanation(
                 title: "rules.dealerTalon",
                 text: rules.dealerTalonCompensation == .classic
@@ -567,5 +587,12 @@ private extension View {
         #else
         self
         #endif
+    }
+}
+
+private extension PreferansRules.AllPassPenaltyPolicy {
+    var isDirectWhist: Bool {
+        if case .directWhistsToLowest = self { return true }
+        return false
     }
 }

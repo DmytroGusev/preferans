@@ -317,6 +317,15 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Реміз · гора" } }
       }
     },
+    "rules.directRemise" : {
+      "comment" : "Direct-whist failed-contract column heading.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Undertrick · direct whists" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ремиз · прямые висты" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Реміз · прямі вісти" } }
+      }
+    },
     "rules.whistTrick" : {
       "comment" : "Defender whist-per-trick column heading.",
       "extractionState" : "manual",
@@ -369,6 +378,15 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "mountain" } },
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "гора" } },
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "гора" } }
+      }
+    },
+    "rules.directWhists" : {
+      "comment" : "Direct-whist score suffix used by Rostov raspasy examples.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "direct whists" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "прямые висты" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "прямі вісти" } }
       }
     },
     "rules.raspasy" : {
@@ -497,6 +515,15 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменський напіввідповідальний віст: при підсаді розігрувача захисники ділять вісти за взятки; консоляцію кожен пише повністю, а реміз на вісті коштує половину." } }
       }
     },
+    "rules.rostov.whist" : {
+      "comment" : "Rostov whist explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rostov whist: ordinary trick payments are half value; each dump point is replaced by five direct whists to each opponent." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ростовский вист: обычные висты за взятки имеют половинную стоимость; каждый штрафной пункт в гору заменяется пятью прямыми вистами каждому противнику." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ростовський віст: звичайні вісті за взятки мають половинну вартість; кожен штрафний пункт у гору замінюється п’ятьма прямими вістами кожному супернику." } }
+      }
+    },
     "rules.talon" : {
       "comment" : "Raspasy talon-lead rule title.",
       "extractionState" : "manual",
@@ -513,6 +540,15 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Talon cards are opened one at a time and lead the first two raspasy tricks. With three players only their suit matters; with four, the sitting-out dealer owns each card and may take the trick." } },
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Карты прикупа открываются по одной и задают первые два хода на распасах. При игре втроём учитывается только масть; вчетвером каждая карта принадлежит не играющему сдатчику, который может взять взятку." } },
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Карти прикупу відкриваються по одній і задають перші два ходи на розпасах. У грі втрьох враховується лише масть; учетверо кожна карта належить здавачу, який не грає й може взяти взятку." } }
+      }
+    },
+    "rules.rostov.talon" : {
+      "comment" : "Rostov hidden-talon raspasy explanation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The talon stays hidden and does not lead raspasy tricks; all-pass pricing stays fixed at five direct whists per trick." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Прикуп остаётся закрытым и не задаёт ход на распасах; стоимость распасов всегда фиксирована — по пять прямых вистов за взятку." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Прикуп залишається закритим і не задає хід на розпасах; вартість розпасів завжди фіксована — по п’ять прямих вістів за взятку." } }
       }
     },
     "rules.dealerTalon" : {
@@ -4371,6 +4407,33 @@
         "en": { "stringUnit": { "state": "translated", "value": "Double whists, hard all-pass, and one shared table pool." } },
         "ru": { "stringUnit": { "state": "translated", "value": "Двойные висты, жёсткие распасы и общая сумма пули." } },
         "uk": { "stringUnit": { "state": "translated", "value": "Подвійні вісти, жорсткі розпаси й спільна сума пулі." } }
+      }
+    },
+    "variant.thessaloniki.title": {
+      "comment": "Online lobby variant selector title for Thessaloniki.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Thessaloniki" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Салоники" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Салоніки" } }
+      }
+    },
+    "variant.thessaloniki.standard": {
+      "comment": "Online lobby standard-name subtitle for Thessaloniki.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Thessaloniki · Rostov" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Салоники · Ростов" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Салоніки · Ростов" } }
+      }
+    },
+    "variant.thessaloniki.summary": {
+      "comment": "Lobby short summary for the Thessaloniki variant.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Half-value whists, direct remise payments, and fixed-price hidden-talon raspasy." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Половинные висты, прямые выплаты за ремиз и распасы с закрытым прикупом без прогрессии." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Половинні вісти, прямі виплати за реміз і розпаси із закритим прикупом без прогресії." } }
       }
     },
     "variant.kruty.title": {

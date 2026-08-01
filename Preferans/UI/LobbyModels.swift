@@ -5,6 +5,7 @@ import SwiftUI
 public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Codable {
     case odesa
     case wien
+    case thessaloniki
     case kruty
 
     public var id: String { rawValue }
@@ -13,6 +14,7 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
         switch self {
         case .odesa: return "variant.odesa.title"
         case .wien:  return "variant.wien.title"
+        case .thessaloniki: return "variant.thessaloniki.title"
         case .kruty: return "variant.kruty.title"
         }
     }
@@ -21,6 +23,7 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
         switch self {
         case .odesa: return "variant.odesa.standard"
         case .wien:  return "variant.wien.standard"
+        case .thessaloniki: return "variant.thessaloniki.standard"
         case .kruty: return "variant.kruty.standard"
         }
     }
@@ -29,6 +32,7 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
         switch self {
         case .odesa: return "variant.odesa.summary"
         case .wien:  return "variant.wien.summary"
+        case .thessaloniki: return "variant.thessaloniki.summary"
         case .kruty: return "variant.kruty.summary"
         }
     }
@@ -39,6 +43,8 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
             return .sochi
         case .wien:
             return .leningrad
+        case .thessaloniki:
+            return .rostov
         case .kruty:
             return .stalingrad
         }
@@ -50,6 +56,8 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
             return .individualWithAmericanAid
         case .wien:
             return .tableTotal
+        case .thessaloniki:
+            return .individualWithAmericanAid
         case .kruty:
             return .individualWithAmericanAid
         }
@@ -61,6 +69,8 @@ public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Cod
             return .sochi
         case .wien:
             return .leningrad
+        case .thessaloniki:
+            return .rostov
         case .kruty:
             return .sochi
         }

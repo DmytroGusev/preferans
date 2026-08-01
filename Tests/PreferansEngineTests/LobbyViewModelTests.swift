@@ -401,6 +401,17 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(PreferansVariant.kruty.raspasy, .sochi)
     }
 
+    func testThessalonikiVariantUsesExplicitRostovRules() {
+        let rules = PreferansVariant.thessaloniki.rules
+        XCTAssertEqual(rules, .rostov)
+        XCTAssertEqual(rules.allPassTalonPolicy, .ignored)
+        XCTAssertEqual(rules.allPassPenaltyPolicy, .directWhistsToLowest(pointsPerTrick: 5))
+        XCTAssertEqual(rules.whistValueDivisor, 2)
+        XCTAssertEqual(rules.declarerRemisePolicy, .directWhistsPerDefender(pointsPerMountainPoint: 5))
+        XCTAssertEqual(PreferansVariant.thessaloniki.poolClosure, .individualWithAmericanAid)
+        XCTAssertEqual(PreferansVariant.thessaloniki.raspasy, .rostov)
+    }
+
     func testLobbyRosterValidationRejectsBlankAndDuplicateNames() {
         var seats = LobbySeat.defaults(count: 3)
         XCTAssertNil(seats.validationError)

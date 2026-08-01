@@ -16,10 +16,79 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         case eachDefender
     }
 
-    public enum WhistResponsibility: String, Codable, Sendable {
+    public enum WhistResponsibility: Hashable, Codable, Sendable {
         case responsible
         case semiResponsible
+        /// Rostov replaces the (halved) whist-remise mountain entry with a
+        /// direct payment of this many whists per mountain point to each
+        /// opponent.
+        case directWhists(pointsPerMountainPoint: Int)
         case none
+
+        private enum CodingKeys: String, CodingKey {
+            case directWhists
+            case pointsPerMountainPoint
+        }
+
+        /// Keep the pre-Rostov wire format stable for the three existing
+        /// policies. The associated Rostov policy uses a keyed payload so old
+        /// snapshots and worker messages continue to decode unchanged.
+        public init(from decoder: Decoder) throws {
+            if let single = try? decoder.singleValueContainer(),
+               let raw = try? single.decode(String.self) {
+                switch raw {
+                case "responsible": self = .responsible
+                case "semiResponsible": self = .semiResponsible
+                case "none": self = .none
+                default:
+                    throw DecodingError.dataCorrupted(.init(
+                        codingPath: decoder.codingPath,
+                        debugDescription: "Unknown whist responsibility: \(raw)"
+                    ))
+                }
+                return
+            }
+
+            let values = try decoder.container(keyedBy: CodingKeys.self)
+            if values.contains(.directWhists) {
+                let nested = try values.nestedContainer(keyedBy: CodingKeys.self, forKey: .directWhists)
+                self = .directWhists(
+                    pointsPerMountainPoint: try nested.decode(Int.self, forKey: .pointsPerMountainPoint)
+                )
+                return
+            }
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "Invalid whist responsibility payload."
+            ))
+        }
+
+        public func encode(to encoder: Encoder) throws {
+            switch self {
+            case .responsible:
+                var single = encoder.singleValueContainer()
+                try single.encode("responsible")
+            case .semiResponsible:
+                var single = encoder.singleValueContainer()
+                try single.encode("semiResponsible")
+            case .none:
+                var single = encoder.singleValueContainer()
+                try single.encode("none")
+            case let .directWhists(pointsPerMountainPoint):
+                var values = encoder.container(keyedBy: CodingKeys.self)
+                var nested = values.nestedContainer(keyedBy: CodingKeys.self, forKey: .directWhists)
+                try nested.encode(pointsPerMountainPoint, forKey: .pointsPerMountainPoint)
+            }
+        }
+    }
+
+    public enum DeclarerRemisePolicy: Hashable, Codable, Sendable {
+        /// Canonical Sochi/Leningrad behavior: write mountain for each
+        /// undertrick and apply the configured defender consolation.
+        case mountainAndConsolation
+        /// Rostov behavior: no mountain entry; each defender writes the
+        /// configured direct-whist amount per declarer-remise mountain point.
+        case directWhistsPerDefender(pointsPerMountainPoint: Int)
     }
 
     public enum AllPassTalonPolicy: Hashable, Codable, Sendable {
@@ -35,6 +104,9 @@ public struct PreferansRules: Hashable, Codable, Sendable {
 
     public enum AllPassPenaltyPolicy: Hashable, Codable, Sendable {
         case perTrick(multiplier: Int, amnesty: Bool)
+        /// Rostov raspasy: the lowest-trick player(s) receive direct whists
+        /// from the other players instead of mountain entries.
+        case directWhistsToLowest(pointsPerTrick: Int)
     }
 
     /// Compensation written by the sitting-out dealer in a four-player game
@@ -58,6 +130,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public var singleWhistScoring: SingleWhistScoring
     public var failedDeclarerConsolation: FailedDeclarerConsolation
     public var whistResponsibility: WhistResponsibility
+    public var declarerRemisePolicy: DeclarerRemisePolicy
     public var allPassTalonPolicy: AllPassTalonPolicy
     /// Mountain penalty multiplier for each trick on an all-pass deal. This
     /// does not scale the separate clean-exit pool credit below.
@@ -74,6 +147,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public var poolValueMultiplier: Int
     public var mountainValueMultiplier: Int
     public var whistValueMultiplier: Int
+    /// Rostov records each ordinary whist at half the standard contract
+    /// value. The divisor is explicit rather than represented by a lossy
+    /// integer multiplier.
+    public var whistValueDivisor: Int
 
     /// Conversion rates used only when the pulka is reduced to a zero-sum
     /// final balance. Leningrad values one pool point at 20 whists while a
@@ -88,6 +165,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         singleWhistScoring: SingleWhistScoring = .greedy,
         failedDeclarerConsolation: FailedDeclarerConsolation = .eachDefender,
         whistResponsibility: WhistResponsibility = .responsible,
+        declarerRemisePolicy: DeclarerRemisePolicy = .mountainAndConsolation,
         allPassTalonPolicy: AllPassTalonPolicy = .classic,
         // Canonical Sochi/Leningrad raspasy charge every trick in the
         // mountain.  Amnesty remains an explicit house-rule option, but it
@@ -98,16 +176,31 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         poolValueMultiplier: Int = 1,
         mountainValueMultiplier: Int = 1,
         whistValueMultiplier: Int = 1,
+        whistValueDivisor: Int = 1,
         poolPointWhistValue: Int = 10,
         mountainPointWhistValue: Int = 10
     ) {
-        if case let .perTrick(multiplier, _) = allPassPenaltyPolicy {
+        switch allPassPenaltyPolicy {
+        case let .perTrick(multiplier, _):
             precondition(multiplier > 0, "allPassPenaltyPolicy multiplier must be positive.")
+        case let .directWhistsToLowest(pointsPerTrick):
+            precondition(pointsPerTrick > 0, "allPass direct-whist value must be positive.")
+        }
+        if case let .directWhists(pointsPerMountainPoint) = whistResponsibility {
+            precondition(pointsPerMountainPoint > 0, "whist direct-remise value must be positive.")
+        }
+        if case let .directWhistsPerDefender(pointsPerMountainPoint) = declarerRemisePolicy {
+            precondition(pointsPerMountainPoint > 0, "declarer direct-remise value must be positive.")
         }
         precondition(zeroTricksAllPassPoolBonus >= 0, "zeroTricksAllPassPoolBonus cannot be negative.")
         precondition(poolValueMultiplier > 0, "poolValueMultiplier must be positive.")
         precondition(mountainValueMultiplier > 0, "mountainValueMultiplier must be positive.")
         precondition(whistValueMultiplier > 0, "whistValueMultiplier must be positive.")
+        precondition(whistValueDivisor > 0, "whistValueDivisor must be positive.")
+        precondition(
+            [2, 4, 6, 8, 10].allSatisfy { $0.isMultiple(of: whistValueDivisor) },
+            "whistValueDivisor must divide every contract value."
+        )
         precondition(poolPointWhistValue > 0, "poolPointWhistValue must be positive.")
         precondition(mountainPointWhistValue > 0, "mountainPointWhistValue must be positive.")
         self.allowSeniorHandHoldBid = allowSeniorHandHoldBid
@@ -116,6 +209,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         self.singleWhistScoring = singleWhistScoring
         self.failedDeclarerConsolation = failedDeclarerConsolation
         self.whistResponsibility = whistResponsibility
+        self.declarerRemisePolicy = declarerRemisePolicy
         self.allPassTalonPolicy = allPassTalonPolicy
         self.allPassPenaltyPolicy = allPassPenaltyPolicy
         self.zeroTricksAllPassPoolBonus = zeroTricksAllPassPoolBonus
@@ -123,6 +217,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         self.poolValueMultiplier = poolValueMultiplier
         self.mountainValueMultiplier = mountainValueMultiplier
         self.whistValueMultiplier = whistValueMultiplier
+        self.whistValueDivisor = whistValueDivisor
         self.poolPointWhistValue = poolPointWhistValue
         self.mountainPointWhistValue = mountainPointWhistValue
     }
@@ -132,9 +227,21 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     /// Public properties remain mutable for table configuration, so checking
     /// only the initializer is not sufficient.
     var configurationError: String? {
-        if case let .perTrick(multiplier, _) = allPassPenaltyPolicy,
-           multiplier <= 0 {
+        switch allPassPenaltyPolicy {
+        case let .perTrick(multiplier, _) where multiplier <= 0:
             return "All-pass penalty multiplier must be positive."
+        case let .directWhistsToLowest(pointsPerTrick) where pointsPerTrick <= 0:
+            return "All-pass direct-whist value must be positive."
+        default:
+            break
+        }
+        if case let .directWhists(pointsPerMountainPoint) = whistResponsibility,
+           pointsPerMountainPoint <= 0 {
+            return "Whist direct-remise value must be positive."
+        }
+        if case let .directWhistsPerDefender(pointsPerMountainPoint) = declarerRemisePolicy,
+           pointsPerMountainPoint <= 0 {
+            return "Declarer direct-remise value must be positive."
         }
         if zeroTricksAllPassPoolBonus < 0 {
             return "Zero-trick raspasy pool bonus cannot be negative."
@@ -143,11 +250,15 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             ("Pool value multiplier", poolValueMultiplier),
             ("Mountain value multiplier", mountainValueMultiplier),
             ("Whist value multiplier", whistValueMultiplier),
+            ("Whist value divisor", whistValueDivisor),
             ("Pool-point whist value", poolPointWhistValue),
             ("Mountain-point whist value", mountainPointWhistValue),
         ]
         if let invalid = positiveValues.first(where: { $0.value <= 0 }) {
             return "\(invalid.name) must be positive."
+        }
+        if [2, 4, 6, 8, 10].contains(where: { !$0.isMultiple(of: whistValueDivisor) }) {
+            return "Whist value divisor must divide every contract value."
         }
         return nil
     }
@@ -159,6 +270,25 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     /// 6♠ changes. Keeping it as a named profile prevents the lobby from
     /// silently reconstructing a subtly different set of rules.
     public static let stalingrad = PreferansRules(forceWhistOnSixSpades: true)
+
+    /// Rostov/Moscow scoring: ordinary whists are recorded at half value,
+    /// remise and whist-quota penalties are paid directly in whists, and
+    /// raspasy is fixed-price with the talon kept hidden.
+    public static let rostov = PreferansRules(
+        singleWhistScoring: .greedy,
+        failedDeclarerConsolation: .none,
+        whistResponsibility: .directWhists(pointsPerMountainPoint: 5),
+        declarerRemisePolicy: .directWhistsPerDefender(pointsPerMountainPoint: 5),
+        allPassTalonPolicy: .ignored,
+        allPassPenaltyPolicy: .directWhistsToLowest(pointsPerTrick: 5),
+        zeroTricksAllPassPoolBonus: 1,
+        poolValueMultiplier: 1,
+        mountainValueMultiplier: 1,
+        whistValueMultiplier: 1,
+        whistValueDivisor: 2,
+        poolPointWhistValue: 10,
+        mountainPointWhistValue: 10
+    )
 
     /// Compatibility name retained for fixtures written before talon-led
     /// raspasy became part of the canonical Sochi profile.
@@ -193,6 +323,13 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         }
     }
 
+    /// Recorded whists for one defender trick under this convention. Rostov
+    /// uses half the ordinary contract value; all canonical contract values
+    /// remain integral after the explicit divisor is applied.
+    public func recordedWhistValue(for contract: GameContract) -> Int {
+        contract.value * whistValueMultiplier / whistValueDivisor
+    }
+
     private enum CodingKeys: String, CodingKey {
         case allowSeniorHandHoldBid
         case requireWhistOnTenTrickContracts
@@ -200,6 +337,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         case singleWhistScoring
         case failedDeclarerConsolation
         case whistResponsibility
+        case declarerRemisePolicy
         case allPassTalonPolicy
         case allPassPenaltyPolicy
         case zeroTricksAllPassPoolBonus
@@ -207,6 +345,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         case poolValueMultiplier
         case mountainValueMultiplier
         case whistValueMultiplier
+        case whistValueDivisor
         case poolPointWhistValue
         case mountainPointWhistValue
         /// Legacy snapshots used one multiplier for every score column.
@@ -227,6 +366,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             ?? legacyMultiplier ?? 1
         let whistValueMultiplier = try values.decodeIfPresent(Int.self, forKey: .whistValueMultiplier)
             ?? legacyMultiplier ?? 1
+        let whistValueDivisor = try values.decodeIfPresent(Int.self, forKey: .whistValueDivisor) ?? 1
         let poolPointWhistValue = try values.decodeIfPresent(Int.self, forKey: .poolPointWhistValue) ?? 10
         let mountainPointWhistValue = try values.decodeIfPresent(Int.self, forKey: .mountainPointWhistValue) ?? 10
 
@@ -234,11 +374,17 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         // preconditions are appropriate for source mistakes but persisted
         // network data must fail as a normal decoding error, never trap.
         var decoded = PreferansRules.sochi
+        decoded.whistResponsibility = try values.decode(WhistResponsibility.self, forKey: .whistResponsibility)
+        decoded.declarerRemisePolicy = try values.decodeIfPresent(
+            DeclarerRemisePolicy.self,
+            forKey: .declarerRemisePolicy
+        ) ?? .mountainAndConsolation
         decoded.allPassPenaltyPolicy = allPassPenaltyPolicy
         decoded.zeroTricksAllPassPoolBonus = zeroTricksAllPassPoolBonus
         decoded.poolValueMultiplier = poolValueMultiplier
         decoded.mountainValueMultiplier = mountainValueMultiplier
         decoded.whistValueMultiplier = whistValueMultiplier
+        decoded.whistValueDivisor = whistValueDivisor
         decoded.poolPointWhistValue = poolPointWhistValue
         decoded.mountainPointWhistValue = mountainPointWhistValue
         if let error = decoded.configurationError {
@@ -255,6 +401,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             singleWhistScoring: try values.decode(SingleWhistScoring.self, forKey: .singleWhistScoring),
             failedDeclarerConsolation: try values.decode(FailedDeclarerConsolation.self, forKey: .failedDeclarerConsolation),
             whistResponsibility: try values.decode(WhistResponsibility.self, forKey: .whistResponsibility),
+            declarerRemisePolicy: try values.decodeIfPresent(
+                DeclarerRemisePolicy.self,
+                forKey: .declarerRemisePolicy
+            ) ?? .mountainAndConsolation,
             allPassTalonPolicy: try values.decode(AllPassTalonPolicy.self, forKey: .allPassTalonPolicy),
             allPassPenaltyPolicy: allPassPenaltyPolicy,
             zeroTricksAllPassPoolBonus: zeroTricksAllPassPoolBonus,
@@ -265,6 +415,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             poolValueMultiplier: poolValueMultiplier,
             mountainValueMultiplier: mountainValueMultiplier,
             whistValueMultiplier: whistValueMultiplier,
+            whistValueDivisor: whistValueDivisor,
             poolPointWhistValue: poolPointWhistValue,
             mountainPointWhistValue: mountainPointWhistValue
         )
@@ -282,6 +433,9 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         try values.encode(singleWhistScoring, forKey: .singleWhistScoring)
         try values.encode(failedDeclarerConsolation, forKey: .failedDeclarerConsolation)
         try values.encode(whistResponsibility, forKey: .whistResponsibility)
+        if declarerRemisePolicy != .mountainAndConsolation {
+            try values.encode(declarerRemisePolicy, forKey: .declarerRemisePolicy)
+        }
         try values.encode(allPassTalonPolicy, forKey: .allPassTalonPolicy)
         try values.encode(allPassPenaltyPolicy, forKey: .allPassPenaltyPolicy)
         try values.encode(zeroTricksAllPassPoolBonus, forKey: .zeroTricksAllPassPoolBonus)
@@ -291,6 +445,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         if poolValueMultiplier != 1 { try values.encode(poolValueMultiplier, forKey: .poolValueMultiplier) }
         if mountainValueMultiplier != 1 { try values.encode(mountainValueMultiplier, forKey: .mountainValueMultiplier) }
         if whistValueMultiplier != 1 { try values.encode(whistValueMultiplier, forKey: .whistValueMultiplier) }
+        if whistValueDivisor != 1 { try values.encode(whistValueDivisor, forKey: .whistValueDivisor) }
         if poolPointWhistValue != 10 { try values.encode(poolPointWhistValue, forKey: .poolPointWhistValue) }
         if mountainPointWhistValue != 10 { try values.encode(mountainPointWhistValue, forKey: .mountainPointWhistValue) }
     }
