@@ -18,6 +18,21 @@ final class TableLayoutModelTests: XCTestCase {
         )
     }
 
+    func testPublicTalonScaleKeepsPhoneCompactAndIPadReadable() {
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.publicTalonCardSize(for: .compact),
+            .compact
+        )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.publicTalonCardSize(for: .regular),
+            .large
+        )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.publicTalonCardSize(for: nil),
+            .compact
+        )
+    }
+
     func testSeatOrderBadgesScaleForPhoneAndIPadCompositions() {
         XCTAssertEqual(
             SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .compact, isCondensed: false).diameter,

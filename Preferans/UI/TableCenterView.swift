@@ -49,7 +49,10 @@ struct TableCenterView: View {
                     } else {
                         trickPlays()
                         if shouldShowPublicTalon {
-                            talonContext(title: "Talon", size: .compact)
+                            talonContext(
+                                title: "Talon",
+                                size: TableCenterLayoutPolicy.publicTalonCardSize(for: horizontalSizeClass)
+                            )
                                 .offset(y: -96)
                         }
                     }
@@ -226,5 +229,12 @@ struct TableCenterView: View {
 enum TableCenterLayoutPolicy {
     static func trickCardSize(for horizontalSizeClass: UserInterfaceSizeClass?) -> CardView.Size {
         horizontalSizeClass == .regular ? .large : .standard
+    }
+
+    /// A talon lead shares the felt with the current trick. Keep it compact on
+    /// iPhone so the two surfaces do not collide, but let regular-width iPad
+    /// tables use the same readable large cards as their other public cards.
+    static func publicTalonCardSize(for horizontalSizeClass: UserInterfaceSizeClass?) -> CardView.Size {
+        horizontalSizeClass == .regular ? .large : .compact
     }
 }
