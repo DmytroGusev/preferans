@@ -175,6 +175,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         guard summary.schemaVersion == AppIdentifiers.gameWireSchemaVersion else {
             throw CloudflareRoomTransportError.serverError("Room server returned an incompatible room version.")
         }
+        guard let seatToken = summary.seatToken, !seatToken.isEmpty else {
+            throw CloudflareRoomTransportError.serverError("Room server did not return a seat credential.")
+        }
         guard let socketURL = summary.websocketURL else {
             throw CloudflareRoomTransportError.missingSocketURL
         }
@@ -186,7 +189,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.hostEpoch = summary.hostEpoch
         self.socketURL = socketURL
         self.accountSessionToken = accountSessionToken
-        self.seatToken = summary.seatToken
+        self.seatToken = seatToken
         self.session = session
     }
 
@@ -213,7 +216,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             accountSessionToken: accountSessionToken,
             session: session
         )
-        let assignedPeer = summary.peers.first { $0.accountID == localPeer.accountID } ?? localPeer
+        guard let assignedPeer = summary.peers.first(where: { $0.accountID == localPeer.accountID }) else {
+            throw CloudflareRoomTransportError.serverError("Room server did not return the caller's seat.")
+        }
         return try CloudflareRoomTransport(
             baseURL: baseURL,
             summary: summary,
@@ -242,7 +247,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         // seat if ours was taken. Adopt the seat it actually gave us so
         // `localPeer`, `localSeat`, and the socket identity in
         // `summary.websocketURL` all agree.
-        let assignedPeer = summary.peers.first { $0.accountID == localPeer.accountID } ?? localPeer
+        guard let assignedPeer = summary.peers.first(where: { $0.accountID == localPeer.accountID }) else {
+            throw CloudflareRoomTransportError.serverError("Room server did not return the caller's seat.")
+        }
         return try CloudflareRoomTransport(
             baseURL: baseURL,
             summary: summary,
