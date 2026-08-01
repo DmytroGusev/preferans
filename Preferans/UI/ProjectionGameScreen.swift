@@ -272,7 +272,8 @@ public struct ProjectionGameScreen<Menu: View>: View {
             display: TableDisplayState(
                 renderOpponentsAtTop: renderOpponentsAtTop,
                 idleHintActive: idleHintActive,
-                isTalonTakePending: isTalonTakePending
+                isTalonTakePending: isTalonTakePending,
+                isPadDevice: isPadDevice
             ),
             seatActions: seatActions,
             seatRoleBadges: seatRoleBadges,

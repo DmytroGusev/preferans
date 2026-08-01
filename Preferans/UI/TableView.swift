@@ -40,15 +40,18 @@ public struct TableDisplayState {
     public var renderOpponentsAtTop: Bool
     public var idleHintActive: Bool
     public var isTalonTakePending: Bool
+    public var isPadDevice: Bool
 
     public init(
         renderOpponentsAtTop: Bool = true,
         idleHintActive: Bool = false,
-        isTalonTakePending: Bool = false
+        isTalonTakePending: Bool = false,
+        isPadDevice: Bool = false
     ) {
         self.renderOpponentsAtTop = renderOpponentsAtTop
         self.idleHintActive = idleHintActive
         self.isTalonTakePending = isTalonTakePending
+        self.isPadDevice = isPadDevice
     }
 }
 
@@ -102,6 +105,7 @@ public struct TableView: View {
     /// on the felt until the player taps it, then the screen merges it into
     /// the selectable 12-card discard fan.
     public var isTalonTakePending: Bool
+    public var isPadDevice: Bool
     /// Presentation-only suit order for face-up table hands.
     public var cardSuitOrder: CardSuitDisplayOrder
     /// Currently selected card in a playable hand. Selection is visual only;
@@ -140,6 +144,7 @@ public struct TableView: View {
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = display.idleHintActive
         self.isTalonTakePending = display.isTalonTakePending
+        self.isPadDevice = display.isPadDevice
         self.cardSuitOrder = cardSuitOrder
         self.selectedPlayCard = selectedPlayCard
         self.onSelectPlayCard = handlers.onSelectPlayCard
@@ -352,6 +357,7 @@ public struct TableView: View {
             seatActions: seatActions,
             pendingAdvance: pendingAdvance,
             isTalonTakePending: isTalonTakePending,
+            isPadDevice: isPadDevice,
             cardSuitOrder: cardSuitOrder,
             onTakeTalon: onTakeTalon
         )

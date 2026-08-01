@@ -54,6 +54,10 @@ final class TableLayoutModelTests: XCTestCase {
             TableCenterLayoutPolicy.trickCardSize(for: nil),
             .standard
         )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.trickCardSize(for: .compact, isPadDevice: true),
+            .large
+        )
     }
 
     func testPublicTalonScaleKeepsPhoneCompactAndIPadReadable() {
@@ -68,6 +72,21 @@ final class TableLayoutModelTests: XCTestCase {
         XCTAssertEqual(
             TableCenterLayoutPolicy.publicTalonCardSize(for: nil),
             .compact
+        )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.publicTalonCardSize(for: .compact, isPadDevice: true),
+            .large
+        )
+    }
+
+    func testTalonExchangeKeepsTabletCardsReadableInCompactSplitView() {
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.talonCardSize(for: .compact),
+            .standard
+        )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.talonCardSize(for: .compact, isPadDevice: true),
+            .large
         )
     }
 

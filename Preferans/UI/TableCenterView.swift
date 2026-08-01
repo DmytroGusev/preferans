@@ -16,6 +16,7 @@ struct TableCenterView: View {
     let seatActions: [PlayerID: RecentAction]
     let pendingAdvance: PendingAdvance?
     let isTalonTakePending: Bool
+    let isPadDevice: Bool
     let cardSuitOrder: CardSuitDisplayOrder
     let onTakeTalon: (() -> Void)?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -51,7 +52,10 @@ struct TableCenterView: View {
                         if shouldShowPublicTalon {
                             talonContext(
                                 title: "Talon",
-                                size: TableCenterLayoutPolicy.publicTalonCardSize(for: horizontalSizeClass)
+                                size: TableCenterLayoutPolicy.publicTalonCardSize(
+                                    for: horizontalSizeClass,
+                                    isPadDevice: isPadDevice
+                                )
                             )
                                 .offset(y: -96)
                         }
@@ -102,7 +106,10 @@ struct TableCenterView: View {
         size: CardView.Size? = nil,
         action: (() -> Void)? = nil
     ) -> some View {
-        let cardSize = size ?? (horizontalSizeClass == .regular ? .large : .standard)
+        let cardSize = size ?? TableCenterLayoutPolicy.talonCardSize(
+            for: horizontalSizeClass,
+            isPadDevice: isPadDevice
+        )
         let content = VStack(spacing: 8) {
             Text(title)
                 .font(.caption.weight(.bold))
@@ -167,7 +174,10 @@ struct TableCenterView: View {
     }
 
     private func trickPlays() -> some View {
-        let cardSize = TableCenterLayoutPolicy.trickCardSize(for: horizontalSizeClass)
+        let cardSize = TableCenterLayoutPolicy.trickCardSize(
+            for: horizontalSizeClass,
+            isPadDevice: isPadDevice
+        )
         return ZStack {
             ForEach(Array(projection.currentTrick.enumerated()), id: \.offset) { _, play in
                 let pos = TableLayoutModel.trickOffset(
@@ -225,16 +235,30 @@ struct TableCenterView: View {
 
 /// The trick is the most spatially sensitive phase of the table. Compact
 /// iPhone surfaces keep the center readable without letting large cards crowd
-/// the hand rail; regular-width iPad tables have room for the larger cards.
+/// the hand rail; iPad tables keep the larger center cards even when Split View
+/// reports a compact horizontal size class.
 enum TableCenterLayoutPolicy {
-    static func trickCardSize(for horizontalSizeClass: UserInterfaceSizeClass?) -> CardView.Size {
-        horizontalSizeClass == .regular ? .large : .standard
+    static func trickCardSize(
+        for horizontalSizeClass: UserInterfaceSizeClass?,
+        isPadDevice: Bool = false
+    ) -> CardView.Size {
+        isPadDevice || horizontalSizeClass == .regular ? .large : .standard
     }
 
     /// A talon lead shares the felt with the current trick. Keep it compact on
     /// iPhone so the two surfaces do not collide, but let regular-width iPad
     /// tables use the same readable large cards as their other public cards.
-    static func publicTalonCardSize(for horizontalSizeClass: UserInterfaceSizeClass?) -> CardView.Size {
-        horizontalSizeClass == .regular ? .large : .compact
+    static func publicTalonCardSize(
+        for horizontalSizeClass: UserInterfaceSizeClass?,
+        isPadDevice: Bool = false
+    ) -> CardView.Size {
+        isPadDevice || horizontalSizeClass == .regular ? .large : .compact
+    }
+
+    static func talonCardSize(
+        for horizontalSizeClass: UserInterfaceSizeClass?,
+        isPadDevice: Bool = false
+    ) -> CardView.Size {
+        isPadDevice || horizontalSizeClass == .regular ? .large : .standard
     }
 }
