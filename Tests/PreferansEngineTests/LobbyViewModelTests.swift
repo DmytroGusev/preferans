@@ -394,6 +394,13 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertFalse(PreferansVariant.wien.rules.forceWhistOnSixSpades)
     }
 
+    func testKrutyVariantUsesExplicitStalingradRules() {
+        XCTAssertEqual(PreferansVariant.kruty.rules, .stalingrad)
+        XCTAssertTrue(PreferansVariant.kruty.rules.forceWhistOnSixSpades)
+        XCTAssertEqual(PreferansVariant.kruty.poolClosure, .individualWithAmericanAid)
+        XCTAssertEqual(PreferansVariant.kruty.raspasy, .sochi)
+    }
+
     func testLobbyRosterValidationRejectsBlankAndDuplicateNames() {
         var seats = LobbySeat.defaults(count: 3)
         XCTAssertNil(seats.validationError)

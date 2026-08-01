@@ -32,7 +32,15 @@ struct ConventionLegendSheet: View {
     /// and match settings instead of letting the player browse into a different
     /// convention while a deal is in progress.
     init(rules: PreferansRules, match: MatchSettings) {
-        _selection = State(initialValue: rules == .leningrad ? .wien : .odesa)
+        let variant: PreferansVariant
+        if rules == .leningrad {
+            variant = .wien
+        } else if rules.forceWhistOnSixSpades {
+            variant = .kruty
+        } else {
+            variant = .odesa
+        }
+        _selection = State(initialValue: variant)
         fixedRules = rules
         fixedMatch = match
     }

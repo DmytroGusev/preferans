@@ -4373,6 +4373,33 @@
         "uk": { "stringUnit": { "state": "translated", "value": "Подвійні вісти, жорсткі розпаси й спільна сума пулі." } }
       }
     },
+    "variant.kruty.title": {
+      "comment": "Online lobby variant selector title for Kruty.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Kruty" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Круты" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Крути" } }
+      }
+    },
+    "variant.kruty.standard": {
+      "comment": "Online lobby standard-name subtitle for Kruty.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Kruty · Stalingrad" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Круты · Сталинград" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Крути · Сталінград" } }
+      }
+    },
+    "variant.kruty.summary": {
+      "comment": "Lobby short summary for the Kruty variant.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Both defenders must whist on 6♠ with closed hands." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "На 6♠ оба защитника обязаны вистовать втемную." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "На 6♠ обидва захисники мусять вистувати втемну." } }
+      }
+    },
     "convention.tagline.help": {
       "comment": "Hover tooltip on the lobby hero's house-name tagline (whole row). Spelled out per pill in the convention.<name>.help strings.",
       "extractionState": "manual",

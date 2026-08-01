@@ -55,6 +55,18 @@ final class OnlineScreensScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons["63"].exists, "Three-player standard Wien target should display 63")
         recorder.capture(name: "03-online-wien-total", force: true)
 
+        let kruty = app.buttons["Kruty"]
+        XCTAssertTrue(kruty.waitForExistence(timeout: 3), "Kruty segment never appeared")
+        kruty.tap()
+        XCTAssertTrue(
+            app.staticTexts["Kruty · Stalingrad"].waitForExistence(timeout: 3),
+            "Kruty did not expose its Stalingrad standard name"
+        )
+        XCTAssertTrue(
+            app.staticTexts["Both defenders must whist on 6♠ with closed hands."].exists,
+            "Kruty did not explain its forced 6♠ defense"
+        )
+
         let odesa = app.buttons["Odesa"]
         XCTAssertTrue(odesa.waitForExistence(timeout: 3), "Odesa segment never appeared")
         odesa.tap()

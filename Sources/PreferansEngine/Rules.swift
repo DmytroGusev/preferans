@@ -154,6 +154,12 @@ public struct PreferansRules: Hashable, Codable, Sendable {
 
     public static let sochi = PreferansRules()
 
+    /// Stalingrad is the explicit six-spades forced-defense convention. It
+    /// keeps the Sochi scoring and raspasy rules; only the whist decision for
+    /// 6♠ changes. Keeping it as a named profile prevents the lobby from
+    /// silently reconstructing a subtly different set of rules.
+    public static let stalingrad = PreferansRules(forceWhistOnSixSpades: true)
+
     /// Compatibility name retained for fixtures written before talon-led
     /// raspasy became part of the canonical Sochi profile.
     public static let sochiWithTalonLedAllPass = PreferansRules.sochi
