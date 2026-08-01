@@ -119,6 +119,14 @@ public struct OpponentSeatView: View {
     /// table can tuck into a corner.
     private var sittingOutChip: some View {
         HStack(spacing: 5) {
+            if let seatOrder {
+                SeatOrderBadge(
+                    number: seatOrder,
+                    player: seat.player,
+                    isCurrentActor: seat.isCurrentActor,
+                    isCondensed: true
+                )
+            }
             Text(seat.displayName)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(TableTheme.inkCreamSoft)
@@ -154,6 +162,14 @@ public struct OpponentSeatView: View {
                     .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
             }
             HStack(spacing: 6) {
+                if let seatOrder {
+                    SeatOrderBadge(
+                        number: seatOrder,
+                        player: seat.player,
+                        isCurrentActor: seat.isCurrentActor,
+                        isCondensed: isDeemphasized
+                    )
+                }
                 Text(seat.displayName)
                     .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
                     .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
@@ -260,53 +276,6 @@ public struct OpponentSeatView: View {
             )
             .accessibilityLabel("\(seat.trickCount) tricks")
             .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
-    }
-
-    /// Persistent contract-role pill rendered inline next to the seat
-    /// name once a contract is on the table. Accent variants (Declarer,
-    /// Whist, ½) get a gold-tinted capsule; the muted Pass variant uses
-    /// a quiet dark capsule so passing defenders don't visually compete
-    /// with whisters.
-    @ViewBuilder
-    private var rolePill: some View {
-        if let badge = roleBadge {
-            Text(badge.label)
-                .font(.caption2.weight(.bold))
-                .tracking(0.3)
-                .foregroundStyle(badge.isAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(
-                    Capsule().fill(
-                        badge.isAccent
-                            ? TableTheme.goldBright
-                            : Color.black.opacity(0.30)
-                    )
-                )
-                .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(seat.player))
-        }
-    }
-
-    @ViewBuilder
-    private var statusBadge: some View {
-        if seat.role == .sittingOut {
-            Text("OUT")
-                .font(.caption2.weight(.bold))
-                .tracking(0.5)
-                .foregroundStyle(TableTheme.feltDeep)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(TableTheme.inkCreamSoft, in: Capsule())
-                .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
-        } else if seat.isDealer {
-            Text("Dealer")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(TableTheme.feltDeep)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(TableTheme.goldBright, in: Capsule())
-                .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
-        }
     }
 
     /// Render the opponent's hand. Hidden hands get the compact face-down
@@ -419,25 +388,44 @@ public struct OpponentSeatView: View {
     }
 }
 
-public struct SeatOrderBadge: View {
-    public var number: Int
-    public var player: PlayerID
-    public var isCurrentActor: Bool
-    public var diameter: CGFloat
+struct SeatOrderBadgeLayoutPolicy: Equatable {
+    var horizontalSizeClass: UserInterfaceSizeClass?
+    var isCondensed: Bool
 
-    public init(
+    var diameter: CGFloat {
+        switch (horizontalSizeClass, isCondensed) {
+        case (.regular, false): 24
+        case (.regular, true): 20
+        case (_, false): 20
+        case (_, true): 18
+        }
+    }
+}
+
+struct SeatOrderBadge: View {
+    var number: Int
+    var player: PlayerID
+    var isCurrentActor: Bool
+    var isCondensed: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    init(
         number: Int,
         player: PlayerID,
         isCurrentActor: Bool = false,
-        diameter: CGFloat = 22
+        isCondensed: Bool = false
     ) {
         self.number = number
         self.player = player
         self.isCurrentActor = isCurrentActor
-        self.diameter = diameter
+        self.isCondensed = isCondensed
     }
 
-    public var body: some View {
+    var body: some View {
+        let diameter = SeatOrderBadgeLayoutPolicy(
+            horizontalSizeClass: horizontalSizeClass,
+            isCondensed: isCondensed
+        ).diameter
         Text("\(number)")
             .font(.system(size: max(9, diameter * 0.48), weight: .heavy).monospacedDigit())
             // Only the seat whose turn it is gets gold; every other seat

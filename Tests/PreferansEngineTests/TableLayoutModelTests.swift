@@ -3,6 +3,25 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testSeatOrderBadgesScaleForPhoneAndIPadCompositions() {
+        XCTAssertEqual(
+            SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .compact, isCondensed: false).diameter,
+            20
+        )
+        XCTAssertEqual(
+            SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .compact, isCondensed: true).diameter,
+            18
+        )
+        XCTAssertEqual(
+            SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .regular, isCondensed: false).diameter,
+            24
+        )
+        XCTAssertEqual(
+            SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .regular, isCondensed: true).diameter,
+            20
+        )
+    }
+
     func testWideRegularChoiceSurfaceUsesFullGrid() {
         let policy = ActionChoiceLayoutPolicy(
             horizontalSizeClass: .regular,

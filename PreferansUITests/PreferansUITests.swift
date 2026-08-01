@@ -238,7 +238,7 @@ final class PreferansUITests: XCTestCase {
     }
 
     func testGameScreenShowsCoreSectionsAfterDeal() {
-        let app = launchedApp()
+        let app = launchedApp(extraArguments: manualThreePlayerHarness())
         let robot = MatchUIRobot(app: app)
 
         robot.startLocalTable()
@@ -249,6 +249,21 @@ final class PreferansUITests: XCTestCase {
         robot.waitForElement(UIIdentifiers.viewerLabel)
         robot.waitForElement(UIIdentifiers.Panel.currentTrick.rawValue)
         robot.waitForElement(UIIdentifiers.Panel.bidding.rawValue)
+
+        let expectedDiameter: CGFloat = app.windows.firstMatch.frame.width >= 700 ? 24 : 20
+        for player: PlayerID in ["north", "east", "south"] {
+            let badge = app.descendants(matching: .any)[UIIdentifiers.seatOrder(player)]
+            XCTAssertTrue(
+                badge.waitForExistence(timeout: 1),
+                "Every visible seat must retain its stable table-order badge."
+            )
+            XCTAssertEqual(
+                badge.frame.width,
+                expectedDiameter,
+                accuracy: 1,
+                "iPhone and iPad should use deliberately different seat-order density."
+            )
+        }
     }
 
     private func launchedApp(

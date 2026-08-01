@@ -478,6 +478,13 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// counter.
     private func ownerNamePlate(seat: SeatProjection) -> some View {
         HStack(spacing: 8) {
+            if let seatOrder = seatOrderNumber(for: seat.player) {
+                SeatOrderBadge(
+                    number: seatOrder,
+                    player: seat.player,
+                    isCurrentActor: seat.isCurrentActor
+                )
+            }
             Text(seat.displayName)
                 .font(.caption.bold())
                 .foregroundStyle(TableTheme.inkCream)
