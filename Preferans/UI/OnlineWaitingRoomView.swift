@@ -11,6 +11,14 @@ struct OnlineWaitingRoomLayoutPolicy: Equatable {
     var usesTwoRegionComposition: Bool {
         isRegularWidth && !usesAccessibilityText
     }
+
+    /// Normal iPad waiting rooms have enough vertical room to center the
+    /// invite/roster composition on the felt. Accessibility text and compact
+    /// phone layouts keep their natural top-aligned scroll so long labels and
+    /// the keyboard never push the primary controls out of view.
+    var centersContentVertically: Bool {
+        isRegularWidth && !usesAccessibilityText
+    }
 }
 
 /// Pre-first-deal lobby for an online table. Replaces the old behavior of
@@ -47,23 +55,18 @@ public struct OnlineWaitingRoomView: View {
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                header
-                adaptiveRoomLayout {
-                    inviteRegion
-                        .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 380 : .infinity)
-                    rosterRegion
-                        .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 620 : .infinity)
-                }
+        GeometryReader { geometry in
+            ScrollView {
+                roomContent
+                    .frame(
+                        minHeight: layoutPolicy.centersContentVertically
+                            ? max(0, geometry.size.height - 24)
+                            : nil,
+                        alignment: layoutPolicy.centersContentVertically ? .center : .top
+                    )
             }
-            .padding(.horizontal, layoutPolicy.isRegularWidth ? 36 : 18)
-            .padding(.top, layoutPolicy.isRegularWidth ? 36 : 18)
-            .padding(.bottom, 24)
-            .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 1_040 : (layoutPolicy.isRegularWidth ? 700 : 560))
-            .frame(maxWidth: .infinity)
+            .scrollIndicators(.hidden)
         }
-        .scrollIndicators(.hidden)
         .feltBackground()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenWaitingRoom)
@@ -82,6 +85,23 @@ public struct OnlineWaitingRoomView: View {
             // button — re-enable the controls so they can retry.
             if newValue != nil { isStarting = false }
         }
+    }
+
+    private var roomContent: some View {
+        VStack(spacing: 18) {
+            header
+            adaptiveRoomLayout {
+                inviteRegion
+                    .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 380 : .infinity)
+                rosterRegion
+                    .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 620 : .infinity)
+            }
+        }
+        .padding(.horizontal, layoutPolicy.isRegularWidth ? 36 : 18)
+        .padding(.top, layoutPolicy.isRegularWidth ? 36 : 18)
+        .padding(.bottom, 24)
+        .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 1_040 : (layoutPolicy.isRegularWidth ? 700 : 560))
+        .frame(maxWidth: .infinity)
     }
 
     private var layoutPolicy: OnlineWaitingRoomLayoutPolicy {

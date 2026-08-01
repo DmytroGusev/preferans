@@ -30,4 +30,25 @@ final class OnlineWaitingRoomLayoutTests: XCTestCase {
             XCTAssertFalse(policy.usesTwoRegionComposition)
         }
     }
+
+    func testOnlyNormalIPadCentersWaitingRoomContent() {
+        XCTAssertTrue(
+            OnlineWaitingRoomLayoutPolicy(
+                isRegularWidth: true,
+                usesAccessibilityText: false
+            ).centersContentVertically
+        )
+        XCTAssertFalse(
+            OnlineWaitingRoomLayoutPolicy(
+                isRegularWidth: true,
+                usesAccessibilityText: true
+            ).centersContentVertically
+        )
+        XCTAssertFalse(
+            OnlineWaitingRoomLayoutPolicy(
+                isRegularWidth: false,
+                usesAccessibilityText: false
+            ).centersContentVertically
+        )
+    }
 }
