@@ -57,10 +57,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let dealSource: DealSource
     private var didAutoStartOnlineDeal = false
 
-    /// Shared strategy for every bot seat — a value type, safe to reuse.
-    private let botStrategy: any PlayerStrategy = HeuristicStrategy()
-    /// Pacing for host-driven bot moves. Only the host runs the loop.
-    private let botMoveDelay: Duration
+    /// Single-flight pacing and stale-decision boundary for host-driven bots.
+    private let botMoveScheduler: RoomBotMoveScheduler
     /// Local presentation hold after a trick closes in online play. The host
     /// still publishes immediately; each client keeps the completed trick on
     /// screen briefly so humans can read who won before the next state appears.
@@ -69,7 +67,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// in-memory demo/test room sets this off because it drives its bots through
     /// separate per-seat coordinators instead.
     private let runsServerSideBots: Bool
-    private var pendingBotTask: Task<Void, Never>?
     private var stagedBotInsights: [Int: BotDecisionExplanation] = [:]
     private var pendingAdvanceTask: Task<Void, Never>?
 
@@ -90,7 +87,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     ) {
         self.dealSource = dealSource
         self.heartbeat = heartbeat
-        self.botMoveDelay = botMoveDelay
+        self.botMoveScheduler = RoomBotMoveScheduler(delay: botMoveDelay)
         self.trickResultHoldDuration = trickResultHoldDuration
         self.durabilityBarrier = RoomDurabilityBarrier(
             initialRetryDelay: durabilityRetryInitialDelay
@@ -106,7 +103,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         hostRecoveryTask?.cancel()
         durabilityRetryTask?.cancel()
         heartbeatTask?.cancel()
-        pendingBotTask?.cancel()
         pendingAdvanceTask?.cancel()
     }
 
@@ -200,8 +196,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         durabilityRetryTask = nil
         heartbeatTask?.cancel()
         heartbeatTask = nil
-        pendingBotTask?.cancel()
-        pendingBotTask = nil
+        botMoveScheduler.cancel()
         pendingAdvanceTask?.cancel()
         pendingAdvanceTask = nil
 
@@ -407,35 +402,20 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// clock. Mirrors the local `GameViewModel.scheduleBotIfNeeded` loop but
     /// keeps the engine inside the host actor.
     private func scheduleBotMoveIfNeeded() {
-        pendingBotTask?.cancel()
-        pendingBotTask = nil
-        guard runsServerSideBots, isHost, let hostActor, let tableID, !roster.botSeats.isEmpty else { return }
-        let botSeats = roster.botSeats
-        let delay = botMoveDelay
-        let strategy = botStrategy
-        pendingBotTask = Task { @MainActor [weak self] in
+        guard runsServerSideBots, isHost, let hostActor, let tableID, !roster.botSeats.isEmpty else {
+            botMoveScheduler.cancel()
+            return
+        }
+        botMoveScheduler.schedule(
+            hostActor: hostActor,
+            tableID: tableID,
+            botSeats: roster.botSeats
+        ) { [weak self] move in
             guard let self else { return }
-            guard let plan = await hostActor.nextBotDecisionPlan(botSeats: botSeats) else { return }
-            if delay > .zero {
-                try? await Task.sleep(for: delay)
-            }
-            if Task.isCancelled { return }
-            guard let decision = await strategy.decision(snapshot: plan.snapshot, viewer: plan.decider),
-                  !Task.isCancelled else { return }
-            // A human action (or a prior bot move) may have advanced the engine
-            // while we paced/decided — drop the now-stale move; the publish that
-            // changed the state already re-armed the loop against the truth.
-            guard await hostActor.stillAwaiting(plan.snapshot.state) else { return }
-            let envelope = ClientActionEnvelope(
-                tableID: tableID,
-                actor: decision.action.actor ?? plan.decider,
-                action: decision.action,
-                baseHostSequence: plan.baseSequence
-            )
             await self.applyClientAction(
-                envelope,
-                sender: plan.decider,
-                botInsight: decision.explanation
+                move.envelope,
+                sender: move.sender,
+                botInsight: move.insight
             ) { error in
                 self.errorText = error.localizedDescription
             }
@@ -639,8 +619,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             isHost = false
             hostActor = nil
             stopHeartbeat()
-            pendingBotTask?.cancel()
-            pendingBotTask = nil
+            botMoveScheduler.cancel()
             stagedBotInsights = [:]
         }
     }
@@ -670,8 +649,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         durabilityRetryTask = nil
         durabilityBarrier.reset()
         stopHeartbeat()
-        pendingBotTask?.cancel()
-        pendingBotTask = nil
+        botMoveScheduler.cancel()
         stagedBotInsights = [:]
         hostActor = nil
         let authorityGeneration = advanceAuthorityGeneration()
@@ -730,8 +708,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         durabilityRetryTask = nil
         durabilityBarrier.reset()
         advanceAuthorityGeneration()
-        pendingBotTask?.cancel()
-        pendingBotTask = nil
+        botMoveScheduler.cancel()
         stagedBotInsights = [:]
         hostActor = nil
         isHost = false
