@@ -117,3 +117,94 @@ public extension PlayerStrategy {
         return StrategyDecision(action: action)
     }
 }
+
+/// Keeps an autonomous seat moving when a pluggable strategy declines to act
+/// or returns an action that the engine rejects. The normal heuristic should
+/// never need this path; it is a last-resort guard for custom strategies,
+/// interrupted sessions, and online hosts. The candidate is validated against
+/// a throwaway engine so no fallback can bypass the same rules as a real move.
+public enum BotDecisionRecovery {
+    /// Returns the candidate when it is legal for this exact snapshot, or a
+    /// deterministic legal fallback when the candidate is absent/invalid.
+    /// Returns `nil` only when the snapshot itself has no action awaiting the
+    /// requested viewer.
+    public static func recover(
+        _ candidate: StrategyDecision?,
+        snapshot: PreferansSnapshot,
+        viewer: PlayerID
+    ) -> StrategyDecision? {
+        if let candidate,
+           isLegal(candidate.action, in: snapshot, for: viewer) {
+            return candidate
+        }
+        return fallback(snapshot: snapshot, viewer: viewer)
+    }
+
+    private static func isLegal(
+        _ action: PreferansAction,
+        in snapshot: PreferansSnapshot,
+        for viewer: PlayerID
+    ) -> Bool {
+        guard let actor = action.actor,
+              snapshot.state.currentActor == actor,
+              let initialEngine = try? PreferansEngine(snapshot: snapshot),
+              initialEngine.controllingActor(of: actor) == viewer else { return false }
+        var engine = initialEngine
+        do {
+            _ = try engine.apply(action)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private static func fallback(
+        snapshot: PreferansSnapshot,
+        viewer: PlayerID
+    ) -> StrategyDecision? {
+        guard let engine = try? PreferansEngine(snapshot: snapshot) else { return nil }
+
+        switch snapshot.state {
+        case let .bidding(state):
+            guard state.currentPlayer == viewer,
+                  let call = engine.legalBidCalls(for: viewer).first else { return nil }
+            return StrategyDecision(action: .bid(player: viewer, call: call))
+
+        case let .awaitingDiscard(state):
+            guard state.declarer == viewer else { return nil }
+            let cards = (state.hands[viewer] ?? []) + Array(state.talon.prefix(2))
+            guard cards.count >= 2 else { return nil }
+            return StrategyDecision(action: .discard(player: viewer, cards: Array(cards.prefix(2))))
+
+        case let .awaitingContract(state):
+            guard state.declarer == viewer,
+                  let contract = engine.legalContractDeclarations(for: viewer).first else { return nil }
+            return StrategyDecision(action: .declareContract(player: viewer, contract: contract))
+
+        case let .awaitingWhist(state):
+            guard state.currentPlayer == viewer,
+                  let call = engine.legalWhistCalls(for: viewer).first else { return nil }
+            return StrategyDecision(action: .whist(player: viewer, call: call))
+
+        case let .awaitingDefenderMode(state):
+            guard state.whister == viewer else { return nil }
+            return StrategyDecision(action: .chooseDefenderMode(player: viewer, mode: .closed))
+
+        case let .playing(state):
+            guard let actor = snapshot.state.currentActor,
+                  actor == viewer || engine.controllingActor(of: actor) == viewer else { return nil }
+            if state.pendingSettlement != nil {
+                if engine.canAcceptSettlement(player: viewer) {
+                    return StrategyDecision(action: .acceptSettlement(player: viewer))
+                }
+                guard engine.canRejectSettlement(player: viewer) else { return nil }
+                return StrategyDecision(action: .rejectSettlement(player: viewer))
+            }
+            guard let card = engine.legalCards(for: viewer).first else { return nil }
+            return StrategyDecision(action: .playCard(player: state.currentPlayer, card: card))
+
+        case .waitingForDeal, .dealFinished, .gameOver:
+            return nil
+        }
+    }
+}

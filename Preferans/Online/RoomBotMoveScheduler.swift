@@ -72,13 +72,18 @@ final class RoomBotMoveScheduler {
             }
             guard let self,
                   self.generation == ticket,
-                  !Task.isCancelled,
-                  let decision = await strategy.decision(
-                      snapshot: plan.snapshot,
-                      viewer: plan.decider
-                  ),
-                  self.generation == ticket,
                   !Task.isCancelled else { return }
+            let candidate = await strategy.decision(
+                snapshot: plan.snapshot,
+                viewer: plan.decider
+            )
+            guard let decision = BotDecisionRecovery.recover(
+                candidate,
+                snapshot: plan.snapshot,
+                viewer: plan.decider
+            ),
+            self.generation == ticket,
+            !Task.isCancelled else { return }
 
             // A human command or prior bot move may have advanced the actor
             // while pacing/deciding. Never emit that stale command.

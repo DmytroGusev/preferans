@@ -90,6 +90,44 @@ final class RoomBotMoveSchedulerTests: AppTestCase {
         XCTAssertNil(emitted)
     }
 
+    func testSchedulerRecoversWhenStrategyReturnsNil() async throws {
+        let fixture = try await makeBiddingActor()
+        let scheduler = RoomBotMoveScheduler(strategy: NilStrategy(), delay: .zero)
+        var emitted: RoomBotMove?
+
+        scheduler.schedule(
+            hostActor: fixture.actor,
+            tableID: fixture.actor.tableID,
+            botSeats: Set(fixture.players)
+        ) { move in
+            emitted = move
+        }
+        await waitUntil { emitted != nil && !scheduler.hasActiveWork }
+
+        let move = try XCTUnwrap(emitted)
+        XCTAssertEqual(move.sender, fixture.bidder)
+        XCTAssertEqual(move.envelope.action, .bid(player: fixture.bidder, call: .pass))
+        XCTAssertNil(move.insight)
+    }
+
+    func testSchedulerRecoversWhenStrategyReturnsIllegalAction() async throws {
+        let fixture = try await makeBiddingActor()
+        let scheduler = RoomBotMoveScheduler(strategy: IllegalBidStrategy(), delay: .zero)
+        var emitted: RoomBotMove?
+
+        scheduler.schedule(
+            hostActor: fixture.actor,
+            tableID: fixture.actor.tableID,
+            botSeats: Set(fixture.players)
+        ) { move in
+            emitted = move
+        }
+        await waitUntil { emitted != nil && !scheduler.hasActiveWork }
+
+        let move = try XCTUnwrap(emitted)
+        XCTAssertEqual(move.envelope.action, .bid(player: fixture.bidder, call: .pass))
+    }
+
     private func makeBiddingActor() async throws -> (
         actor: HostGameActor,
         players: [PlayerID],
@@ -151,6 +189,18 @@ private struct ExplainingPassStrategy: PlayerStrategy {
                 rationale: .auctionPass
             )
         )
+    }
+}
+
+private struct NilStrategy: PlayerStrategy {
+    func decide(snapshot: PreferansSnapshot, viewer: PlayerID) async -> PreferansAction? {
+        nil
+    }
+}
+
+private struct IllegalBidStrategy: PlayerStrategy {
+    func decide(snapshot: PreferansSnapshot, viewer: PlayerID) async -> PreferansAction? {
+        .acceptSettlement(player: viewer)
     }
 }
 

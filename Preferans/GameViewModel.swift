@@ -332,8 +332,13 @@ public final class GameViewModel: ObservableObject {
                 try? await clock.sleep(for: delay)
             }
             if Task.isCancelled { return }
-            guard let decision = await strategy.decision(snapshot: snap, viewer: decider),
-                  !Task.isCancelled else { return }
+            let candidate = await strategy.decision(snapshot: snap, viewer: decider)
+            guard !Task.isCancelled,
+                  let decision = BotDecisionRecovery.recover(
+                      candidate,
+                      snapshot: snap,
+                      viewer: decider
+                  ) else { return }
             await MainActor.run {
                 // The full snapshot re-check catches the case where a user
                 // input or another bot turn slipped in while we were
