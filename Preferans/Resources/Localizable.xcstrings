@@ -519,9 +519,9 @@
       "comment" : "Rostov whist explanation.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rostov whist: ordinary trick payments are half value; each dump point is replaced by five direct whists to each opponent." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ростовский вист: обычные висты за взятки имеют половинную стоимость; каждый штрафной пункт в гору заменяется пятью прямыми вистами каждому противнику." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ростовський віст: звичайні вісті за взятки мають половинну вартість; кожен штрафний пункт у гору замінюється п’ятьма прямими вістами кожному супернику." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rostov whist: ordinary trick payments keep the standard value; each missed declarer trick adds ten direct whists from each defender, while a whist remise uses the half-value direct-whist penalty." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ростовский вист: обычные висты за взятки сохраняют стандартную стоимость; за каждую недобранную разыгрывающим взятку каждый защитник пишет по десять прямых вист, а ремиз виста учитывается по половинному прямому штрафу." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ростовський віст: звичайні вісті за взятки мають стандартну вартість; за кожну недобрану розігрувачем взятку кожен захисник пише по десять прямих вістів, а реміз вісту враховується за половинним прямим штрафом." } }
       }
     },
     "rules.talon" : {
@@ -4431,9 +4431,9 @@
       "comment": "Lobby short summary for the Thessaloniki variant.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Half-value whists, direct remise payments, and fixed-price hidden-talon raspasy." } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Половинные висты, прямые выплаты за ремиз и распасы с закрытым прикупом без прогрессии." } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Половинні вісти, прямі виплати за реміз і розпаси із закритим прикупом без прогресії." } }
+        "en": { "stringUnit": { "state": "translated", "value": "Standard-value trick whists, direct remise payments, and fixed-price hidden-talon raspasy." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Стандартные висты за взятки, прямые выплаты за ремиз и распасы с закрытым прикупом без прогрессии." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Стандартні вісті за взятки, прямі виплати за реміз і розпаси із закритим прикупом без прогресії." } }
       }
     },
     "variant.kruty.title": {

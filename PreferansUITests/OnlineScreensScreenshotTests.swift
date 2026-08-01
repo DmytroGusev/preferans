@@ -63,7 +63,7 @@ final class OnlineScreensScreenshotTests: XCTestCase {
             "Thessaloniki did not expose its Rostov standard name"
         )
         XCTAssertTrue(
-            app.staticTexts["Half-value whists, direct remise payments, and fixed-price hidden-talon raspasy."].exists,
+            app.staticTexts["Standard-value trick whists, direct remise payments, and fixed-price hidden-talon raspasy."].exists,
             "Thessaloniki did not explain its Rostov scoring"
         )
         recorder.capture(name: "04-online-thessaloniki-rostov", force: true)

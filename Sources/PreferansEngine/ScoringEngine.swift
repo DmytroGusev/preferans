@@ -111,10 +111,10 @@ struct PreferansScoring {
                     whistValue: whistUnit,
                     delta: &delta
                 )
-            case let .directWhistsPerDefender(pointsPerMountainPoint):
+            case let .directWhistsPerDefender(whistsPerUndertrick):
                 for defender in context.defenders {
                     delta.addWhists(
-                        pointsPerMountainPoint * mountainUnit * undertricks,
+                        whistsPerUndertrick * undertricks,
                         writer: defender,
                         on: context.declarer
                     )
@@ -286,10 +286,10 @@ struct PreferansScoring {
                     10 * rules.mountainValueMultiplier * declarerTricks,
                     to: context.declarer
                 )
-            case let .directWhistsPerDefender(pointsPerMountainPoint):
+            case let .directWhistsPerDefender(whistsPerUndertrick):
                 for defender in playing.activePlayers where defender != context.declarer {
                     delta.addWhists(
-                        pointsPerMountainPoint * 10 * declarerTricks,
+                        whistsPerUndertrick * declarerTricks,
                         writer: defender,
                         on: context.declarer
                     )
@@ -391,6 +391,10 @@ struct PreferansScoring {
             }
         }
 
+        // The lowest-trick player(s) are the raspasy winners: they write five
+        // whists for each trick taken by every higher-trick opponent. When
+        // several players tie for the minimum, each winner shares that
+        // opponent's payment in seat order.
         for loser in scoringPlayers where !winners.contains(loser) {
             let total = pointsPerTrick * tricks(loser, in: playing.trickCounts)
             guard total > 0 else { continue }
@@ -398,7 +402,7 @@ struct PreferansScoring {
             let remainder = total % winners.count
             for (index, winner) in winners.enumerated() {
                 let amount = base + (index < remainder ? 1 : 0)
-                delta.addWhists(amount, writer: loser, on: winner)
+                delta.addWhists(amount, writer: winner, on: loser)
             }
         }
     }
@@ -721,8 +725,8 @@ public enum PreferansRulebook {
         switch rules.declarerRemisePolicy {
         case .mountainAndConsolation:
             directRemiseWhists = 0
-        case let .directWhistsPerDefender(pointsPerMountainPoint):
-            directRemiseWhists = pointsPerMountainPoint * contract.value * defenders.count
+        case let .directWhistsPerDefender(whistsPerUndertrick):
+            directRemiseWhists = whistsPerUndertrick * defenders.count
         }
         return ContractRuleExample(
             tricks: tricks,

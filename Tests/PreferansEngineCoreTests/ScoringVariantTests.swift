@@ -75,7 +75,7 @@ final class ScoringVariantTests: XCTestCase {
 
     // MARK: - Rostov direct-whist recording
 
-    func testRostovOrdinaryWhistsUseHalfContractValue() {
+    func testRostovOrdinaryWhistsKeepStandardContractValue() {
         let delta = scoreGame(
             contract: GameContract(6, .suit(.clubs)),
             whisters: ["east", "south"],
@@ -85,10 +85,10 @@ final class ScoringVariantTests: XCTestCase {
 
         XCTAssertEqual(delta.pool["north"], 2)
         XCTAssertEqual(delta.mountain["north"], 0)
-        // A six-game is worth 2 whists per defender trick in Sochi and 1 in
-        // Rostov; each defender's two tricks therefore write 2.
-        XCTAssertEqual(delta.whists["east"]?["north"], 2)
-        XCTAssertEqual(delta.whists["south"]?["north"], 2)
+        // Rostov changes whist-remise responsibility, not the ordinary trick
+        // price: a six-game is worth 2 whists per defender trick.
+        XCTAssertEqual(delta.whists["east"]?["north"], 4)
+        XCTAssertEqual(delta.whists["south"]?["north"], 4)
     }
 
     func testRostovDeclarerRemisePaysEachDefenderDirectWhists() {
@@ -99,13 +99,12 @@ final class ScoringVariantTests: XCTestCase {
             rules: .rostov
         )
 
-        // A seven-game undertrick is worth four mountain points; Rostov
-        // replaces those with four five-whist payments from each defender.
-        // There is no declarer mountain entry, and ordinary whists retain half
-        // value.
+        // Rostov replaces one declarer undertrick with ten direct whists from
+        // each defender, independent of the contract's pool value. Ordinary
+        // trick whists retain the standard contract value.
         XCTAssertEqual(delta.mountain["north"], 0)
-        XCTAssertEqual(delta.whists["east"]?["north"], 24)
-        XCTAssertEqual(delta.whists["south"]?["north"], 24)
+        XCTAssertEqual(delta.whists["east"]?["north"], 18)
+        XCTAssertEqual(delta.whists["south"]?["north"], 18)
     }
 
     func testRostovWhistQuotaRemisePaysEveryOpponentDirectly() {
@@ -118,10 +117,10 @@ final class ScoringVariantTests: XCTestCase {
 
         // The lone whister is one trick short of the four-trick quota. They
         // write five whists to the declarer and five to the passing defender,
-        // in addition to the greedy single-whister value for all three
+        // in addition to the standard-value greedy payment for all three
         // defender tricks.
         XCTAssertEqual(delta.mountain["east"], 0)
-        XCTAssertEqual(delta.whists["east"]?["north"], 8)
+        XCTAssertEqual(delta.whists["east"]?["north"], 11)
         XCTAssertEqual(delta.whists["east"]?["south"], 5)
     }
 
@@ -211,7 +210,7 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(PreferansRules.rostov.allPassTalonPolicy, .ignored)
         XCTAssertEqual(
             PreferansRules.rostov.declarerRemisePolicy,
-            .directWhistsPerDefender(pointsPerMountainPoint: 5)
+            .directWhistsPerDefender(whistsPerUndertrick: 10)
         )
         XCTAssertEqual(
             MatchSettings(raspasy: .rostov).raspasy.scoreMultiplier(precededBy: 8),
@@ -228,8 +227,10 @@ final class ScoringVariantTests: XCTestCase {
 
         XCTAssertEqual(delta.pool["north"], 1)
         XCTAssertEqual(delta.mountain, ["north": 0, "east": 0, "south": 0])
-        XCTAssertEqual(delta.whists["east"]?["north"], 20)
-        XCTAssertEqual(delta.whists["south"]?["north"], 30)
+        XCTAssertEqual(delta.whists["north"]?["east"], 20)
+        XCTAssertEqual(delta.whists["north"]?["south"], 30)
+        XCTAssertNil(delta.whists["east"]?["north"])
+        XCTAssertNil(delta.whists["south"]?["north"])
     }
 
     func testRostovFourPlayerRaspasyCreditsTheSittingOutDealer() {
@@ -253,8 +254,25 @@ final class ScoringVariantTests: XCTestCase {
 
         XCTAssertEqual(delta.pool["north"], 1)
         XCTAssertEqual(delta.pool["east"], 1)
-        XCTAssertEqual(delta.whists["south"]?["east"], 20)
-        XCTAssertEqual(delta.whists["west"]?["east"], 30)
+        XCTAssertEqual(delta.whists["east"]?["south"], 20)
+        XCTAssertEqual(delta.whists["east"]?["west"], 30)
+        XCTAssertNil(delta.whists["south"]?["east"])
+        XCTAssertNil(delta.whists["west"]?["east"])
+    }
+
+    func testRostovRaspasySplitsOpponentPaymentAcrossTiedWinners() {
+        let delta = scoreAllPass(
+            trickCounts: ["north": 0, "east": 0, "south": 10],
+            rules: .rostov,
+            match: MatchSettings(raspasy: .rostov)
+        )
+
+        XCTAssertEqual(delta.pool["north"], 1)
+        XCTAssertEqual(delta.pool["east"], 1)
+        XCTAssertEqual(delta.whists["north"]?["south"], 25)
+        XCTAssertEqual(delta.whists["east"]?["south"], 25)
+        XCTAssertNil(delta.whists["south"]?["north"])
+        XCTAssertNil(delta.whists["south"]?["east"])
     }
 
     func testSochiRaspasyPriceProgressesOneTwoThreeAndCaps() {
@@ -322,11 +340,11 @@ final class ScoringVariantTests: XCTestCase {
         )
         XCTAssertEqual(rostov.contracts.map(\.madePool), [2, 4, 6, 8, 10])
         XCTAssertEqual(rostov.contracts.map(\.failedByOneMountain), [0, 0, 0, 0, 0])
-        XCTAssertEqual(rostov.contracts.map(\.failedByOneDirectWhists), [20, 40, 60, 80, 100])
-        XCTAssertEqual(rostov.contracts.map(\.whistPerDefenderTrick), [1, 2, 3, 4, 5])
+        XCTAssertEqual(rostov.contracts.map(\.failedByOneDirectWhists), [20, 20, 20, 20, 20])
+        XCTAssertEqual(rostov.contracts.map(\.whistPerDefenderTrick), [2, 4, 6, 8, 10])
         XCTAssertEqual(rostov.raspasy.map(\.trickPrice), [5, 5, 5])
         XCTAssertEqual(rostov.raspasy.map(\.mountainForZeroFourSix), [[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-        XCTAssertEqual(rostov.raspasy.map(\.directWhistsForZeroFourSix), [[50, 0, 0], [50, 0, 0], [50, 0, 0]])
+        XCTAssertEqual(rostov.raspasy.map(\.directWhistsForZeroFourSix), [[0, 20, 30], [0, 20, 30], [0, 20, 30]])
     }
 
     // MARK: - Leningrad recording scale

@@ -648,13 +648,13 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertFalse(try JSONDecoder().decode(PreferansRules.self, from: defaultEncoded).forceWhistOnSixSpades)
     }
 
-    func testRostovRuleRoundTripsWithoutChangingLegacyWireShape() throws {
+    func testRostovRuleRoundTripsAndKeepsLegacyDefaultsCompact() throws {
         let encoded = try JSONEncoder().encode(PreferansRules.rostov)
         let decoded = try JSONDecoder().decode(PreferansRules.self, from: encoded)
         XCTAssertEqual(decoded, .rostov)
 
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
-        XCTAssertEqual(object["whistValueDivisor"] as? Int, 2)
+        XCTAssertNil(object["whistValueDivisor"])
         XCTAssertNotNil(object["declarerRemisePolicy"])
         XCTAssertNotNil(object["whistResponsibility"])
 

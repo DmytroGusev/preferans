@@ -87,8 +87,8 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         /// undertrick and apply the configured defender consolation.
         case mountainAndConsolation
         /// Rostov behavior: no mountain entry; each defender writes the
-        /// configured direct-whist amount per declarer-remise mountain point.
-        case directWhistsPerDefender(pointsPerMountainPoint: Int)
+        /// configured fixed direct-whist consolation for every undertrick.
+        case directWhistsPerDefender(whistsPerUndertrick: Int)
     }
 
     public enum AllPassTalonPolicy: Hashable, Codable, Sendable {
@@ -104,8 +104,8 @@ public struct PreferansRules: Hashable, Codable, Sendable {
 
     public enum AllPassPenaltyPolicy: Hashable, Codable, Sendable {
         case perTrick(multiplier: Int, amnesty: Bool)
-        /// Rostov raspasy: the lowest-trick player(s) receive direct whists
-        /// from the other players instead of mountain entries.
+        /// Rostov raspasy: the lowest-trick player(s) write direct whists on
+        /// the other players instead of receiving mountain entries.
         case directWhistsToLowest(pointsPerTrick: Int)
     }
 
@@ -147,9 +147,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public var poolValueMultiplier: Int
     public var mountainValueMultiplier: Int
     public var whistValueMultiplier: Int
-    /// Rostov records each ordinary whist at half the standard contract
-    /// value. The divisor is explicit rather than represented by a lossy
-    /// integer multiplier.
+    /// Optional divisor for ordinary whist recording. Canonical Sochi,
+    /// Leningrad, and Rostov profiles all record ordinary trick whists at the
+    /// contract's normal value; the explicit divisor remains available for a
+    /// house convention that deliberately changes that scale.
     public var whistValueDivisor: Int
 
     /// Conversion rates used only when the pulka is reduced to a zero-sum
@@ -189,8 +190,8 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         if case let .directWhists(pointsPerMountainPoint) = whistResponsibility {
             precondition(pointsPerMountainPoint > 0, "whist direct-remise value must be positive.")
         }
-        if case let .directWhistsPerDefender(pointsPerMountainPoint) = declarerRemisePolicy {
-            precondition(pointsPerMountainPoint > 0, "declarer direct-remise value must be positive.")
+        if case let .directWhistsPerDefender(whistsPerUndertrick) = declarerRemisePolicy {
+            precondition(whistsPerUndertrick > 0, "declarer direct-remise value must be positive.")
         }
         precondition(zeroTricksAllPassPoolBonus >= 0, "zeroTricksAllPassPoolBonus cannot be negative.")
         precondition(poolValueMultiplier > 0, "poolValueMultiplier must be positive.")
@@ -239,8 +240,8 @@ public struct PreferansRules: Hashable, Codable, Sendable {
            pointsPerMountainPoint <= 0 {
             return "Whist direct-remise value must be positive."
         }
-        if case let .directWhistsPerDefender(pointsPerMountainPoint) = declarerRemisePolicy,
-           pointsPerMountainPoint <= 0 {
+        if case let .directWhistsPerDefender(whistsPerUndertrick) = declarerRemisePolicy,
+           whistsPerUndertrick <= 0 {
             return "Declarer direct-remise value must be positive."
         }
         if zeroTricksAllPassPoolBonus < 0 {
@@ -271,21 +272,22 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     /// silently reconstructing a subtly different set of rules.
     public static let stalingrad = PreferansRules(forceWhistOnSixSpades: true)
 
-    /// Rostov/Moscow scoring: ordinary whists are recorded at half value,
-    /// remise and whist-quota penalties are paid directly in whists, and
-    /// raspasy is fixed-price with the talon kept hidden.
+    /// Rostov/Moscow scoring: ordinary trick whists keep the standard
+    /// contract value, whist-remise penalties are half-responsible and paid
+    /// as direct five-whist payments, and raspasy is fixed-price with the
+    /// talon kept hidden.
     public static let rostov = PreferansRules(
         singleWhistScoring: .greedy,
         failedDeclarerConsolation: .none,
         whistResponsibility: .directWhists(pointsPerMountainPoint: 5),
-        declarerRemisePolicy: .directWhistsPerDefender(pointsPerMountainPoint: 5),
+        declarerRemisePolicy: .directWhistsPerDefender(whistsPerUndertrick: 10),
         allPassTalonPolicy: .ignored,
         allPassPenaltyPolicy: .directWhistsToLowest(pointsPerTrick: 5),
         zeroTricksAllPassPoolBonus: 1,
         poolValueMultiplier: 1,
         mountainValueMultiplier: 1,
         whistValueMultiplier: 1,
-        whistValueDivisor: 2,
+        whistValueDivisor: 1,
         poolPointWhistValue: 10,
         mountainPointWhistValue: 10
     )
@@ -323,9 +325,8 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         }
     }
 
-    /// Recorded whists for one defender trick under this convention. Rostov
-    /// uses half the ordinary contract value; all canonical contract values
-    /// remain integral after the explicit divisor is applied.
+    /// Recorded whists for one defender trick under this convention. The
+    /// canonical contract ladder is 2/4/6/8/10 in every production profile.
     public func recordedWhistValue(for contract: GameContract) -> Int {
         contract.value * whistValueMultiplier / whistValueDivisor
     }
