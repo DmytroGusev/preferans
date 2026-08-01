@@ -211,6 +211,46 @@ final class BotTests: XCTestCase {
         }
     }
 
+    func testWeakHighContractUsesWithoutThreeConcession() async throws {
+        let weakHand = cards(.spades, [.seven, .eight, .nine, .ten])
+            + cards(.clubs, [.seven, .eight, .nine])
+            + cards(.diamonds, [.seven, .eight, .nine])
+        let engine = try makeContractDeclarationEngine(
+            hand: weakHand,
+            finalBid: .game(GameContract(8, .suit(.spades)))
+        )
+        let strategy = HeuristicStrategy(
+            profile: BotProfile(difficulty: .casual, temperament: .careful),
+            planner: CardPlayPlanner(samples: 1)
+        )
+
+        let action = await strategy.decide(snapshot: engine.snapshot, viewer: "N")
+
+        XCTAssertEqual(action, .concedeWithoutThree(player: "N"))
+    }
+
+    func testStrongHighContractStillDeclaresNormally() async throws {
+        let strongHand = cards(.spades, Rank.allCases)
+            + cards(.clubs, [.ace])
+            + cards(.hearts, [.ace])
+        let engine = try makeContractDeclarationEngine(
+            hand: strongHand,
+            finalBid: .game(GameContract(8, .suit(.spades)))
+        )
+        let strategy = HeuristicStrategy(
+            profile: BotProfile(difficulty: .expert, temperament: .bold),
+            planner: CardPlayPlanner(samples: 1)
+        )
+
+        let action = await strategy.decide(snapshot: engine.snapshot, viewer: "N")
+
+        guard case let .declareContract(player, contract) = action else {
+            return XCTFail("Strong high contract should be declared, got \(String(describing: action))")
+        }
+        XCTAssertEqual(player, "N")
+        XCTAssertGreaterThanOrEqual(contract.tricks, 8)
+    }
+
     func testMisereDiscardCorpusDropsTheTwoTalonHonors() async throws {
         var engine = try PreferansEngine(players: players, firstDealer: "S")
         _ = try engine.startDeal(deck: makeDeck(.misereForNorth))
@@ -665,5 +705,35 @@ final class BotTests: XCTestCase {
         }
         XCTAssertEqual(whist.currentPlayer, "S")
         return engine
+    }
+
+    private func makeContractDeclarationEngine(
+        hand north: [Card],
+        finalBid: ContractBid
+    ) throws -> PreferansEngine {
+        XCTAssertEqual(north.count, 10)
+        let remaining = Deck.standard32.filter { !north.contains($0) }
+        let east = Array(remaining.prefix(10))
+        let south = Array(remaining.dropFirst(10).prefix(10))
+        let discard = Array(remaining.dropFirst(20).prefix(2))
+        let talon = Array(north.prefix(2))
+        let state = ContractDeclarationState(
+            dealer: "S",
+            activePlayers: players,
+            hands: ["N": north, "E": east, "S": south],
+            talon: talon,
+            discard: discard,
+            declarer: "N",
+            finalBid: finalBid,
+            auction: []
+        )
+        let snapshot = PreferansSnapshot(
+            players: players,
+            rules: .sochi,
+            state: .awaitingContract(state),
+            score: ScoreSheet(players: players),
+            nextDealer: "E"
+        )
+        return try PreferansEngine(snapshot: snapshot)
     }
 }

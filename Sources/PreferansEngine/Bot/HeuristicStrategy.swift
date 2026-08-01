@@ -33,6 +33,9 @@ public struct HeuristicStrategy: PlayerStrategy {
             return .discard(player: viewer, cards: chooseDiscard(state: s, viewer: viewer))
         case let .awaitingContract(s):
             guard s.declarer == viewer else { return nil }
+            if shouldConcedeWithoutThree(snapshot: snapshot, state: s, viewer: viewer) {
+                return .concedeWithoutThree(player: viewer)
+            }
             return .declareContract(player: viewer, contract: chooseContract(snapshot: snapshot, hand: s.hands[viewer] ?? [], viewer: viewer))
         case let .awaitingWhist(s):
             guard s.currentPlayer == viewer else { return nil }
@@ -231,6 +234,41 @@ public struct HeuristicStrategy: PlayerStrategy {
     }
 
     // MARK: Discard + Contract
+
+    /// A high auction bid can be mathematically hopeless after the prikup is
+    /// exchanged. Use the supported without-three concession as a deliberate
+    /// risk decision instead of forcing every profile to play a likely remise.
+    /// Lower contracts stay live even for weak hands: conceding every marginal
+    /// six would make bots passive and would erase useful table drama.
+    private func shouldConcedeWithoutThree(
+        snapshot: PreferansSnapshot,
+        state: ContractDeclarationState,
+        viewer: PlayerID
+    ) -> Bool {
+        let target: Int
+        switch state.finalBid {
+        case let .game(contract):
+            target = contract.tricks
+        case .totus:
+            target = 10
+        case .misere:
+            return false
+        }
+        guard target >= 8 else { return false }
+
+        let grouped = HandEvaluator.groupBySuit(state.hands[viewer] ?? [])
+        let legal = (try? PreferansEngine(snapshot: snapshot))?.legalContractDeclarations(for: viewer) ?? []
+        let bestEstimate = legal.map {
+            HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: $0.strain.suit)
+        }.max() ?? 0
+
+        // Careful/casual profiles need more evidence before accepting a
+        // thin high bid; bold/expert profiles tolerate a narrower shortfall.
+        let safetyMargin = 0.75
+            + (profile.difficulty.contractFailurePenalty - 4.0) * 0.20
+            - profile.temperament.rolloutRiskWeight * 0.25
+        return bestEstimate + safetyMargin < Double(target)
+    }
 
     private func chooseDiscard(state: ExchangeState, viewer: PlayerID) -> [Card] {
         let combined = (state.hands[viewer] ?? []) + state.talon
