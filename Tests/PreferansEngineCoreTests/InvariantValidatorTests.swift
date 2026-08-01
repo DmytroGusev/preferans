@@ -79,7 +79,7 @@ final class InvariantValidatorTests: XCTestCase {
     private func assertViolation(
         _ state: DealState,
         contains needle: String,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         do {
@@ -99,7 +99,7 @@ final class InvariantValidatorTests: XCTestCase {
     private func assertViolation(
         _ snapshot: PreferansSnapshot,
         contains needle: String,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         do {
@@ -120,7 +120,7 @@ final class InvariantValidatorTests: XCTestCase {
     private func assertViolation(
         _ operation: @autoclosure () throws -> Void,
         contains needle: String,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         do {
@@ -138,7 +138,7 @@ final class InvariantValidatorTests: XCTestCase {
         }
     }
 
-    private func assertAccepts(_ state: DealState, file: StaticString = #file, line: UInt = #line) {
+    private func assertAccepts(_ state: DealState, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertNoThrow(try PreferansEngine.validateInvariants(state), file: file, line: line)
     }
 
