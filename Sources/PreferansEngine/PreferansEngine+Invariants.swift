@@ -46,6 +46,7 @@ extension PreferansEngine {
                 s.passed.isSubset(of: Set(s.activePlayers)),
                 "bidding passed \(sorted(s.passed)) ⊄ activePlayers"
             )
+            try checkBiddingLedger(s)
         case let .awaitingDiscard(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
@@ -267,6 +268,62 @@ extension PreferansEngine {
     private static func checkActiveSeats(_ seats: [PlayerID]) throws {
         try require(seats.count == 3, "active seats must be 3, got \(seats.count): \(sorted(seats))")
         try require(Set(seats).count == seats.count, "duplicate seat in activePlayers: \(sorted(seats))")
+    }
+
+    /// The auction's derived fields are security-relevant recovery state, not
+    /// disposable UI caches. In particular, `significantBidByPlayer` enforces
+    /// the rule that misère may only be a player's first real bid. Derive and
+    /// compare every redundant field against the recorded call history so a
+    /// malformed host snapshot cannot reopen a bid that was already forfeited.
+    private static func checkBiddingLedger(_ bidding: BiddingState) throws {
+        let active = Set(bidding.activePlayers)
+        try require(
+            !bidding.passed.contains(bidding.currentPlayer),
+            "bidding currentPlayer cannot already have passed"
+        )
+
+        var passedFromCalls: Set<PlayerID> = []
+        var latestBidByPlayer: [PlayerID: ContractBid] = [:]
+        var lastBid: (player: PlayerID, bid: ContractBid)?
+
+        for record in bidding.calls {
+            try require(
+                active.contains(record.player),
+                "auction call player \(record.player) ∉ activePlayers"
+            )
+            try require(
+                !passedFromCalls.contains(record.player),
+                "auction contains a call by \(record.player) after passing"
+            )
+            switch record.call {
+            case .pass:
+                passedFromCalls.insert(record.player)
+            case let .bid(bid):
+                latestBidByPlayer[record.player] = bid
+                lastBid = (record.player, bid)
+            }
+        }
+
+        try require(
+            passedFromCalls == bidding.passed,
+            "bidding passed set does not match auction calls"
+        )
+        try require(
+            latestBidByPlayer == bidding.significantBidByPlayer,
+            "bidding significant bid ledger does not match auction calls"
+        )
+
+        if let lastBid {
+            try require(
+                bidding.highestBid == lastBid.bid && bidding.highestBidder == lastBid.player,
+                "bidding highest bid must match the last auction bid"
+            )
+        } else {
+            try require(
+                bidding.highestBid == nil && bidding.highestBidder == nil,
+                "bidding without auction bids cannot carry a highest bid or bidder"
+            )
+        }
     }
 
     private static func checkHands(

@@ -35,7 +35,11 @@ final class InvariantValidatorTests: XCTestCase {
         hands overrideHands: [PlayerID: [Card]]? = nil,
         talon overrideTalon: [Card]? = nil,
         currentPlayer overrideCurrent: PlayerID? = nil,
-        passed: Set<PlayerID> = []
+        passed: Set<PlayerID> = [],
+        highestBid: ContractBid? = nil,
+        highestBidder: PlayerID? = nil,
+        calls: [AuctionCall] = [],
+        significantBidByPlayer: [PlayerID: ContractBid] = [:]
     ) -> BiddingState {
         let (hands, talon) = dealHands()
         let activeSeats = overrideSeats ?? seats
@@ -45,7 +49,11 @@ final class InvariantValidatorTests: XCTestCase {
             hands: overrideHands ?? hands,
             talon: overrideTalon ?? talon,
             currentPlayer: overrideCurrent ?? activeSeats[0],
-            passed: passed
+            passed: passed,
+            highestBid: highestBid,
+            highestBidder: highestBidder,
+            calls: calls,
+            significantBidByPlayer: significantBidByPlayer
         )
     }
 
@@ -246,6 +254,77 @@ final class InvariantValidatorTests: XCTestCase {
         let stranger: PlayerID = "ghost"
         let state = DealState.bidding(biddingFixture(passed: [stranger]))
         assertViolation(state, contains: "passed")
+    }
+
+    func testValidatorRejectsBiddingWhenCurrentPlayerAlreadyPassed() {
+        let state = DealState.bidding(biddingFixture(
+            passed: [north],
+            calls: [AuctionCall(player: north, call: .pass)]
+        ))
+
+        assertViolation(state, contains: "currentPlayer cannot already have passed")
+    }
+
+    func testValidatorRejectsBiddingWhenSignificantBidLedgerForgetsARealBid() {
+        let sixSpades = ContractBid.game(GameContract(6, .suit(.spades)))
+        let state = DealState.bidding(biddingFixture(
+            currentPlayer: east,
+            highestBid: sixSpades,
+            highestBidder: north,
+            calls: [AuctionCall(player: north, call: .bid(sixSpades))],
+            significantBidByPlayer: [:]
+        ))
+
+        assertViolation(state, contains: "significant bid ledger")
+    }
+
+    func testSnapshotRehydrationRejectsAuctionLedgerThatWouldReopenMisere() {
+        let sixSpades = ContractBid.game(GameContract(6, .suit(.spades)))
+        let state = DealState.bidding(biddingFixture(
+            currentPlayer: east,
+            highestBid: sixSpades,
+            highestBidder: north,
+            calls: [AuctionCall(player: north, call: .bid(sixSpades))],
+            significantBidByPlayer: [:]
+        ))
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: state,
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(
+            try { _ = try PreferansEngine(snapshot: snapshot) }(),
+            contains: "significant bid ledger"
+        )
+    }
+
+    func testValidatorRejectsBiddingWhenPassedSetDisagreesWithCalls() {
+        let state = DealState.bidding(biddingFixture(
+            currentPlayer: east,
+            calls: [AuctionCall(player: north, call: .pass)]
+        ))
+
+        assertViolation(state, contains: "passed set does not match auction calls")
+    }
+
+    func testValidatorRejectsBiddingWhenHighestBidDisagreesWithLastBid() {
+        let sixSpades = ContractBid.game(GameContract(6, .suit(.spades)))
+        let sixClubs = ContractBid.game(GameContract(6, .suit(.clubs)))
+        let state = DealState.bidding(biddingFixture(
+            currentPlayer: south,
+            highestBid: sixSpades,
+            highestBidder: north,
+            calls: [
+                AuctionCall(player: north, call: .bid(sixSpades)),
+                AuctionCall(player: east, call: .bid(sixClubs)),
+            ],
+            significantBidByPlayer: [north: sixSpades, east: sixClubs]
+        ))
+
+        assertViolation(state, contains: "highest bid must match the last auction bid")
     }
 
     func testValidatorRejectsAwaitingWhistWithDeclarerInDefenders() {
