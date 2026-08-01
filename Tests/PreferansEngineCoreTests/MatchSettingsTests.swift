@@ -222,6 +222,22 @@ final class MatchSettingsTests: XCTestCase {
         )
     }
 
+    func testRaspasyProgressionsSaturateForAnUnboundedSeriesCounter() {
+        let stage = Int.max
+        XCTAssertEqual(
+            RaspasyPolicy.sochi.scoreMultiplier(precededBy: stage),
+            3
+        )
+        XCTAssertEqual(
+            RaspasyPolicy.sochi.minimumGameTricks(after: stage),
+            8
+        )
+
+        let geometric = RaspasyPolicy.progressive(penalties: .geometric, exit: .strict)
+        XCTAssertEqual(geometric.scoreMultiplier(precededBy: stage), 4)
+        XCTAssertEqual(geometric.minimumGameTricks(after: stage), 8)
+    }
+
     func testStrictRaspasyExitFiltersSixThenSevenLevelGamesButKeepsMisere() throws {
         XCTAssertEqual(try legalGameLevels(after: 0), Set([6, 7, 8, 9, 10]))
         XCTAssertEqual(try legalGameLevels(after: 1), Set([7, 8, 9, 10]))

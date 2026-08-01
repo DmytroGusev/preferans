@@ -189,9 +189,9 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
             case .flat:
                 return 1
             case .arithmetic:
-                return min(stage + 1, 3)
+                return min(stage, 2) + 1
             case .cappedDouble:
-                return min(stage + 1, 2)
+                return min(stage, 1) + 1
             case .geometric:
                 return [1, 2, 4][min(stage, 2)]
             }
@@ -212,7 +212,7 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
             case .constrained:
                 return stage == 0 ? 6 : 7
             case .strict:
-                return min(6 + stage, 8)
+                return 6 + min(stage, 2)
             }
         }
     }
