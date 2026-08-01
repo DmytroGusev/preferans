@@ -54,6 +54,7 @@ final class MatchUIRobot {
 
     func discard(_ cards: [Card]) {
         precondition(cards.count == 2, "Discard must contain exactly two cards; got \(cards.count).")
+        _ = takeTalonIfPresent()
         for card in cards {
             tapCard(id: UIIdentifiers.card(card, in: .discardSelect), descriptor: "discard pick \(card)")
         }
@@ -97,10 +98,19 @@ final class MatchUIRobot {
     }
 
     @discardableResult
+    func takeTalonIfPresent() -> Bool {
+        tapIfPresent(UIIdentifiers.buttonTakeTalon)
+    }
+
+    @discardableResult
     func discardFirstTwoVisibleCards() -> Bool {
+        _ = takeTalonIfPresent()
         let predicate = NSPredicate(format: "identifier BEGINSWITH 'card.discardSelect.'")
         let cards = app.buttons.matching(predicate)
-        guard cards.count >= 2 else { return false }
+        guard cards.element(boundBy: 0).waitForExistence(timeout: defaultTimeout),
+              cards.element(boundBy: 1).waitForExistence(timeout: defaultTimeout) else {
+            return false
+        }
         cards.element(boundBy: 0).tap()
         cards.element(boundBy: 1).tap()
         return tapIfPresent(UIIdentifiers.buttonDiscardSelected)

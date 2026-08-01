@@ -270,6 +270,10 @@ public struct ActionBarView: View {
             content()
                 .padding(.horizontal, 2)
         }
+        // The rail is reused while the table advances through deals. Reset
+        // its content offset whenever the projection changes so a previous
+        // auction cannot strand the next deal's opening bid off-screen.
+        .id("choice-rail-\(projection.sequence)")
         .mask(scrollFadeMask)
     }
 
