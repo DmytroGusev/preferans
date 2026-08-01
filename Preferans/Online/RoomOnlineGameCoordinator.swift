@@ -54,6 +54,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// changes. Cancellation alone is insufficient because transport awaits do
     /// not all cooperate with task cancellation.
     private var authorityGeneration: UInt64 = 0
+    /// Blocks new host mutations while a terminal abandon request is being
+    /// committed. The request invalidates the current authority epoch before
+    /// awaiting the worker, so an in-flight move can never publish afterward.
+    private var isAbandoning = false
     private var hostPeer: OnlinePeer?
     private var roster = RoomParticipantRoster()
     private var rules: PreferansRules = .sochi
@@ -225,6 +229,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         botInsights = []
         stagedBotInsights = [:]
         isHost = false
+        isAbandoning = false
         localSeat = nil
         tableID = nil
         resetHostLiveness()
@@ -237,6 +242,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     public func send(_ action: PreferansAction) {
+        guard !isAbandoning else { return }
         guard transportStatus != .seatTakenOver else {
             errorText = String(localized: "This table is active on another device.")
             return
@@ -306,7 +312,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// dealer are filled in authoritatively by ``HostGameActor`` (`makeAuthoritative`).
     @discardableResult
     public func startFirstDeal() -> Bool {
-        guard isHost, transportStatus != .seatTakenOver else { return false }
+        guard isHost, !isAbandoning, transportStatus != .seatTakenOver else { return false }
         // Clear a previous validation/network message before every attempt so
         // the waiting room can reliably leave its in-flight state even when a
         // retry produces the same localized error text.
@@ -340,7 +346,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// advertising the roster over the wire.
     @discardableResult
     public func fillOpenSeatsWithBots() async -> Bool {
-        guard isHost, transportStatus != .seatTakenOver else { return false }
+        guard isHost, !isAbandoning, transportStatus != .seatTakenOver else { return false }
         guard let transport else {
             errorText = String(localized: "No host connection.")
             return false
@@ -1167,14 +1173,36 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// of the player's Continue list. Host-only and best-effort; a guest simply
     /// disconnects and the host's own reports continue to govern status.
     public func abandon() async {
-        guard isHost, let cloud = transport as? CloudflareRoomTransport, let hostActor else { return }
+        guard isHost, !isAbandoning, let transport, let hostActor else { return }
+        isAbandoning = true
+        hostActionQueue.cancel()
+        botMoveScheduler.cancel()
+        stagedBotInsights = [:]
+        hostRecoveryRunner.cancel()
+        durabilityRetryRunner.cancel()
+        // Invalidate any non-cooperative report or bot action before awaiting
+        // the terminal worker write. The old operation may still return, but
+        // its ownsHostAuthority check can no longer publish gameplay.
+        advanceAuthorityGeneration()
+        isHost = false
         let sequence = await hostActor.currentSequence
-        try? await cloud.reportState(
-            status: .abandoned,
-            summary: OnlineStateSummary(variant: variantTag, lastSequence: sequence),
-            snapshot: nil,
-            snapshotSequence: sequence
-        )
+        do {
+            try await transport.reportState(
+                status: .abandoned,
+                summary: OnlineStateSummary(variant: variantTag, lastSequence: sequence),
+                snapshot: nil,
+                snapshotSequence: sequence
+            )
+            guard self.transport === transport, isAbandoning else { return }
+            resetAttachment(disconnectCurrentTransport: true)
+            transportStatus = .disconnected
+            state = .disconnected
+        } catch {
+            guard self.transport === transport, isAbandoning else { return }
+            isHost = true
+            isAbandoning = false
+            errorText = error.localizedDescription
+        }
     }
 
     private func sendHostError(to peer: OnlinePeer, recipient: PlayerID?, nonce: UUID?, message: String) async {

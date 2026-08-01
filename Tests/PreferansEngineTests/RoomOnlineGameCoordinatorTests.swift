@@ -862,6 +862,39 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         coordinator.detach()
     }
 
+    func testAbandonInvalidatesAnInFlightHostMoveBeforeTerminalCommit() async throws {
+        let room = StallableRoom(peers: peers, hostPlayerID: "north")
+        let transport = room.transport(for: "north")
+        let coordinator = RoomOnlineGameCoordinator(heartbeat: .disabled)
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+
+        transport.suspendStateReports = true
+        coordinator.send(.startDeal(dealer: nil, deck: nil))
+        await pump(until: { transport.suspendedStateReportCount == 1 })
+
+        let abandonTask = Task { @MainActor in
+            await coordinator.abandon()
+        }
+        await pump(until: { transport.suspendedStateReportCount == 2 })
+
+        // Resume the gameplay report first. It must return without publishing
+        // because abandon already invalidated that host epoch.
+        transport.resumeStateReport()
+        await pump(until: { transport.stateReportReturnCount == 1 })
+        XCTAssertEqual(coordinator.projection?.sequence, 0,
+                       "The abandoned move must not become visible.")
+
+        // Now let the terminal report complete. The coordinator should detach
+        // its old authority instead of remaining a live host over an abandoned
+        // directory entry.
+        transport.resumeStateReport()
+        await abandonTask.value
+        XCTAssertFalse(coordinator.isHost)
+        XCTAssertEqual(coordinator.state, .disconnected)
+        XCTAssertNil(coordinator.projection)
+    }
+
     func testClientActionFlowsThroughHostAndSpoofedActorIsRejected() async throws {
         let fixture = try await makeFixture()
 
@@ -1634,12 +1667,13 @@ private final class StallableTransport: RoomRealtimeTransport {
     private(set) var hostRecoveryAttemptCount = 0
     private(set) var stateReportAttemptCount = 0
     private(set) var stateReportReturnCount = 0
+    var suspendedStateReportCount: Int { stateReportContinuations.count }
 
     private let room: StallableRoom
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
     private var backlog: [ReceivedRoomMessage] = []
-    private var stateReportContinuation: CheckedContinuation<Void, Never>?
+    private var stateReportContinuations: [CheckedContinuation<Void, Never>] = []
 
     init(room: StallableRoom, localPeer: OnlinePeer) {
         self.room = room
@@ -1712,7 +1746,7 @@ private final class StallableTransport: RoomRealtimeTransport {
         stateReportAttemptCount += 1
         if suspendStateReports {
             await withCheckedContinuation { continuation in
-                stateReportContinuation = continuation
+                stateReportContinuations.append(continuation)
             }
         }
         stateReportReturnCount += 1
@@ -1720,13 +1754,15 @@ private final class StallableTransport: RoomRealtimeTransport {
 
     func resumeStateReport() {
         suspendStateReports = false
-        let continuation = stateReportContinuation
-        stateReportContinuation = nil
-        continuation?.resume()
+        guard !stateReportContinuations.isEmpty else { return }
+        stateReportContinuations.removeFirst().resume()
     }
 
     func disconnect() {
         resumeStateReport()
+        while !stateReportContinuations.isEmpty {
+            stateReportContinuations.removeFirst().resume()
+        }
         for continuation in continuations.values { continuation.finish() }
         continuations.removeAll()
         for continuation in participantContinuations.values { continuation.finish() }
