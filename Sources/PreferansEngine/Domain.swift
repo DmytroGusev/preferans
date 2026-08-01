@@ -176,7 +176,10 @@ public struct GameContract: Hashable, Codable, Sendable, Comparable, CustomStrin
 
     public var bidOrder: Int {
         let base = (tricks - 6) * 5 + strain.bidOrder
-        return tricks >= 9 ? base + 1 : base
+        // Misère and the optional dedicated Totus occupy distinct slots
+        // between 8NT and 9♠. Totus may be disabled by match policy, but the
+        // static Comparable order must still remain strict and transitive.
+        return tricks >= 9 ? base + 2 : base
     }
 
     public var value: Int {

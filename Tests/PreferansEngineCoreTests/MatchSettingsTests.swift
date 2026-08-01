@@ -429,13 +429,34 @@ final class MatchSettingsTests: XCTestCase {
     }
 
     func testTotusOrderingPlacesItDirectlyAboveMisere() {
-        // Totus is the only bid that sits between misère and the (suppressed)
-        // 10-trick game contracts — comparing it against the standard ladder's
-        // 10♠/10NT is moot because dedicatedContract mode removes those bids
-        // from the legal-call list.
+        let nineSpades = ContractBid.game(GameContract(9, .suit(.spades)))
         XCTAssertLessThan(ContractBid.misere, ContractBid.totus,
                           "Totus must outrank misère in the bid ladder.")
         XCTAssertEqual(ContractBid.totus.order - ContractBid.misere.order, 1,
                        "Totus should sit immediately above misère in the bid order.")
+        XCTAssertLessThan(ContractBid.totus, nineSpades,
+                          "Nine spades must still overcall the dedicated Totus slot.")
+        XCTAssertEqual(nineSpades.order - ContractBid.totus.order, 1)
+
+        let orders = ContractBid.allStandard.map(\.order)
+        XCTAssertEqual(Set(orders).count, orders.count,
+                       "Distinct bids must never compare at the same rank.")
+    }
+
+    func testNineSpadesCanOvercallTotusButTotusCannotOvercallNineSpades() throws {
+        var engine = try makeEngine(
+            match: MatchSettings(
+                poolTarget: .max,
+                totus: .dedicatedContract(requireWhist: true, bonusPool: 5)
+            )
+        )
+        try engine.startDeal(deck: Self.northSpadesSixDeck)
+        let nineSpades = BidCall.bid(.game(GameContract(9, .suit(.spades))))
+
+        _ = try engine.apply(.bid(player: "north", call: .bid(.totus)))
+        XCTAssertTrue(engine.legalBidCalls(for: "east").contains(nineSpades))
+
+        _ = try engine.apply(.bid(player: "east", call: nineSpades))
+        XCTAssertFalse(engine.legalBidCalls(for: "south").contains(.bid(.totus)))
     }
 }
