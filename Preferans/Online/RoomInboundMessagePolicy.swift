@@ -32,10 +32,15 @@ enum RoomInboundMessagePolicy {
         localPlayer: PlayerID
     ) -> Bool {
         let players = assignment.seats.map(\.playerID)
-        return assignment.hostPlayerID == sender.playerID
+        let gamePlayerIDs = assignment.seats.map(\.gamePlayerID)
+        return (3...4).contains(assignment.seats.count)
+            && assignment.hostPlayerID == sender.playerID
             && players.contains(localPlayer)
             && players.contains(assignment.hostPlayerID)
             && Set(players).count == players.count
+            && gamePlayerIDs.allSatisfy { !$0.isEmpty }
+            && Set(gamePlayerIDs).count == gamePlayerIDs.count
+            && assignment.seats.allSatisfy { !$0.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
     static func projectionDecision(

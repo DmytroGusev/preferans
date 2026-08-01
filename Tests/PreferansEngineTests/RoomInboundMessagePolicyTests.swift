@@ -74,6 +74,54 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
         ))
     }
 
+    func testSeatAssignmentRejectsMalformedRosterShapeAndIdentityValues() {
+        let seats = identities()
+        let valid = SeatAssignmentEnvelope(
+            tableID: tableID,
+            hostPlayerID: host.playerID,
+            seats: seats,
+            rules: .sochi
+        )
+
+        var tooSmall = valid
+        tooSmall.seats.removeLast(2)
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsSeatAssignment(
+            tooSmall,
+            sender: host,
+            localPlayer: "north"
+        ))
+
+        var tooLarge = valid
+        tooLarge.seats.append(
+            PlayerIdentity(playerID: "west", gamePlayerID: "dev:west", displayName: "West")
+        )
+        tooLarge.seats.append(
+            PlayerIdentity(playerID: "center", gamePlayerID: "dev:center", displayName: "Center")
+        )
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsSeatAssignment(
+            tooLarge,
+            sender: host,
+            localPlayer: "north"
+        ))
+
+        var duplicateGameIdentity = valid
+        duplicateGameIdentity.seats[1].gamePlayerID = duplicateGameIdentity.seats[0].gamePlayerID
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsSeatAssignment(
+            duplicateGameIdentity,
+            sender: host,
+            localPlayer: "east"
+        ))
+
+        var blankIdentity = valid
+        blankIdentity.seats[1].gamePlayerID = "   "
+        blankIdentity.seats[2].displayName = "\n"
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsSeatAssignment(
+            blankIdentity,
+            sender: host,
+            localPlayer: "east"
+        ))
+    }
+
     func testProjectionDecisionSeparatesAdvanceRefreshAndStaleFrames() throws {
         let projection = try makeProjection(sequence: 5)
         let envelope = ProjectionEnvelope(
