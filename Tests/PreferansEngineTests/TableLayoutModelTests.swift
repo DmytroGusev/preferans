@@ -90,6 +90,30 @@ final class TableLayoutModelTests: XCTestCase {
         )
     }
 
+    func testReadableHandCardsStayTabletSizedInCompactIPadSplitView() {
+        XCTAssertEqual(
+            TableHandCardSizePolicy.readableSize(
+                isPadDevice: true,
+                horizontalSizeClass: .compact
+            ),
+            .large
+        )
+        XCTAssertEqual(
+            TableHandCardSizePolicy.readableSize(
+                isPadDevice: false,
+                horizontalSizeClass: .compact
+            ),
+            .standard
+        )
+        XCTAssertEqual(
+            TableHandCardSizePolicy.readableSize(
+                isPadDevice: false,
+                horizontalSizeClass: .regular
+            ),
+            .large
+        )
+    }
+
     func testGameOverUsesASeparateIPadActionColumnButStacksAccessibilityText() {
         XCTAssertTrue(
             GameOverLayoutPolicy(isRegularWidth: true, usesAccessibilityText: false)

@@ -221,6 +221,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 OpponentSeatView(
                     seat: seat,
                     orientation: .top,
+                    isPadDevice: isPadDevice,
                     cardSuitOrder: cardSuitDisplayOrder,
                     contractBid: projection.activeContractBid(for: seat.player),
                     isDeemphasized: hasOpenOpponentHand && !isOpenHand(seat),
@@ -515,7 +516,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 playableCards: playable,
                 selectedCards: selected,
                 talonCards: Set(talonKnown),
-                cardSize: horizontalSizeClass == .compact ? .standard : .large,
+                cardSize: TableHandCardSizePolicy.readableSize(
+                    isPadDevice: isPadDevice,
+                    horizontalSizeClass: horizontalSizeClass
+                ),
                 animationNamespace: cardNamespace,
                 onTap: onCardTap,
                 onDoubleTap: isDiscardPhase ? nil : { card in

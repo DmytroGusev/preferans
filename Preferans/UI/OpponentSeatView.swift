@@ -14,6 +14,10 @@ public struct OpponentSeatView: View {
     /// the viewer's POV so cards never rotate vertically and clip the
     /// trick area).
     public var orientation: Orientation
+    /// Device idiom is separate from size class because an iPad in Split View
+    /// can report compact width while still needing tablet-readable face-up
+    /// cards.
+    public var isPadDevice: Bool
     /// Presentation-only suit order used for face-up hands.
     public var cardSuitOrder: CardSuitDisplayOrder
     /// Contract carried by this seat when it is the declarer. Lets the
@@ -58,6 +62,7 @@ public struct OpponentSeatView: View {
     public init(
         seat: SeatProjection,
         orientation: Orientation = .top,
+        isPadDevice: Bool = false,
         cardSuitOrder: CardSuitDisplayOrder = .default,
         contractBid: ContractBid? = nil,
         isDeemphasized: Bool = false,
@@ -73,6 +78,7 @@ public struct OpponentSeatView: View {
     ) {
         self.seat = seat
         self.orientation = orientation
+        self.isPadDevice = isPadDevice
         self.cardSuitOrder = cardSuitOrder
         self.contractBid = contractBid
         self.isDeemphasized = isDeemphasized
@@ -316,7 +322,10 @@ public struct OpponentSeatView: View {
     /// hands get two readable rows, bigger cards, and a wider step so every
     /// rank+pip remains visible without claiming four rows of vertical space.
     private var openFan: some View {
-        let cardSize: CardView.Size = horizontalSizeClass == .regular ? .large : .standard
+        let cardSize = TableHandCardSizePolicy.readableSize(
+            isPadDevice: isPadDevice,
+            horizontalSizeClass: horizontalSizeClass
+        )
         let dims = cardSize.dimensions
         let rows = openHandRows(seat.hand)
         let rowHeight = dims.height + 12

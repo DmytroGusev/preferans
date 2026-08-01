@@ -286,6 +286,20 @@ public struct TableLayoutModel: Equatable {
     }
 }
 
+/// Card scale for hands whose rank and suit are meant to be read by the
+/// viewer. A compact horizontal size class on iPad is still a tablet surface
+/// (for example, a narrow Split View), so it must not silently fall back to
+/// the phone scale. Hidden opponent piles intentionally keep their own tighter
+/// sizing because they are decorative and have to fit beside the center felt.
+enum TableHandCardSizePolicy {
+    static func readableSize(
+        isPadDevice: Bool,
+        horizontalSizeClass: UserInterfaceSizeClass?
+    ) -> CardView.Size {
+        isPadDevice || horizontalSizeClass == .regular ? .large : .standard
+    }
+}
+
 extension PlayerGameProjection {
     var tableClockwiseOpponentSeats: [SeatProjection] {
         let seatsByPlayer = Dictionary(

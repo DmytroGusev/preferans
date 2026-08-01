@@ -186,6 +186,7 @@ public struct TableView: View {
                     OpponentSeatView(
                         seat: seat,
                         orientation: .top,
+                        isPadDevice: isPadDevice,
                         cardSuitOrder: cardSuitOrder,
                         contractBid: projection.activeContractBid(for: seat.player),
                         lastAction: nil,
@@ -297,6 +298,7 @@ public struct TableView: View {
                     OpponentSeatView(
                         seat: slot.seat,
                         orientation: slot.orientation,
+                        isPadDevice: isPadDevice,
                         cardSuitOrder: cardSuitOrder,
                         contractBid: projection.activeContractBid(for: slot.seat.player),
                         isDeemphasized: isDeemphasized,
