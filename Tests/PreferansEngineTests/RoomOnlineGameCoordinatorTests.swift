@@ -471,6 +471,78 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         coordinator.detach()
     }
 
+    func testFillAndStartPreservesServerConversionFailureWithoutDealing() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let pending = OnlinePeer(playerID: "east", accountID: "pending:east", provider: .dev, displayName: "East")
+        let bot = OnlinePeer(playerID: "south", accountID: "bot:south", provider: .dev, displayName: "Bot 3")
+        let transport = PresenceDrivenTransport(
+            localPeer: host,
+            hostPlayerID: "north",
+            participants: [host, pending, bot]
+        )
+        let coordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+        transport.fillPendingSeatsError = CoordinatorTransportTestError.serverSeatFillFailed
+
+        await coordinator.fillOpenSeatsWithBotsAndStart()
+
+        XCTAssertEqual(coordinator.projection?.sequence, 0)
+        XCTAssertFalse(coordinator.canHostStart)
+        XCTAssertEqual(
+            coordinator.errorText,
+            CoordinatorTransportTestError.serverSeatFillFailed.localizedDescription,
+            "The actionable server error must not be overwritten by a generic start failure."
+        )
+        coordinator.detach()
+    }
+
+    func testFallbackSeatFillCommitsOnlyAfterRosterBroadcastThenCanRetry() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let pending = OnlinePeer(playerID: "east", accountID: "pending:east", provider: .dev, displayName: "East")
+        let bot = OnlinePeer(playerID: "south", accountID: "bot:south", provider: .dev, displayName: "Bot 3")
+        let transport = PresenceDrivenTransport(
+            localPeer: host,
+            hostPlayerID: "north",
+            participants: [host, pending, bot]
+        )
+        let coordinator = RoomOnlineGameCoordinator(
+            dealSource: ScriptedDealSource(decks: [Deck.standard32]),
+            heartbeat: .disabled
+        )
+        await coordinator.attach(transport: transport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+        transport.failsSeatAssignmentBroadcast = true
+
+        await coordinator.fillOpenSeatsWithBotsAndStart()
+
+        XCTAssertEqual(coordinator.projection?.sequence, 0)
+        XCTAssertFalse(coordinator.canHostStart)
+        XCTAssertEqual(
+            coordinator.rosterSeats.first { $0.player == "east" }?.occupancy,
+            .openWaiting,
+            "A failed broadcast must leave the live host roster uncommitted."
+        )
+        XCTAssertEqual(
+            coordinator.errorText,
+            CoordinatorTransportTestError.seatAssignmentBroadcastFailed.localizedDescription
+        )
+
+        transport.failsSeatAssignmentBroadcast = false
+        await coordinator.fillOpenSeatsWithBotsAndStart()
+        await pump(until: { coordinator.projection?.sequence == 1 })
+
+        XCTAssertTrue(coordinator.canHostStart)
+        XCTAssertTrue(
+            coordinator.rosterSeats.first { $0.player == "east" }?.occupancy.isBot == true
+        )
+        XCTAssertNil(coordinator.errorText)
+        coordinator.detach()
+    }
+
     func testVisibleProjectionWaitsForDurableSnapshotCommit() async throws {
         let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
         let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
@@ -1508,6 +1580,8 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
     let localPeer: OnlinePeer
     private(set) var participants: [OnlinePeer]
     var blockedReportSequences: Set<Int> = []
+    var fillPendingSeatsError: Error?
+    var failsSeatAssignmentBroadcast = false
     private(set) var events: [String] = []
     private(set) var disconnectCount = 0
 
@@ -1560,8 +1634,16 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
 
     func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws {
         if case .seatAssignment = message {
+            if failsSeatAssignmentBroadcast {
+                throw CoordinatorTransportTestError.seatAssignmentBroadcastFailed
+            }
             events.append("seat-assignment")
         }
+    }
+
+    func fillPendingSeatsWithBots() async throws -> [OnlinePeer]? {
+        if let fillPendingSeatsError { throw fillPendingSeatsError }
+        return nil
     }
 
     func reportState(
@@ -1600,6 +1682,20 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
     func simulateConnectionEvent(_ event: RoomTransportEvent) {
         for continuation in connectionContinuations.values {
             continuation.yield(event)
+        }
+    }
+}
+
+private enum CoordinatorTransportTestError: LocalizedError {
+    case serverSeatFillFailed
+    case seatAssignmentBroadcastFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .serverSeatFillFailed:
+            return "The room server couldn't fill the seats."
+        case .seatAssignmentBroadcastFailed:
+            return "The roster update couldn't reach the room."
         }
     }
 }

@@ -320,38 +320,67 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// routed onto a seat the server already converted. Transports with no such
     /// authority (in-memory/GameKit) fall back to converting locally and
     /// advertising the roster over the wire.
-    public func fillOpenSeatsWithBots() async {
-        guard isHost, transportStatus != .seatTakenOver else { return }
+    @discardableResult
+    public func fillOpenSeatsWithBots() async -> Bool {
+        guard isHost, transportStatus != .seatTakenOver else { return false }
+        guard let transport else {
+            errorText = String(localized: "No host connection.")
+            return false
+        }
         do {
-            if let peers = try await transport?.fillPendingSeatsWithBots() {
+            if let peers = try await transport.fillPendingSeatsWithBots() {
                 adoptParticipantRoster(peers)
                 await hostActor?.updateIdentities(roster.seats)
-                return
+                let isReady = roster.isReadyToStart
+                if isReady { errorText = nil }
+                return isReady
             }
         } catch {
             errorText = error.localizedDescription
-            return
+            return false
         }
         refreshPeersFromTransport()
-        guard roster.fillPendingSeatsWithBots() else { return }
+        guard let candidate = roster.fillingPendingSeatsWithBots() else {
+            let isReady = roster.isReadyToStart
+            if isReady { errorText = nil }
+            return isReady
+        }
+        guard let tableID, let localSeat else {
+            errorText = String(localized: "No active online table.")
+            return false
+        }
+        let assignment = SeatAssignmentEnvelope(
+            tableID: tableID,
+            hostPlayerID: localSeat,
+            seats: candidate.seats,
+            rules: rules,
+            match: match
+        )
+        do {
+            // This transport has no server authority, so the roster frame is
+            // the commit boundary. Do not make Start available locally until
+            // every connected peer has accepted the same assignment.
+            try await transport.sendToAll(.seatAssignment(assignment), reliably: true)
+        } catch {
+            errorText = error.localizedDescription
+            return false
+        }
+        roster = candidate
         await hostActor?.updateIdentities(roster.seats)
         recomputeRoster()
-        if let tableID, let localSeat {
-            let assignment = SeatAssignmentEnvelope(
-                tableID: tableID,
-                hostPlayerID: localSeat,
-                seats: roster.seats,
-                rules: rules,
-                match: match
-            )
-            try? await transport?.sendToAll(.seatAssignment(assignment), reliably: true)
-        }
+        errorText = nil
+        return roster.isReadyToStart
     }
 
     /// Convenience for the waiting-room CTA: fill no-show seats with bots and
     /// immediately start.
     public func fillOpenSeatsWithBotsAndStart() async {
-        await fillOpenSeatsWithBots()
+        guard await fillOpenSeatsWithBots() else {
+            if errorText == nil {
+                errorText = String(localized: "Couldn't fill the empty seats. Check your connection and try again.")
+            }
+            return
+        }
         startFirstDeal()
     }
 

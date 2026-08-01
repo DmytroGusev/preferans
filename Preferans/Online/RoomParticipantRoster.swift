@@ -122,6 +122,15 @@ struct RoomParticipantRoster {
         return changed
     }
 
+    /// Build a converted candidate without mutating the live roster. A host
+    /// can broadcast this candidate first and adopt it only after the transport
+    /// accepts the assignment, keeping local readiness aligned with clients.
+    func fillingPendingSeatsWithBots() -> RoomParticipantRoster? {
+        var candidate = self
+        guard candidate.fillPendingSeatsWithBots() else { return nil }
+        return candidate
+    }
+
     func waitingRoomSeats(localSeat: PlayerID?) -> [WaitingRoomSeat] {
         seats.map { identity in
             let peer = peersBySeat[identity.playerID]

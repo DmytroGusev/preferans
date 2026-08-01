@@ -424,6 +424,9 @@ public enum UITestFlags {
     /// landing on the waiting room without a worker or a second device. Used by
     /// the single-process waiting-room UI test.
     public static let autoCreateInMemoryRoom = "-uiTestAutoCreateInMemoryRoom"
+    /// Create the same DEBUG in-memory room with unclaimed remote seats so UI
+    /// tests can exercise the host's transactional fill-and-start action.
+    public static let autoCreateInMemoryInviteRoom = "-uiTestAutoCreateInMemoryInviteRoom"
     /// Join a worker-backed invite room automatically after the lobby
     /// appears. The room code must be the following launch argument.
     public static let autoJoinOnlineRoom = "-uiTestAutoJoinOnlineRoom"

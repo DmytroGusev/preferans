@@ -151,6 +151,29 @@ final class OnlineBotSeatTests: XCTestCase {
         XCTAssertTrue(roster.isReadyToStart)
     }
 
+    func testRosterCanStageBotConversionWithoutChangingLiveReadiness() throws {
+        let host = OnlinePeer(
+            playerID: "north",
+            accountID: "apple:host",
+            provider: .apple,
+            displayName: "Host"
+        )
+        let pending = OnlinePeer(
+            playerID: "east",
+            accountID: "pending:east",
+            provider: .dev,
+            displayName: "East"
+        )
+        let roster = RoomParticipantRoster(participants: [pending, host])
+
+        let candidate = try XCTUnwrap(roster.fillingPendingSeatsWithBots())
+
+        XCTAssertFalse(roster.isReadyToStart)
+        XCTAssertTrue(roster.peer(for: "east")?.isPendingSeat == true)
+        XCTAssertTrue(candidate.isReadyToStart)
+        XCTAssertTrue(candidate.peer(for: "east")?.isBotSeat == true)
+    }
+
     // MARK: - HostGameActor bot decision plan
 
     func testHostActorReportsBotPlanOnlyForBotControlledSeats() async throws {

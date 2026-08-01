@@ -166,7 +166,11 @@ public struct LobbyView: View {
     private func runOnlineHarnessIfNeeded() {
         guard !didRunOnlineHarness else { return }
         let args = ProcessInfo.processInfo.arguments
-        if TestHarness.autoCreateInMemoryRoom(in: args) {
+        if TestHarness.autoCreateInMemoryInviteRoom(in: args) {
+            didRunOnlineHarness = true
+            seedOnlineNameForHarnessIfNeeded()
+            viewModel.startInMemoryOnlineRoom(openRemoteSeats: true)
+        } else if TestHarness.autoCreateInMemoryRoom(in: args) {
             didRunOnlineHarness = true
             seedOnlineNameForHarnessIfNeeded()
             viewModel.startInMemoryOnlineRoom()

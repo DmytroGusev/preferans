@@ -214,7 +214,7 @@ public final class LobbyViewModel: ObservableObject {
     /// DEBUG/test affordance: an all-bot online room backed by the in-memory
     /// transport. Lands on the same waiting room as a real room — host taps
     /// Start and the bot seats play out — without a worker or a second device.
-    public func startInMemoryOnlineRoom() {
+    public func startInMemoryOnlineRoom(openRemoteSeats: Bool = false) {
         do {
             if currentOnlineDisplayName.isEmpty {
                 rejectOnlineOperation(String(localized: "Enter your name to play online."))
@@ -224,10 +224,32 @@ public final class LobbyViewModel: ObservableObject {
             let localPlayer = players[0]
             let account = normalizedOnlineAccount(for: localPlayer)
             let peers = players.enumerated().map { index, player -> OnlinePeer in
-                index == 0
-                    ? OnlinePeer(playerID: player, accountID: account.id, provider: account.provider, displayName: resolvedOnlineDisplayName)
-                    : OnlinePeer(playerID: player, accountID: "\(OnlinePeer.botAccountPrefix)\(player.rawValue)", provider: .dev, displayName: String(localized: "Bot \(index + 1)"))
+                if index == 0 {
+                    return OnlinePeer(
+                        playerID: player,
+                        accountID: account.id,
+                        provider: account.provider,
+                        displayName: resolvedOnlineDisplayName
+                    )
+                }
+                if openRemoteSeats {
+                    return OnlinePeer(
+                        playerID: player,
+                        accountID: "\(OnlinePeer.pendingAccountPrefix)\(player.rawValue)",
+                        provider: .dev,
+                        displayName: String(localized: "Open seat")
+                    )
+                }
+                return OnlinePeer(
+                    playerID: player,
+                    accountID: "\(OnlinePeer.botAccountPrefix)\(player.rawValue)",
+                    provider: .dev,
+                    displayName: String(localized: "Bot \(index + 1)")
+                )
             }
+            // Remote coordinators stay dormant while their seats are pending;
+            // once the host converts them, the same deterministic observers
+            // drive the bot seats through the live-table smoke path.
             let automatedPlayers = Set(peers.map(\.playerID).filter { $0 != localPlayer })
             let session = try InMemoryOnlineGameSession(
                 roomCode: makeRoomCode(),

@@ -7123,6 +7123,54 @@
         }
       }
     },
+    "Couldn't fill the empty seats. Check your connection and try again.": {
+      "comment": "Online waiting-room error when bot-seat conversion did not commit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't fill the empty seats. Check your connection and try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось заполнить пустые места. Проверьте подключение и повторите попытку."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося заповнити порожні місця. Перевірте з’єднання й повторіть спробу."
+          }
+        }
+      }
+    },
+    "Open seat": {
+      "comment": "Placeholder display name for an unclaimed online seat.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open seat"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свободное место"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вільне місце"
+          }
+        }
+      }
+    },
     "Signed in as %@": {
       "comment": "Game Center status line. %@ is the local player display name.",
       "extractionState": "manual",

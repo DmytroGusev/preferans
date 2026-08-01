@@ -46,6 +46,34 @@ final class OnlineWaitingRoomUITests: XCTestCase {
         robot.waitForElement(UIIdentifiers.screenGame)
     }
 
+    func testHostFillsOpenSeatsTransactionallyThenStarts() {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launchArguments += [UITestFlags.autoCreateInMemoryInviteRoom]
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+
+        robot.waitForElement(UIIdentifiers.screenWaitingRoom)
+        let start = app.buttons[UIIdentifiers.onlineStartGame]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        XCTAssertFalse(start.isEnabled, "Open seats must keep Start disabled.")
+
+        let openSeat = app.descendants(matching: .any)
+            .matching(identifier: UIIdentifiers.waitingRoomSeat(index: 0)).element
+        XCTAssertTrue(openSeat.waitForExistence(timeout: 2))
+        XCTAssertEqual(openSeat.value as? String, "open")
+
+        let fill = app.buttons[UIIdentifiers.onlineFillWithBots]
+        XCTAssertTrue(fill.waitForExistence(timeout: 2))
+        for _ in 0..<4 where !fill.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(fill.isHittable)
+        fill.tap()
+
+        robot.waitForElement(UIIdentifiers.screenGame)
+    }
+
     func testOnlineCompletedTrickShowsTimedResultHold() {
         let app = XCUIApplication()
         app.disableUITestAnimations()
