@@ -4,7 +4,7 @@ import XCTest
 @testable import PreferansEngineTestSupport
 
 @MainActor
-final class RoomOnlineGameCoordinatorTests: XCTestCase {
+final class RoomOnlineGameCoordinatorTests: AppTestCase {
     func testSharedRetryBackoffDoublesCapsAndResets() {
         var backoff = RoomRetryBackoff(
             initialDelay: .milliseconds(250),
@@ -692,13 +692,22 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
     }
 
     func testInMemorySessionAutomatesRemotePeersThroughRoomTransport() async throws {
+        let inMemoryPeers = peers.map { peer in
+            guard peer.playerID != "north" else { return peer }
+            return OnlinePeer(
+                playerID: peer.playerID,
+                accountID: "\(OnlinePeer.botAccountPrefix)\(peer.playerID.rawValue)",
+                provider: .dev,
+                displayName: peer.displayName
+            )
+        }
         let session = try InMemoryOnlineGameSession(
-            peers: peers,
-            localPlayerID: "east",
-            hostPlayerID: "east",
-            automatedPlayerIDs: ["north", "south"],
+            peers: inMemoryPeers,
+            localPlayerID: "north",
+            hostPlayerID: "north",
+            automatedPlayerIDs: ["east", "south"],
             dealSource: ScriptedDealSource(decks: [Deck.standard32]),
-            botDelay: .zero
+            botDelay: .milliseconds(1)
         )
         try await session.start()
         defer { session.stop() }
@@ -706,20 +715,20 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         session.localCoordinator.send(.startDeal(dealer: nil, deck: nil))
         await pump(until: { session.localCoordinator.projection?.sequence ?? 0 >= 1 })
 
-        if let projection = session.localCoordinator.projection,
-           case let .bidding(currentPlayer, _) = projection.phase,
-           currentPlayer == session.localPeer.playerID {
-            session.localCoordinator.send(.bid(player: currentPlayer, call: .pass))
-        }
+        let opening = try XCTUnwrap(session.localCoordinator.projection)
+        XCTAssertEqual(try currentBidder(in: opening), "north")
+        session.localCoordinator.send(.bid(player: "north", call: .pass))
 
-        await pump(until: { session.localCoordinator.projection?.sequence ?? 0 >= 2 })
+        await pump(
+            until: { session.localCoordinator.projection?.sequence ?? 0 >= 4 },
+            timeout: .seconds(1)
+        )
 
         let projection = try XCTUnwrap(session.localCoordinator.projection)
-        XCTAssertGreaterThanOrEqual(projection.sequence, 2)
-        XCTAssertFalse(
-            projection.auction.isEmpty,
-            "At least one bid should cross the room transport after the deal starts."
-        )
+        XCTAssertGreaterThanOrEqual(projection.sequence, 4)
+        guard case .playing = projection.phase else {
+            return XCTFail("Three automated passes should advance the room into all-pass play.")
+        }
     }
 
     func testPlayerRoomSettlementCollectsAcceptancesAndScoresDeal() async throws {

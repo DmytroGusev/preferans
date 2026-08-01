@@ -1,7 +1,13 @@
 import Combine
 import Dependencies
 import Foundation
+import OSLog
 import PreferansEngine
+
+private let onlineBotLogger = Logger(
+    subsystem: "com.mixandmatch.preferans",
+    category: "online-bot"
+)
 
 @MainActor
 public final class InMemoryOnlineGameSession: ObservableObject {
@@ -119,17 +125,26 @@ public final class InMemoryOnlineGameSession: ObservableObject {
               let action = botAction(from: projection) else {
             return
         }
+        logBotFlow("scheduled player=\(playerID.rawValue) sequence=\(projection.sequence) action=\(action)")
         pendingBotTasks[playerID]?.cancel()
         let delay = botDelay
-        pendingBotTasks[playerID] = Task { [weak coordinator, clock] in
+        pendingBotTasks[playerID] = Task { [weak self, weak coordinator, clock] in
             if delay > .zero {
                 try? await clock.sleep(for: delay)
             }
             guard !Task.isCancelled else { return }
             await MainActor.run {
+                self?.logBotFlow("sending player=\(playerID.rawValue) sequence=\(projection.sequence) action=\(action)")
                 coordinator?.send(action)
             }
         }
+    }
+
+    private func logBotFlow(_ message: String) {
+        guard ProcessInfo.processInfo.arguments.contains(UITestFlags.onlineFlowLogging) else { return }
+        let line = "ONLINE_BOT \(message)"
+        print(line)
+        onlineBotLogger.notice("\(line, privacy: .public)")
     }
 
     private func botAction(from projection: PlayerGameProjection) -> PreferansAction? {

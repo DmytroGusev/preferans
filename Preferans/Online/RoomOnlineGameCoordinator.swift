@@ -908,9 +908,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         guard let transport else { return }
         for (viewer, projection) in update.projections where viewer != localSeat {
             guard ownsHostAuthority(authorityGeneration) else { return }
-            // Bot seats have no socket — they never receive wire projections;
-            // the host advances them through its own engine.
-            guard let peer = roster.peer(for: viewer), !peer.isBotSeat else { continue }
+            guard let peer = roster.peer(for: viewer) else { continue }
+            // Production hosts advance bot seats inside this coordinator, so
+            // those seats have no socket. The in-memory room deliberately runs
+            // each automated seat through a separate coordinator; when
+            // server-side bots are disabled, their transports must receive the
+            // same redacted projections as human peers.
+            if peer.isBotSeat, runsServerSideBots { continue }
             do {
                 let envelope = ProjectionEnvelope(
                     tableID: update.tableID,
