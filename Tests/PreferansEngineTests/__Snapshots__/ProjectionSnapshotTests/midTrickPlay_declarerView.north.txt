@@ -136,7 +136,7 @@
     "allowSeniorHandHoldBid" : true,
     "allPassPenaltyPolicy" : {
       "perTrick" : {
-        "amnesty" : true,
+        "amnesty" : false,
         "multiplier" : 1
       }
     },

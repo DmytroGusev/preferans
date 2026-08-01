@@ -89,7 +89,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         failedDeclarerConsolation: FailedDeclarerConsolation = .eachDefender,
         whistResponsibility: WhistResponsibility = .responsible,
         allPassTalonPolicy: AllPassTalonPolicy = .classic,
-        allPassPenaltyPolicy: AllPassPenaltyPolicy = .perTrick(multiplier: 1, amnesty: true),
+        // Canonical Sochi/Leningrad raspasy charge every trick in the
+        // mountain.  Amnesty remains an explicit house-rule option, but it
+        // must not be the production default.
+        allPassPenaltyPolicy: AllPassPenaltyPolicy = .perTrick(multiplier: 1, amnesty: false),
         zeroTricksAllPassPoolBonus: Int = 1,
         dealerTalonCompensation: DealerTalonCompensation = .classic,
         poolValueMultiplier: Int = 1,

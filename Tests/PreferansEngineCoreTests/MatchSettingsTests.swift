@@ -304,12 +304,11 @@ final class MatchSettingsTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let minimum = result.trickCounts.values.min() ?? 0
         for player in result.activePlayers {
             let tricks = result.trickCounts[player] ?? 0
             XCTAssertEqual(
                 result.scoreDelta.mountain[player],
-                max(0, tricks - minimum) * price,
+                tricks * price,
                 file: file,
                 line: line
             )

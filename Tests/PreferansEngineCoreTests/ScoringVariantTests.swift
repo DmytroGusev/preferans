@@ -4,7 +4,7 @@ import XCTest
 
 /// Pins the scoring behaviour of the ``PreferansRules`` knobs that move away
 /// from the `.sochi` defaults: disabled failed-declarer consolation, disabled
-/// whist responsibility, all-pass amnesty and multiplier variants, the
+/// whist responsibility, explicit all-pass amnesty and multiplier variants, the
 /// zero-trick all-pass pool bonus, and failed-misère mountain arithmetic.
 final class ScoringVariantTests: XCTestCase {
     private let players: [PlayerID] = ["north", "east", "south"]
@@ -138,7 +138,7 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.mountain["south"], 4)
     }
 
-    func testCanonicalSochiRaspasyUsesTalonLeadAndAmnesty() {
+    func testCanonicalSochiRaspasyUsesTalonLeadAndChargesEveryTrick() {
         XCTAssertEqual(PreferansRules.sochi.allPassTalonPolicy, .classic)
         XCTAssertEqual(PreferansRules.sochi.dealerTalonCompensation, .classic)
         XCTAssertEqual(PreferansRules.leningrad.dealerTalonCompensation, .classic)
@@ -146,13 +146,13 @@ final class ScoringVariantTests: XCTestCase {
             return XCTFail("Expected per-trick Sochi raspasy scoring.")
         }
         XCTAssertEqual(multiplier, 1)
-        XCTAssertTrue(amnesty)
+        XCTAssertFalse(amnesty)
 
         let delta = scoreAllPass(
             trickCounts: ["north": 4, "east": 3, "south": 3],
             rules: .sochi
         )
-        XCTAssertEqual(delta.mountain, ["north": 1, "east": 0, "south": 0])
+        XCTAssertEqual(delta.mountain, ["north": 4, "east": 3, "south": 3])
     }
 
     func testSochiRaspasyPriceProgressesOneTwoThreeAndCaps() {
@@ -339,7 +339,7 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(halfWhist.whists["west"]?["north"], 6)
     }
 
-    func testFourPlayerRaspasyDealerParticipatesInAmnestyAndCleanExit() {
+    func testFourPlayerRaspasyDealerParticipatesInPenaltyAndCleanExit() {
         let cleanDealer = scoreFourPlayerAllPass(
             trickCounts: ["north": 4, "east": 3, "south": 3, "west": 0]
         )
@@ -350,7 +350,7 @@ final class ScoringVariantTests: XCTestCase {
             trickCounts: ["north": 3, "east": 3, "south": 3, "west": 1]
         )
         XCTAssertEqual(oneDealerTrick.pool["west"], 0)
-        XCTAssertEqual(oneDealerTrick.mountain, ["north": 2, "east": 2, "south": 2, "west": 0])
+        XCTAssertEqual(oneDealerTrick.mountain, ["north": 3, "east": 3, "south": 3, "west": 1])
     }
 
     // MARK: - Failed misère
