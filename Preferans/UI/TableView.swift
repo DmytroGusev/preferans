@@ -113,7 +113,6 @@ public struct TableView: View {
     public var onTakeTalon: (() -> Void)?
     /// Called when the felt is tapped during a tap-to-advance pause.
     public var onTapToAdvance: (() -> Void)?
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     public init(
         projection: PlayerGameProjection,
         animationNamespace: Namespace.ID,
@@ -162,9 +161,9 @@ public struct TableView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {
-                playArea(opponentSeats: active.map(\.player))
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 200)
+                        centerView(opponentSeats: active.map(\.player))
+                            .frame(maxWidth: .infinity)
+                            .frame(minHeight: 200)
             }
         }
         .overlay { tapToAdvanceOverlay }
@@ -280,7 +279,7 @@ public struct TableView: View {
                 // the lower two-thirds and stay optically centered for
                 // every seat configuration.
                 let playFrame = layout.playArea(for: active)
-                playArea(opponentSeats: active.map(\.player))
+                centerView(opponentSeats: active.map(\.player))
                     .frame(width: playFrame.size.width,
                            height: playFrame.size.height)
                     .position(playFrame.position)
@@ -339,243 +338,22 @@ public struct TableView: View {
         .frame(minHeight: 320)
     }
 
-    /// The center of the felt where the current trick sits. The felt is the
-    /// screen background; this view only places the trick / phase-message
-    /// content into the open middle. Public talon cards live on the center
-    /// felt so every seat sees the same table information.
-    @ViewBuilder
-    private func playArea(opponentSeats: [PlayerID]) -> some View {
-        if case let .gameOver(summary) = projection.phase {
-            GameOverCard(summary: summary, displayName: projection.displayName(for:), onRematch: onRematch, onLeaveTable: onLeaveTable)
-        } else if case let .dealFinished(result) = projection.phase {
-            DealSummaryCard(
-                result: result,
-                projection: projection,
-                cardSuitOrder: cardSuitOrder,
-                onAdvance: onAdvance
-            )
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
-        } else if let onStartDeal, projection.legal.canStartDeal {
-            // Idle pre-first-deal: the felt's *only* affordance is the Deal
-            // CTA, centered. The action bar at the bottom is suppressed
-            // while this is up so we never present two buttons that mean
-            // the same thing.
-            startDealCenter(onStartDeal: onStartDeal)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
-        } else {
-            ZStack {
-                if projection.currentTrick.isEmpty {
-                    phaseContext()
-                } else {
-                    trickPlays(opponentSeats: opponentSeats)
-                    if shouldShowPublicTalon {
-                        talonContext(title: "Talon", size: .compact)
-                            .offset(y: -96)
-                    }
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(UIIdentifiers.Panel.currentTrick.rawValue)
-        }
-    }
-
-    /// Phase-aware center-felt content. The DealStateStrip above the play
-    /// area already surfaces auction state, contract, whisters, and
-    /// vzyatki, so the center is reserved for things that need real
-    /// estate: the talon during exchange, played cards during play, or a
-    /// quiet "waiting on …" line when nothing is on the felt yet.
-    @ViewBuilder
-    private func phaseContext() -> some View {
-        switch projection.phase {
-        case .awaitingDiscard where isTalonTakePending:
-            talonContext(action: onTakeTalon)
-        case .awaitingDiscard where !projection.legal.canDiscard:
-            // Observers see the revealed prikup on the felt. The declarer
-            // sees it here first, then taps to merge it into their hand fan
-            // with "P" badges for discard selection.
-            talonContext()
-        case .playing(_, _, kind: .allPass) where shouldShowPublicTalon:
-            talonContext(title: "Talon")
-        case .bidding, .awaitingContract:
-            biddingContext()
-        default:
-            EmptyView()
-        }
-    }
-
-    /// Talon exchange: observers see the two prikup cards centered on the
-    /// felt. The declarer sees those cards inside their 12-card discard fan
-    /// with "P" badges instead, so they do not appear duplicated.
-    private var shouldShowPublicTalon: Bool {
-        let hasKnownCards = projection.talon.contains { $0.knownCard != nil }
-        switch projection.phase {
-        case .awaitingDiscard:
-            // Keep the center-table copy for observers, and for the
-            // declarer until they explicitly take it into the discard fan.
-            return hasKnownCards && (isTalonTakePending || !projection.legal.canDiscard)
-        case .playing(_, _, kind: .allPass):
-            let usesTalonLeads: Bool
-            switch projection.rules.allPassTalonPolicy {
-            case .classic, .leadSuitOnly: usesTalonLeads = true
-            case .ignored: usesTalonLeads = false
-            }
-            return hasKnownCards && usesTalonLeads && projection.completedTrickCount < 2
-        default:
-            return false
-        }
-    }
-
-    @ViewBuilder
-    private func talonContext(
-        title: LocalizedStringKey = "Prikup",
-        size: CardView.Size? = nil,
-        action: (() -> Void)? = nil
-    ) -> some View {
-        let cardSize = size ?? (horizontalSizeClass == .regular ? .large : .standard)
-        let content = VStack(spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.bold))
-                .tracking(1.2)
-                .textCase(.uppercase)
-                .foregroundStyle(TableTheme.goldBright)
-            HStack(spacing: 6) {
-                ForEach(Array(projection.talon.enumerated()), id: \.offset) { _, card in
-                    CardView(card: card, size: cardSize, region: .talon)
-                }
-            }
-            if action != nil {
-                Label("Take prikup", systemImage: "hand.tap.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(TableTheme.feltDeep)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(TableTheme.goldBright, in: Capsule())
-            }
-        }
-        .multilineTextAlignment(.center)
-
-        if let action {
-            Button {
-                action()
-            } label: {
-                content
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                            .fill(Color.black.opacity(0.20))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                            .strokeBorder(TableTheme.goldBright.opacity(0.65), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier(UIIdentifiers.buttonTakeTalon)
-        } else {
-            content
-        }
-    }
-
-    /// Centered Deal CTA shown on the empty felt during the pre-first-deal
-    /// idle state. Replaces the old combination of (header pill + felt
-    /// placeholder text + bottom action-bar button) with a single,
-    /// optically centered button — the screen's one and only intent.
-    private func startDealCenter(onStartDeal: @escaping () -> Void) -> some View {
-        VStack(spacing: 12) {
-            Button {
-                onStartDeal()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "play.fill")
-                    Text("Deal")
-                        .fontWeight(.semibold)
-                }
-                .frame(minWidth: 200)
-            }
-            .buttonStyle(.feltPrimary)
-            .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Played cards from the current trick, each anchored to its owner's
-    /// seat slot with a small name caption below the card so a glance at
-    /// the felt tells the user who played what. Replaces the previous
-    /// raw-card layout where played cards drifted independently of seats.
-    private func trickPlays(opponentSeats: [PlayerID]) -> some View {
-        ZStack {
-            ForEach(Array(projection.currentTrick.enumerated()), id: \.offset) { _, play in
-                let pos = positionForPlay(player: play.player, opponents: opponentSeats)
-                trickPlayMarker(play: play, isWinner: play.player == pendingAdvance?.trickWinner)
-                    .matchedGeometryEffect(id: play.card, in: animationNamespace)
-                    .offset(x: pos.width, y: pos.height)
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// One played card + a subtle name caption. The caption stays below
-    /// the card regardless of seat orientation so the eye reads the table
-    /// consistently — no upside-down text for the top opponent.
-    private func trickPlayMarker(play: CardPlay, isWinner: Bool) -> some View {
-        VStack(spacing: 4) {
-            // The played trick is the point of the screen — render it at the
-            // largest card size so it reads as the centerpiece instead of a
-            // small cluster lost in the felt. The winner keeps a gold ring:
-            // it's a transient end-of-trick highlight, not persistent chrome,
-            // and gold is the only accent that pops on a white card face.
-            CardView(
-                card: .known(play.card),
-                size: .large,
-                region: .trick(seat: play.player)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 9)
-                    .strokeBorder(
-                        isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
-                        lineWidth: isWinner ? 2 : 0
-                    )
-            )
-            .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
-                    radius: isWinner ? 12 : 0)
-            Text(trickPlayCaption(for: play.player))
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCream)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(isWinner ? TableTheme.goldBright : Color.black.opacity(0.55), in: Capsule())
-                .lineLimit(1)
-        }
-    }
-
-    private func trickPlayCaption(for player: PlayerID) -> String {
-        return projection.displayName(for: player)
-    }
-
-    private func placeholder(_ text: LocalizedStringKey) -> some View {
-        Text(text)
-            .font(.subheadline)
-            .foregroundStyle(TableTheme.inkCreamSoft)
-            .tracking(0.5)
-    }
-
-    /// Viewer card lands at the bottom; opponents are placed around the
-    /// felt in their seating order. Offsets are expressed as multiples of
-    /// the trick-card dimensions so the layout still works if `CardView.Size`
-    /// is ever retuned (or if we drop in a `.compact` trick on small phones).
-    private func positionForPlay(player: PlayerID, opponents: [PlayerID]) -> CGSize {
-        // Offsets are expressed in multiples of the trick-card size, so the
-        // spread has to use the same `.large` size the markers now render at
-        // or the bigger cards would overlap.
-        TableLayoutModel.trickOffset(
-            for: player,
-            viewer: projection.viewer,
-            opponents: opponents,
-            cardSize: .large
+    /// Explicitly composed center surface. The parent owns placement and
+    /// seat geometry; this child owns phase-specific center content.
+    private func centerView(opponentSeats: [PlayerID]) -> TableCenterView {
+        TableCenterView(
+            projection: projection,
+            animationNamespace: animationNamespace,
+            opponentSeats: opponentSeats,
+            onAdvance: onAdvance,
+            onStartDeal: onStartDeal,
+            onLeaveTable: onLeaveTable,
+            onRematch: onRematch,
+            seatActions: seatActions,
+            pendingAdvance: pendingAdvance,
+            isTalonTakePending: isTalonTakePending,
+            cardSuitOrder: cardSuitOrder,
+            onTakeTalon: onTakeTalon
         )
     }
 

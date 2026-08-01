@@ -38,6 +38,7 @@
 		B00000000000000000000061 /* CardFanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000071 /* CardFanView.swift */; };
 		B00000000000000000000062 /* OpponentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000072 /* OpponentSeatView.swift */; };
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
+		B0000000000000000000C332 /* TableCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C333 /* TableCenterView.swift */; };
 		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
 		B00000000000000000000C00 /* SettlementComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000C01 /* SettlementComposer.swift */; };
 		B00000000000000000000065 /* TableTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000075 /* TableTheme.swift */; };
@@ -155,6 +156,7 @@
 		B00000000000000000000071 /* CardFanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CardFanView.swift; sourceTree = "<group>"; };
 		B00000000000000000000072 /* OpponentSeatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OpponentSeatView.swift; sourceTree = "<group>"; };
 		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableView.swift; sourceTree = "<group>"; };
+		B0000000000000000000C333 /* TableCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableCenterView.swift; sourceTree = "<group>"; };
 		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ActionBarView.swift; sourceTree = "<group>"; };
 		B00000000000000000000C01 /* SettlementComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SettlementComposer.swift; sourceTree = "<group>"; };
 		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableTheme.swift; sourceTree = "<group>"; };
@@ -314,6 +316,7 @@
 				B00000000000000000000071 /* CardFanView.swift */,
 				B00000000000000000000072 /* OpponentSeatView.swift */,
 				B00000000000000000000073 /* TableView.swift */,
+				B0000000000000000000C333 /* TableCenterView.swift */,
 				B00000000000000000000074 /* ActionBarView.swift */,
 				B00000000000000000000C01 /* SettlementComposer.swift */,
 				B00000000000000000000075 /* TableTheme.swift */,
@@ -528,6 +531,7 @@
 				B00000000000000000000061 /* CardFanView.swift in Sources */,
 				B00000000000000000000062 /* OpponentSeatView.swift in Sources */,
 				B00000000000000000000063 /* TableView.swift in Sources */,
+				B0000000000000000000C332 /* TableCenterView.swift in Sources */,
 				B00000000000000000000064 /* ActionBarView.swift in Sources */,
 				B00000000000000000000C00 /* SettlementComposer.swift in Sources */,
 				B00000000000000000000065 /* TableTheme.swift in Sources */,

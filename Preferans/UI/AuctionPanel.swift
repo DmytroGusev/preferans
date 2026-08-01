@@ -1,18 +1,15 @@
 import SwiftUI
 import PreferansEngine
 
-// MARK: - Auction panel
+/// Bidding-phase center cluster. It is independent of the surrounding seat
+/// layout so the table center can be composed without extending `TableView`.
+struct AuctionContextView: View {
+    let projection: PlayerGameProjection
+    let seatActions: [PlayerID: RecentAction]
 
-extension TableView {
     private static var auctionStatusPillHeight: CGFloat { 34 }
 
-    /// Bidding-phase center cluster. One pill per active seat showing
-    /// the latest call (bid / pass) or a quiet "…" while the seat is
-    /// still pending. The current caller's pill is ringed in gold so
-    /// the eye lands on whose turn it is. Replaces the small
-    /// auction-trail row at the top of the strip as the primary read
-    /// of "where is the auction".
-    func biddingContext() -> some View {
+    var body: some View {
         let active = projection.tableClockwiseAuctionSeats
         return VStack(spacing: 14) {
             auctionPanelTitle
