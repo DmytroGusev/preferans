@@ -650,6 +650,20 @@ final class PreferansEngineTests: XCTestCase {
                 )
             }
         }
+
+        var invalidPenaltyPolicy = valid
+        invalidPenaltyPolicy["allPassPenaltyPolicy"] = [
+            "perTrick": ["multiplier": 0, "amnesty": true]
+        ]
+        let invalidPenaltyData = try JSONSerialization.data(withJSONObject: invalidPenaltyPolicy)
+        XCTAssertThrowsError(
+            try JSONDecoder().decode(PreferansRules.self, from: invalidPenaltyData)
+        ) { error in
+            XCTAssertTrue(
+                error is DecodingError,
+                "all-pass penalty multiplier should produce DecodingError, got \(error)"
+            )
+        }
     }
 
     func testEngineRejectsRulesMutatedAfterInitialization() {
@@ -663,6 +677,20 @@ final class PreferansEngineTests: XCTestCase {
                 return XCTFail("Expected invalidRules; got \(error)")
             }
             XCTAssertTrue(message.contains("Pool-point whist value"))
+        }
+    }
+
+    func testEngineRejectsMutatedAllPassPenaltyMultiplier() {
+        var rules = PreferansRules.sochi
+        rules.allPassPenaltyPolicy = .perTrick(multiplier: 0, amnesty: true)
+
+        XCTAssertThrowsError(
+            try PreferansEngine(players: ["north", "east", "south"], rules: rules)
+        ) { error in
+            guard case let PreferansError.invalidRules(message) = error else {
+                return XCTFail("Expected invalidRules; got \(error)")
+            }
+            XCTAssertTrue(message.contains("All-pass penalty multiplier"))
         }
     }
 

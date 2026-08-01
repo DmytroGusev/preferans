@@ -98,6 +98,9 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         poolPointWhistValue: Int = 10,
         mountainPointWhistValue: Int = 10
     ) {
+        if case let .perTrick(multiplier, _) = allPassPenaltyPolicy {
+            precondition(multiplier > 0, "allPassPenaltyPolicy multiplier must be positive.")
+        }
         precondition(zeroTricksAllPassPoolBonus >= 0, "zeroTricksAllPassPoolBonus cannot be negative.")
         precondition(poolValueMultiplier > 0, "poolValueMultiplier must be positive.")
         precondition(mountainValueMultiplier > 0, "mountainValueMultiplier must be positive.")
@@ -126,6 +129,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     /// Public properties remain mutable for table configuration, so checking
     /// only the initializer is not sufficient.
     var configurationError: String? {
+        if case let .perTrick(multiplier, _) = allPassPenaltyPolicy,
+           multiplier <= 0 {
+            return "All-pass penalty multiplier must be positive."
+        }
         if zeroTricksAllPassPoolBonus < 0 {
             return "Zero-trick raspasy pool bonus cannot be negative."
         }
@@ -203,6 +210,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let legacyMultiplier = try values.decodeIfPresent(Int.self, forKey: .scoringMultiplier)
+        let allPassPenaltyPolicy = try values.decode(AllPassPenaltyPolicy.self, forKey: .allPassPenaltyPolicy)
         let zeroTricksAllPassPoolBonus = try values.decode(Int.self, forKey: .zeroTricksAllPassPoolBonus)
         let poolValueMultiplier = try values.decodeIfPresent(Int.self, forKey: .poolValueMultiplier)
             ?? legacyMultiplier ?? 1
@@ -217,6 +225,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         // preconditions are appropriate for source mistakes but persisted
         // network data must fail as a normal decoding error, never trap.
         var decoded = PreferansRules.sochi
+        decoded.allPassPenaltyPolicy = allPassPenaltyPolicy
         decoded.zeroTricksAllPassPoolBonus = zeroTricksAllPassPoolBonus
         decoded.poolValueMultiplier = poolValueMultiplier
         decoded.mountainValueMultiplier = mountainValueMultiplier
@@ -238,7 +247,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             failedDeclarerConsolation: try values.decode(FailedDeclarerConsolation.self, forKey: .failedDeclarerConsolation),
             whistResponsibility: try values.decode(WhistResponsibility.self, forKey: .whistResponsibility),
             allPassTalonPolicy: try values.decode(AllPassTalonPolicy.self, forKey: .allPassTalonPolicy),
-            allPassPenaltyPolicy: try values.decode(AllPassPenaltyPolicy.self, forKey: .allPassPenaltyPolicy),
+            allPassPenaltyPolicy: allPassPenaltyPolicy,
             zeroTricksAllPassPoolBonus: zeroTricksAllPassPoolBonus,
             dealerTalonCompensation: try values.decodeIfPresent(
                 DealerTalonCompensation.self,
