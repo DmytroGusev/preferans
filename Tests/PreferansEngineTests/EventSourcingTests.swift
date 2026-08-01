@@ -39,6 +39,37 @@ final class EventSourcingTests: XCTestCase {
         XCTAssertEqual(replayed.nextDealer, snapshot.nextDealer)
     }
 
+    func testHostRejectsActionsBuiltFromAnOlderProjectionSequence() async throws {
+        let host = try makeHost(firstDealer: "south")
+        _ = try await host.applyClientAction(
+            ClientActionEnvelope(
+                tableID: host.tableID,
+                actor: "north",
+                action: .startDeal(dealer: nil, deck: nil),
+                baseHostSequence: 0
+            ),
+            sender: "north"
+        )
+
+        let stale = ClientActionEnvelope(
+            tableID: host.tableID,
+            actor: "north",
+            action: .bid(player: "north", call: .pass),
+            baseHostSequence: 0
+        )
+        do {
+            _ = try await host.applyClientAction(stale, sender: "north")
+            XCTFail("A stale action must not mutate the authoritative engine.")
+        } catch HostGameError.staleAction(expectedSequence: 1, actualSequence: 0) {
+            // Expected.
+        } catch {
+            XCTFail("Expected staleAction, got \(error).")
+        }
+
+        let sequence = await host.currentSequence
+        XCTAssertEqual(sequence, 1)
+    }
+
     func testReplayerRejectsTamperedStructuredEvents() async throws {
         let host = try makeHost(firstDealer: "south")
         _ = try await host.applyClientAction(

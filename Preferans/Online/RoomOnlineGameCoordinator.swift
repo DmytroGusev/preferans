@@ -908,7 +908,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             var envelope = try await hostActor.fullResync(for: request.requester)
             envelope.botInsights = botInsights
             if request.requester == localSeat {
+                let preProjection = projection
+                tableID = envelope.tableID
                 projection = envelope.projection
+                botInsights = envelope.botInsights
+                beginTrickResultHoldIfNeeded(
+                    events: envelope.events,
+                    preProjection: preProjection,
+                    projection: envelope.projection
+                )
+                appendProjectionActivityIfNeeded(envelope)
+                state = .connectedAsHost
             } else if let peer = roster.peer(for: request.requester) {
                 try await transport?.send(.projection(envelope), to: [peer], reliably: true)
             }

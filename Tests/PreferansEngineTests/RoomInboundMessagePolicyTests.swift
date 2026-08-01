@@ -295,6 +295,13 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
             sender: guest,
             currentTable: tableID
         ))
+        var negativeSequence = request
+        negativeSequence.lastSeenSequence = -1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsResyncRequest(
+            negativeSequence,
+            sender: guest,
+            currentTable: tableID
+        ))
         XCTAssertFalse(RoomInboundMessagePolicy.acceptsResyncRequest(
             request,
             sender: host,

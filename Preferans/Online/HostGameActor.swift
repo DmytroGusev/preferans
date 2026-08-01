@@ -4,6 +4,7 @@ import PreferansEngine
 public enum HostGameError: LocalizedError, Sendable, Equatable {
     case wrongTable(expected: UUID, actual: UUID)
     case duplicateClientNonce(UUID)
+    case staleAction(expectedSequence: Int, actualSequence: Int)
     case spoofedActor(expected: PlayerID, actual: PlayerID)
     case unknownPlayer(PlayerID)
 
@@ -13,6 +14,8 @@ public enum HostGameError: LocalizedError, Sendable, Equatable {
             return "Wrong table. Expected \(expected), got \(actual)."
         case let .duplicateClientNonce(nonce):
             return "Duplicate action nonce \(nonce)."
+        case let .staleAction(expectedSequence, actualSequence):
+            return "Stale action sequence. Expected \(expectedSequence), got \(actualSequence)."
         case let .spoofedActor(expected, actual):
             return "Action actor mismatch. Expected \(expected.rawValue), got \(actual.rawValue)."
         case let .unknownPlayer(player):
@@ -275,6 +278,12 @@ public actor HostGameActor {
         if shouldIgnoreStaleStartDeal(envelope) {
             return makeUpdate(events: [], validatedAction: nil)
         }
+        guard envelope.baseHostSequence == sequence else {
+            throw HostGameError.staleAction(
+                expectedSequence: sequence,
+                actualSequence: envelope.baseHostSequence
+            )
+        }
 
         let authoritativeAction = makeAuthoritative(envelope.action)
         let events = try engine.apply(authoritativeAction)
@@ -298,7 +307,9 @@ public actor HostGameActor {
     }
 
     private func shouldIgnoreStaleStartDeal(_ envelope: ClientActionEnvelope) -> Bool {
-        guard case .startDeal = envelope.action, !engine.canStartDeal else { return false }
+        guard case .startDeal = envelope.action,
+              envelope.baseHostSequence >= 0,
+              !engine.canStartDeal else { return false }
         return envelope.baseHostSequence < sequence
     }
 

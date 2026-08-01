@@ -127,7 +127,7 @@ final class SingleWhistControlTests: AppTestCase {
             tableID: host.tableID,
             actor: "south",
             action: .playCard(player: "south", card: card),
-            baseHostSequence: 0
+            baseHostSequence: await host.currentSequence
         )
 
         // The whister sends the action on behalf of the passer — the host
@@ -153,7 +153,7 @@ final class SingleWhistControlTests: AppTestCase {
             tableID: host.tableID,
             actor: "south",
             action: .playCard(player: "south", card: card),
-            baseHostSequence: 0
+            baseHostSequence: await host.currentSequence
         )
 
         do {
@@ -181,7 +181,7 @@ final class SingleWhistControlTests: AppTestCase {
             tableID: host.tableID,
             actor: "south",
             action: .playCard(player: "south", card: card),
-            baseHostSequence: 0
+            baseHostSequence: await host.currentSequence
         )
 
         do {
@@ -324,7 +324,7 @@ final class SingleWhistControlTests: AppTestCase {
                 tableID: tableID,
                 actor: action.actor ?? sender ?? declarer,
                 action: action,
-                baseHostSequence: 0
+                baseHostSequence: await host.currentSequence
             )
             _ = try await host.applyClientAction(envelope, sender: sender)
         }

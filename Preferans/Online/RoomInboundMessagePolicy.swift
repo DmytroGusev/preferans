@@ -117,6 +117,7 @@ enum RoomInboundMessagePolicy {
         currentTable: UUID?
     ) -> Bool {
         request.schemaVersion == AppIdentifiers.gameWireSchemaVersion
+            && request.lastSeenSequence >= 0
             && request.tableID == currentTable
             && request.requester == sender.playerID
     }
