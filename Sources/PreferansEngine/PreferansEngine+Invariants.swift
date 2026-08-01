@@ -274,6 +274,26 @@ extension PreferansEngine {
         try require(snapshot.players.contains(snapshot.nextDealer), "nextDealer \(snapshot.nextDealer) is not in players")
         try require(snapshot.dealsPlayed >= 0, "dealsPlayed cannot be negative")
         try require(snapshot.consecutiveAllPassDeals >= 0, "consecutiveAllPassDeals cannot be negative")
+        try require(
+            snapshot.consecutiveAllPassDeals <= snapshot.dealsPlayed,
+            "consecutiveAllPassDeals \(snapshot.consecutiveAllPassDeals) cannot exceed dealsPlayed \(snapshot.dealsPlayed)"
+        )
+        switch snapshot.state {
+        case let .dealFinished(result):
+            try checkRaspasySeriesCounter(
+                result.kind,
+                consecutiveAllPassDeals: snapshot.consecutiveAllPassDeals,
+                context: "dealFinished"
+            )
+        case let .gameOver(summary):
+            try checkRaspasySeriesCounter(
+                summary.lastDeal.kind,
+                consecutiveAllPassDeals: snapshot.consecutiveAllPassDeals,
+                context: "gameOver"
+            )
+        default:
+            break
+        }
         try require(snapshot.rules.configurationError == nil, "invalid rules: \(snapshot.rules.configurationError ?? "unknown")")
         try checkMatchSettings(snapshot.match, playerCount: snapshot.players.count)
         try checkTenTrickDefenseState(
@@ -956,6 +976,24 @@ extension PreferansEngine {
             let expectedBalance = balances[standing.player] ?? 0
             try require(abs(standing.balance - expectedBalance) < 0.000_001, "gameOver standing balance must match score")
         }
+    }
+
+    /// Once a deal has been scored, the raspasy series counter is derived from
+    /// that result: any ordinary contract or misère resets it, while an
+    /// all-pass result may continue the series. Older snapshots did not carry
+    /// the counter, so the all-pass branch deliberately remains permissive for
+    /// a decoded zero; the upper-bound invariant above still prevents a
+    /// fabricated streak from exceeding the number of scored deals.
+    private static func checkRaspasySeriesCounter(
+        _ kind: DealResultKind,
+        consecutiveAllPassDeals: Int,
+        context: String
+    ) throws {
+        guard kind != .allPass else { return }
+        try require(
+            consecutiveAllPassDeals == 0,
+            "\(context) non-raspasy result must reset consecutiveAllPassDeals, got \(consecutiveAllPassDeals)"
+        )
     }
 
     private static func sorted<S: Sequence>(_ ids: S) -> [String] where S.Element == PlayerID {

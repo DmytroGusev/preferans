@@ -1130,6 +1130,44 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(snapshot, contains: "dealsPlayed cannot be negative")
     }
 
+    func testSnapshotValidatorRejectsRaspasySeriesLongerThanDealHistory() {
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .waitingForDeal,
+            score: ScoreSheet(players: seats),
+            nextDealer: north,
+            dealsPlayed: 1,
+            consecutiveAllPassDeals: 2
+        )
+
+        assertViolation(snapshot, contains: "consecutiveAllPassDeals 2 cannot exceed dealsPlayed 1")
+    }
+
+    func testSnapshotValidatorRejectsRaspasySeriesAfterNonRaspasyResult() {
+        let result = DealResult(
+            kind: .passedOut,
+            activePlayers: seats,
+            trickCounts: seats.dictionary(filledWith: 0),
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: seats)
+        )
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .dealFinished(result),
+            score: ScoreSheet(players: seats),
+            nextDealer: north,
+            dealsPlayed: 1,
+            consecutiveAllPassDeals: 1
+        )
+
+        assertViolation(
+            snapshot,
+            contains: "dealFinished non-raspasy result must reset consecutiveAllPassDeals"
+        )
+    }
+
     func testSnapshotValidatorRejectsMutatedRuleConfiguration() {
         var rules = PreferansRules.sochi
         rules.zeroTricksAllPassPoolBonus = -1

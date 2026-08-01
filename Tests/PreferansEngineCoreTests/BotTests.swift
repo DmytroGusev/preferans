@@ -598,6 +598,10 @@ final class BotTests: XCTestCase {
         guard precedingAllPassDeals > 0 else { return engine }
 
         var snapshot = engine.snapshot
+        // The fixture is an active deal preceded by this many scored
+        // raspasy deals, so keep the history counter pair internally
+        // consistent when rehydrating it.
+        snapshot.dealsPlayed = precedingAllPassDeals
         snapshot.consecutiveAllPassDeals = precedingAllPassDeals
         return try PreferansEngine(snapshot: snapshot)
     }

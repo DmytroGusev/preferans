@@ -325,6 +325,7 @@ final class MatchSettingsTests: XCTestCase {
         var engine = try makeEngine(match: MatchSettings(raspasy: .sochi))
         try startDeal(&engine)
         var snapshot = engine.snapshot
+        snapshot.dealsPlayed = precedingRaspasy
         snapshot.consecutiveAllPassDeals = precedingRaspasy
         engine = try PreferansEngine(snapshot: snapshot)
 
