@@ -40,6 +40,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var hostRecoveryTask: Task<Void, Never>?
     private var durabilityRetryTask: Task<Void, Never>?
     private var durabilityBarrier: RoomDurabilityBarrier<HostUpdate>
+    /// Invalidates async authority work whenever attachment or host ownership
+    /// changes. Cancellation alone is insufficient because transport awaits do
+    /// not all cooperate with task cancellation.
+    private var authorityGeneration: UInt64 = 0
     private var hostPeer: OnlinePeer?
     private var roster = RoomParticipantRoster()
     private var rules: PreferansRules = .sochi
@@ -128,6 +132,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.hostRecoveryTask?.cancel()
         self.durabilityRetryTask?.cancel()
         self.durabilityBarrier.reset()
+        let authorityGeneration = advanceAuthorityGeneration()
         self.heartbeatTask?.cancel()
         self.transportEventsTask = observeConnectionEvents(of: transport)
         self.listenTask = listen(to: transport)
@@ -138,12 +143,24 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         recomputeRoster()
 
         let host = await transport.chooseHost() ?? participants.first ?? transport.localPeer
+        guard self.transport === transport,
+              self.authorityGeneration == authorityGeneration else { return }
         self.hostPeer = host
         self.isHost = host.playerID == transport.localPeer.playerID
 
         if isHost {
             do {
-                try await becomeHost(host: host, seats: roster.seats, rules: self.rules, match: self.match, resume: resume)
+                try await becomeHost(
+                    host: host,
+                    seats: roster.seats,
+                    rules: self.rules,
+                    match: self.match,
+                    resume: resume,
+                    authorityGeneration: authorityGeneration,
+                    transport: transport
+                )
+            } catch is CancellationError {
+                await reconcileHostAuthority(using: transport)
             } catch {
                 beginHostRecovery(as: host, using: transport)
             }
@@ -170,6 +187,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
         durabilityBarrier.reset()
+        advanceAuthorityGeneration()
         stopHeartbeat()
         pendingBotTask?.cancel()
         pendingBotTask = nil
@@ -427,10 +445,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         seats: [PlayerIdentity],
         rules: PreferansRules,
         match: MatchSettings,
-        resume: OnlineResumeContext? = nil
+        resume: OnlineResumeContext? = nil,
+        authorityGeneration: UInt64,
+        transport: any RoomRealtimeTransport
     ) async throws {
         let tableID = UUID()
-        self.tableID = tableID
         let hostID = host.playerID
         let actor: HostGameActor
         if let resume {
@@ -454,17 +473,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 dealSource: dealSource
             )
         }
-        self.hostActor = actor
-
         // Establish durable truth before announcing this authority or exposing
         // its projection. Any client action built on a visible state must have
         // an already-recoverable snapshot behind it.
         let update = await actor.initialUpdate()
-        try await reportStateToWorker(update)
+        try await reportStateToWorker(update, actor: actor, transport: transport)
+        guard await stillOwnsHostAuthority(
+            authorityGeneration,
+            expectedHost: hostID,
+            transport: transport
+        ) else { throw CancellationError() }
 
-        guard let transport else {
-            throw CloudflareRoomTransportError.socketNotConnected
-        }
         let assignment = SeatAssignmentEnvelope(
             tableID: tableID,
             hostPlayerID: hostID,
@@ -473,10 +492,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             match: match
         )
         try await transport.sendToAll(.seatAssignment(assignment), reliably: true)
+        guard await stillOwnsHostAuthority(
+            authorityGeneration,
+            expectedHost: hostID,
+            transport: transport
+        ) else { throw CancellationError() }
 
+        self.tableID = tableID
+        self.hostActor = actor
         self.state = .connectedAsHost
         self.liveness = .live
-        await publish(update)
+        await publish(update, authorityGeneration: authorityGeneration)
     }
 
     private func sendHello() async {
@@ -538,6 +564,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     self.transportStatus = .reconnecting
                 case .seatTakenOver:
                     self.transportStatus = .seatTakenOver
+                    self.hostRecoveryTask?.cancel()
+                    self.hostRecoveryTask = nil
+                    self.durabilityRetryTask?.cancel()
+                    self.durabilityRetryTask = nil
+                    self.durabilityBarrier.reset()
+                    self.advanceAuthorityGeneration()
+                    self.isHost = false
+                    self.hostActor = nil
                     self.stopHeartbeat()
                     self.pendingBotTask?.cancel()
                     self.pendingBotTask = nil
@@ -553,6 +587,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func reconcileHostAuthority(using transport: any RoomRealtimeTransport) async {
         guard self.transport === transport else { return }
         guard let elected = await transport.chooseHost() else { return }
+        guard self.transport === transport else { return }
         let previousHost = hostPeer?.playerID
         guard previousHost != elected.playerID else { return }
 
@@ -573,6 +608,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         pendingBotTask?.cancel()
         pendingBotTask = nil
         hostActor = nil
+        let authorityGeneration = advanceAuthorityGeneration()
         isHost = true
         state = .selectingHost
         liveness = .connecting
@@ -587,7 +623,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     guard !Task.isCancelled,
                           let current = await transport.chooseHost(),
                           current.playerID == transport.localPeer.playerID,
-                          self.hostPeer?.playerID == current.playerID else { return }
+                          self.hostPeer?.playerID == current.playerID,
+                          self.authorityGeneration == authorityGeneration else { return }
                     if let resume {
                         self.rules = resume.snapshot.rules
                         self.match = resume.snapshot.match
@@ -597,11 +634,18 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                         seats: self.roster.seats,
                         rules: self.rules,
                         match: self.match,
-                        resume: resume
+                        resume: resume,
+                        authorityGeneration: authorityGeneration,
+                        transport: transport
                     )
+                    guard self.authorityGeneration == authorityGeneration else { return }
                     self.hostRecoveryTask = nil
                     return
+                } catch is CancellationError {
+                    return
                 } catch {
+                    guard self.authorityGeneration == authorityGeneration,
+                          self.isHost else { return }
                     self.errorText = String(
                         localized: "Recovering the table… Your game is safe."
                     )
@@ -618,6 +662,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
         durabilityBarrier.reset()
+        advanceAuthorityGeneration()
         pendingBotTask?.cancel()
         pendingBotTask = nil
         hostActor = nil
@@ -767,6 +812,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         onError: (Error) async -> Void
     ) async {
         guard let hostActor else { return }
+        let authorityGeneration = self.authorityGeneration
         guard durabilityBarrier.acceptsAction else {
             await onError(CloudflareRoomTransportError.serverError(
                 String(localized: "Saving the previous move… Try again in a moment.")
@@ -778,18 +824,26 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             do {
                 try await reportStateToWorker(update)
             } catch {
-                guard isHost else { return }
-                queueDurabilityRetry(update, after: error)
+                guard ownsHostAuthority(authorityGeneration) else { return }
+                queueDurabilityRetry(
+                    update,
+                    after: error,
+                    authorityGeneration: authorityGeneration
+                )
                 return
             }
-            guard isHost, self.hostActor === hostActor else { return }
-            await publish(update)
+            guard ownsHostAuthority(authorityGeneration), self.hostActor === hostActor else { return }
+            await publish(update, authorityGeneration: authorityGeneration)
         } catch {
             await onError(error)
         }
     }
 
-    private func queueDurabilityRetry(_ update: HostUpdate, after error: Error) {
+    private func queueDurabilityRetry(
+        _ update: HostUpdate,
+        after error: Error,
+        authorityGeneration: UInt64
+    ) {
         guard let ticket = durabilityBarrier.stage(update) else {
             assertionFailure("Durability barrier accepted two pending host updates")
             return
@@ -804,13 +858,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 guard let delay = self.durabilityBarrier.delay(for: ticket) else { return }
                 try? await Task.sleep(for: delay)
                 guard !Task.isCancelled,
-                      self.isHost,
+                      self.ownsHostAuthority(authorityGeneration),
                       let pending = self.durabilityBarrier.update(for: ticket) else { return }
                 do {
                     try await self.reportStateToWorker(pending)
-                    guard self.isHost,
+                    guard self.ownsHostAuthority(authorityGeneration),
                           self.durabilityBarrier.update(for: ticket) != nil else { return }
-                    await self.publish(pending)
+                    await self.publish(pending, authorityGeneration: authorityGeneration)
+                    guard self.ownsHostAuthority(authorityGeneration) else { return }
                     guard self.durabilityBarrier.complete(ticket) != nil else { return }
                     self.durabilityRetryTask = nil
                     if self.errorText == message {
@@ -825,7 +880,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func publish(_ update: HostUpdate) async {
+    private func publish(_ update: HostUpdate, authorityGeneration: UInt64) async {
+        guard ownsHostAuthority(authorityGeneration) else { return }
         tableID = update.tableID
         refreshPeersFromTransport()
         if let localSeat, let localProjection = update.projections[localSeat] {
@@ -843,6 +899,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         guard let transport else { return }
         for (viewer, projection) in update.projections where viewer != localSeat {
+            guard ownsHostAuthority(authorityGeneration) else { return }
             // Bot seats have no socket — they never receive wire projections;
             // the host advances them through its own engine.
             guard let peer = roster.peer(for: viewer), !peer.isBotSeat else { continue }
@@ -870,6 +927,14 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// this is a commit barrier: projections are not published until it passes.
     private func reportStateToWorker(_ update: HostUpdate) async throws {
         guard isHost, let transport, let hostActor else { return }
+        try await reportStateToWorker(update, actor: hostActor, transport: transport)
+    }
+
+    private func reportStateToWorker(
+        _ update: HostUpdate,
+        actor hostActor: HostGameActor,
+        transport: any RoomRealtimeTransport
+    ) async throws {
         let snapshot = await hostActor.engineSnapshot
         let summary = OnlineStateSummary(
             variant: variantTag,
@@ -885,6 +950,36 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             snapshot: update.status == .finished ? nil : snapshot,
             snapshotSequence: update.sequence
         )
+    }
+
+    @discardableResult
+    private func advanceAuthorityGeneration() -> UInt64 {
+        authorityGeneration &+= 1
+        return authorityGeneration
+    }
+
+    private func ownsHostAuthority(_ generation: UInt64) -> Bool {
+        isHost && authorityGeneration == generation
+    }
+
+    /// Re-check both local generation and server election around an await. A
+    /// stale recovery task may resume even after cancellation if the transport
+    /// call it was waiting on is not cancellation-aware.
+    private func stillOwnsHostAuthority(
+        _ generation: UInt64,
+        expectedHost: PlayerID,
+        transport: any RoomRealtimeTransport
+    ) async -> Bool {
+        guard ownsHostAuthority(generation),
+              self.transport === transport,
+              hostPeer?.playerID == expectedHost,
+              !Task.isCancelled else { return false }
+        let elected = await transport.chooseHost()
+        return ownsHostAuthority(generation)
+            && self.transport === transport
+            && hostPeer?.playerID == expectedHost
+            && elected?.playerID == expectedHost
+            && !Task.isCancelled
     }
 
     /// Mark the current table abandoned in the worker directory so it drops out

@@ -187,6 +187,7 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         await pump(until: { coordinator.transportStatus == .seatTakenOver })
         coordinator.send(.startDeal(dealer: nil, deck: nil))
 
+        XCTAssertFalse(coordinator.isHost)
         XCTAssertEqual(coordinator.projection?.sequence, 0)
         XCTAssertTrue(coordinator.errorText?.contains("another device") == true)
         coordinator.detach()
@@ -443,6 +444,57 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertEqual(north.projection?.sequence, 2)
         XCTAssertTrue(east.isHost)
         XCTAssertFalse(north.isHost)
+
+        for coordinator in coordinators.values { coordinator.detach() }
+    }
+
+    func testStaleRecoveryCannotReclaimAuthorityAfterDemotion() async throws {
+        let room = StallableRoom(peers: peers, hostPlayerID: "north")
+        let transports = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            (peer.playerID, room.transport(for: peer.playerID))
+        })
+        let coordinators = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            (peer.playerID, RoomOnlineGameCoordinator(heartbeat: .disabled))
+        })
+
+        for peer in peers {
+            await coordinators[peer.playerID]?.attach(
+                transport: try XCTUnwrap(transports[peer.playerID])
+            )
+        }
+
+        let east = try XCTUnwrap(coordinators["east"])
+        let south = try XCTUnwrap(coordinators["south"])
+        let eastTransport = try XCTUnwrap(transports["east"])
+        eastTransport.suspendStateReports = true
+
+        room.migrateHost(to: "east", recovery: nil)
+        await pump(until: {
+            east.isHost &&
+            east.state == .selectingHost &&
+            eastTransport.stateReportAttemptCount == 1
+        })
+
+        // The worker commit does not cooperate with task cancellation. Demote
+        // east while that await is suspended, then let the stale call return.
+        // Its old recovery task must not announce itself or publish afterward.
+        room.migrateHost(to: "south", recovery: nil)
+        await pump(until: {
+            !east.isHost &&
+            east.state == .connectedAsClient &&
+            south.state == .connectedAsHost
+        })
+        eastTransport.resumeStateReport()
+        await pump(until: { eastTransport.stateReportReturnCount == 1 })
+        await Task.yield()
+
+        XCTAssertFalse(east.isHost)
+        XCTAssertEqual(east.state, .connectedAsClient)
+        XCTAssertEqual(
+            eastTransport.seatAssignmentCount,
+            0,
+            "A cancelled recovery must not advertise stale host authority after its await returns."
+        )
 
         for coordinator in coordinators.values { coordinator.detach() }
     }
@@ -885,12 +937,16 @@ private final class StallableTransport: RoomRealtimeTransport {
     /// While true, the socket is treated as down: sends are recorded but not
     /// delivered, and inbound messages are dropped.
     var isStalled = false
+    var suspendStateReports = false
     private(set) var sentMessages: [GameWireMessage] = []
+    private(set) var stateReportAttemptCount = 0
+    private(set) var stateReportReturnCount = 0
 
     private let room: StallableRoom
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
     private var backlog: [ReceivedRoomMessage] = []
+    private var stateReportContinuation: CheckedContinuation<Void, Never>?
 
     init(room: StallableRoom, localPeer: OnlinePeer) {
         self.room = room
@@ -900,6 +956,10 @@ private final class StallableTransport: RoomRealtimeTransport {
 
     var resyncRequestCount: Int {
         sentMessages.filter { if case .resyncRequest = $0 { return true } else { return false } }.count
+    }
+
+    var seatAssignmentCount: Int {
+        sentMessages.filter { if case .seatAssignment = $0 { return true } else { return false } }.count
     }
 
     func chooseHost() async -> OnlinePeer? {
@@ -945,7 +1005,30 @@ private final class StallableTransport: RoomRealtimeTransport {
         room.currentRecoveryContext()
     }
 
+    func reportState(
+        status: PreferansGameStatus,
+        summary: OnlineStateSummary,
+        snapshot: PreferansSnapshot?,
+        snapshotSequence: Int
+    ) async throws {
+        stateReportAttemptCount += 1
+        if suspendStateReports {
+            await withCheckedContinuation { continuation in
+                stateReportContinuation = continuation
+            }
+        }
+        stateReportReturnCount += 1
+    }
+
+    func resumeStateReport() {
+        suspendStateReports = false
+        let continuation = stateReportContinuation
+        stateReportContinuation = nil
+        continuation?.resume()
+    }
+
     func disconnect() {
+        resumeStateReport()
         for continuation in continuations.values { continuation.finish() }
         continuations.removeAll()
         for continuation in participantContinuations.values { continuation.finish() }
