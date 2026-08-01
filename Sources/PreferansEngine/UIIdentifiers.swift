@@ -85,6 +85,7 @@ public enum UIIdentifiers {
     public static let screenLobby              = "screen.lobby"
     public static let screenGame               = "screen.game"
     public static let screenOnlineRoom         = "screen.onlineRoom"
+    public static let screenSettlementPreview  = "screen.settlementPreview"
     public static let onlineFlowState          = "online.flowState"
     public static let connectionBanner         = "connection.banner"
 
@@ -334,6 +335,7 @@ public enum UIIdentifiers {
     public static let matchCustomPulkaPerPlayer = "match.customPulkaPerPlayer"
     public static let matchTotusPolicy = "match.totusPolicy"
     public static let matchRaspasyPolicy = "match.raspasyPolicy"
+    public static let settlementSplitControl = "settlement.splitControl"
 }
 
 // MARK: - Result-kind encoding
@@ -369,6 +371,7 @@ public enum UITestFlags {
     /// otherwise bypass onboarding so a clean simulator and a reused one
     /// always launch into the same lobby state.
     public static let showOnboarding     = "-uiTestShowOnboarding"
+    public static let previewSettlement  = "-uiTestPreviewSettlement"
     public static let viewerFollowsActor = "-uiTestViewerFollowsActor"
     public static let firstDealer        = "-uiTestFirstDealer"
     public static let dealSeed           = "-uiTestDealSeed"

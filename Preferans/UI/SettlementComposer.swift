@@ -28,6 +28,8 @@ struct SettlementComposer: View {
 
     /// The declarer's share of the `remaining` pot (0...remaining).
     @State private var share: Int
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(
         declarerName: String,
@@ -65,13 +67,57 @@ struct SettlementComposer: View {
     }
 
     var body: some View {
+        Group {
+            if usesRegularLayout {
+                regularLayout
+            } else {
+                compactLayout
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var usesRegularLayout: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
+
+    /// Compact iPhone composition: the negotiation reads top-to-bottom and
+    /// keeps both actions directly beneath the split control.
+    private var compactLayout: some View {
         VStack(spacing: 10) {
             header
             endpointLabels
             splitBar
             verdict
-            buttons
+            compactButtons
         }
+    }
+
+    /// Regular-width iPad composition: cap the precision track at a useful
+    /// reach and give agreement actions their own column. This reduces height
+    /// inside the live table and avoids stretching a phone slider edge-to-edge
+    /// across a tablet.
+    private var regularLayout: some View {
+        HStack(spacing: 20) {
+            VStack(spacing: 8) {
+                header
+                endpointLabels
+                splitBar
+                verdict
+            }
+            .frame(maxWidth: 620)
+
+            Rectangle()
+                .fill(TableTheme.inkCream.opacity(0.14))
+                .frame(width: 0.5, height: 104)
+
+            VStack(spacing: 10) {
+                offerButton(fillWidth: true)
+                cancelButton(fillWidth: true)
+            }
+            .frame(width: 148)
+        }
+        .frame(maxWidth: 820)
     }
 
     // MARK: - Pieces
@@ -162,6 +208,7 @@ struct SettlementComposer: View {
         }
         .frame(height: 36)
         .accessibilityElement()
+        .accessibilityIdentifier(UIIdentifiers.settlementSplitControl)
         .accessibilityLabel("\(declarerName)'s share of the remaining tricks")
         .accessibilityValue("\(share) of \(remaining)")
         .accessibilityAdjustableAction { direction in
@@ -217,23 +264,34 @@ struct SettlementComposer: View {
         return lead + Text("NT")
     }
 
-    private var buttons: some View {
+    private var compactButtons: some View {
         HStack(spacing: 10) {
-            Button(action: onCancel) {
-                Text("Cancel").fontWeight(.semibold)
-            }
-            .buttonStyle(.feltDim)
-            .accessibilityIdentifier(UIIdentifiers.buttonCancelSettlement)
+            cancelButton(fillWidth: false)
 
             Spacer(minLength: 8)
 
-            Button { onOffer(share) } label: {
-                Label("Offer", systemImage: "checkmark.seal")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .buttonStyle(.feltPrimary)
-            .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
+            offerButton(fillWidth: false)
         }
+    }
+
+    private func cancelButton(fillWidth: Bool) -> some View {
+        Button(action: onCancel) {
+            Text("Cancel")
+                .fontWeight(.semibold)
+                .frame(maxWidth: fillWidth ? .infinity : nil)
+        }
+        .buttonStyle(.feltDim)
+        .accessibilityIdentifier(UIIdentifiers.buttonCancelSettlement)
+    }
+
+    private func offerButton(fillWidth: Bool) -> some View {
+        Button { onOffer(share) } label: {
+            Label("Offer", systemImage: "checkmark.seal")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: fillWidth ? .infinity : nil)
+        }
+        .buttonStyle(.feltPrimary)
+        .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
     }
 
     /// Muted terracotta that reads as "failure" against the felt without the
@@ -242,9 +300,9 @@ struct SettlementComposer: View {
 }
 
 #if DEBUG
-/// Live-runtime gallery of composer states. Rooted by the `-previewSettlement`
-/// launch flag (see `PreferansApp`) so the real view can be screenshotted in
-/// the simulator without driving a whole game to a settle-able position.
+/// Live-runtime gallery of composer states. Rooted by the
+/// `UITestFlags.previewSettlement` launch flag (see `PreferansApp`) so the real
+/// view can be screenshotted without driving a game to a settle-able position.
 struct SettlementPreviewGallery: View {
     var body: some View {
         ZStack {
@@ -262,6 +320,8 @@ struct SettlementPreviewGallery: View {
                 .padding(.vertical, 24)
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.screenSettlementPreview)
     }
 
     @ViewBuilder

@@ -58,6 +58,52 @@ final class RedesignScreenshotTests: XCTestCase {
             .capture(name: "onboarding-accessibility-xxxl", force: true)
     }
 
+    /// The settlement control uses deliberately different compositions:
+    /// stacked actions on iPhone and a bounded action column on iPad.
+    func testCaptureSettlementComposerDeviceLayout() {
+        let output = screenDir("screens-settlement")
+        try? FileManager.default.removeItem(at: output)
+
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestFlags.previewSettlement,
+            UITestFlags.disableAnimations,
+        ]
+        app.pinTestLocaleEnglish()
+        app.launch()
+
+        let root = app.descendants(matching: .any)[UIIdentifiers.screenSettlementPreview]
+        XCTAssertTrue(root.waitForExistence(timeout: 5), "Settlement preview never appeared")
+        let split = app.descendants(matching: .any)
+            .matching(identifier: UIIdentifiers.settlementSplitControl)
+            .firstMatch
+        let offer = app.buttons[UIIdentifiers.buttonOfferSettlement].firstMatch
+        XCTAssertTrue(split.waitForExistence(timeout: 2))
+        XCTAssertTrue(offer.waitForExistence(timeout: 2))
+
+        if app.windows.firstMatch.frame.width >= 700 {
+            XCTAssertGreaterThan(
+                offer.frame.minX,
+                split.frame.maxX,
+                "iPad should place settlement actions in a dedicated trailing column"
+            )
+        } else {
+            XCTAssertGreaterThan(
+                offer.frame.minY,
+                split.frame.maxY,
+                "iPhone should stack settlement actions beneath the split control"
+            )
+        }
+
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: output,
+            filePrefix: "settlement"
+        )
+        .capture(name: "device-layout", force: true)
+    }
+
     /// Drives the lobby -> waiting-for-deal -> bidding -> talon-exchange flow,
     /// snapshotting at each state so a human can eyeball the felt redesign.
     func testCaptureRedesignScreens() {

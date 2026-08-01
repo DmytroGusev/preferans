@@ -45,7 +45,7 @@ struct PreferansApp: App {
     @ViewBuilder
     private var rootContent: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-previewSettlement") {
+        if ProcessInfo.processInfo.arguments.contains(UITestFlags.previewSettlement) {
             SettlementPreviewGallery()
         } else {
             RootLaunchView()
