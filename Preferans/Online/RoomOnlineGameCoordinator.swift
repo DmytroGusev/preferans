@@ -39,10 +39,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var transport: (any RoomRealtimeTransport)?
     private var hostActor: HostGameActor?
     private let transportSubscriptions = RoomTransportSubscriptions()
-    private var hostRecoveryTask: Task<Void, Never>?
+    private let hostRecoveryRunner: RoomHostRecoveryRunner
     private var durabilityRetryTask: Task<Void, Never>?
     private var durabilityBarrier: RoomDurabilityBarrier<HostUpdate>
-    private let hostRecoveryBackoff: RoomRetryBackoff
     /// Invalidates async authority work whenever attachment or host ownership
     /// changes. Cancellation alone is insufficient because transport awaits do
     /// not all cooperate with task cancellation.
@@ -92,7 +91,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.durabilityBarrier = RoomDurabilityBarrier(
             initialRetryDelay: durabilityRetryInitialDelay
         )
-        self.hostRecoveryBackoff = RoomRetryBackoff(
+        self.hostRecoveryRunner = RoomHostRecoveryRunner(
             initialDelay: hostRecoveryRetryInitialDelay,
             maximumDelay: hostRecoveryRetryMaximumDelay
         )
@@ -100,7 +99,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     deinit {
-        hostRecoveryTask?.cancel()
         durabilityRetryTask?.cancel()
         heartbeatTask?.cancel()
         pendingAdvanceTask?.cancel()
@@ -190,8 +188,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     @discardableResult
     private func resetAttachment(disconnectCurrentTransport: Bool) -> UInt64 {
         transportSubscriptions.cancelAll()
-        hostRecoveryTask?.cancel()
-        hostRecoveryTask = nil
+        hostRecoveryRunner.cancel()
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
         heartbeatTask?.cancel()
@@ -610,8 +607,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             transportStatus = .reconnecting
         case .seatTakenOver:
             transportStatus = .seatTakenOver
-            hostRecoveryTask?.cancel()
-            hostRecoveryTask = nil
+            hostRecoveryRunner.cancel()
             durabilityRetryTask?.cancel()
             durabilityRetryTask = nil
             durabilityBarrier.reset()
@@ -644,7 +640,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func beginHostRecovery(as elected: OnlinePeer, using transport: any RoomRealtimeTransport) {
-        hostRecoveryTask?.cancel()
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
         durabilityBarrier.reset()
@@ -658,52 +653,48 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         resetHostLiveness()
         errorText = nil
 
-        hostRecoveryTask = Task { @MainActor [weak self, weak transport] in
-            guard let self, let transport else { return }
-            var retryBackoff = self.hostRecoveryBackoff
-            while !Task.isCancelled {
-                do {
-                    let resume = try await transport.hostRecoveryContext()
-                    guard !Task.isCancelled,
-                          let current = await transport.chooseHost(),
-                          current.playerID == transport.localPeer.playerID,
-                          self.hostPeer?.playerID == current.playerID,
-                          self.authorityGeneration == authorityGeneration else { return }
-                    if let resume {
-                        self.rules = resume.snapshot.rules
-                        self.match = resume.snapshot.match
-                    }
-                    try await self.becomeHost(
-                        host: elected,
-                        seats: self.roster.seats,
-                        rules: self.rules,
-                        match: self.match,
-                        resume: resume,
-                        authorityGeneration: authorityGeneration,
-                        transport: transport
-                    )
-                    guard self.authorityGeneration == authorityGeneration else { return }
-                    self.errorText = nil
-                    self.hostRecoveryTask = nil
-                    return
-                } catch is CancellationError {
-                    return
-                } catch {
-                    guard self.authorityGeneration == authorityGeneration,
-                          self.isHost else { return }
-                    self.errorText = String(
-                        localized: "Recovering the table… Your game is safe."
-                    )
-                    try? await Task.sleep(for: retryBackoff.currentDelay)
-                    retryBackoff.recordFailure()
+        hostRecoveryRunner.start(
+            transport: transport,
+            expectedHost: elected.playerID,
+            isCurrent: { [weak self, weak transport] in
+                guard let self, let transport else { return false }
+                return self.transport === transport
+                    && self.ownsHostAuthority(authorityGeneration)
+                    && self.hostPeer?.playerID == elected.playerID
+            },
+            promote: { [weak self, weak transport] resume in
+                guard let self, let transport,
+                      self.transport === transport,
+                      self.ownsHostAuthority(authorityGeneration) else {
+                    throw CancellationError()
                 }
+                if let resume {
+                    self.rules = resume.snapshot.rules
+                    self.match = resume.snapshot.match
+                }
+                try await self.becomeHost(
+                    host: elected,
+                    seats: self.roster.seats,
+                    rules: self.rules,
+                    match: self.match,
+                    resume: resume,
+                    authorityGeneration: authorityGeneration,
+                    transport: transport
+                )
+            },
+            onRetry: { [weak self] _ in
+                self?.errorText = String(
+                    localized: "Recovering the table… Your game is safe."
+                )
+            },
+            onSuccess: { [weak self] in
+                self?.errorText = nil
             }
-        }
+        )
     }
 
     private func becomeClient(of elected: OnlinePeer) {
-        hostRecoveryTask?.cancel()
-        hostRecoveryTask = nil
+        hostRecoveryRunner.cancel()
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
         durabilityBarrier.reset()
