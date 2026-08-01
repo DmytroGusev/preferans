@@ -172,6 +172,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         accountSessionToken: String,
         session: URLSession = .shared
     ) throws {
+        guard summary.schemaVersion == AppIdentifiers.gameWireSchemaVersion else {
+            throw CloudflareRoomTransportError.serverError("Room server returned an incompatible room version.")
+        }
         guard let socketURL = summary.websocketURL else {
             throw CloudflareRoomTransportError.missingSocketURL
         }
@@ -580,7 +583,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         let envelope = try decoder.decode(ServerSocketEnvelope.self, from: data)
         switch envelope.type {
         case .room, .presence:
-            if let room = envelope.room, room.hostEpoch >= hostEpoch {
+            if let room = envelope.room,
+               room.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
+               room.hostEpoch >= hostEpoch {
                 participants = room.peers
                 hostPlayerID = room.hostPlayerID
                 hostEpoch = room.hostEpoch
@@ -630,7 +635,11 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             }
             throw CloudflareRoomTransportError.serverError("Room server returned HTTP \(http.statusCode).")
         }
-        return try PreferansJSONCoder.decoder.decode(CloudflareRoomSummary.self, from: data)
+        let summary = try PreferansJSONCoder.decoder.decode(CloudflareRoomSummary.self, from: data)
+        guard summary.schemaVersion == AppIdentifiers.gameWireSchemaVersion else {
+            throw CloudflareRoomTransportError.serverError("Room server returned an incompatible room version.")
+        }
+        return summary
     }
 
     private static func endpoint(_ baseURL: URL, _ components: String...) -> URL {

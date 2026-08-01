@@ -71,6 +71,31 @@ final class OnlineTransportSecurityTests: XCTestCase {
     }
 
     @MainActor
+    func testRoomMutationRejectsAnIncompatibleSchemaVersion() async throws {
+        CapturingURLProtocol.handler = { _ in
+            (201, Data(#"{"schemaVersion":1,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"status":"lobby","websocketURL":"wss://worker.example.test/v1/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
+        }
+        let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Ada")
+
+        do {
+            _ = try await CloudflareRoomTransport.createRoom(
+                baseURL: baseURL,
+                localPeer: host,
+                seats: [host],
+                accountSessionToken: "pref2.account.secret",
+                maxPlayers: 3,
+                session: session
+            )
+            XCTFail("An incompatible room schema must be rejected.")
+        } catch {
+            XCTAssertEqual(
+                (error as? CloudflareRoomTransportError)?.errorDescription,
+                "Room server returned an incompatible room version."
+            )
+        }
+    }
+
+    @MainActor
     func testAccountDeletionUsesAuthenticatedV2Endpoint() async throws {
         var captured: URLRequest?
         CapturingURLProtocol.handler = { request in
