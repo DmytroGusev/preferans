@@ -703,20 +703,24 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         startHeartbeat()
     }
 
-    /// True when a wire message came from the seat this client elected as host
-    /// in the latest server presence (`hostPlayerID`). Seat assignments,
-    /// projections, and host errors are only ever legitimate from that seat —
-    /// the relay routes by recipient, not authority, so any seated peer could
-    /// otherwise forge them (and a forged message must not count as host
-    /// contact for liveness either).
     private func isFromHost(_ sender: OnlinePeer) -> Bool {
-        sender.playerID == hostPeer?.playerID
+        RoomInboundMessagePolicy.isFromElectedHost(
+            sender,
+            localIsHost: isHost,
+            electedHost: hostPeer?.playerID
+        )
     }
 
     private func handle(_ received: ReceivedRoomMessage) async {
         switch received.message {
         case let .seatAssignment(assignment):
-            guard !isHost, isFromHost(received.sender) else { return }
+            guard isFromHost(received.sender),
+                  let localPlayer = transport?.localPeer.playerID,
+                  RoomInboundMessagePolicy.acceptsSeatAssignment(
+                    assignment,
+                    sender: received.sender,
+                    localPlayer: localPlayer
+                  ) else { return }
             noteHostContact()
             let authorityChanged = tableID != assignment.tableID
             tableID = assignment.tableID
@@ -777,16 +781,21 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             }
 
         case let .projection(envelope):
-            guard !isHost, isFromHost(received.sender) else { return }
+            guard isFromHost(received.sender) else { return }
             noteHostContact()
-            guard envelope.viewer == localSeat else { return }
-            // Projections can arrive out of order across a reconnect (a resync
-            // response racing a newer live update). Within the same table the
-            // sequence must never go backwards; a new table (rematch) starts a
-            // fresh sequence and is always adopted.
-            if envelope.tableID == tableID,
-               let currentSequence = projection?.sequence,
-               envelope.projection.sequence < currentSequence {
+            let decision = RoomInboundMessagePolicy.projectionDecision(
+                for: envelope,
+                localPlayer: localSeat,
+                currentTable: tableID,
+                currentSequence: projection?.sequence
+            )
+            guard decision != .reject else { return }
+            if decision == .refresh {
+                // A host sequence identifies immutable projected game state.
+                // A same-sequence resync may repair rolling presentation
+                // metadata, but cannot rewrite the accepted deal projection.
+                botInsights = envelope.botInsights
+                state = .connectedAsClient
                 return
             }
             let preProjection = projection
@@ -806,15 +815,22 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         case let .hostError(error):
             // The host reports its own failures directly, so a wire host-error
             // is only ever legitimate on a client, from the host's seat.
-            guard !isHost, isFromHost(received.sender) else { return }
+            guard isFromHost(received.sender) else { return }
             noteHostContact()
-            if error.recipient == nil || error.recipient == localSeat {
-                errorText = error.message
-            }
+            guard RoomInboundMessagePolicy.acceptsHostError(
+                error,
+                localPlayer: localSeat,
+                currentTable: tableID
+            ) else { return }
+            errorText = error.message
 
         case let .resyncRequest(request):
             guard isHost, let hostActor else { return }
-            guard request.tableID == tableID else { return }
+            guard RoomInboundMessagePolicy.acceptsResyncRequest(
+                request,
+                sender: received.sender,
+                currentTable: tableID
+            ) else { return }
             do {
                 var envelope = try await hostActor.fullResync(for: request.requester)
                 envelope.botInsights = botInsights
@@ -832,9 +848,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 // A client's liveness probe — echo it back so the client knows
                 // the host process is alive even when no projection is pending
                 // (e.g. while waiting on a human player's turn).
-                let table = tableID ?? ping.tableID
+                guard RoomInboundMessagePolicy.acceptsPing(
+                    ping,
+                    currentTable: tableID
+                ) else { return }
+                let table = tableID
                 try? await transport?.send(.ping(PingEnvelope(tableID: table)), to: [received.sender], reliably: false)
-            } else if received.sender.playerID == hostPeer?.playerID {
+            } else if isFromHost(received.sender),
+                      RoomInboundMessagePolicy.acceptsPing(
+                        ping,
+                        currentTable: tableID
+                      ) {
                 noteHostContact()
             }
         }

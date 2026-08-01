@@ -449,6 +449,32 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         )
         await pump(until: { client.botInsights == [currentInsight] })
 
+        // A same-sequence resync may refresh replaceable bot metadata, but it
+        // must not append the move's events or summaries a second time.
+        let eventCount = client.eventLog.count
+        let refreshedInsight = BotDecisionExplanation(
+            actor: bot.playerID,
+            profile: BotProfile(difficulty: .expert, temperament: .careful),
+            rationale: .defensivePass
+        )
+        var divergentSameSequenceProjection = currentProjection
+        divergentSameSequenceProjection.identities = []
+        transport.simulateMessage(
+            .projection(ProjectionEnvelope(
+                tableID: actor.tableID,
+                sequence: update.sequence,
+                viewer: clientPeer.playerID,
+                projection: divergentSameSequenceProjection,
+                eventSummaries: update.eventSummaries,
+                events: update.events,
+                botInsights: [refreshedInsight]
+            )),
+            sender: host
+        )
+        await pump(until: { client.botInsights == [refreshedInsight] })
+        XCTAssertEqual(client.eventLog.count, eventCount)
+        XCTAssertEqual(client.projection?.identities, currentProjection.identities)
+
         let staleInsight = BotDecisionExplanation(
             actor: bot.playerID,
             profile: .standard,
@@ -478,7 +504,7 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         await pump(until: { client.errorText == "sentinel" })
 
         XCTAssertEqual(client.projection?.sequence, update.sequence)
-        XCTAssertEqual(client.botInsights, [currentInsight])
+        XCTAssertEqual(client.botInsights, [refreshedInsight])
         client.detach()
     }
 

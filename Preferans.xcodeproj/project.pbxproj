@@ -61,6 +61,7 @@
 		B0000000000000000000C328 /* RoomBotMoveScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C329 /* RoomBotMoveScheduler.swift */; };
 		B0000000000000000000C32A /* RoomHostRecoveryRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C32B /* RoomHostRecoveryRunner.swift */; };
 		B0000000000000000000C32C /* RoomDurabilityRetryRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C32D /* RoomDurabilityRetryRunner.swift */; };
+		B0000000000000000000C32E /* RoomInboundMessagePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C32F /* RoomInboundMessagePolicy.swift */; };
 		B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */; };
 		B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B005 /* OnlineRoomGameScreen.swift */; };
 		B0000000000000000000BFA0 /* OnlineWaitingRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000BFA1 /* OnlineWaitingRoomView.swift */; };
@@ -198,6 +199,7 @@
 		B0000000000000000000C329 /* RoomBotMoveScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomBotMoveScheduler.swift; sourceTree = "<group>"; };
 		B0000000000000000000C32B /* RoomHostRecoveryRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomHostRecoveryRunner.swift; sourceTree = "<group>"; };
 		B0000000000000000000C32D /* RoomDurabilityRetryRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomDurabilityRetryRunner.swift; sourceTree = "<group>"; };
+		B0000000000000000000C32F /* RoomInboundMessagePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomInboundMessagePolicy.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -268,6 +270,7 @@
 				B0000000000000000000C329 /* RoomBotMoveScheduler.swift */,
 				B0000000000000000000C32B /* RoomHostRecoveryRunner.swift */,
 				B0000000000000000000C32D /* RoomDurabilityRetryRunner.swift */,
+				B0000000000000000000C32F /* RoomInboundMessagePolicy.swift */,
 				B0000000000000000000C315 /* RoomRealtimeTransport.swift */,
 				B0000000000000000000C317 /* InMemoryRoomTransport.swift */,
 				B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */,
@@ -480,6 +483,7 @@
 				B0000000000000000000C328 /* RoomBotMoveScheduler.swift in Sources */,
 				B0000000000000000000C32A /* RoomHostRecoveryRunner.swift in Sources */,
 				B0000000000000000000C32C /* RoomDurabilityRetryRunner.swift in Sources */,
+				B0000000000000000000C32E /* RoomInboundMessagePolicy.swift in Sources */,
 				B0000000000000000000C314 /* RoomRealtimeTransport.swift in Sources */,
 				B0000000000000000000C316 /* InMemoryRoomTransport.swift in Sources */,
 				B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */,
