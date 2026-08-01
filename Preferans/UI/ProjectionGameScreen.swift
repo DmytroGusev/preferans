@@ -144,7 +144,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     .layoutPriority(1)
             }
             if shouldShowActionBar {
-                actionBar
+                actionBar()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -172,7 +172,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     landscapeTablePlayArea
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if shouldShowActionBar {
-                        actionBar
+                        actionBar()
                     }
                     if shouldShowHandRail {
                         viewerHandFan
@@ -301,7 +301,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                             .padding(.top, 4)
                     }
                     if shouldShowActionBar {
-                        actionBar
+                        actionBar(availableChoiceWidth: max(0, split.tableWidth - 24))
                     }
                 }
                 .frame(width: split.tableWidth)
@@ -354,13 +354,14 @@ public struct ProjectionGameScreen<Menu: View>: View {
         )
     }
 
-    private var actionBar: some View {
+    private func actionBar(availableChoiceWidth: CGFloat? = nil) -> some View {
         ActionBarView(
             projection: projection,
             selectedDiscard: selectedDiscard,
             selectedPlayCard: selectedPlayCard,
             onSend: onSend,
-            onPlaySelected: playSelectedCard
+            onPlaySelected: playSelectedCard,
+            availableChoiceWidth: availableChoiceWidth
         )
     }
 

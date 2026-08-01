@@ -200,23 +200,23 @@ final class RedesignScreenshotTests: XCTestCase {
         let tenNoTrump = app.buttons[
             UIIdentifiers.bidButton(.bid(.game(GameContract(10, .noTrump))))
         ]
-        if app.windows.firstMatch.frame.width >= 700 {
+        if app.windows.firstMatch.frame.width >= 900 {
             XCTAssertTrue(
                 app.descendants(matching: .any)[UIIdentifiers.actionChoiceGridRegular].exists,
-                "iPad should expose bidding in its regular-width grid"
+                "A wide iPad table should expose bidding in its full grid"
             )
             XCTAssertTrue(
                 tenNoTrump.exists && tenNoTrump.isHittable,
-                "iPad should expose the full auction without horizontal scrolling"
+                "A wide iPad table should expose the full auction without horizontal scrolling"
             )
         } else {
             XCTAssertTrue(
                 app.descendants(matching: .any)[UIIdentifiers.actionChoiceRailCompact].exists,
-                "iPhone should retain the compact two-row bidding rail"
+                "A phone or narrow iPad table should retain the readable two-row bidding rail"
             )
             XCTAssertFalse(
                 tenNoTrump.isHittable,
-                "iPhone should not compress every auction level into its compact width"
+                "A narrow table should not compress every auction level into its available width"
             )
         }
         recorder.capture(name: "03-bidding-east")

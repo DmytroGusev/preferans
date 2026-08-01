@@ -3,6 +3,36 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testWideRegularChoiceSurfaceUsesFullGrid() {
+        let policy = ActionChoiceLayoutPolicy(
+            horizontalSizeClass: .regular,
+            usesAccessibilityText: false,
+            availableWidth: 681
+        )
+
+        XCTAssertTrue(policy.usesRegularGrid)
+    }
+
+    func testNarrowRegularChoiceSurfaceFallsBackToScrollableRail() {
+        let policy = ActionChoiceLayoutPolicy(
+            horizontalSizeClass: .regular,
+            usesAccessibilityText: false,
+            availableWidth: 408
+        )
+
+        XCTAssertFalse(policy.usesRegularGrid)
+    }
+
+    func testAccessibilityChoiceSurfaceAlwaysUsesScrollableRail() {
+        let policy = ActionChoiceLayoutPolicy(
+            horizontalSizeClass: .regular,
+            usesAccessibilityText: true,
+            availableWidth: 1_000
+        )
+
+        XCTAssertFalse(policy.usesRegularGrid)
+    }
+
     func testCompactActionBarOmitsPassiveCardPlayStatus() {
         let legal = LegalActionProjection(
             playableCards: [Card(.spades, .ace)]

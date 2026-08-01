@@ -1,6 +1,23 @@
 import SwiftUI
 import PreferansEngine
 
+struct ActionChoiceLayoutPolicy: Equatable {
+    static let minimumRegularGridWidth: CGFloat = 7 * 74 + 6 * 8
+
+    var horizontalSizeClass: UserInterfaceSizeClass?
+    var usesAccessibilityText: Bool
+    var availableWidth: CGFloat?
+
+    var usesRegularGrid: Bool {
+        guard horizontalSizeClass == .regular,
+              !usesAccessibilityText else {
+            return false
+        }
+        guard let availableWidth else { return true }
+        return availableWidth >= Self.minimumRegularGridWidth
+    }
+}
+
 /// Compact, context-sensitive action bar that sits above the viewer's
 /// hand. Renders only the action that is currently legal for the
 /// viewer; opponents-turn renders an unobtrusive status row instead.
@@ -10,6 +27,10 @@ public struct ActionBarView: View {
     public var selectedPlayCard: Card?
     public var onSend: (PreferansAction) -> Void
     public var onPlaySelected: (() -> Void)?
+    /// Width available to the choice surface after the action bar's own
+    /// horizontal padding. Regular-width devices can still have a narrow
+    /// gameplay column once the persistent scoresheet is allocated.
+    public var availableChoiceWidth: CGFloat?
 
     /// True while the proposer has the tug-of-war settlement composer open.
     /// Local view state — opening it doesn't touch the engine until an offer
@@ -25,13 +46,15 @@ public struct ActionBarView: View {
         selectedDiscard: Set<Card>,
         selectedPlayCard: Card? = nil,
         onSend: @escaping (PreferansAction) -> Void,
-        onPlaySelected: (() -> Void)? = nil
+        onPlaySelected: (() -> Void)? = nil,
+        availableChoiceWidth: CGFloat? = nil
     ) {
         self.projection = projection
         self.selectedDiscard = selectedDiscard
         self.selectedPlayCard = selectedPlayCard
         self.onSend = onSend
         self.onPlaySelected = onPlaySelected
+        self.availableChoiceWidth = availableChoiceWidth
     }
 
     public var body: some View {
@@ -210,7 +233,12 @@ public struct ActionBarView: View {
     /// sizes retain the scroller so large labels never get squeezed into seven
     /// narrow columns.
     private var usesRegularChoiceGrid: Bool {
-        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+        ActionChoiceLayoutPolicy(
+            horizontalSizeClass: horizontalSizeClass,
+            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize,
+            availableWidth: availableChoiceWidth
+        )
+        .usesRegularGrid
     }
 
     private var regularChoiceColumns: [GridItem] {
