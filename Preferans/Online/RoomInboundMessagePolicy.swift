@@ -44,7 +44,8 @@ enum RoomInboundMessagePolicy {
         currentTable: UUID?,
         currentSequence: Int?
     ) -> ProjectionDecision {
-        guard let localPlayer,
+        guard envelope.sequence >= 0,
+              let localPlayer,
               let currentTable,
               envelope.viewer == localPlayer,
               envelope.projection.viewer == localPlayer,
@@ -67,9 +68,15 @@ enum RoomInboundMessagePolicy {
     static func acceptsHostError(
         _ error: HostErrorEnvelope,
         localPlayer: PlayerID?,
-        currentTable: UUID?
+        currentTable: UUID?,
+        currentSequence: Int? = nil
     ) -> Bool {
-        guard let currentTable, error.tableID == currentTable else { return false }
+        guard error.sequence >= 0,
+              let currentTable,
+              error.tableID == currentTable,
+              currentSequence.map({ error.sequence >= $0 }) ?? true else {
+            return false
+        }
         return error.recipient == nil || error.recipient == localPlayer
     }
 

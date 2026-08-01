@@ -112,6 +112,10 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
         envelope.viewer = "east"
         envelope.projection.viewer = "south"
         XCTAssertEqual(decision(envelope), .reject)
+        envelope.projection.viewer = "east"
+        envelope.sequence = -1
+        envelope.projection.sequence = -1
+        XCTAssertEqual(decision(envelope), .reject)
     }
 
     func testErrorsAndResyncRequestsStayBoundToTableAndSender() {
@@ -136,6 +140,27 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
             error,
             localPlayer: "east",
             currentTable: UUID()
+        ))
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsHostError(
+            error,
+            localPlayer: "east",
+            currentTable: tableID,
+            currentSequence: 4
+        ))
+        var futureError = error
+        futureError.sequence = 4
+        XCTAssertTrue(RoomInboundMessagePolicy.acceptsHostError(
+            futureError,
+            localPlayer: "east",
+            currentTable: tableID,
+            currentSequence: 3
+        ))
+        var negativeError = error
+        negativeError.sequence = -1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsHostError(
+            negativeError,
+            localPlayer: "east",
+            currentTable: tableID
         ))
 
         let request = ResyncRequestEnvelope(

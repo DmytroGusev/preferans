@@ -825,7 +825,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard RoomInboundMessagePolicy.acceptsHostError(
                 error,
                 localPlayer: localSeat,
-                currentTable: tableID
+                currentTable: tableID,
+                currentSequence: projection?.sequence
             ) else { return }
             errorText = error.message
 
