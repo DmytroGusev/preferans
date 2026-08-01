@@ -36,6 +36,30 @@ public struct MatchSettings: Hashable, Codable, Sendable {
     /// the same auctions and scores as a bounded one.
     public static let unbounded = MatchSettings()
 
+    /// Validation that does not depend on a table's seat count. Kept beside
+    /// the data so decoding and engine construction cannot drift into
+    /// different definitions of a valid match configuration.
+    var intrinsicConfigurationError: String? {
+        if poolTarget != .max && poolTarget <= 0 {
+            return "Pool target must be positive or unbounded."
+        }
+        if case let .dedicatedContract(_, bonusPool) = totus, bonusPool < 0 {
+            return "Dedicated Totus bonus pool cannot be negative."
+        }
+        return nil
+    }
+
+    func configurationError(playerCount: Int) -> String? {
+        if let error = intrinsicConfigurationError { return error }
+        guard playerCount > 0 else { return "Player count must be positive." }
+        if poolTarget != .max,
+           poolClosure == .individualWithAmericanAid,
+           !poolTarget.isMultiple(of: playerCount) {
+            return "Individual pool target \(poolTarget) must divide evenly across \(playerCount) players."
+        }
+        return nil
+    }
+
     /// Whether the current score has closed the match. Keeping this decision
     /// beside the policy prevents scoring, game-over transitions, and snapshot
     /// invariants from growing subtly different definitions of "closed".
@@ -65,7 +89,7 @@ public struct MatchSettings: Hashable, Codable, Sendable {
     /// the Sochi-style individual/American-aid behavior.
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(
+        let decoded = MatchSettings(
             poolTarget: try values.decodeIfPresent(Int.self, forKey: .poolTarget) ?? .max,
             poolClosure: try values.decodeIfPresent(PoolClosurePolicy.self, forKey: .poolClosure)
                 ?? .individualWithAmericanAid,
@@ -73,6 +97,13 @@ public struct MatchSettings: Hashable, Codable, Sendable {
             totus: try values.decodeIfPresent(TotusPolicy.self, forKey: .totus)
                 ?? .asTenTrickGame(requireWhist: false)
         )
+        if let error = decoded.intrinsicConfigurationError {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: error
+            ))
+        }
+        self = decoded
     }
 
     public func encode(to encoder: Encoder) throws {

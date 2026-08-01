@@ -254,13 +254,8 @@ extension PreferansEngine {
     }
 
     private static func checkMatchSettings(_ match: MatchSettings, playerCount: Int) throws {
-        try require(match.poolTarget == .max || match.poolTarget > 0, "pool target must be positive or unbounded")
-        if match.poolTarget != .max, match.poolClosure == .individualWithAmericanAid {
-            try require(
-                match.poolTarget.isMultiple(of: playerCount),
-                "individual pool target must divide evenly across all players"
-            )
-        }
+        let error = match.configurationError(playerCount: playerCount)
+        try require(error == nil, "invalid match: \(error ?? "unknown")")
     }
 
     private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {

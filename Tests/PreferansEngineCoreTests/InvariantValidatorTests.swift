@@ -692,6 +692,22 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(snapshot, contains: "invalid rules")
     }
 
+    func testSnapshotValidatorRejectsNegativeDedicatedTotusBonus() {
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            match: MatchSettings(
+                poolTarget: .max,
+                totus: .dedicatedContract(requireWhist: true, bonusPool: -1)
+            ),
+            state: .waitingForDeal,
+            score: ScoreSheet(players: seats),
+            nextDealer: north
+        )
+
+        assertViolation(snapshot, contains: "bonus pool cannot be negative")
+    }
+
     func testSnapshotValidatorRejectsGameOverSummaryMismatch() {
         let (hands, _) = dealHands()
         let score = ScoreSheet(

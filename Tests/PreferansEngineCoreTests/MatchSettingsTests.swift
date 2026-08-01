@@ -95,6 +95,35 @@ final class MatchSettingsTests: XCTestCase {
         }
     }
 
+    func testEngineRejectsNegativeDedicatedTotusBonus() {
+        let settings = MatchSettings(
+            poolTarget: .max,
+            totus: .dedicatedContract(requireWhist: true, bonusPool: -1)
+        )
+
+        XCTAssertThrowsError(try makeEngine(match: settings)) { error in
+            guard case let PreferansError.invalidMatch(message) = error else {
+                return XCTFail("Expected invalidMatch; got \(error)")
+            }
+            XCTAssertTrue(message.contains("bonus pool cannot be negative"))
+        }
+    }
+
+    func testDecodingRejectsNegativeDedicatedTotusBonus() throws {
+        let settings = MatchSettings(
+            poolTarget: .max,
+            totus: .dedicatedContract(requireWhist: true, bonusPool: -1)
+        )
+        let encoded = try JSONEncoder().encode(settings)
+
+        XCTAssertThrowsError(try JSONDecoder().decode(MatchSettings.self, from: encoded)) { error in
+            guard case let DecodingError.dataCorrupted(context) = error else {
+                return XCTFail("Expected dataCorrupted; got \(error)")
+            }
+            XCTAssertTrue(context.debugDescription.contains("bonus pool cannot be negative"))
+        }
+    }
+
     func testGameOverFiresWhenPoolSumCrossesTargetExactly() throws {
         var engine = try makeEngine(match: MatchSettings(poolTarget: 2, poolClosure: .tableTotal))
         let events = try runPassedOutSixClubs(&engine)

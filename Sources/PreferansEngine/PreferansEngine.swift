@@ -337,15 +337,8 @@ public struct PreferansEngine: Sendable {
     }
 
     private static func validate(match: MatchSettings, playerCount: Int) throws {
-        guard match.poolTarget == .max || match.poolTarget > 0 else {
-            throw PreferansError.invalidMatch("Pool target must be positive or unbounded.")
-        }
-        if match.poolTarget != .max,
-           match.poolClosure == .individualWithAmericanAid,
-           !match.poolTarget.isMultiple(of: playerCount) {
-            throw PreferansError.invalidMatch(
-                "Individual pool target \(match.poolTarget) must divide evenly across \(playerCount) players."
-            )
+        if let error = match.configurationError(playerCount: playerCount) {
+            throw PreferansError.invalidMatch(error)
         }
     }
 
