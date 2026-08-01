@@ -40,6 +40,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var hostRecoveryTask: Task<Void, Never>?
     private var durabilityRetryTask: Task<Void, Never>?
     private var durabilityBarrier: RoomDurabilityBarrier<HostUpdate>
+    private let hostRecoveryBackoff: RoomRetryBackoff
     /// Invalidates async authority work whenever attachment or host ownership
     /// changes. Cancellation alone is insufficient because transport awaits do
     /// not all cooperate with task cancellation.
@@ -80,6 +81,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         botMoveDelay: Duration = BotPacing.interactive,
         trickResultHoldDuration: Duration = .milliseconds(1_400),
         durabilityRetryInitialDelay: Duration = .milliseconds(500),
+        hostRecoveryRetryInitialDelay: Duration = .milliseconds(250),
+        hostRecoveryRetryMaximumDelay: Duration = .seconds(4),
         runsServerSideBots: Bool = true
     ) {
         self.dealSource = dealSource
@@ -88,6 +91,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.trickResultHoldDuration = trickResultHoldDuration
         self.durabilityBarrier = RoomDurabilityBarrier(
             initialRetryDelay: durabilityRetryInitialDelay
+        )
+        self.hostRecoveryBackoff = RoomRetryBackoff(
+            initialDelay: hostRecoveryRetryInitialDelay,
+            maximumDelay: hostRecoveryRetryMaximumDelay
         )
         self.runsServerSideBots = runsServerSideBots
     }
@@ -616,7 +623,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
         hostRecoveryTask = Task { @MainActor [weak self, weak transport] in
             guard let self, let transport else { return }
-            var delay: Duration = .milliseconds(250)
+            var retryBackoff = self.hostRecoveryBackoff
             while !Task.isCancelled {
                 do {
                     let resume = try await transport.hostRecoveryContext()
@@ -639,6 +646,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                         transport: transport
                     )
                     guard self.authorityGeneration == authorityGeneration else { return }
+                    self.errorText = nil
                     self.hostRecoveryTask = nil
                     return
                 } catch is CancellationError {
@@ -649,8 +657,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                     self.errorText = String(
                         localized: "Recovering the table… Your game is safe."
                     )
-                    try? await Task.sleep(for: delay)
-                    delay = min(delay * 2, .seconds(4))
+                    try? await Task.sleep(for: retryBackoff.currentDelay)
+                    retryBackoff.recordFailure()
                 }
             }
         }

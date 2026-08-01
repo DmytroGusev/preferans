@@ -5,6 +5,35 @@ import XCTest
 
 @MainActor
 final class RoomOnlineGameCoordinatorTests: XCTestCase {
+    func testSharedRetryBackoffDoublesCapsAndResets() {
+        var backoff = RoomRetryBackoff(
+            initialDelay: .milliseconds(250),
+            maximumDelay: .seconds(1)
+        )
+
+        XCTAssertEqual(backoff.currentDelay, .milliseconds(250))
+        backoff.recordFailure()
+        XCTAssertEqual(backoff.currentDelay, .milliseconds(500))
+        backoff.recordFailure()
+        XCTAssertEqual(backoff.currentDelay, .seconds(1))
+        backoff.recordFailure()
+        XCTAssertEqual(backoff.currentDelay, .seconds(1))
+
+        backoff.reset()
+        XCTAssertEqual(backoff.currentDelay, .milliseconds(250))
+    }
+
+    func testSharedRetryBackoffNormalizesInvalidBounds() {
+        let backoff = RoomRetryBackoff(
+            initialDelay: .zero,
+            maximumDelay: .seconds(-1)
+        )
+
+        XCTAssertEqual(backoff.initialDelay, .nanoseconds(1))
+        XCTAssertEqual(backoff.currentDelay, .nanoseconds(1))
+        XCTAssertEqual(backoff.maximumDelay, .nanoseconds(1))
+    }
+
     func testDurabilityBarrierIsSingleFlightAndTicketScoped() {
         var barrier = RoomDurabilityBarrier<Int>(initialRetryDelay: .milliseconds(10))
 
@@ -444,6 +473,48 @@ final class RoomOnlineGameCoordinatorTests: XCTestCase {
         XCTAssertEqual(north.projection?.sequence, 2)
         XCTAssertTrue(east.isHost)
         XCTAssertFalse(north.isHost)
+
+        for coordinator in coordinators.values { coordinator.detach() }
+    }
+
+    func testHostRecoveryRetriesAndClearsItsStatusAfterSuccess() async throws {
+        let room = StallableRoom(peers: peers, hostPlayerID: "north")
+        let transports = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            (peer.playerID, room.transport(for: peer.playerID))
+        })
+        let coordinators = Dictionary(uniqueKeysWithValues: peers.map { peer in
+            let retryDelay: Duration = peer.playerID == "east"
+                ? .milliseconds(1)
+                : .milliseconds(250)
+            let maximumDelay: Duration = peer.playerID == "east"
+                ? .milliseconds(2)
+                : .seconds(4)
+            return (peer.playerID, RoomOnlineGameCoordinator(
+                heartbeat: .disabled,
+                hostRecoveryRetryInitialDelay: retryDelay,
+                hostRecoveryRetryMaximumDelay: maximumDelay
+            ))
+        })
+
+        for peer in peers {
+            await coordinators[peer.playerID]?.attach(
+                transport: try XCTUnwrap(transports[peer.playerID])
+            )
+        }
+
+        let east = try XCTUnwrap(coordinators["east"])
+        let eastTransport = try XCTUnwrap(transports["east"])
+        eastTransport.hostRecoveryFailuresRemaining = 2
+        room.migrateHost(to: "east", recovery: nil)
+
+        await pump(until: {
+            east.state == .connectedAsHost && eastTransport.hostRecoveryAttemptCount == 3
+        }, timeout: .seconds(1))
+
+        XCTAssertTrue(east.isHost)
+        XCTAssertEqual(east.liveness, .live)
+        XCTAssertNil(east.errorText, "A completed recovery must clear its transient recovery banner.")
+        XCTAssertEqual(eastTransport.hostRecoveryAttemptCount, 3)
 
         for coordinator in coordinators.values { coordinator.detach() }
     }
@@ -938,7 +1009,9 @@ private final class StallableTransport: RoomRealtimeTransport {
     /// delivered, and inbound messages are dropped.
     var isStalled = false
     var suspendStateReports = false
+    var hostRecoveryFailuresRemaining = 0
     private(set) var sentMessages: [GameWireMessage] = []
+    private(set) var hostRecoveryAttemptCount = 0
     private(set) var stateReportAttemptCount = 0
     private(set) var stateReportReturnCount = 0
 
@@ -1002,7 +1075,12 @@ private final class StallableTransport: RoomRealtimeTransport {
     }
 
     func hostRecoveryContext() async throws -> OnlineResumeContext? {
-        room.currentRecoveryContext()
+        hostRecoveryAttemptCount += 1
+        if hostRecoveryFailuresRemaining > 0 {
+            hostRecoveryFailuresRemaining -= 1
+            throw StallableTransportError.recoveryUnavailable
+        }
+        return room.currentRecoveryContext()
     }
 
     func reportState(
@@ -1051,6 +1129,10 @@ private final class StallableTransport: RoomRealtimeTransport {
             continuation.yield(participants)
         }
     }
+}
+
+private enum StallableTransportError: Error {
+    case recoveryUnavailable
 }
 
 @MainActor

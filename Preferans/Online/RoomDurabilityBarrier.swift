@@ -15,19 +15,18 @@ struct RoomDurabilityBarrier<Update> {
         var update: Update
     }
 
-    private let initialRetryDelay: Duration
-    private let maximumRetryDelay: Duration
     private var generation: UInt64 = 0
     private var staged: Staged?
-    private var retryDelay: Duration
+    private var retryBackoff: RoomRetryBackoff
 
     init(
         initialRetryDelay: Duration,
         maximumRetryDelay: Duration = .seconds(8)
     ) {
-        self.initialRetryDelay = initialRetryDelay
-        self.maximumRetryDelay = maximumRetryDelay
-        self.retryDelay = initialRetryDelay
+        self.retryBackoff = RoomRetryBackoff(
+            initialDelay: initialRetryDelay,
+            maximumDelay: maximumRetryDelay
+        )
     }
 
     var acceptsAction: Bool {
@@ -39,7 +38,7 @@ struct RoomDurabilityBarrier<Update> {
         generation &+= 1
         let ticket = Ticket(generation: generation)
         staged = Staged(ticket: ticket, update: update)
-        retryDelay = initialRetryDelay
+        retryBackoff.reset()
         return ticket
     }
 
@@ -50,13 +49,13 @@ struct RoomDurabilityBarrier<Update> {
 
     func delay(for ticket: Ticket) -> Duration? {
         guard staged?.ticket == ticket else { return nil }
-        return retryDelay
+        return retryBackoff.currentDelay
     }
 
     @discardableResult
     mutating func recordFailure(for ticket: Ticket) -> Bool {
         guard staged?.ticket == ticket else { return false }
-        retryDelay = min(retryDelay * 2, maximumRetryDelay)
+        retryBackoff.recordFailure()
         return true
     }
 
@@ -64,12 +63,12 @@ struct RoomDurabilityBarrier<Update> {
         guard staged?.ticket == ticket else { return nil }
         let update = staged?.update
         staged = nil
-        retryDelay = initialRetryDelay
+        retryBackoff.reset()
         return update
     }
 
     mutating func reset() {
         staged = nil
-        retryDelay = initialRetryDelay
+        retryBackoff.reset()
     }
 }

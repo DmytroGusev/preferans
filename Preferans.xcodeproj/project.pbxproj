@@ -53,6 +53,7 @@
 		B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */; };
 		B0000000000000000000C31A /* RoomParticipantRoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C31B /* RoomParticipantRoster.swift */; };
 		B0000000000000000000C31C /* RoomDurabilityBarrier.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C31D /* RoomDurabilityBarrier.swift */; };
+		B0000000000000000000C31E /* RoomRetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C31F /* RoomRetryBackoff.swift */; };
 		B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */; };
 		B0000000000000000000B004 /* OnlineRoomGameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000B005 /* OnlineRoomGameScreen.swift */; };
 		B0000000000000000000BFA0 /* OnlineWaitingRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000BFA1 /* OnlineWaitingRoomView.swift */; };
@@ -182,6 +183,7 @@
 		B0000000000000000000C319 /* GameDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/GameDetailSheet.swift; sourceTree = "<group>"; };
 		B0000000000000000000C31B /* RoomParticipantRoster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomParticipantRoster.swift; sourceTree = "<group>"; };
 		B0000000000000000000C31D /* RoomDurabilityBarrier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomDurabilityBarrier.swift; sourceTree = "<group>"; };
+		B0000000000000000000C31F /* RoomRetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomRetryBackoff.swift; sourceTree = "<group>"; };
 		E00000000000000000000001 /* PreferansUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PreferansUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E00000000000000000000002 /* PreferansUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferansUITests.swift; sourceTree = "<group>"; };
 		E0000000000000000000A040 /* MatchUIRobot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchUIRobot.swift; sourceTree = "<group>"; };
@@ -244,6 +246,7 @@
 				B0000000000000000000B001 /* RoomOnlineGameCoordinator.swift */,
 				B0000000000000000000C31B /* RoomParticipantRoster.swift */,
 				B0000000000000000000C31D /* RoomDurabilityBarrier.swift */,
+				B0000000000000000000C31F /* RoomRetryBackoff.swift */,
 				B0000000000000000000C315 /* RoomRealtimeTransport.swift */,
 				B0000000000000000000C317 /* InMemoryRoomTransport.swift */,
 				B0000000000000000000B003 /* InMemoryOnlineGameSession.swift */,
@@ -448,6 +451,7 @@
 				B0000000000000000000B000 /* RoomOnlineGameCoordinator.swift in Sources */,
 				B0000000000000000000C31A /* RoomParticipantRoster.swift in Sources */,
 				B0000000000000000000C31C /* RoomDurabilityBarrier.swift in Sources */,
+				B0000000000000000000C31E /* RoomRetryBackoff.swift in Sources */,
 				B0000000000000000000C314 /* RoomRealtimeTransport.swift in Sources */,
 				B0000000000000000000C316 /* InMemoryRoomTransport.swift in Sources */,
 				B0000000000000000000B002 /* InMemoryOnlineGameSession.swift in Sources */,
