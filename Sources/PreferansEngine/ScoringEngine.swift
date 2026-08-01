@@ -127,11 +127,18 @@ struct PreferansScoring {
             delta.addWhists(whistUnit * defenderTricks, writer: context.whisters[0], on: context.declarer)
         case (.gentleman, 1) where declarerTricks >= context.contract.tricks:
             delta.addWhists(whistUnit * defenderTricks, writer: context.whisters[0], on: context.declarer)
-        case (.gentleman, 1):
-            let share = whistUnit * defenderTricks / context.defenders.count
-            for defender in context.defenders {
-                delta.addWhists(share, writer: defender, on: context.declarer)
-            }
+        case (.gentleman, _) where declarerTricks < context.contract.tricks:
+            // Gentleman whist splits the defending trick remuneration across
+            // both defenders on a declarer remise, regardless of whether one
+            // or both defenders originally said whist. The separate
+            // declarer-remise consolation is applied above according to the
+            // active convention.
+            applySplitWhists(
+                whistUnit * defenderTricks,
+                writers: context.defenders,
+                on: context.declarer,
+                delta: &delta
+            )
         case (.greedy, _), (.ownHandOnly, _), (.gentleman, _):
             for whister in context.whisters {
                 delta.addWhists(
@@ -173,6 +180,21 @@ struct PreferansScoring {
             initialHands: openingHands(from: playing),
             settlement: settlement
         )
+    }
+
+    private func applySplitWhists(
+        _ points: Int,
+        writers: [PlayerID],
+        on target: PlayerID,
+        delta: inout ScoreDelta
+    ) {
+        guard points > 0, !writers.isEmpty else { return }
+        let base = points / writers.count
+        let remainder = points % writers.count
+        for (index, writer) in writers.enumerated() {
+            let share = base + (index < remainder ? 1 : 0)
+            delta.addWhists(share, writer: writer, on: target)
+        }
     }
 
     private func applyWhistResponsibility(

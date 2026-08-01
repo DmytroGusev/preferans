@@ -123,6 +123,24 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.mountain["south"], 0)
     }
 
+    func testRostovGentlemanWhistSplitsRemiseTricksWhenBothDefendersWhist() {
+        let delta = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east", "south"],
+            trickCounts: ["north": 5, "east": 4, "south": 1],
+            rules: .rostov
+        )
+
+        // The declarer missed by one. Rostov's ten-whist consolation is
+        // written by each defender, while gentleman whist splits the five
+        // defender-trick whists equally instead of paying each seat for its
+        // own trick count.
+        XCTAssertEqual(delta.whists["east"]?["north"], 15)
+        XCTAssertEqual(delta.whists["south"]?["north"], 15)
+        XCTAssertEqual(delta.mountain["east"], 0)
+        XCTAssertEqual(delta.mountain["south"], 0)
+    }
+
     func testRostovWhistQuotaRemiseWritesHalfGameValueToMountain() {
         let delta = scoreGame(
             contract: GameContract(6, .suit(.diamonds)),
@@ -385,8 +403,11 @@ final class ScoringVariantTests: XCTestCase {
             rules: .leningrad
         )
         XCTAssertEqual(failed.mountain["north"], 4)
-        XCTAssertEqual(failed.whists["east"]?["north"], 16)
-        XCTAssertEqual(failed.whists["south"]?["north"], 12)
+        // Leningrad's gentleman whist splits the doubled five-trick
+        // remuneration (20) evenly, then each defender adds the doubled
+        // four-whist consolation for the one undertrick.
+        XCTAssertEqual(failed.whists["east"]?["north"], 14)
+        XCTAssertEqual(failed.whists["south"]?["north"], 14)
     }
 
     func testLeningradGentlemanWhistIsGreedyWhenDeclarerMakesContract() {
