@@ -124,6 +124,58 @@ final class RedesignScreenshotTests: XCTestCase {
         .capture(name: "accessibility-xxxl", force: true, attach: false)
     }
 
+    /// Accessibility text deliberately replaces the wide iPad auction grid
+    /// with the same scrollable rail used by iPhone. Capture the real table on
+    /// both devices and keep the opening actions fully visible and tappable.
+    func testCaptureTableAuctionAtAccessibilityXXXL() {
+        let output = screenDir("screens-table-accessibility")
+        try? FileManager.default.removeItem(at: output)
+
+        let app = XCUIApplication()
+        app.configureForMatchScript(
+            "game1",
+            extra: [
+                "-UIPreferredContentSizeCategoryName",
+                "UICTContentSizeCategoryAccessibilityXXXL",
+            ]
+        )
+        app.launch()
+
+        let robot = MatchUIRobot(app: app)
+        robot.startLocalTable()
+        robot.waitForPhase("Ready")
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
+
+        let rail = app.descendants(matching: .any)[UIIdentifiers.actionChoiceRailCompact]
+        let pass = app.buttons[UIIdentifiers.bidButton(.pass)]
+        let sixSpadesCall = BidCall.bid(.game(GameContract(6, .suit(.spades))))
+        let sixSpades = app.buttons[UIIdentifiers.bidButton(sixSpadesCall)]
+        XCTAssertTrue(rail.waitForExistence(timeout: 2))
+        XCTAssertTrue(pass.waitForExistence(timeout: 2) && pass.isHittable)
+        XCTAssertTrue(sixSpades.waitForExistence(timeout: 2) && sixSpades.isHittable)
+        XCTAssertGreaterThanOrEqual(pass.frame.height, 44)
+        XCTAssertGreaterThanOrEqual(sixSpades.frame.height, 44)
+        XCTAssertEqual(
+            pass.frame.midY,
+            sixSpades.frame.midY,
+            accuracy: 2,
+            "Accessibility text should use one natural-height action row"
+        )
+
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: output,
+            filePrefix: "table-auction"
+        )
+        .capture(name: "accessibility-xxxl", force: true, attach: false)
+
+        robot.bid(.bid(.game(GameContract(10, .suit(.spades)))))
+        robot.waitForPhase("Bidding")
+        XCTAssertEqual(robot.currentViewer(), "south")
+    }
+
     /// The settlement control uses deliberately different compositions:
     /// stacked actions on iPhone and a bounded action column on iPad.
     func testCaptureSettlementComposerDeviceLayout() {

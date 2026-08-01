@@ -52,6 +52,28 @@ final class TableLayoutModelTests: XCTestCase {
         XCTAssertFalse(policy.usesRegularGrid)
     }
 
+    func testAccessibilityChoiceRailUsesOneNaturalHeightRow() {
+        let policy = ActionChoiceLayoutPolicy(
+            horizontalSizeClass: .compact,
+            verticalSizeClass: .regular,
+            usesAccessibilityText: true,
+            availableWidth: 390
+        )
+
+        XCTAssertFalse(policy.usesTwoRowRail)
+    }
+
+    func testStandardPortraitChoiceRailKeepsTwoRows() {
+        let policy = ActionChoiceLayoutPolicy(
+            horizontalSizeClass: .compact,
+            verticalSizeClass: .regular,
+            usesAccessibilityText: false,
+            availableWidth: 390
+        )
+
+        XCTAssertTrue(policy.usesTwoRowRail)
+    }
+
     func testCompactActionBarOmitsPassiveCardPlayStatus() {
         let legal = LegalActionProjection(
             playableCards: [Card(.spades, .ace)]

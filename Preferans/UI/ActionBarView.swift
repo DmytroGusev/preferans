@@ -5,6 +5,7 @@ struct ActionChoiceLayoutPolicy: Equatable {
     static let minimumRegularGridWidth: CGFloat = 7 * 74 + 6 * 8
 
     var horizontalSizeClass: UserInterfaceSizeClass?
+    var verticalSizeClass: UserInterfaceSizeClass? = nil
     var usesAccessibilityText: Bool
     var availableWidth: CGFloat?
 
@@ -15,6 +16,14 @@ struct ActionChoiceLayoutPolicy: Equatable {
         }
         guard let availableWidth else { return true }
         return availableWidth >= Self.minimumRegularGridWidth
+    }
+
+    /// Large accessibility labels need their natural height. A single
+    /// horizontal row preserves that height and reduces the table action
+    /// surface's vertical footprint; the normal portrait rail keeps two rows
+    /// so the opening level remains visible without scrolling.
+    var usesTwoRowRail: Bool {
+        verticalSizeClass != .compact && !usesAccessibilityText
     }
 }
 
@@ -102,7 +111,7 @@ public struct ActionBarView: View {
     }
 
     private var usesTwoRowChoiceRail: Bool {
-        verticalSizeClass != .compact
+        choiceLayoutPolicy.usesTwoRowRail
     }
 
     @ViewBuilder
@@ -233,12 +242,16 @@ public struct ActionBarView: View {
     /// sizes retain the scroller so large labels never get squeezed into seven
     /// narrow columns.
     private var usesRegularChoiceGrid: Bool {
+        choiceLayoutPolicy.usesRegularGrid
+    }
+
+    private var choiceLayoutPolicy: ActionChoiceLayoutPolicy {
         ActionChoiceLayoutPolicy(
             horizontalSizeClass: horizontalSizeClass,
+            verticalSizeClass: verticalSizeClass,
             usesAccessibilityText: dynamicTypeSize.isAccessibilitySize,
             availableWidth: availableChoiceWidth
         )
-        .usesRegularGrid
     }
 
     private var regularChoiceColumns: [GridItem] {

@@ -133,15 +133,18 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 6)
                 .padding(.bottom, 8)
+                .dynamicTypeSize(denseTableTypeRange)
             tableView()
                 .padding(.horizontal, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .dynamicTypeSize(denseTableTypeRange)
             if shouldShowHandRail {
                 viewerHandFan
                     .padding(.horizontal, 8)
                     .padding(.top, 4)
                     .padding(.bottom, 4)
                     .layoutPriority(1)
+                    .dynamicTypeSize(denseTableTypeRange)
             }
             if shouldShowActionBar {
                 actionBar()
@@ -164,13 +167,17 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
                 .padding(.bottom, 4)
+                .dynamicTypeSize(denseTableTypeRange)
             HStack(alignment: .top, spacing: 8) {
                 landscapeOpponentColumn
                     .frame(width: hasOpenOpponentHand ? 260 : 180)
+                    .dynamicTypeSize(denseTableTypeRange)
                 VStack(spacing: 4) {
                     DealStateStrip(projection: projection)
+                        .dynamicTypeSize(denseTableTypeRange)
                     landscapeTablePlayArea
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .dynamicTypeSize(denseTableTypeRange)
                     if shouldShowActionBar {
                         actionBar()
                     }
@@ -178,6 +185,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                         viewerHandFan
                             .padding(.horizontal, 4)
                             .padding(.top, 2)
+                            .dynamicTypeSize(denseTableTypeRange)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -293,12 +301,15 @@ public struct ProjectionGameScreen<Menu: View>: View {
                         .padding(.horizontal, 12)
                         .padding(.top, 6)
                         .padding(.bottom, 8)
+                        .dynamicTypeSize(denseTableTypeRange)
                     tableView()
                         .frame(maxHeight: .infinity)
+                        .dynamicTypeSize(denseTableTypeRange)
                     if shouldShowHandRail {
                         viewerHandFan
                             .padding(.horizontal, 8)
                             .padding(.top, 4)
+                            .dynamicTypeSize(denseTableTypeRange)
                     }
                     if shouldShowActionBar {
                         actionBar(availableChoiceWidth: max(0, split.tableWidth - 24))
@@ -315,11 +326,21 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 }
                     .scrollIndicators(.hidden)
                     .frame(width: split.sidebarWidth)
+                    .dynamicTypeSize(denseTableTypeRange)
             }
             .padding(.vertical, 16)
             .padding(.trailing, split.trailingInset)
         }
         .feltBackground()
+    }
+
+    /// A card table is a dense spatial interface: allowing every passive seat
+    /// label and score cell to expand to Accessibility XXXL destroys the board
+    /// and can push the actual decision controls off-screen. Keep that chrome
+    /// readable up through XXXL, while the action bar remains at the user's
+    /// requested size and switches to a natural-height scrolling row.
+    private var denseTableTypeRange: ClosedRange<DynamicTypeSize> {
+        .small ... .xxxLarge
     }
 
     /// True while the felt is rendering the deal-summary card. The summary

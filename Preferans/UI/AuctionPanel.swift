@@ -80,9 +80,14 @@ extension TableView {
                     action.label.glyph(emphasis: .banner)
                         .font(.subheadline.weight(.heavy))
                 } else if isCurrent {
-                    Text("Choosing")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.goldBright)
+                    ViewThatFits(in: .horizontal) {
+                        Text("Choosing")
+                            .fixedSize()
+                        Text("…")
+                            .accessibilityLabel("Choosing")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(TableTheme.goldBright)
                 } else {
                     Text("—")
                         .font(.subheadline.weight(.semibold))
