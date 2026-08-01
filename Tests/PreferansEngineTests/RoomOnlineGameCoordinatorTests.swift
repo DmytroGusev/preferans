@@ -421,6 +421,16 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
             },
             dealSource: ScriptedDealSource(decks: [Deck.standard32])
         )
+        transport.simulateMessage(
+            .seatAssignment(SeatAssignmentEnvelope(
+                tableID: actor.tableID,
+                hostPlayerID: host.playerID,
+                seats: participants.map(\.playerIdentity),
+                rules: .sochi
+            )),
+            sender: host
+        )
+        await pump(until: { client.tableID == actor.tableID })
         let initialProjection = try await actor.projection(for: clientPeer.playerID)
         let start = ClientActionEnvelope(
             tableID: actor.tableID,

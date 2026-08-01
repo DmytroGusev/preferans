@@ -5,6 +5,11 @@ import PreferansEngine
 /// Transport recipient routing is not an authority boundary: every host-owned
 /// frame must still match the elected host, table, viewer, and sequence.
 enum RoomInboundMessagePolicy {
+    struct FrameID: Equatable {
+        var tableID: UUID
+        var sequence: Int
+    }
+
     enum ProjectionDecision: Equatable {
         case reject
         /// Same table and sequence: refresh replaceable state only. Structured
@@ -40,20 +45,23 @@ enum RoomInboundMessagePolicy {
         currentSequence: Int?
     ) -> ProjectionDecision {
         guard let localPlayer,
+              let currentTable,
               envelope.viewer == localPlayer,
               envelope.projection.viewer == localPlayer,
+              envelope.tableID == currentTable,
               envelope.tableID == envelope.projection.tableID,
               envelope.sequence == envelope.projection.sequence else {
             return .reject
         }
 
-        guard envelope.tableID == currentTable,
-              let currentSequence else {
-            return .advance
-        }
+        guard let currentSequence else { return .advance }
         if envelope.sequence < currentSequence { return .reject }
         if envelope.sequence == currentSequence { return .refresh }
         return .advance
+    }
+
+    static func frameID(for envelope: ProjectionEnvelope) -> FrameID {
+        FrameID(tableID: envelope.tableID, sequence: envelope.sequence)
     }
 
     static func acceptsHostError(

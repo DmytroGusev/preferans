@@ -36,6 +36,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// start the first deal. False while any `pending:` seat is still open.
     @Published public private(set) var canHostStart: Bool = false
 
+    private var lastSummaryFrame: RoomInboundMessagePolicy.FrameID?
+    private var lastEventFrame: RoomInboundMessagePolicy.FrameID?
     private var transport: (any RoomRealtimeTransport)?
     private var hostActor: HostGameActor?
     private let transportSubscriptions = RoomTransportSubscriptions()
@@ -207,6 +209,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         pendingAdvance = nil
         eventLog = []
         recentEvents = []
+        lastSummaryFrame = nil
+        lastEventFrame = nil
         botInsights = []
         stagedBotInsights = [:]
         isHost = false
@@ -792,9 +796,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             guard decision != .reject else { return }
             if decision == .refresh {
                 // A host sequence identifies immutable projected game state.
-                // A same-sequence resync may repair rolling presentation
-                // metadata, but cannot rewrite the accepted deal projection.
+                // A same-sequence live frame may repair rolling metadata and
+                // activity omitted by a racing resync, but cannot rewrite the
+                // accepted deal projection.
                 botInsights = envelope.botInsights
+                appendProjectionActivityIfNeeded(envelope)
                 state = .connectedAsClient
                 return
             }
@@ -808,8 +814,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
                 projection: envelope.projection
             )
             logOnlineFlowProjection(envelope.projection, source: "receive")
-            eventLog.append(contentsOf: envelope.eventSummaries)
-            appendRecentEvents(envelope.events)
+            appendProjectionActivityIfNeeded(envelope)
             state = .connectedAsClient
 
         case let .hostError(error):
@@ -1100,6 +1105,18 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func appendRecentEvents(_ events: [PreferansEvent]) {
         RecentActionFeed.append(events, to: &recentEvents)
+    }
+
+    private func appendProjectionActivityIfNeeded(_ envelope: ProjectionEnvelope) {
+        let frame = RoomInboundMessagePolicy.frameID(for: envelope)
+        if !envelope.eventSummaries.isEmpty, lastSummaryFrame != frame {
+            eventLog.append(contentsOf: envelope.eventSummaries)
+            lastSummaryFrame = frame
+        }
+        if !envelope.events.isEmpty, lastEventFrame != frame {
+            appendRecentEvents(envelope.events)
+            lastEventFrame = frame
+        }
     }
 
     /// Online uses the same exact pre-action hold as local play, but clears it

@@ -87,7 +87,8 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
         XCTAssertEqual(decision(envelope, currentTable: tableID, sequence: 4), .advance)
         XCTAssertEqual(decision(envelope, currentTable: tableID, sequence: 5), .refresh)
         XCTAssertEqual(decision(envelope, currentTable: tableID, sequence: 6), .reject)
-        XCTAssertEqual(decision(envelope, currentTable: UUID(), sequence: 99), .advance)
+        XCTAssertEqual(decision(envelope, currentTable: UUID(), sequence: 99), .reject)
+        XCTAssertEqual(decision(envelope, currentTable: nil, sequence: nil), .reject)
     }
 
     func testProjectionDecisionRejectsInconsistentEnvelopeMetadata() throws {
