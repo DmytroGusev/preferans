@@ -3,17 +3,25 @@ import PreferansEngine
 #if canImport(AuthenticationServices)
 import AuthenticationServices
 #endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct LobbyLayoutPolicy: Equatable {
     var isRegularWidth: Bool
     var usesAccessibilityText: Bool
+    /// Device idiom is authoritative for tablet-vs-phone chrome. An iPad in
+    /// a narrow Split View can report compact width without becoming an
+    /// iPhone; its tablet shell should remain recognizable while content
+    /// stacks to fit.
+    var isPadDevice: Bool = false
 
-    var usesTabletChrome: Bool { isRegularWidth }
+    var usesTabletChrome: Bool { isPadDevice || isRegularWidth }
     var usesTwoRegionComposition: Bool {
         isRegularWidth && !usesAccessibilityText
     }
     var stacksModeChoices: Bool {
-        isRegularWidth || usesAccessibilityText
+        usesTabletChrome || usesAccessibilityText
     }
     var placesRaspasyControlsSideBySide: Bool {
         isRegularWidth && !usesAccessibilityText
@@ -61,11 +69,20 @@ public struct LobbyView: View {
             : "local"
     }
 
-    private var layoutPolicy: LobbyLayoutPolicy {
+    var layoutPolicy: LobbyLayoutPolicy {
         LobbyLayoutPolicy(
             isRegularWidth: horizontalSizeClass == .regular,
-            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize
+            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize,
+            isPadDevice: isPadDevice
         )
+    }
+
+    private var isPadDevice: Bool {
+        #if canImport(UIKit)
+        return UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        return false
+        #endif
     }
 
     private var usesTabletLobby: Bool {

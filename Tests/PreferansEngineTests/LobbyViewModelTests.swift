@@ -87,6 +87,19 @@ final class LobbyViewModelTests: AppTestCase {
         }
     }
 
+    func testLobbyLayoutKeepsTabletChromeInCompactIPadSplitView() {
+        let policy = LobbyLayoutPolicy(
+            isRegularWidth: false,
+            usesAccessibilityText: false,
+            isPadDevice: true
+        )
+
+        XCTAssertTrue(policy.usesTabletChrome)
+        XCTAssertFalse(policy.usesTwoRegionComposition)
+        XCTAssertTrue(policy.stacksModeChoices)
+        XCTAssertFalse(policy.placesRaspasyControlsSideBySide)
+    }
+
     func testBotStepperAddsAndRemovesFourthBot() {
         let model = LobbyViewModel()
 

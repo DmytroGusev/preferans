@@ -39,13 +39,17 @@ extension LobbyView {
     /// same engine profile and pool-closing policy.
     var variantControls: some View {
         Group {
-            Picker("Variant", selection: $viewModel.onlineVariant) {
-                ForEach(PreferansVariant.allCases) { variant in
-                    Text(variant.title).tag(variant)
+            if !layoutPolicy.usesTabletChrome && !layoutPolicy.usesAccessibilityText {
+                compactVariantGrid
+            } else {
+                Picker("Variant", selection: $viewModel.onlineVariant) {
+                    ForEach(PreferansVariant.allCases) { variant in
+                        Text(variant.title).tag(variant)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier(UIIdentifiers.onlineVariantPicker)
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier(UIIdentifiers.onlineVariantPicker)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.onlineVariant.standardName)
@@ -60,6 +64,39 @@ extension LobbyView {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
         }
+    }
+
+    /// Four long convention names do not fit four equal segments on an
+    /// iPhone. Two full-width rows preserve direct selection and keep every
+    /// visible label readable; iPad retains the denser segmented control.
+    private var compactVariantGrid: some View {
+        LazyVGrid(
+            columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
+            spacing: 8
+        ) {
+            ForEach(PreferansVariant.allCases) { variant in
+                let selected = viewModel.onlineVariant == variant
+                Button {
+                    viewModel.onlineVariant = variant
+                } label: {
+                    Text(variant.title)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity, minHeight: 38)
+                        .foregroundStyle(selected ? TableTheme.feltDeep : TableTheme.inkCream)
+                        .background(
+                            selected ? TableTheme.goldBright : Color.black.opacity(0.22),
+                            in: RoundedRectangle(cornerRadius: 9)
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("\(UIIdentifiers.onlineVariantPicker).\(variant.rawValue)")
+                .accessibilityAddTraits(selected ? [.isSelected] : [])
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.onlineVariantPicker)
     }
 
     private var onlineCompositionSection: some View {
