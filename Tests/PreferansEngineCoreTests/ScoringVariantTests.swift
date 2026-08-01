@@ -73,6 +73,20 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.mountain["east"], 0)
     }
 
+    func testTwoWhistersEachPayEveryTrickMissingFromTheirHalfQuota() {
+        let delta = scoreGame(
+            contract: GameContract(6, .suit(.spades)),
+            whisters: ["east", "south"],
+            trickCounts: ["north": 10, "east": 0, "south": 0],
+            rules: .sochi
+        )
+
+        // A six-game requires four defending tricks. With two whisters, each
+        // is responsible for two; taking none means two mountain units each.
+        XCTAssertEqual(delta.mountain["east"], 4)
+        XCTAssertEqual(delta.mountain["south"], 4)
+    }
+
     // MARK: - Rostov direct-whist recording
 
     func testRostovOrdinaryWhistsKeepStandardContractValue() {

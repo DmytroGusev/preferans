@@ -246,12 +246,13 @@ struct PreferansScoring {
         let quota = requirement / max(1, whisters.count)
         for whister in whisters {
             let own = tricks(whister, in: trickCounts)
-            guard own < quota else { continue }
-            // When the partnership missed its target, falling below the
-            // half-share is a fixed one-unit whist remise, not one penalty
-            // per individually missing trick.
+            let missing = max(0, quota - own)
+            // Each whister is responsible for every trick missing from their
+            // half of the partnership quota. A six-game therefore charges
+            // two mountain units to a whister who takes no tricks, rather
+            // than collapsing the shortfall to a single unit.
             applyWhistRemise(
-                missing: 1,
+                missing: missing,
                 whister: whister,
                 declarer: declarer,
                 defenders: defenders,
