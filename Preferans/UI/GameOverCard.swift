@@ -1,6 +1,21 @@
 import SwiftUI
 import PreferansEngine
 
+struct GameOverLayoutPolicy: Equatable {
+    var isRegularWidth: Bool
+    var usesAccessibilityText: Bool
+
+    /// Regular iPad gets a two-region terminal screen: standings stay in the
+    /// reading area while the actions occupy a predictable control column.
+    /// Accessibility text sizes keep the compact flow so labels never become
+    /// trapped in a narrow tablet column.
+    var usesTwoRegionComposition: Bool {
+        isRegularWidth && !usesAccessibilityText
+    }
+
+    var stacksActions: Bool { !usesTwoRegionComposition }
+}
+
 /// Inline game-over panel rendered on the felt at match end. Replaces the
 /// auto-presented modal sheet so the overflow menu (and the rest of the
 /// felt) stays accessible — the user can review the standings and still
@@ -13,6 +28,9 @@ public struct GameOverCard: View {
     public var displayName: (PlayerID) -> String
     public var onRematch: (() -> Void)?
     public var onLeaveTable: (() -> Void)?
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(
         summary: MatchSummary,
@@ -27,32 +45,11 @@ public struct GameOverCard: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Game over")
-                    .font(.headline.bold())
-                    .foregroundStyle(TableTheme.goldBright)
-                    .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
-                if let winner = summary.standings.first {
-                    Text("\(displayName(winner.player)) takes the pulka")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(TableTheme.inkCream)
-                        .accessibilityLabel(Text("\(displayName(winner.player)) takes the pulka"))
-                        .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
-                    Text("Match won")
-                        .font(.caption2)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
-                }
-                Text("\(summary.dealsPlayed) completed deals")
-                    .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
-            }
-
-            standingsTable
-
-            if onRematch != nil || onLeaveTable != nil {
-                ctaRow
+        Group {
+            if layoutPolicy.usesTwoRegionComposition {
+                regularLayout
+            } else {
+                compactLayout
             }
         }
         .padding(16)
@@ -70,8 +67,86 @@ public struct GameOverCard: View {
         .accessibilityIdentifier(UIIdentifiers.Panel.gameOver.rawValue)
     }
 
+    private var layoutPolicy: GameOverLayoutPolicy {
+        GameOverLayoutPolicy(
+            isRegularWidth: horizontalSizeClass == .regular,
+            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize
+        )
+    }
+
+    private var compactLayout: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            summaryHeader
+            standingsTable
+            if onRematch != nil || onLeaveTable != nil {
+                ctaRow
+            }
+        }
+    }
+
+    /// iPad terminal state gives the result and the actions separate visual
+    /// jobs. The standings remain scannable while the vertical CTA column is
+    /// reachable without making the score table compete with two wide buttons.
+    private var regularLayout: some View {
+        HStack(alignment: .top, spacing: 24) {
+            VStack(alignment: .leading, spacing: 14) {
+                summaryHeader
+                standingsTable
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if onRematch != nil || onLeaveTable != nil {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Match complete")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                    ctaRow
+                }
+                .frame(width: 168, alignment: .leading)
+            }
+        }
+    }
+
+    private var summaryHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Game over")
+                .font(.headline.bold())
+                .foregroundStyle(TableTheme.goldBright)
+                .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
+            if let winner = summary.standings.first {
+                Text("\(displayName(winner.player)) takes the pulka")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(TableTheme.inkCream)
+                    .accessibilityLabel(Text("\(displayName(winner.player)) takes the pulka"))
+                    .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
+                Text("Match won")
+                    .font(.caption2)
+                    .foregroundStyle(TableTheme.inkCreamSoft)
+            }
+            Text("\(summary.dealsPlayed) completed deals")
+                .font(.caption)
+                .foregroundStyle(TableTheme.inkCreamSoft)
+                .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
+        }
+    }
+
     private var ctaRow: some View {
-        HStack(spacing: 8) {
+        Group {
+            if layoutPolicy.stacksActions {
+                VStack(spacing: 8) {
+                    ctaButtons
+                }
+            } else {
+                HStack(spacing: 8) {
+                    ctaButtons
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    @ViewBuilder
+    private var ctaButtons: some View {
             if let onLeaveTable {
                 Button {
                     onLeaveTable()
@@ -100,8 +175,6 @@ public struct GameOverCard: View {
                 .buttonStyle(.feltPrimary)
                 .accessibilityIdentifier(UIIdentifiers.buttonRematch)
             }
-        }
-        .padding(.top, 4)
     }
 
     private var standingsTable: some View {

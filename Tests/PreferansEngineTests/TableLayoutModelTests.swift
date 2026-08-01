@@ -33,6 +33,25 @@ final class TableLayoutModelTests: XCTestCase {
         )
     }
 
+    func testGameOverUsesASeparateIPadActionColumnButStacksAccessibilityText() {
+        XCTAssertTrue(
+            GameOverLayoutPolicy(isRegularWidth: true, usesAccessibilityText: false)
+                .usesTwoRegionComposition
+        )
+        XCTAssertFalse(
+            GameOverLayoutPolicy(isRegularWidth: false, usesAccessibilityText: false)
+                .usesTwoRegionComposition
+        )
+        XCTAssertFalse(
+            GameOverLayoutPolicy(isRegularWidth: true, usesAccessibilityText: true)
+                .usesTwoRegionComposition
+        )
+        XCTAssertTrue(
+            GameOverLayoutPolicy(isRegularWidth: true, usesAccessibilityText: true)
+                .stacksActions
+        )
+    }
+
     func testSeatOrderBadgesScaleForPhoneAndIPadCompositions() {
         XCTAssertEqual(
             SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .compact, isCondensed: false).diameter,
