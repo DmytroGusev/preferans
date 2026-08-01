@@ -109,7 +109,12 @@ final class MatchUIRobot {
     /// rotating the active hand. Success = the tapped card leaves the hand row.
     @discardableResult
     func playFirstPlayableHandCard(acceptanceTimeout: TimeInterval = 0.4) -> Bool {
-        let playable = app.buttons.matching(
+        // Query by identifier/value across the whole accessibility tree.
+        // SwiftUI may expose the same CardView-backed control as `Button` or
+        // `PopUpButton` while its hierarchy is being rebuilt; pinning the
+        // query to `app.buttons` makes XCUI reject that otherwise valid node
+        // with an automation-type mismatch.
+        let playable = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier CONTAINS %@ AND value == %@", ".hand.", "Playable")
         )
         let candidates = playable.allElementsBoundByIndex
@@ -119,7 +124,8 @@ final class MatchUIRobot {
             let id = card.identifier
             coordinate.doubleTap()
             let gone = NSPredicate(format: "exists == false")
-            let exp = XCTNSPredicateExpectation(predicate: gone, object: app.buttons[id])
+            let tappedCard = app.descendants(matching: .any).matching(identifier: id).firstMatch
+            let exp = XCTNSPredicateExpectation(predicate: gone, object: tappedCard)
             if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
                 return true
             }
