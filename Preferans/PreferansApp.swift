@@ -58,6 +58,10 @@ struct PreferansApp: App {
     var body: some Scene {
         WindowGroup {
             rootContent
+                // Every app surface uses the dark felt palette. Keep native
+                // controls in the same appearance so light-mode segmented
+                // labels do not become black-on-dark, especially on iPad.
+                .preferredColorScheme(.dark)
                 .environment(\.locale, Locale(identifier: AppLanguage.current.rawValue))
                 .transaction { transaction in
                     if animationsDisabled { transaction.animation = nil }
