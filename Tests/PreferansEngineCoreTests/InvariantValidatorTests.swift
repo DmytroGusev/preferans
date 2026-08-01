@@ -84,6 +84,55 @@ final class InvariantValidatorTests: XCTestCase {
         )
     }
 
+    private func whistFixture(
+        defenders: [PlayerID] = ["east", "south"],
+        currentPlayer: PlayerID = "east",
+        calls: [WhistCallRecord] = [],
+        flow: WhistState.HalfWhistFlow = .normal,
+        bonusPoolOnSuccess: Int = 0
+    ) -> WhistState {
+        let (hands, talon) = dealHands()
+        return WhistState(
+            dealer: south,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: talon,
+            declarer: north,
+            contract: GameContract(6, .suit(.spades)),
+            defenders: defenders,
+            currentPlayer: currentPlayer,
+            calls: calls,
+            flow: flow,
+            bonusPoolOnSuccess: bonusPoolOnSuccess
+        )
+    }
+
+    private func defenderModeFixture(
+        defenders: [PlayerID] = ["east", "south"],
+        whister: PlayerID = "east",
+        whistCalls: [WhistCallRecord] = [
+            WhistCallRecord(player: "east", call: .whist),
+            WhistCallRecord(player: "south", call: .pass),
+        ],
+        bonusPoolOnSuccess: Int = 0
+    ) -> DefenderModeState {
+        let (hands, talon) = dealHands()
+        return DefenderModeState(
+            dealer: south,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: talon,
+            declarer: north,
+            contract: GameContract(6, .suit(.spades)),
+            defenders: defenders,
+            whister: whister,
+            whistCalls: whistCalls,
+            bonusPoolOnSuccess: bonusPoolOnSuccess
+        )
+    }
+
     private func assertViolation(
         _ state: DealState,
         contains needle: String,
@@ -389,6 +438,72 @@ final class InvariantValidatorTests: XCTestCase {
             bonusPoolOnSuccess: 0
         ))
         assertViolation(state, contains: "defenders must be 2")
+    }
+
+    func testValidatorRejectsAwaitingWhistWithDuplicateDefenders() {
+        let state = DealState.awaitingWhist(whistFixture(defenders: [east, east]))
+
+        assertViolation(state, contains: "ordered active seats excluding declarer")
+    }
+
+    func testValidatorRejectsAwaitingWhistWithDefendersOutOfTurnOrder() {
+        let state = DealState.awaitingWhist(whistFixture(
+            defenders: [south, east],
+            currentPlayer: south
+        ))
+
+        assertViolation(state, contains: "ordered active seats excluding declarer")
+    }
+
+    func testValidatorRejectsAwaitingWhistWhenDeclarerIsCurrentPlayer() {
+        let state = DealState.awaitingWhist(whistFixture(currentPlayer: north))
+
+        assertViolation(state, contains: "currentPlayer must be a defender")
+    }
+
+    func testValidatorRejectsAwaitingWhistCallFromSecondDefenderFirst() {
+        let state = DealState.awaitingWhist(whistFixture(
+            currentPlayer: south,
+            calls: [WhistCallRecord(player: south, call: .pass)]
+        ))
+
+        assertViolation(state, contains: "first call must come from first defender")
+    }
+
+    func testValidatorRejectsForgedHalfWhistSecondChanceOwner() {
+        let state = DealState.awaitingWhist(whistFixture(
+            currentPlayer: east,
+            calls: [
+                WhistCallRecord(player: east, call: .pass),
+                WhistCallRecord(player: south, call: .halfWhist),
+            ],
+            flow: .firstDefenderSecondChance(halfWhister: east)
+        ))
+
+        assertViolation(state, contains: "half-whister must be second defender")
+    }
+
+    func testValidatorRejectsDefenderModeWhisterOutsideDefendingSide() {
+        let state = DealState.awaitingDefenderMode(defenderModeFixture(whister: north))
+
+        assertViolation(state, contains: "whister must be a defender")
+    }
+
+    func testValidatorRejectsDefenderModeWithoutExactlyOneWhister() {
+        let state = DealState.awaitingDefenderMode(defenderModeFixture(
+            whistCalls: [
+                WhistCallRecord(player: east, call: .whist),
+                WhistCallRecord(player: south, call: .whist),
+            ]
+        ))
+
+        assertViolation(state, contains: "exactly one whist and one pass")
+    }
+
+    func testValidatorRejectsNegativeTotusBonusInWhistPhase() {
+        let state = DealState.awaitingWhist(whistFixture(bonusPoolOnSuccess: -1))
+
+        assertViolation(state, contains: "bonusPoolOnSuccess cannot be negative")
     }
 
     // MARK: - Playing-state invariants

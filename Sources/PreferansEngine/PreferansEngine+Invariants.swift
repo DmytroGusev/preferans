@@ -80,18 +80,21 @@ extension PreferansEngine {
                 s.activePlayers.contains(s.currentPlayer),
                 "awaitingWhist currentPlayer \(s.currentPlayer) ∉ activePlayers"
             )
-            // The whist reducer indexes defenders[0] and defenders[1]
-            // unconditionally, so a corrupted snapshot with fewer than two
-            // defenders must be rejected here rather than crash later.
-            try require(
-                s.defenders.count == 2,
-                "awaitingWhist defenders must be 2, got \(s.defenders.count)"
+            try checkDefendingSide(
+                activePlayers: s.activePlayers,
+                declarer: s.declarer,
+                defenders: s.defenders,
+                context: "awaitingWhist"
             )
             try require(
-                Set(s.defenders).isSubset(of: Set(s.activePlayers)),
-                "defenders \(sorted(s.defenders)) ⊄ activePlayers"
+                s.defenders.contains(s.currentPlayer),
+                "awaitingWhist currentPlayer must be a defender"
             )
-            try require(!s.defenders.contains(s.declarer), "declarer \(s.declarer) ∈ defenders")
+            try require(
+                s.bonusPoolOnSuccess >= 0,
+                "awaitingWhist bonusPoolOnSuccess cannot be negative"
+            )
+            try checkWhistDecisionFlow(s)
         case let .awaitingDefenderMode(s):
             try checkActiveSeats(s.activePlayers)
             try checkHands(s.hands, seats: s.activePlayers, expected: 10)
@@ -102,20 +105,21 @@ extension PreferansEngine {
                 s.activePlayers.contains(s.declarer),
                 "awaitingDefenderMode declarer \(s.declarer) ∉ activePlayers"
             )
-            try require(
-                s.activePlayers.contains(s.whister),
-                "awaitingDefenderMode whister \(s.whister) ∉ activePlayers"
-            )
-            // Same two-defender shape as awaitingWhist: downstream play
-            // contexts assume exactly two defenders on the defending side.
-            try require(
-                s.defenders.count == 2,
-                "awaitingDefenderMode defenders must be 2, got \(s.defenders.count)"
+            try checkDefendingSide(
+                activePlayers: s.activePlayers,
+                declarer: s.declarer,
+                defenders: s.defenders,
+                context: "awaitingDefenderMode"
             )
             try require(
-                Set(s.defenders).isSubset(of: Set(s.activePlayers)),
-                "awaitingDefenderMode defenders \(sorted(s.defenders)) ⊄ activePlayers"
+                s.defenders.contains(s.whister),
+                "awaitingDefenderMode whister must be a defender"
             )
+            try require(
+                s.bonusPoolOnSuccess >= 0,
+                "awaitingDefenderMode bonusPoolOnSuccess cannot be negative"
+            )
+            try checkDefenderModeFlow(s)
         case let .playing(s):
             try checkActiveSeats(s.activePlayers)
             try require(s.talon.count == 2, "playing talon must be 2 cards, got \(s.talon.count)")
@@ -324,6 +328,99 @@ extension PreferansEngine {
                 "bidding without auction bids cannot carry a highest bid or bidder"
             )
         }
+    }
+
+    /// Defenders have both identity and order: forehand's successor speaks
+    /// first, then the remaining defender. The whist reducer indexes this
+    /// array directly, so set-only validation would still admit duplicates or
+    /// reverse the legal speaking order after recovery.
+    private static func checkDefendingSide(
+        activePlayers: [PlayerID],
+        declarer: PlayerID,
+        defenders: [PlayerID],
+        context: String
+    ) throws {
+        try require(
+            activePlayers.contains(declarer),
+            "\(context) declarer \(declarer) ∉ activePlayers"
+        )
+        try require(!defenders.contains(declarer), "\(context) declarer \(declarer) ∈ defenders")
+        try require(defenders.count == 2, "\(context) defenders must be 2, got \(defenders.count)")
+
+        guard let declarerIndex = activePlayers.firstIndex(of: declarer) else { return }
+        let expected = (1..<activePlayers.count).map {
+            activePlayers[(declarerIndex + $0) % activePlayers.count]
+        }
+        try require(
+            defenders == expected,
+            "\(context) defenders must be the ordered active seats excluding declarer; expected \(expected), got \(defenders)"
+        )
+    }
+
+    /// An awaiting-whist snapshot can only be at one of three reducer-owned
+    /// checkpoints: before the first call, before the second call, or at the
+    /// first defender's response to a half-whist. Reject every other shape so
+    /// recovery cannot skip or reorder a defensive decision.
+    private static func checkWhistDecisionFlow(_ whist: WhistState) throws {
+        let first = whist.defenders[0]
+        let second = whist.defenders[1]
+
+        switch whist.flow {
+        case .normal:
+            switch whist.calls.count {
+            case 0:
+                try require(
+                    whist.currentPlayer == first,
+                    "initial whist call must belong to first defender"
+                )
+            case 1:
+                let call = whist.calls[0]
+                try require(call.player == first, "first call must come from first defender")
+                try require(call.call != .halfWhist, "first defender cannot open with half-whist")
+                try require(
+                    whist.currentPlayer == second,
+                    "second whist call must belong to second defender"
+                )
+            default:
+                throw InvariantViolation(message: "normal whist flow may contain at most one completed call")
+            }
+
+        case let .firstDefenderSecondChance(halfWhister):
+            try require(halfWhister == second, "half-whister must be second defender")
+            try require(whist.currentPlayer == first, "half-whist response must return to first defender")
+            let expected = [
+                WhistCallRecord(player: first, call: .pass),
+                WhistCallRecord(player: second, call: .halfWhist),
+            ]
+            try require(
+                whist.calls == expected,
+                "half-whist second chance requires first pass followed by second defender half-whist"
+            )
+        }
+    }
+
+    /// Defender-mode selection exists only after exactly one defender whists
+    /// and the other passes. Two whists start closed play immediately; two
+    /// passes and half-whist branches score without entering this state.
+    private static func checkDefenderModeFlow(_ mode: DefenderModeState) throws {
+        let first = mode.defenders[0]
+        let second = mode.defenders[1]
+        try require(mode.whistCalls.count == 2, "defender mode requires exactly two whist calls")
+        guard mode.whistCalls.count == 2 else { return }
+        try require(
+            mode.whistCalls.map(\.player) == [first, second],
+            "defender mode whist calls must follow defender order"
+        )
+
+        let calls = mode.whistCalls.map(\.call)
+        let expectedWhister: PlayerID
+        switch calls {
+        case [.whist, .pass]: expectedWhister = first
+        case [.pass, .whist]: expectedWhister = second
+        default:
+            throw InvariantViolation(message: "defender mode requires exactly one whist and one pass")
+        }
+        try require(mode.whister == expectedWhister, "defender mode whister does not match whist calls")
     }
 
     private static func checkHands(
