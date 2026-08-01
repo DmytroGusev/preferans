@@ -65,7 +65,8 @@ export interface GameSummary {
   phase?: string;
   /// 1-based deal number within the match.
   dealNumber?: number;
-  /// Present once `status === "finished"`.
+  /// Required once `status === "finished"`; the worker validates that every
+  /// balance belongs to a seat in this room before publishing history.
   result?: GameResultSummary;
 }
 
@@ -520,6 +521,23 @@ export function applyStateReport(
     );
   }
   const candidateSummary = normalizeGameSummary(input.summary);
+  if (candidateSummary?.result !== undefined) {
+    if (requestedStatus !== "finished") {
+      throw new RoomStateError(
+        "invalid_state_report",
+        "A game result is only valid when the room is finished.",
+        400
+      );
+    }
+    validateGameResultSeats(candidateSummary.result, room);
+  }
+  if (requestedStatus === "finished" && candidateSummary?.result === undefined) {
+    throw new RoomStateError(
+      "invalid_state_report",
+      "A finished state report requires complete result standings.",
+      400
+    );
+  }
   if (requestedStatus !== "abandoned") {
     if (candidateSummary === undefined) {
       throw new RoomStateError(
@@ -624,8 +642,11 @@ export function normalizeGameSummary(value: unknown): GameSummary | undefined {
     }
     summary.dealNumber = dealNumber;
   }
-  const result = normalizeGameResult(value.result);
-  if (result) {
+  if (value.result !== undefined) {
+    const result = normalizeGameResult(value.result);
+    if (!result) {
+      return undefined;
+    }
     summary.result = result;
   }
   return summary;
@@ -742,24 +763,61 @@ function normalizeGameResult(value: unknown): GameResultSummary | undefined {
     return undefined;
   }
   const result: GameResultSummary = {};
-  if (value.winner !== undefined) {
+  let hasField = false;
+  if (Object.hasOwn(value, "winner")) {
+    hasField = true;
     try {
       result.winner = wirePlayerID(value.winner);
     } catch {
-      // Ignore an unparseable winner — the rest of the result still stands.
+      return undefined;
     }
   }
-  if (isRecord(value.finalBalances)) {
+  if (Object.hasOwn(value, "finalBalances")) {
+    hasField = true;
+    if (!isRecord(value.finalBalances)) {
+      return undefined;
+    }
     const balances: Record<string, number> = {};
     for (const [seat, raw] of Object.entries(value.finalBalances)) {
       const balance = Number(raw);
-      if (seat && Number.isFinite(balance)) {
-        balances[seat] = balance;
+      if (!seat.trim() || !Number.isFinite(balance)) {
+        return undefined;
       }
+      balances[seat] = balance;
+    }
+    if (Object.keys(balances).length === 0) {
+      return undefined;
     }
     result.finalBalances = balances;
   }
-  return Object.keys(result).length > 0 ? result : undefined;
+  return hasField ? result : undefined;
+}
+
+function validateGameResultSeats(result: GameResultSummary, room: RoomState): void {
+  const knownSeats = new Set(room.peers.map(peerID));
+  if (result.winner && !knownSeats.has(playerIDValue(result.winner))) {
+    throw new RoomStateError(
+      "invalid_state_report",
+      "Finished result winner must be a seat in this room.",
+      400
+    );
+  }
+  const balances = result.finalBalances;
+  if (!balances) {
+    throw new RoomStateError(
+      "invalid_state_report",
+      "Finished result must include a balance for every seat.",
+      400
+    );
+  }
+  const balanceSeats = Object.keys(balances);
+  if (balanceSeats.length !== knownSeats.size || balanceSeats.some((seat) => !knownSeats.has(seat))) {
+    throw new RoomStateError(
+      "invalid_state_report",
+      "Finished result balances must cover exactly the room seats.",
+      400
+    );
+  }
 }
 
 function summarySignature(room: RoomState): string {

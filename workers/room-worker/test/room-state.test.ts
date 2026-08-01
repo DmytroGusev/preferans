@@ -451,7 +451,11 @@ test("host election is deterministic, monotonic, and limited to connected humans
   }).room;
   const finished = applyStateReport(playing, {
     status: "finished",
-    summary: { lastSequence: 1, phase: "finished" },
+    summary: {
+      lastSequence: 1,
+      phase: "finished",
+      result: { winner: { rawValue: "south" }, finalBalances: { north: 0, east: 0, south: 0 } }
+    },
     snapshotSequence: 1
   }).room;
   assert.equal(electLiveHost(finished, ["north"]), finished);
@@ -676,7 +680,12 @@ test("terminal lifecycle cannot be resurrected by a delayed host report", () => 
   });
   const { room: finished } = applyStateReport(playing, {
     status: "finished",
-    summary: { lastSequence: 11, phase: "finished", dealNumber: 2 },
+    summary: {
+      lastSequence: 11,
+      phase: "finished",
+      dealNumber: 2,
+      result: { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0, south: -1 } }
+    },
     snapshotSequence: 11
   });
   const result = applyStateReport(finished, {
@@ -738,6 +747,47 @@ test("finishing a game keeps the result summary but drops the snapshot", () => {
   assert.deepEqual(finished.summary?.result?.finalBalances, { north: 18.5, east: -4, south: -14.5 });
   // A finished game is never resumed, so the heavy blob is released.
   assert.equal(finished.latestSnapshot, undefined);
+});
+
+test("finished reports fail closed on incomplete or foreign result standings", () => {
+  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const { room: playing } = applyStateReport(base, {
+    status: "playing",
+    summary: { lastSequence: 4, phase: "playing", dealNumber: 1 },
+    snapshot: { seq: 4 },
+    snapshotSequence: 4
+  });
+
+  for (const result of [
+    undefined,
+    { winner: { rawValue: "ghost" }, finalBalances: { north: 1, east: 0, south: -1 } },
+    { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0 } },
+    { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0, south: -1, ghost: 0 } },
+    { winner: { rawValue: "north" }, finalBalances: { north: 1, east: "not-a-number", south: -1 } }
+  ]) {
+    assert.throws(
+      () => applyStateReport(playing, {
+        status: "finished",
+        summary: { lastSequence: 5, phase: "finished", result },
+        snapshotSequence: 5
+      }),
+      /result|balances|winner|invalid/i
+    );
+  }
+
+  assert.throws(
+    () => applyStateReport(playing, {
+      status: "playing",
+      summary: {
+        lastSequence: 5,
+        phase: "playing",
+        result: { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0, south: -1 } }
+      },
+      snapshot: { seq: 5 },
+      snapshotSequence: 5
+    }),
+    /only valid when the room is finished/
+  );
 });
 
 test("an unknown status is rejected and isHumanAccount excludes pending/bot seats", () => {
