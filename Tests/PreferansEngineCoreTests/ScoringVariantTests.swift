@@ -107,7 +107,23 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(delta.whists["south"]?["north"], 18)
     }
 
-    func testRostovWhistQuotaRemisePaysEveryOpponentDirectly() {
+    func testRostovGentlemanWhistSplitsRemiseTricksAndConsolation() {
+        let delta = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east"],
+            trickCounts: ["north": 5, "east": 5, "south": 0],
+            rules: .rostov
+        )
+
+        // On a declarer remise, Rostov's gentleman whist splits both the
+        // actual five-trick remuneration and the ten-whist consolation.
+        XCTAssertEqual(delta.whists["east"]?["north"], 15)
+        XCTAssertEqual(delta.whists["south"]?["north"], 15)
+        XCTAssertEqual(delta.mountain["east"], 0)
+        XCTAssertEqual(delta.mountain["south"], 0)
+    }
+
+    func testRostovWhistQuotaRemiseWritesHalfGameValueToMountain() {
         let delta = scoreGame(
             contract: GameContract(6, .suit(.diamonds)),
             whisters: ["east"],
@@ -115,13 +131,13 @@ final class ScoringVariantTests: XCTestCase {
             rules: .rostov
         )
 
-        // The lone whister is one trick short of the four-trick quota. They
-        // write five whists to the declarer and five to the passing defender,
-        // in addition to the standard-value greedy payment for all three
-        // defender tricks.
-        XCTAssertEqual(delta.mountain["east"], 0)
-        XCTAssertEqual(delta.whists["east"]?["north"], 11)
-        XCTAssertEqual(delta.whists["east"]?["south"], 5)
+        // The lone whister is one trick short of the four-trick quota. Rostov
+        // is semi-responsible: half of the six-game's value (1) is written to
+        // the whister's mountain. Ordinary greedy trick whists remain 2 per
+        // defender trick and are written only to the declarer.
+        XCTAssertEqual(delta.mountain["east"], 1)
+        XCTAssertEqual(delta.whists["east"]?["north"], 6)
+        XCTAssertNil(delta.whists["east"]?["south"])
     }
 
     // MARK: - All-pass penalty variants
@@ -212,6 +228,8 @@ final class ScoringVariantTests: XCTestCase {
             PreferansRules.rostov.declarerRemisePolicy,
             .directWhistsPerDefender(whistsPerUndertrick: 10)
         )
+        XCTAssertEqual(PreferansRules.rostov.whistResponsibility, .semiResponsible)
+        XCTAssertEqual(PreferansRules.rostov.singleWhistScoring, .gentleman)
         XCTAssertEqual(
             MatchSettings(raspasy: .rostov).raspasy.scoreMultiplier(precededBy: 8),
             1

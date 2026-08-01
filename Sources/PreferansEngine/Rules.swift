@@ -273,13 +273,13 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public static let stalingrad = PreferansRules(forceWhistOnSixSpades: true)
 
     /// Rostov/Moscow scoring: ordinary trick whists keep the standard
-    /// contract value, whist-remise penalties are half-responsible and paid
-    /// as direct five-whist payments, and raspasy is fixed-price with the
-    /// talon kept hidden.
+    /// contract value, a failed whist writes half the game value to mountain,
+    /// declarer remise consolation is paid as ten direct whists per defender,
+    /// and raspasy is fixed-price with the talon kept hidden.
     public static let rostov = PreferansRules(
-        singleWhistScoring: .greedy,
+        singleWhistScoring: .gentleman,
         failedDeclarerConsolation: .none,
-        whistResponsibility: .directWhists(pointsPerMountainPoint: 5),
+        whistResponsibility: .semiResponsible,
         declarerRemisePolicy: .directWhistsPerDefender(whistsPerUndertrick: 10),
         allPassTalonPolicy: .ignored,
         allPassPenaltyPolicy: .directWhistsToLowest(pointsPerTrick: 5),

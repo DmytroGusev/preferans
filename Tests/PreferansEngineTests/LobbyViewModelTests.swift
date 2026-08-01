@@ -407,6 +407,7 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(rules.allPassTalonPolicy, .ignored)
         XCTAssertEqual(rules.allPassPenaltyPolicy, .directWhistsToLowest(pointsPerTrick: 5))
         XCTAssertEqual(rules.whistValueDivisor, 1)
+        XCTAssertEqual(rules.whistResponsibility, .semiResponsible)
         XCTAssertEqual(rules.declarerRemisePolicy, .directWhistsPerDefender(whistsPerUndertrick: 10))
         XCTAssertEqual(PreferansVariant.thessaloniki.poolClosure, .individualWithAmericanAid)
         XCTAssertEqual(PreferansVariant.thessaloniki.raspasy, .rostov)

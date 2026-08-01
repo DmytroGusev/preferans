@@ -254,8 +254,8 @@ struct PreferansScoring {
         case .semiResponsible:
             delta.addMountain(missing * mountainValue / 2, to: whister)
         case let .directWhists(pointsPerMountainPoint):
-            // Rostov halves the ordinary whister-remise mountain penalty
-            // before replacing each mountain point with a five-whist payment.
+            // A house convention may replace the half-responsible mountain
+            // penalty with a direct payment per opponent.
             let directUnits = missing * mountainValue / 2
             let targets = [declarer] + defenders.filter { $0 != whister }
             for target in targets {

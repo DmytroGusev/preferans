@@ -519,9 +519,9 @@
       "comment" : "Rostov whist explanation.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rostov whist: ordinary trick payments keep the standard value; each missed declarer trick adds ten direct whists from each defender, while a whist remise uses the half-value direct-whist penalty." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ростовский вист: обычные висты за взятки сохраняют стандартную стоимость; за каждую недобранную разыгрывающим взятку каждый защитник пишет по десять прямых вист, а ремиз виста учитывается по половинному прямому штрафу." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ростовський віст: звичайні вісті за взятки мають стандартну вартість; за кожну недобрану розігрувачем взятку кожен захисник пише по десять прямих вістів, а реміз вісту враховується за половинним прямим штрафом." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rostov whist: ordinary trick payments keep the standard value; a failed whist writes half the game value to mountain, gentleman whist splits a failed deal's trick payments and consolation, and each defender adds ten direct whists per missing declarer trick." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ростовский вист: обычные висты за взятки сохраняют стандартную стоимость; при ремизе виста половина стоимости игры записывается в гору, джентльменский вист делит выплаты за взятки и консоляцию, а каждый защитник пишет по десять прямых вист за каждую недобранную разыгрывающим взятку." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ростовський віст: звичайні вісті за взятки мають стандартну вартість; за ремізу вісту половина вартості гри записується в гору, джентльменський віст ділить виплати за взятки й консоляцію, а кожен захисник пише по десять прямих вістів за кожну недобрану розігрувачем взятку." } }
       }
     },
     "rules.talon" : {
@@ -4431,9 +4431,9 @@
       "comment": "Lobby short summary for the Thessaloniki variant.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Standard-value trick whists, direct remise payments, and fixed-price hidden-talon raspasy." } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Стандартные висты за взятки, прямые выплаты за ремиз и распасы с закрытым прикупом без прогрессии." } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Стандартні вісті за взятки, прямі виплати за реміз і розпаси із закритим прикупом без прогресії." } }
+        "en": { "stringUnit": { "state": "translated", "value": "Standard trick whists, semi-responsible defense, gentleman remise, and fixed-price hidden-talon raspasy." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Стандартные висты за взятки, полуответственная защита, джентльменский ремиз и распасы с закрытым прикупом без прогрессии." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Стандартні вісті за взятки, напіввідповідальний захист, джентльменська реміза й розпаси із закритим прикупом без прогресії." } }
       }
     },
     "variant.kruty.title": {
