@@ -30,6 +30,7 @@ extension LobbyView {
         onlinePanel(title: "Variant", icon: "slider.horizontal.3") {
             variantControls
             pulkaLimitPicker
+            raspasyControls
         }
     }
 

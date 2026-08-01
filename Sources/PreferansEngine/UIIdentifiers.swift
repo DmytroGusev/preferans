@@ -344,6 +344,8 @@ public enum UIIdentifiers {
     public static let matchCustomPulkaPerPlayer = "match.customPulkaPerPlayer"
     public static let matchTotusPolicy = "match.totusPolicy"
     public static let matchRaspasyPolicy = "match.raspasyPolicy"
+    public static let matchRaspasyPrice = "match.raspasyPrice"
+    public static let matchRaspasyExit = "match.raspasyExit"
     public static let settlementSplitControl = "settlement.splitControl"
     public static let actionChoiceGridRegular = "action.choiceGrid.regular"
     public static let actionChoiceRailCompact = "action.choiceRail.compact"

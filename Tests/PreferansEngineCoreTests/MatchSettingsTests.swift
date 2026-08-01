@@ -182,7 +182,7 @@ final class MatchSettingsTests: XCTestCase {
 
     // MARK: - Multi-deal raspasy
 
-    func testRaspasyProgressionsExposeCanonicalPriceAndExitStages() {
+    func testRaspasyProgressionsExposeSupportedPriceAndExitStages() {
         XCTAssertEqual(
             [0, 1, 2, 3].map { RaspasyPolicy.sochi.scoreMultiplier(precededBy: $0) },
             [1, 2, 3, 3]
@@ -200,6 +200,16 @@ final class MatchSettingsTests: XCTestCase {
         XCTAssertEqual(
             [0, 1, 2, 3].map { geometric.minimumGameTricks(after: $0) },
             [6, 7, 7, 7]
+        )
+
+        let cappedDouble = RaspasyPolicy.progressive(penalties: .cappedDouble, exit: .simple)
+        XCTAssertEqual(
+            [0, 1, 2, 3].map { cappedDouble.scoreMultiplier(precededBy: $0) },
+            [1, 2, 2, 2]
+        )
+        XCTAssertEqual(
+            [0, 1, 2, 3].map { cappedDouble.minimumGameTricks(after: $0) },
+            [6, 6, 6, 6]
         )
 
         XCTAssertEqual(

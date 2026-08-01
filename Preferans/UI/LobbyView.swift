@@ -15,6 +15,9 @@ struct LobbyLayoutPolicy: Equatable {
     var stacksModeChoices: Bool {
         isRegularWidth || usesAccessibilityText
     }
+    var placesRaspasyControlsSideBySide: Bool {
+        isRegularWidth && !usesAccessibilityText
+    }
 }
 
 public struct LobbyView: View {
@@ -435,6 +438,7 @@ public struct LobbyView: View {
                 variantControls
                 botSpeedPicker
                 pulkaLimitPicker
+                raspasyControls
 
                 if let validation = viewModel.seats.validationError {
                     Text(validation)
@@ -702,6 +706,59 @@ public struct LobbyView: View {
                 .padding(10)
                 .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    var raspasyControls: some View {
+        let layout = layoutPolicy.placesRaspasyControlsSideBySide
+            ? AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+
+        return layout {
+            raspasySetting(
+                title: "rules.raspasyPrice",
+                selection: $viewModel.raspasyPenaltyProgression,
+                choices: [
+                    (.flat, "1–1–1"),
+                    (.arithmetic, "1–2–3"),
+                    (.cappedDouble, "1–2–2"),
+                    (.geometric, "1–2–4"),
+                ],
+                identifier: UIIdentifiers.matchRaspasyPrice
+            )
+            raspasySetting(
+                title: "rules.exitMinimum",
+                selection: $viewModel.raspasyExitProgression,
+                choices: [
+                    (.simple, "6–6–6"),
+                    (.constrained, "6–7–7"),
+                    (.strict, "6–7–8"),
+                ],
+                identifier: UIIdentifiers.matchRaspasyExit
+            )
+        }
+    }
+
+    private func raspasySetting<Value: Hashable>(
+        title: LocalizedStringKey,
+        selection: Binding<Value>,
+        choices: [(Value, String)],
+        identifier: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .tracking(1.0)
+                .textCase(.uppercase)
+                .foregroundStyle(TableTheme.gold)
+            Picker(title, selection: selection) {
+                ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
+                    Text(verbatim: choice.1).tag(choice.0)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier(identifier)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

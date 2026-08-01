@@ -68,6 +68,22 @@ public final class LobbyViewModel: ObservableObject {
             UserDefaults.standard.set(customPulkaTableTotal, forKey: SettingsKeys.customPulkaTableTotal)
         }
     }
+    @Published public var raspasyPenaltyProgression: RaspasyPenaltyProgression = .arithmetic {
+        didSet {
+            UserDefaults.standard.set(
+                raspasyPenaltyProgression.rawValue,
+                forKey: SettingsKeys.raspasyPenaltyProgression
+            )
+        }
+    }
+    @Published public var raspasyExitProgression: RaspasyExitProgression = .strict {
+        didSet {
+            UserDefaults.standard.set(
+                raspasyExitProgression.rawValue,
+                forKey: SettingsKeys.raspasyExitProgression
+            )
+        }
+    }
     private var onlineNamePersistenceTask: Task<Void, Never>?
     private let accountClient: any OnlineAccountServing
     static let onlineNamePersistenceDelay: Duration = .milliseconds(300)
@@ -85,6 +101,8 @@ public final class LobbyViewModel: ObservableObject {
         pulkaLimit = Self.loadPulkaLimit()
         customPulkaPerPlayer = Self.loadCustomPulkaPerPlayer()
         customPulkaTableTotal = Self.loadCustomPulkaTableTotal()
+        raspasyPenaltyProgression = Self.loadRaspasyPenaltyProgression()
+        raspasyExitProgression = Self.loadRaspasyExitProgression()
     }
 
     deinit {
@@ -698,6 +716,22 @@ public final class LobbyViewModel: ObservableObject {
         return clampedPulkaTableTotal(stored)
     }
 
+    private static func loadRaspasyPenaltyProgression() -> RaspasyPenaltyProgression {
+        guard let raw = UserDefaults.standard.string(forKey: SettingsKeys.raspasyPenaltyProgression),
+              let progression = RaspasyPenaltyProgression(rawValue: raw) else {
+            return .arithmetic
+        }
+        return progression
+    }
+
+    private static func loadRaspasyExitProgression() -> RaspasyExitProgression {
+        guard let raw = UserDefaults.standard.string(forKey: SettingsKeys.raspasyExitProgression),
+              let progression = RaspasyExitProgression(rawValue: raw) else {
+            return .strict
+        }
+        return progression
+    }
+
     private static func clampedPulkaTableTotal(_ value: Int) -> Int {
         min(max(value, PulkaLimit.customTableRange.lowerBound), PulkaLimit.customTableRange.upperBound)
     }
@@ -717,7 +751,10 @@ public final class LobbyViewModel: ObservableObject {
         MatchSettings(
             poolTarget: totalPulkaTarget(playerCount: playerCount),
             poolClosure: onlineVariant.poolClosure,
-            raspasy: onlineVariant.raspasy
+            raspasy: .progressive(
+                penalties: raspasyPenaltyProgression,
+                exit: raspasyExitProgression
+            )
         )
     }
 

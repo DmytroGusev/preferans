@@ -133,6 +133,8 @@ public enum RaspasyPenaltyProgression: String, Hashable, Codable, Sendable {
     case flat
     /// 1–2–3–3…
     case arithmetic
+    /// 1–2–2…
+    case cappedDouble
     /// 1–2–4–4…
     case geometric
 }
@@ -160,9 +162,10 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
         exit: RaspasyExitProgression
     )
 
-    /// Canonical table defaults used by the app. Both named conventions use
-    /// an arithmetic three-step series and strict 6–7–8 exit; Leningrad's
-    /// doubled base all-pass value turns the score into 2–4–6.
+    /// App defaults used until the table chooses its house settings. Raspasy
+    /// price and exit progressions are negotiated options in both named
+    /// conventions; the lobby transports the selected pair in MatchSettings.
+    /// Leningrad's doubled base all-pass value turns 1–2–3 into 2–4–6.
     public static let sochi = RaspasyPolicy.progressive(
         penalties: .arithmetic,
         exit: .strict
@@ -186,6 +189,8 @@ public enum RaspasyPolicy: Hashable, Codable, Sendable {
                 return 1
             case .arithmetic:
                 return min(stage + 1, 3)
+            case .cappedDouble:
+                return min(stage + 1, 2)
             case .geometric:
                 return [1, 2, 4][min(stage, 2)]
             }

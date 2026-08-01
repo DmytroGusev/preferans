@@ -62,6 +62,11 @@ public enum SettingsKeys {
     /// Custom shared table total for Leningrad/Wien. Kept separate from the
     /// Sochi per-player value so switching conventions never changes meaning.
     public static let customPulkaTableTotal = "settings.customPulkaTableTotal"
+
+    /// Negotiated raspasy price and auction-exit progressions. These are
+    /// match settings rather than properties of the named scoring convention.
+    public static let raspasyPenaltyProgression = "settings.raspasyPenaltyProgression"
+    public static let raspasyExitProgression = "settings.raspasyExitProgression"
 }
 
 /// Catalog-localized languages the user can pick from in Settings. The

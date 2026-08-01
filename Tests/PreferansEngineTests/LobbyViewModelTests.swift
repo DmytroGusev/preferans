@@ -40,6 +40,7 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertTrue(policy.usesTabletChrome)
         XCTAssertTrue(policy.usesTwoRegionComposition)
         XCTAssertTrue(policy.stacksModeChoices)
+        XCTAssertTrue(policy.placesRaspasyControlsSideBySide)
     }
 
     func testLobbyLayoutStacksIPadRegionsForAccessibilityText() {
@@ -51,6 +52,7 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertTrue(policy.usesTabletChrome)
         XCTAssertFalse(policy.usesTwoRegionComposition)
         XCTAssertTrue(policy.stacksModeChoices)
+        XCTAssertFalse(policy.placesRaspasyControlsSideBySide)
     }
 
     func testLobbyLayoutKeepsIPhoneSingleColumn() {
@@ -63,6 +65,7 @@ final class LobbyViewModelTests: AppTestCase {
             XCTAssertFalse(policy.usesTabletChrome)
             XCTAssertFalse(policy.usesTwoRegionComposition)
             XCTAssertEqual(policy.stacksModeChoices, usesAccessibilityText)
+            XCTAssertFalse(policy.placesRaspasyControlsSideBySide)
         }
     }
 
@@ -294,6 +297,30 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(game.engine.match.poolClosure, .tableTotal)
     }
 
+    func testRaspasyHouseSettingsPersistAndSeedLocalMatch() throws {
+        resetOnlineIdentityDefaults()
+
+        let model = LobbyViewModel()
+        XCTAssertEqual(model.raspasyPenaltyProgression, .arithmetic)
+        XCTAssertEqual(model.raspasyExitProgression, .strict)
+
+        model.raspasyPenaltyProgression = .cappedDouble
+        model.raspasyExitProgression = .constrained
+
+        let reloaded = LobbyViewModel()
+        XCTAssertEqual(reloaded.raspasyPenaltyProgression, .cappedDouble)
+        XCTAssertEqual(reloaded.raspasyExitProgression, .constrained)
+
+        reloaded.startLocalTable()
+        let match = try XCTUnwrap(reloaded.localModel?.engine.match)
+        XCTAssertEqual(
+            match.raspasy,
+            .progressive(penalties: .cappedDouble, exit: .constrained)
+        )
+        XCTAssertEqual(match.raspasy.scoreMultiplier(precededBy: 2), 2)
+        XCTAssertEqual(match.raspasy.minimumGameTricks(after: 2), 7)
+    }
+
     func testWienVariantUsesStrictRuleProfileAndSharedPoolClosureForLocalPlay() throws {
         resetOnlineIdentityDefaults()
         let rules = PreferansVariant.wien.rules
@@ -365,5 +392,7 @@ final class LobbyViewModelTests: AppTestCase {
         UserDefaults.standard.removeObject(forKey: SettingsKeys.pulkaLimit)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.customPulkaPerPlayer)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.customPulkaTableTotal)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.raspasyPenaltyProgression)
+        UserDefaults.standard.removeObject(forKey: SettingsKeys.raspasyExitProgression)
     }
 }
