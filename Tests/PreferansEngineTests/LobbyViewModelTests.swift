@@ -30,6 +30,24 @@ private actor AccountClientStub: OnlineAccountServing {
 }
 
 @MainActor
+private final class AccountSessionStoreStub: OnlineAccountSessionStoring {
+    private(set) var storedToken: String?
+
+    func token() -> String? {
+        storedToken
+    }
+
+    func store(_ token: String) -> Bool {
+        storedToken = token
+        return true
+    }
+
+    func remove() {
+        storedToken = nil
+    }
+}
+
+@MainActor
 final class LobbyViewModelTests: AppTestCase {
     func testLobbyLayoutKeepsDefaultIPadTwoRegionComposition() {
         let policy = LobbyLayoutPolicy(
@@ -209,15 +227,18 @@ final class LobbyViewModelTests: AppTestCase {
             sessionToken: "pref2.account.secret"
         )
         let client = AccountClientStub(registration: registration)
-        let model = LobbyViewModel(accountClient: client)
+        let sessionStore = AccountSessionStoreStub()
+        let model = LobbyViewModel(
+            accountClient: client,
+            accountSessionStore: sessionStore
+        )
         model.onlineDisplayName = "Ada"
         model.registerGuestOnlineAccount()
-        for _ in 0..<100 where model.isOnlineRoomLoading {
-            await Task.yield()
-        }
+        await waitUntil { !model.isOnlineRoomLoading }
 
         XCTAssertEqual(model.registeredOnlineAccount, registration.account)
         XCTAssertEqual(model.onlineAccountSessionToken, registration.sessionToken)
+        XCTAssertEqual(sessionStore.storedToken, registration.sessionToken)
 
         try await model.deleteRegisteredOnlineAccount()
 
@@ -225,10 +246,26 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertEqual(deletedSessionTokens, [registration.sessionToken])
         XCTAssertNil(model.registeredOnlineAccount)
         XCTAssertNil(model.onlineAccountSessionToken)
+        XCTAssertNil(sessionStore.storedToken)
         XCTAssertEqual(model.onlineDisplayName, "")
         XCTAssertEqual(model.infoText, "Online account deleted.")
         XCTAssertNil(UserDefaults.standard.data(forKey: SettingsKeys.onlineRegisteredAccount))
         XCTAssertNil(UserDefaults.standard.string(forKey: SettingsKeys.onlineDisplayName))
+    }
+
+    private func waitUntil(
+        _ condition: @MainActor () -> Bool,
+        timeout: Duration = .milliseconds(750),
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: timeout)
+        while clock.now < deadline {
+            if condition() { return }
+            await Task.yield()
+        }
+        XCTAssertTrue(condition(), file: file, line: line)
     }
 
     func testOnlineVariantDefaultsToOdesaAndPersists() {

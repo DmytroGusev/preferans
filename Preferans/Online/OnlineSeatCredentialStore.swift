@@ -51,6 +51,33 @@ public enum OnlineAccountSessionStore {
     }
 }
 
+/// Main-actor boundary around account-session persistence. The app uses the
+/// Keychain-backed implementation, while tests can supply an isolated store
+/// without depending on the test runner's Keychain entitlements.
+@MainActor
+public protocol OnlineAccountSessionStoring {
+    func token() -> String?
+    @discardableResult func store(_ token: String) -> Bool
+    func remove()
+}
+
+public struct KeychainOnlineAccountSessionStore: OnlineAccountSessionStoring {
+    public init() {}
+
+    public func token() -> String? {
+        OnlineAccountSessionStore.token()
+    }
+
+    @discardableResult
+    public func store(_ token: String) -> Bool {
+        OnlineAccountSessionStore.store(token)
+    }
+
+    public func remove() {
+        OnlineAccountSessionStore.remove()
+    }
+}
+
 /// Persists the per-seat auth token the worker mints at `/create`/`/join`,
 /// keyed by room code, so lobby flows that run without a live transport —
 /// abandoning a game from "Your games", fetching the resume snapshot — can

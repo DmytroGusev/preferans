@@ -86,12 +86,17 @@ public final class LobbyViewModel: ObservableObject {
     }
     private var onlineNamePersistenceTask: Task<Void, Never>?
     private let accountClient: any OnlineAccountServing
+    private let accountSessionStore: any OnlineAccountSessionStoring
     static let onlineNamePersistenceDelay: Duration = .milliseconds(300)
 
-    public init(accountClient: any OnlineAccountServing = CloudflareAccountClient()) {
+    public init(
+        accountClient: any OnlineAccountServing = CloudflareAccountClient(),
+        accountSessionStore: any OnlineAccountSessionStoring = KeychainOnlineAccountSessionStore()
+    ) {
         self.accountClient = accountClient
+        self.accountSessionStore = accountSessionStore
         let account = Self.loadRegisteredOnlineAccount()
-        let sessionToken = account == nil ? nil : OnlineAccountSessionStore.token()
+        let sessionToken = account == nil ? nil : accountSessionStore.token()
         registeredOnlineAccount = sessionToken == nil ? nil : account
         onlineAccountSessionToken = sessionToken
         onlineDisplayName = account?.displayName
@@ -354,7 +359,7 @@ public final class LobbyViewModel: ObservableObject {
     private func clearOnlineAccountData(removeDisplayName: Bool) {
         registeredOnlineAccount = nil
         onlineAccountSessionToken = nil
-        OnlineAccountSessionStore.remove()
+        accountSessionStore.remove()
         OnlineSeatCredentialStore.removeAll()
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineRegisteredAccount)
         UserDefaults.standard.removeObject(forKey: SettingsKeys.onlineAnonymousAccountID)
@@ -488,7 +493,7 @@ public final class LobbyViewModel: ObservableObject {
             defer { isOnlineRoomLoading = false }
             do {
                 let registration = try await operation()
-                guard OnlineAccountSessionStore.store(registration.sessionToken) else {
+                guard accountSessionStore.store(registration.sessionToken) else {
                     throw CloudflareRoomTransportError.serverError("Could not securely save the online session.")
                 }
                 registeredOnlineAccount = registration.account
