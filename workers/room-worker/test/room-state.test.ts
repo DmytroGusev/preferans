@@ -13,6 +13,7 @@ import {
   joinRoom,
   normalizeGameSummary,
   normalizeGameStatus,
+  normalizePeer,
   removeAccountFromRoom,
   type OnlinePeer,
   type RoomState,
@@ -77,6 +78,24 @@ test("creates a room with Swift-compatible player IDs", () => {
     { rawValue: "east" },
     { rawValue: "south" }
   ]);
+});
+
+test("peer identities reject blank account IDs", () => {
+  assert.throws(
+    () => normalizePeer({ ...north, accountID: "  " }),
+    /account ID is required/
+  );
+});
+
+test("room creation rejects one human account occupying multiple seats", () => {
+  assert.throws(
+    () => createInitialRoom({
+      roomCode: "ROOM1",
+      localPeer: north,
+      seats: [north, { ...east, playerID: { rawValue: "east-2" }, accountID: north.accountID }, south]
+    }),
+    /Duplicate human account/
+  );
 });
 
 test("join updates an existing peer instead of duplicating a seat", () => {

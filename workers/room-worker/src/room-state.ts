@@ -224,6 +224,9 @@ export function normalizePeer(input: unknown): OnlinePeer {
   const playerID = wirePlayerID(input.playerID);
   const id = playerID.rawValue;
   const accountID = String(input.accountID ?? `dev:${id}`).trim();
+  if (!accountID) {
+    throw new RoomStateError("invalid_peer", "Peer account ID is required.");
+  }
   const provider = isOnlineAccountProvider(input.provider) ? input.provider : "dev";
   const displayName =
     (String(input.displayName ?? id).trim() || id).slice(0, MAX_DISPLAY_NAME_LENGTH);
@@ -770,13 +773,20 @@ function summarySignature(room: RoomState): string {
 
 function uniquePeers(peers: OnlinePeer[]): OnlinePeer[] {
   const seen = new Set<string>();
+  const seenAccounts = new Set<string>();
   const result: OnlinePeer[] = [];
   for (const peer of peers) {
     const id = peerID(peer);
     if (seen.has(id)) {
       throw new RoomStateError("duplicate_player", `Duplicate player ID: ${id}.`);
     }
+    if (isHumanAccount(peer.accountID) && seenAccounts.has(peer.accountID)) {
+      throw new RoomStateError("duplicate_account", `Duplicate human account: ${peer.accountID}.`);
+    }
     seen.add(id);
+    if (isHumanAccount(peer.accountID)) {
+      seenAccounts.add(peer.accountID);
+    }
     result.push(peer);
   }
   return result;
