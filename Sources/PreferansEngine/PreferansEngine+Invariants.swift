@@ -221,7 +221,9 @@ extension PreferansEngine {
     static func validateInvariants(_ snapshot: PreferansSnapshot) throws {
         try validateInvariants(snapshot.state)
         try require(snapshot.players.contains(snapshot.nextDealer), "nextDealer \(snapshot.nextDealer) is not in players")
+        try require(snapshot.dealsPlayed >= 0, "dealsPlayed cannot be negative")
         try require(snapshot.consecutiveAllPassDeals >= 0, "consecutiveAllPassDeals cannot be negative")
+        try require(snapshot.rules.configurationError == nil, "invalid rules: \(snapshot.rules.configurationError ?? "unknown")")
         try checkMatchSettings(snapshot.match, playerCount: snapshot.players.count)
         try snapshot.score.validate(players: snapshot.players)
         try checkPlayerReferences(snapshot.state, players: snapshot.players)

@@ -29,6 +29,7 @@ public struct PreferansEngine: Sendable {
         firstDealer: PlayerID? = nil
     ) throws {
         try Self.validate(players: players)
+        try Self.validate(rules: rules)
         try Self.validate(match: match, playerCount: players.count)
         let dealer = firstDealer ?? players[0]
         guard players.contains(dealer) else {
@@ -46,6 +47,7 @@ public struct PreferansEngine: Sendable {
 
     public init(snapshot: PreferansSnapshot) throws {
         try Self.validate(players: snapshot.players)
+        try Self.validate(rules: snapshot.rules)
         try Self.validate(match: snapshot.match, playerCount: snapshot.players.count)
         guard snapshot.players.contains(snapshot.nextDealer) else {
             throw PreferansError.invalidPlayer(snapshot.nextDealer)
@@ -325,6 +327,12 @@ public struct PreferansEngine: Sendable {
         }
         guard Set(players).count == players.count else {
             throw PreferansError.invalidPlayers("PlayerID values must be unique.")
+        }
+    }
+
+    private static func validate(rules: PreferansRules) throws {
+        if let message = rules.configurationError {
+            throw PreferansError.invalidRules(message)
         }
     }
 

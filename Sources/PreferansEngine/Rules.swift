@@ -89,6 +89,7 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         poolPointWhistValue: Int = 10,
         mountainPointWhistValue: Int = 10
     ) {
+        precondition(zeroTricksAllPassPoolBonus >= 0, "zeroTricksAllPassPoolBonus cannot be negative.")
         precondition(poolValueMultiplier > 0, "poolValueMultiplier must be positive.")
         precondition(mountainValueMultiplier > 0, "mountainValueMultiplier must be positive.")
         precondition(whistValueMultiplier > 0, "whistValueMultiplier must be positive.")
@@ -109,6 +110,27 @@ public struct PreferansRules: Hashable, Codable, Sendable {
         self.whistValueMultiplier = whistValueMultiplier
         self.poolPointWhistValue = poolPointWhistValue
         self.mountainPointWhistValue = mountainPointWhistValue
+    }
+
+    /// A single validation source for engine construction, snapshot
+    /// rehydration, and defensive decoding of persisted multiplayer state.
+    /// Public properties remain mutable for table configuration, so checking
+    /// only the initializer is not sufficient.
+    var configurationError: String? {
+        if zeroTricksAllPassPoolBonus < 0 {
+            return "Zero-trick raspasy pool bonus cannot be negative."
+        }
+        let positiveValues: [(name: String, value: Int)] = [
+            ("Pool value multiplier", poolValueMultiplier),
+            ("Mountain value multiplier", mountainValueMultiplier),
+            ("Whist value multiplier", whistValueMultiplier),
+            ("Pool-point whist value", poolPointWhistValue),
+            ("Mountain-point whist value", mountainPointWhistValue),
+        ]
+        if let invalid = positiveValues.first(where: { $0.value <= 0 }) {
+            return "\(invalid.name) must be positive."
+        }
+        return nil
     }
 
     public static let sochi = PreferansRules()
@@ -172,6 +194,33 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let legacyMultiplier = try values.decodeIfPresent(Int.self, forKey: .scoringMultiplier)
+        let zeroTricksAllPassPoolBonus = try values.decode(Int.self, forKey: .zeroTricksAllPassPoolBonus)
+        let poolValueMultiplier = try values.decodeIfPresent(Int.self, forKey: .poolValueMultiplier)
+            ?? legacyMultiplier ?? 1
+        let mountainValueMultiplier = try values.decodeIfPresent(Int.self, forKey: .mountainValueMultiplier)
+            ?? legacyMultiplier ?? 1
+        let whistValueMultiplier = try values.decodeIfPresent(Int.self, forKey: .whistValueMultiplier)
+            ?? legacyMultiplier ?? 1
+        let poolPointWhistValue = try values.decodeIfPresent(Int.self, forKey: .poolPointWhistValue) ?? 10
+        let mountainPointWhistValue = try values.decodeIfPresent(Int.self, forKey: .mountainPointWhistValue) ?? 10
+
+        // Validate before calling the programmer-facing initializer: its
+        // preconditions are appropriate for source mistakes but persisted
+        // network data must fail as a normal decoding error, never trap.
+        var decoded = PreferansRules.sochi
+        decoded.zeroTricksAllPassPoolBonus = zeroTricksAllPassPoolBonus
+        decoded.poolValueMultiplier = poolValueMultiplier
+        decoded.mountainValueMultiplier = mountainValueMultiplier
+        decoded.whistValueMultiplier = whistValueMultiplier
+        decoded.poolPointWhistValue = poolPointWhistValue
+        decoded.mountainPointWhistValue = mountainPointWhistValue
+        if let error = decoded.configurationError {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: error
+            ))
+        }
+
         self.init(
             allowSeniorHandHoldBid: try values.decode(Bool.self, forKey: .allowSeniorHandHoldBid),
             requireWhistOnTenTrickContracts: try values.decode(Bool.self, forKey: .requireWhistOnTenTrickContracts),
@@ -181,16 +230,16 @@ public struct PreferansRules: Hashable, Codable, Sendable {
             whistResponsibility: try values.decode(WhistResponsibility.self, forKey: .whistResponsibility),
             allPassTalonPolicy: try values.decode(AllPassTalonPolicy.self, forKey: .allPassTalonPolicy),
             allPassPenaltyPolicy: try values.decode(AllPassPenaltyPolicy.self, forKey: .allPassPenaltyPolicy),
-            zeroTricksAllPassPoolBonus: try values.decode(Int.self, forKey: .zeroTricksAllPassPoolBonus),
+            zeroTricksAllPassPoolBonus: zeroTricksAllPassPoolBonus,
             dealerTalonCompensation: try values.decodeIfPresent(
                 DealerTalonCompensation.self,
                 forKey: .dealerTalonCompensation
             ) ?? .classic,
-            poolValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .poolValueMultiplier) ?? legacyMultiplier ?? 1,
-            mountainValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .mountainValueMultiplier) ?? legacyMultiplier ?? 1,
-            whistValueMultiplier: try values.decodeIfPresent(Int.self, forKey: .whistValueMultiplier) ?? legacyMultiplier ?? 1,
-            poolPointWhistValue: try values.decodeIfPresent(Int.self, forKey: .poolPointWhistValue) ?? 10,
-            mountainPointWhistValue: try values.decodeIfPresent(Int.self, forKey: .mountainPointWhistValue) ?? 10
+            poolValueMultiplier: poolValueMultiplier,
+            mountainValueMultiplier: mountainValueMultiplier,
+            whistValueMultiplier: whistValueMultiplier,
+            poolPointWhistValue: poolPointWhistValue,
+            mountainPointWhistValue: mountainPointWhistValue
         )
     }
 

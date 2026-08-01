@@ -622,6 +622,46 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertFalse(try JSONDecoder().decode(PreferansRules.self, from: defaultEncoded).forceWhistOnSixSpades)
     }
 
+    func testRulesDecoderRejectsUnsafeScoringValuesWithoutTrapping() throws {
+        let encoded = try JSONEncoder().encode(PreferansRules.sochi)
+        let valid = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let invalidValues: [(key: String, value: Int)] = [
+            ("zeroTricksAllPassPoolBonus", -1),
+            ("poolValueMultiplier", 0),
+            ("mountainValueMultiplier", 0),
+            ("whistValueMultiplier", 0),
+            ("poolPointWhistValue", 0),
+            ("mountainPointWhistValue", 0),
+            ("scoringMultiplier", 0),
+        ]
+
+        for invalid in invalidValues {
+            var object = valid
+            object[invalid.key] = invalid.value
+            let data = try JSONSerialization.data(withJSONObject: object)
+            XCTAssertThrowsError(try JSONDecoder().decode(PreferansRules.self, from: data)) { error in
+                XCTAssertTrue(
+                    error is DecodingError,
+                    "\(invalid.key) should produce DecodingError, got \(error)"
+                )
+            }
+        }
+    }
+
+    func testEngineRejectsRulesMutatedAfterInitialization() {
+        var rules = PreferansRules.sochi
+        rules.poolPointWhistValue = 0
+
+        XCTAssertThrowsError(
+            try PreferansEngine(players: ["north", "east", "south"], rules: rules)
+        ) { error in
+            guard case let PreferansError.invalidRules(message) = error else {
+                return XCTFail("Expected invalidRules; got \(error)")
+            }
+            XCTAssertTrue(message.contains("Pool-point whist value"))
+        }
+    }
+
     func testSnapshotAndActionsAreCodable() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"])
         try engine.startDeal(deck: Deck.standard32)

@@ -471,6 +471,33 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(snapshot, contains: "consecutiveAllPassDeals cannot be negative")
     }
 
+    func testSnapshotValidatorRejectsNegativeDealCount() {
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .waitingForDeal,
+            score: ScoreSheet(players: seats),
+            nextDealer: north,
+            dealsPlayed: -1
+        )
+
+        assertViolation(snapshot, contains: "dealsPlayed cannot be negative")
+    }
+
+    func testSnapshotValidatorRejectsMutatedRuleConfiguration() {
+        var rules = PreferansRules.sochi
+        rules.zeroTricksAllPassPoolBonus = -1
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: rules,
+            state: .waitingForDeal,
+            score: ScoreSheet(players: seats),
+            nextDealer: north
+        )
+
+        assertViolation(snapshot, contains: "invalid rules")
+    }
+
     func testSnapshotValidatorRejectsGameOverSummaryMismatch() {
         let (hands, _) = dealHands()
         let score = ScoreSheet(

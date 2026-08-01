@@ -467,7 +467,7 @@ extension GameViewModel {
                  .illegalBid, .illegalWhist, .illegalSettlement,
                  .invalidContract, .notPlayersTurn:
                 self = .uiValidatable
-            case .invalidPlayer, .invalidPlayers, .invalidMatch, .invalidDeck, .invalidState:
+            case .invalidPlayer, .invalidPlayers, .invalidRules, .invalidMatch, .invalidDeck, .invalidState:
                 self = .system
             }
         }
