@@ -15,6 +15,7 @@ import {
   normalizeGameStatus,
   removeAccountFromRoom,
   type OnlinePeer,
+  type RoomState,
   peerID,
   playerIDValue,
   publicRoom,
@@ -622,6 +623,28 @@ test("a stale (out-of-order) snapshot never clobbers a newer one", () => {
   assert.equal(afterStale.lastSnapshotSequence, 10);
   assert.equal(afterStale.summary?.lastSequence, 10);
   assert.equal(afterStale.summary?.dealNumber, 2);
+});
+
+test("a report cannot advance metadata behind an already newer recovery snapshot", () => {
+  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const roomWithDivergentState: RoomState = {
+    ...base,
+    status: "playing",
+    summary: { lastSequence: 5, phase: "playing", dealNumber: 1 },
+    latestSnapshot: { seq: 10 },
+    lastSnapshotSequence: 10
+  };
+
+  const { room: afterReport } = applyStateReport(roomWithDivergentState, {
+    status: "playing",
+    summary: { lastSequence: 6, phase: "playing", dealNumber: 1 },
+    snapshot: { seq: 6 },
+    snapshotSequence: 6
+  });
+
+  assert.equal(afterReport.summary?.lastSequence, 5);
+  assert.deepEqual(afterReport.latestSnapshot, { seq: 10 });
+  assert.equal(afterReport.lastSnapshotSequence, 10);
 });
 
 test("terminal lifecycle cannot be resurrected by a delayed host report", () => {

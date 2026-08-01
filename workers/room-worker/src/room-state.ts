@@ -549,7 +549,14 @@ export function applyStateReport(
       );
     }
   }
-  const currentSequence = room.summary?.lastSequence ?? room.lastSnapshotSequence ?? 0;
+  // Both pieces of resumable state are monotonic. A malformed or partially
+  // migrated room may have a newer snapshot than its public summary; treating
+  // the maximum as the freshness floor prevents an intermediate report from
+  // making those two sequences diverge again.
+  const currentSequence = Math.max(
+    room.summary?.lastSequence ?? 0,
+    room.lastSnapshotSequence ?? 0
+  );
   const staleSummary = candidateSummary !== undefined && candidateSummary.lastSequence < currentSequence;
   const summary = staleSummary ? room.summary : candidateSummary ?? room.summary;
   // Abandonment is an explicit participant action and carries no summary. All
