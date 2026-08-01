@@ -118,6 +118,48 @@ final class RoomDurabilityRetryRunnerTests: AppTestCase {
         XCTAssertTrue(runner.acceptsAction)
     }
 
+    func testHostActionQueueRunsMutationsInSubmissionOrder() async {
+        let gate = DurabilityPersistenceGate()
+        let queue = RoomHostActionQueue()
+        var events: [String] = []
+
+        queue.enqueue {
+            events.append("first:start")
+            await gate.suspend()
+            events.append("first:end")
+        }
+        await waitUntil { await gate.isSuspended }
+
+        queue.enqueue {
+            events.append("second")
+        }
+        await Task.yield()
+        XCTAssertEqual(events, ["first:start"])
+
+        await gate.resume()
+        await waitUntil { events == ["first:start", "first:end", "second"] }
+    }
+
+    func testHostActionQueueCancellationDropsQueuedMutations() async {
+        let gate = DurabilityPersistenceGate()
+        let queue = RoomHostActionQueue()
+        var events: [String] = []
+
+        queue.enqueue {
+            events.append("first:start")
+            await gate.suspend()
+            events.append("first:end")
+        }
+        await waitUntil { await gate.isSuspended }
+        queue.enqueue { events.append("second") }
+        queue.cancel()
+        await gate.resume()
+        await Task.yield()
+
+        XCTAssertEqual(events, ["first:start", "first:end"],
+                       "Cancellation must drop actions queued behind a detached host epoch.")
+    }
+
     private func waitUntil(
         _ condition: @escaping @MainActor () async -> Bool,
         timeout: Duration = .milliseconds(750),

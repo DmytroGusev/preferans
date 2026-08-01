@@ -72,3 +72,39 @@ struct RoomDurabilityBarrier<Update> {
         retryBackoff.reset()
     }
 }
+
+/// Serializes host mutations across the actor apply, durability report, and
+/// projection publish boundary. The engine actor itself is serialized, but the
+/// coordinator can otherwise start a second task while the first report is
+/// awaiting the network and publish sequence N after sequence N+1.
+@MainActor
+final class RoomHostActionQueue {
+    private var tail: Task<Void, Never>?
+    private var taskID: UInt64 = 0
+    private var generation: UInt64 = 0
+
+    func enqueue(_ operation: @escaping @MainActor () async -> Void) {
+        let previous = tail
+        let runGeneration = generation
+        taskID &+= 1
+        let currentTaskID = taskID
+        tail = Task { @MainActor [weak self] in
+            if let previous {
+                await previous.value
+            }
+            guard let self,
+                  self.generation == runGeneration,
+                  !Task.isCancelled else { return }
+            await operation()
+            if self.generation == runGeneration, self.taskID == currentTaskID {
+                self.tail = nil
+            }
+        }
+    }
+
+    func cancel() {
+        generation &+= 1
+        tail?.cancel()
+        tail = nil
+    }
+}

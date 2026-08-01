@@ -47,6 +47,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var hostActor: HostGameActor?
     private let transportSubscriptions = RoomTransportSubscriptions()
     private let inboundMessageDispatcher: RoomInboundMessageDispatcher
+    private let hostActionQueue = RoomHostActionQueue()
     private let hostRecoveryRunner: RoomHostRecoveryRunner
     private let durabilityRetryRunner: RoomDurabilityRetryRunner<HostUpdate>
     /// Invalidates async authority work whenever attachment or host ownership
@@ -197,6 +198,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     @discardableResult
     private func resetAttachment(disconnectCurrentTransport: Bool) -> UInt64 {
         transportSubscriptions.cancelAll()
+        hostActionQueue.cancel()
         hostRecoveryRunner.cancel()
         durabilityRetryRunner.cancel()
         heartbeatTask?.cancel()
@@ -260,8 +262,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             baseHostSequence: projection?.sequence ?? 0
         )
         if isHost {
-            Task { [localSeat] in
-                await applyClientAction(envelope, sender: localSeat) { error in
+            hostActionQueue.enqueue { [weak self] in
+                guard let self else { return }
+                await self.applyClientAction(envelope, sender: localSeat) { error in
                     self.errorText = error.localizedDescription
                 }
             }
@@ -431,12 +434,15 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             botSeats: roster.botSeats
         ) { [weak self] move in
             guard let self else { return }
-            await self.applyClientAction(
-                move.envelope,
-                sender: move.sender,
-                botInsight: move.insight
-            ) { error in
-                self.errorText = error.localizedDescription
+            self.hostActionQueue.enqueue { [weak self] in
+                guard let self else { return }
+                await self.applyClientAction(
+                    move.envelope,
+                    sender: move.sender,
+                    botInsight: move.insight
+                ) { error in
+                    self.errorText = error.localizedDescription
+                }
             }
         }
     }
@@ -830,13 +836,16 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         received: ReceivedRoomMessage
     ) async {
         guard isHost, RoomInboundMessagePolicy.acceptsClientAction(envelope) else { return }
-        await applyClientAction(envelope, sender: received.sender.playerID) { error in
-            await sendHostError(
-                to: received.sender,
-                recipient: received.sender.playerID,
-                nonce: envelope.clientNonce,
-                message: error.localizedDescription
-            )
+        hostActionQueue.enqueue { [weak self] in
+            guard let self else { return }
+            await self.applyClientAction(envelope, sender: received.sender.playerID) { error in
+                await self.sendHostError(
+                    to: received.sender,
+                    recipient: received.sender.playerID,
+                    nonce: envelope.clientNonce,
+                    message: error.localizedDescription
+                )
+            }
         }
     }
 
@@ -1275,8 +1284,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             action: .startDeal(dealer: nil, deck: nil),
             baseHostSequence: projection?.sequence ?? 0
         )
-        await applyClientAction(envelope, sender: localSeat) { error in
-            self.errorText = error.localizedDescription
+        hostActionQueue.enqueue { [weak self] in
+            guard let self else { return }
+            await self.applyClientAction(envelope, sender: localSeat) { error in
+                self.errorText = error.localizedDescription
+            }
         }
     }
 
