@@ -36,6 +36,42 @@ final class BotTests: XCTestCase {
         )
     }
 
+    func testDifficultyCorpusChangesAuctionRiskWithoutChangingLegality() async throws {
+        let borderline = cards(.spades, [.ace, .king])
+            + cards(.clubs, [.ace, .eight, .nine])
+            + cards(.diamonds, [.king, .seven])
+            + cards(.hearts, [.nine, .ten, .jack])
+        let engine = try makeBiddingEngine(
+            northHand: borderline,
+            precedingAllPassDeals: 0
+        )
+
+        for difficulty in BotDifficulty.allCases {
+            let strategy = HeuristicStrategy(
+                profile: BotProfile(difficulty: difficulty, temperament: .adaptive),
+                planner: CardPlayPlanner(samples: 1)
+            )
+            let action = await strategy.decide(snapshot: engine.snapshot, viewer: "N")
+            guard case let .bid(player, call) = action else {
+                return XCTFail("\(difficulty.rawValue): expected a bidding action")
+            }
+            XCTAssertEqual(player, "N", difficulty.rawValue)
+            XCTAssertTrue(
+                engine.legalBidCalls(for: "N").contains(call),
+                "\(difficulty.rawValue) proposed an illegal call"
+            )
+            switch difficulty {
+            case .casual:
+                XCTAssertEqual(call, .pass, difficulty.rawValue)
+            case .seasoned, .expert:
+                guard case let .bid(.game(contract)) = call else {
+                    return XCTFail("\(difficulty.rawValue) should accept the borderline six")
+                }
+                XCTAssertEqual(contract.tricks, 6)
+            }
+        }
+    }
+
     func testCardPlayTemperamentCorpusBalancesReliabilityAndUpside() {
         struct Scenario {
             var name: String

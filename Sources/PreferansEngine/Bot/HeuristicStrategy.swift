@@ -174,7 +174,9 @@ public struct HeuristicStrategy: PlayerStrategy {
         // Misere hands are rare enough that waiting until every game contract
         // is unaffordable hides them entirely. Let clean misere candidates
         // speak before a marginal six-level game.
-        let misereTolerance = 1.5 + profile.temperament.misereToleranceAdjustment
+        let misereTolerance = 1.5
+            + profile.temperament.misereToleranceAdjustment
+            + profile.difficulty.misereToleranceAdjustment
         if hasAffordableMisere, HandEvaluator.expectedMisereTricks(grouped: grouped) <= misereTolerance {
             return .bid(.misere)
         }
@@ -210,10 +212,15 @@ public struct HeuristicStrategy: PlayerStrategy {
             case 9: margin = 1.0
             default: margin = 1.5
             }
-            return estimate >= Double(contract.tricks) - margin - profile.temperament.bidMarginAdjustment
+            return estimate >= Double(contract.tricks)
+                - margin
+                - profile.temperament.bidMarginAdjustment
+                - profile.difficulty.bidMarginAdjustment
         case .misere:
             return HandEvaluator.expectedMisereTricks(grouped: grouped)
-                <= 1.5 + profile.temperament.misereToleranceAdjustment
+                <= 1.5
+                + profile.temperament.misereToleranceAdjustment
+                + profile.difficulty.misereToleranceAdjustment
         case .totus:
             // Totus needs all 10 tricks — only the strongest hands.
             let bestStrain = Strain.allStandard
@@ -290,7 +297,9 @@ public struct HeuristicStrategy: PlayerStrategy {
             // contracts get a penalty proportional to undertricks so the
             // bot doesn't chase what it can't make.
             let made = estimate - Double(c.tricks)
-            let weight: Double = made >= 0 ? Double(c.value) + made : made * 5
+            let weight: Double = made >= 0
+                ? Double(c.value) + made
+                : made * profile.difficulty.contractFailurePenalty
             if weight > bestScore {
                 bestScore = weight
                 best = c
