@@ -161,7 +161,7 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertEqual(result.scoreDelta.mountain["north"], max(0, 1 - minimum))
     }
 
-    func testTenTrickContractWithRequiredWhistDoesNotSkipDefenders() throws {
+    func testLeningradTenLetsBothDefendersChooseWhistAndPlayClosed() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(
             players: players,
@@ -182,17 +182,17 @@ final class PreferansEngineTests: XCTestCase {
         _ = try engine.apply(.declareContract(player: "north", contract: contract))
 
         guard case let .awaitingWhist(whist) = engine.state else {
-            return XCTFail("Required-whist ten must enter the defenders' decision phase.")
+            return XCTFail("Leningrad ten must enter the defenders' decision phase.")
         }
         XCTAssertEqual(whist.currentPlayer, "east")
-        XCTAssertEqual(engine.legalWhistCalls(for: "east"), [.whist])
+        XCTAssertEqual(engine.legalWhistCalls(for: "east"), [.pass, .whist])
         _ = try engine.apply(.whist(player: "east", call: .whist))
-        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.pass, .whist])
         _ = try engine.apply(.whist(player: "south", call: .whist))
 
         guard case let .playing(playing) = engine.state,
               case let .game(context) = playing.kind else {
-            return XCTFail("Expected play after both forced whists.")
+            return XCTFail("Expected play after both defenders choose whist.")
         }
         XCTAssertEqual(context.whisters, ["east", "south"])
     }
@@ -379,7 +379,7 @@ final class PreferansEngineTests: XCTestCase {
         XCTAssertThrowsError(try engine.apply(.bid(player: "east", call: holdBid)))
     }
 
-    func testTenTrickContractSkipsWhistByDefault() throws {
+    func testTenTrickContractUsesOpenCheckByDefault() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"], firstDealer: "north")
         try engine.startDeal(deck: Deck.standard32)
         try driveToTenTrickDeclaration(engine: &engine)
@@ -391,9 +391,12 @@ final class PreferansEngineTests: XCTestCase {
             return XCTFail("Expected play to start immediately, got \(engine.state.description).")
         }
         XCTAssertTrue(context.whisters.isEmpty, "Default rules play a 10-trick contract unwhisted.")
+        XCTAssertTrue(context.whistCalls.isEmpty)
+        XCTAssertEqual(context.defenderPlayMode, .open, "A non-whisted ten must be checked with open hands.")
+        XCTAssertEqual(playing.settlementParties, Set(["north", "east", "south"] as [PlayerID]))
     }
 
-    func testTenTrickContractForcesBothDefendersToWhistWhenRuleIsOn() throws {
+    func testTenTrickWhistConventionOffersNormalPassAndWhistChoices() throws {
         var engine = try PreferansEngine(
             players: ["north", "east", "south"],
             rules: PreferansRules(requireWhistOnTenTrickContracts: true),
@@ -404,25 +407,25 @@ final class PreferansEngineTests: XCTestCase {
 
         _ = try engine.apply(.declareContract(player: "east", contract: GameContract(10, .suit(.spades))))
 
-        // The rule routes the ten-game through the whist phase, and whisting
-        // is mandatory: passing (and half-whist) are not offered.
+        // The convention routes the ten-game through the ordinary defender
+        // decision. Half-whist is excluded because the quota is one trick.
         guard case .awaitingWhist = engine.state else {
             return XCTFail("Expected the whist phase, got \(engine.state.description).")
         }
-        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.whist])
-        _ = try engine.apply(.whist(player: "south", call: .whist))
-        XCTAssertEqual(engine.legalWhistCalls(for: "north"), [.whist])
-        XCTAssertThrowsError(try engine.apply(.whist(player: "north", call: .pass)))
-        _ = try engine.apply(.whist(player: "north", call: .whist))
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.pass, .whist])
+        _ = try engine.apply(.whist(player: "south", call: .pass))
+        XCTAssertEqual(engine.legalWhistCalls(for: "north"), [.pass, .whist])
+        let events = try engine.apply(.whist(player: "north", call: .pass))
 
-        guard case let .playing(playing) = engine.state,
-              case let .game(context) = playing.kind else {
-            return XCTFail("Expected play after forced whists, got \(engine.state.description).")
+        guard case let .dealFinished(result) = engine.state,
+              case .passedOut = result.kind else {
+            return XCTFail("Two passes should award the contract without play; got \(engine.state.description).")
         }
-        XCTAssertEqual(context.whisters, ["south", "north"])
+        XCTAssertTrue(events.contains { if case .dealScored = $0 { return true } else { return false } })
+        XCTAssertEqual(engine.score.pool["east"], 10)
     }
 
-    func testTotusPolicyRequireWhistForcesWhistWithoutRulesFlag() throws {
+    func testTotusPolicyRequireWhistEnablesWhistDecisionWithoutRulesFlag() throws {
         var engine = try PreferansEngine(
             players: ["north", "east", "south"],
             rules: .sochi,
@@ -435,8 +438,9 @@ final class PreferansEngineTests: XCTestCase {
         _ = try engine.apply(.declareContract(player: "east", contract: GameContract(10, .suit(.spades))))
 
         guard case .awaitingWhist = engine.state else {
-            return XCTFail("The totus policy alone must force the whist phase, got \(engine.state.description).")
+            return XCTFail("The totus policy alone must enable the whist phase, got \(engine.state.description).")
         }
+        XCTAssertEqual(engine.legalWhistCalls(for: "south"), [.pass, .whist])
     }
 
     /// Auction: east wins with a 10♠ bid, then discards, leaving the engine

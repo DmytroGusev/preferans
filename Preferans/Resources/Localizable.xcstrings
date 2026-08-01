@@ -488,15 +488,6 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Стандартне налаштування: на 6♠ рішення про віст ухвалюється як зазвичай; «Сталінград» не ввімкнено." } }
       }
     },
-    "rules.tenWhist.required" : {
-      "comment" : "Inline explanation for a mandatory whist on a ten-trick contract.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Both defenders must whist on this 10-trick contract." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "На этой десятерной игре оба защитника обязаны вистовать." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "На цій десятерній грі обидва захисники зобов’язані вістувати." } }
-      }
-    },
     "rules.wien.whist" : {
       "comment" : "Wien whist explanation.",
       "extractionState" : "manual",

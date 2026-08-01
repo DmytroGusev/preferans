@@ -308,9 +308,6 @@ public struct ActionBarView: View {
            contract == GameContract(6, .suit(.spades)) {
             return "rules.stalingrad.enabled"
         }
-        if contract.tricks == 10 {
-            return "rules.tenWhist.required"
-        }
         return nil
     }
 

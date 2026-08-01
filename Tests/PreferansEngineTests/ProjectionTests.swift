@@ -222,10 +222,45 @@ final class ProjectionTests: AppTestCase {
         }
     }
 
+    func testUnwhistedTenCheckRevealsEveryHandToEverySeat() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        var engine = try PreferansEngine(players: players, firstDealer: "north")
+        _ = try engine.apply(.startDeal(dealer: "north", deck: Deck.standard32))
+
+        let contract = GameContract(10, .suit(.spades))
+        _ = try engine.apply(.bid(player: "east", call: .bid(.game(contract))))
+        _ = try engine.apply(.bid(player: "south", call: .pass))
+        _ = try engine.apply(.bid(player: "north", call: .pass))
+        guard case let .awaitingDiscard(exchange) = engine.state else {
+            return XCTFail("Expected discard.")
+        }
+        let discard = Array(((exchange.hands["east"] ?? []) + exchange.talon).prefix(2))
+        _ = try engine.apply(.discard(player: "east", cards: discard))
+        _ = try engine.apply(.declareContract(player: "east", contract: contract))
+
+        for viewer in players {
+            let projection = PlayerProjectionBuilder.projection(
+                for: viewer,
+                tableID: UUID(),
+                sequence: 0,
+                engine: engine,
+                policy: .online
+            )
+            for seat in projection.seats where seat.isActive {
+                XCTAssertEqual(seat.hand.count, 10)
+                XCTAssertTrue(
+                    seat.hand.allSatisfy { $0.knownCard != nil },
+                    "\(viewer) must see \(seat.player)'s complete hand during a ten-trick check."
+                )
+            }
+        }
+    }
+
     func testPlayingProjectionHandVisibilityInvariantForAllGameContracts() throws {
         for contract in GameContract.allStandard {
             let closed = try makePlayingProjectionEngine(
                 recipe: .declarerWins(declarer: "north", contract: contract),
+                rules: contract.tricks == 10 ? .leningrad : .sochi,
                 kind: .game(
                     GamePlayContext(
                         declarer: "north",
@@ -251,6 +286,7 @@ final class ProjectionTests: AppTestCase {
             }
             let open = try makePlayingProjectionEngine(
                 recipe: .declarerWins(declarer: "north", contract: contract),
+                rules: contract.tricks == 10 ? .leningrad : .sochi,
                 kind: .game(
                     GamePlayContext(
                         declarer: "north",
@@ -353,6 +389,7 @@ final class ProjectionTests: AppTestCase {
 
     private func makePlayingProjectionEngine(
         recipe: HandRecipe,
+        rules: PreferansRules = .sochi,
         kind: PlayKind,
         discard suppliedDiscard: [Card]? = nil
     ) throws -> PreferansEngine {
@@ -373,7 +410,7 @@ final class ProjectionTests: AppTestCase {
         return try PreferansEngine(
             snapshot: PreferansSnapshot(
                 players: players,
-                rules: .sochi,
+                rules: rules,
                 state: .playing(playing),
                 score: ScoreSheet(players: players),
                 nextDealer: "north"

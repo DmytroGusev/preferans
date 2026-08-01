@@ -474,9 +474,10 @@ public struct PlayingState: Equatable, Codable, Sendable {
 
     /// The seats that may both *suggest* and must *approve* a trick
     /// settlement in the current position — the contesting sides, and only
-    /// them. In an open game that is the declarer plus the whisters; a
-    /// passed-out defender is a bystander who neither suggests nor approves.
-    /// A misère has no whist phase, so every active seat contests. A closed
+    /// them. In an ordinary open game that is the declarer plus the whisters;
+    /// a passed-out defender is a bystander. An open ten-trick check has no
+    /// whisters, so every active seat verifies the declarer's claim. A misère
+    /// likewise has no whist phase, so every active seat contests. A closed
     /// game and an all-pass deal are always played out, so no one settles.
     ///
     /// This is the single source of truth for settlement participation:
@@ -485,6 +486,11 @@ public struct PlayingState: Equatable, Codable, Sendable {
     /// the suggesting side and the approving side can never drift apart.
     public var settlementParties: Set<PlayerID> {
         switch kind {
+        case let .game(context)
+            where context.contract.tricks == 10
+                && context.whisters.isEmpty
+                && context.whistCalls.isEmpty:
+            return Set(activePlayers)
         case let .game(context) where context.defenderPlayMode == .open:
             return Set([context.declarer] + context.whisters)
         case .game:

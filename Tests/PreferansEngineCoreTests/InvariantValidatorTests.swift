@@ -120,6 +120,7 @@ final class InvariantValidatorTests: XCTestCase {
     private func whistFixture(
         defenders: [PlayerID] = ["east", "south"],
         currentPlayer: PlayerID = "east",
+        contract: GameContract = GameContract(6, .suit(.spades)),
         calls: [WhistCallRecord] = [],
         flow: WhistState.HalfWhistFlow = .normal,
         bonusPoolOnSuccess: Int = 0
@@ -132,7 +133,7 @@ final class InvariantValidatorTests: XCTestCase {
             talon: talon,
             discard: talon,
             declarer: north,
-            contract: GameContract(6, .suit(.spades)),
+            contract: contract,
             defenders: defenders,
             currentPlayer: currentPlayer,
             calls: calls,
@@ -537,6 +538,72 @@ final class InvariantValidatorTests: XCTestCase {
         let state = DealState.awaitingWhist(whistFixture(bonusPoolOnSuccess: -1))
 
         assertViolation(state, contains: "bonusPoolOnSuccess cannot be negative")
+    }
+
+    func testSnapshotRejectsTenTrickWhistPhaseWhenConventionIsDisabled() {
+        let state = DealState.awaitingWhist(whistFixture(
+            contract: GameContract(10, .suit(.spades))
+        ))
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: state,
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(snapshot, contains: "requires the whist convention")
+    }
+
+    func testSnapshotRejectsHalfWhistInTenTrickDecisionHistory() {
+        let state = DealState.awaitingWhist(whistFixture(
+            currentPlayer: east,
+            contract: GameContract(10, .suit(.spades)),
+            calls: [
+                WhistCallRecord(player: east, call: .pass),
+                WhistCallRecord(player: south, call: .halfWhist),
+            ],
+            flow: .firstDefenderSecondChance(halfWhister: south)
+        ))
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: PreferansRules(requireWhistOnTenTrickContracts: true),
+            state: state,
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(snapshot, contains: "cannot contain half-whist")
+    }
+
+    func testSnapshotRejectsHiddenUnwhistedTenTrickCheck() {
+        let (hands, talon) = dealHands()
+        let state = DealState.playing(PlayingState(
+            dealer: south,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: talon,
+            leader: north,
+            currentPlayer: north,
+            kind: .game(GamePlayContext(
+                declarer: north,
+                contract: GameContract(10, .suit(.spades)),
+                defenders: [east, south],
+                whisters: [],
+                defenderPlayMode: .closed,
+                whistCalls: []
+            ))
+        ))
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: state,
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(snapshot, contains: "must expose all hands")
     }
 
     // MARK: - Playing-state invariants

@@ -237,6 +237,11 @@ extension PreferansEngine {
         try require(snapshot.consecutiveAllPassDeals >= 0, "consecutiveAllPassDeals cannot be negative")
         try require(snapshot.rules.configurationError == nil, "invalid rules: \(snapshot.rules.configurationError ?? "unknown")")
         try checkMatchSettings(snapshot.match, playerCount: snapshot.players.count)
+        try checkTenTrickDefenseState(
+            snapshot.state,
+            rules: snapshot.rules,
+            match: snapshot.match
+        )
         try snapshot.score.validate(players: snapshot.players)
         try checkScoreAgainstMatch(snapshot.score, match: snapshot.match)
         try checkPlayerReferences(snapshot.state, players: snapshot.players)
@@ -264,6 +269,69 @@ extension PreferansEngine {
     private static func checkMatchSettings(_ match: MatchSettings, playerCount: Int) throws {
         let error = match.configurationError(playerCount: playerCount)
         try require(error == nil, "invalid match: \(error ?? "unknown")")
+    }
+
+    /// Ten-trick checking is a rule-sensitive state invariant. With the
+    /// optional whist convention disabled, play starts immediately with every
+    /// hand open and no whist ledger. With it enabled, normal pass/whist calls
+    /// precede play; half-whist is never legal at a one-trick quota. Recovery
+    /// must not reinterpret one form as the other.
+    private static func checkTenTrickDefenseState(
+        _ state: DealState,
+        rules: PreferansRules,
+        match: MatchSettings
+    ) throws {
+        let whistDecisionEnabled = rules.requireWhistOnTenTrickContracts
+            || match.totus.requireWhistOnTenTricks
+
+        func checkCalls(_ calls: [WhistCallRecord], context: String) throws {
+            try require(
+                calls.allSatisfy { $0.call != .halfWhist },
+                "\(context) cannot contain half-whist on a ten-trick contract"
+            )
+        }
+
+        func checkResult(_ result: DealResult, context: String) throws {
+            guard case let .game(_, contract, whisters) = result.kind,
+                  contract.tricks == 10 else { return }
+            if whisters.isEmpty {
+                try require(
+                    !whistDecisionEnabled,
+                    "\(context) cannot record an open ten-trick check when whist decisions are enabled"
+                )
+            } else {
+                try require(
+                    whistDecisionEnabled,
+                    "\(context) cannot record ten-trick whisters when the whist convention is disabled"
+                )
+            }
+        }
+
+        switch state {
+        case let .awaitingWhist(whist) where whist.contract.tricks == 10:
+            try require(whistDecisionEnabled, "ten-trick whist state requires the whist convention")
+            try checkCalls(whist.calls, context: "ten-trick whist state")
+        case let .awaitingDefenderMode(mode) where mode.contract.tricks == 10:
+            try require(whistDecisionEnabled, "ten-trick defender mode requires the whist convention")
+            try checkCalls(mode.whistCalls, context: "ten-trick defender mode")
+        case let .playing(playing):
+            guard case let .game(context) = playing.kind,
+                  context.contract.tricks == 10 else { return }
+            try checkCalls(context.whistCalls, context: "ten-trick play")
+            let isOpenCheck = context.whisters.isEmpty && context.whistCalls.isEmpty
+            if isOpenCheck {
+                try require(!whistDecisionEnabled, "open ten-trick check conflicts with enabled whist decisions")
+                try require(context.defenderPlayMode == .open, "unwhisted ten-trick check must expose all hands")
+            } else {
+                try require(whistDecisionEnabled, "ten-trick whist play requires the whist convention")
+            }
+        case let .dealFinished(result):
+            try checkResult(result, context: "finished deal")
+        case let .gameOver(summary):
+            try checkResult(summary.lastDeal, context: "game-over deal")
+        default:
+            break
+        }
     }
 
     private static func checkScoreAgainstMatch(_ score: ScoreSheet, match: MatchSettings) throws {

@@ -84,12 +84,10 @@ extension PreferansEngine {
 
         let defenders = defenders(after: player, activePlayers: declaration.activePlayers)
         if contract.tricks == 10 && !requiresWhistOnTenTricks {
-            // Ten-trick contracts skip the whist phase by default: there is no
-            // meaningful whist decision when the declarer claims every trick,
-            // so play starts unwhisted. Rule variants that demand a mandatory
-            // whist (Wien, or a totus policy with requireWhist) instead fall
-            // through to the whist phase below, where both defenders' only
-            // legal call is .whist — see ``legalWhistCalls(in:for:)``.
+            // Without the optional whist convention, a ten-trick contract is
+            // checked with all hands open and no defensive risk. Variants that
+            // enable ten-trick whisting (Wien, or a matching totus policy)
+            // instead use the ordinary pass/whist decision below.
             let playing = makePlayingState(
                 dealer: declaration.dealer,
                 activePlayers: declaration.activePlayers,
@@ -102,7 +100,7 @@ extension PreferansEngine {
                         contract: contract,
                         defenders: defenders,
                         whisters: [],
-                        defenderPlayMode: .closed,
+                        defenderPlayMode: .open,
                         whistCalls: [],
                         bonusPoolOnSuccess: bonusPool
                     )

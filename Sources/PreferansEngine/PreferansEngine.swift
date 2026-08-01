@@ -13,8 +13,8 @@ public struct PreferansEngine: Sendable {
     /// minimum ordinary contract allowed in the next auction.
     public private(set) var consecutiveAllPassDeals: Int
 
-    /// Whether a declared 10-trick contract goes through the whist phase (with
-    /// both defenders forced to whist) instead of starting play unwhisted.
+    /// Whether a declared 10-trick contract goes through the ordinary
+    /// whist/pass decision instead of starting as an open-card check.
     /// Either surface switches it on: the rules variant
     /// (``PreferansRules/requireWhistOnTenTrickContracts``, e.g. Wien) or the
     /// match's totus policy (``TotusPolicy``'s `requireWhist`).
@@ -439,13 +439,6 @@ public struct PreferansEngine: Sendable {
         if isStalingradContract(whist.contract) {
             return [.whist]
         }
-        // A 10-trick contract only ever reaches the whist phase when the
-        // require-whist rule is on (see ``reduceDeclareContract``), and that
-        // rule makes the whist mandatory for both defenders.
-        if whist.contract.tricks == 10 {
-            return [.whist]
-        }
-
         switch whist.flow {
         case .firstDefenderSecondChance:
             return [.pass, .whist]

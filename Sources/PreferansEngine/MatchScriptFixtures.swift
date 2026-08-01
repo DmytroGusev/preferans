@@ -91,7 +91,7 @@ public enum MatchScriptFixtures {
     /// Individual Sochi target 24 (6 each) fires on deal 5; raw trajectory is
     /// measured with closure disabled, so its last value remains 25.
     /// Mix: 6♣ failed, 7♥ made, 10♠ totus (asTenTrickGame, requireWhist:true,
-    /// defenders forced to whist, played out), classic talon-led raspasy
+    /// both defenders choose to whist, played out), classic talon-led raspasy
     /// talon constraint, misère clean.
     public static let game2LongSochi: MatchScript = {
         let players = MatchScriptFixtures.players
@@ -240,8 +240,8 @@ private extension DealScript {
     }
 
     /// 10-trick game contract under `.asTenTrickGame`. The script supplies
-    /// both forced whists when that convention is enabled; otherwise the
-    /// driver skips them because no whist state is entered.
+    /// both defenders choosing whist when that convention is enabled;
+    /// otherwise the driver skips them because no whist state is entered.
     static func makeTenTrickGame(declarer: PlayerID, strain: Strain) -> DealScript {
         let contract = GameContract(10, strain)
         return DealScript(
@@ -264,9 +264,9 @@ private extension DealScript {
             auction: [.bid(.totus), .pass, .pass],
             discardChoice: .talon,
             contractDeclaration: contract,
-            // Both fixtures run with `requireWhist: true`, which forces the
-            // defenders through the whist phase; the driver skips these calls
-            // when a fixture opts out of the requirement.
+            // Both fixtures enable ten-trick whist decisions and deliberately
+            // take the two-whister branch. The driver skips these calls when a
+            // fixture opts out of the convention.
             whists: [.whist, .whist],
             cardPlay: .greedyForDeclarer(declarer: declarer)
         )

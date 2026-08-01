@@ -47,6 +47,9 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     }
 
     public var allowSeniorHandHoldBid: Bool
+    /// Routes a ten-trick contract through the ordinary defender whist/pass
+    /// decision. Despite the historical property name, this does not force a
+    /// defender to whist; only the separate Stalingrad agreement does that.
     public var requireWhistOnTenTrickContracts: Bool
     /// Optional Stalingrad convention: both defenders must whist, with
     /// closed hands, against a six-spade contract. This is a table agreement,

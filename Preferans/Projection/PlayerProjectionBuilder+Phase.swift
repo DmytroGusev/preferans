@@ -223,7 +223,13 @@ extension PlayerProjectionBuilder {
             for defender in context.defenders {
                 frame.roleMap[defender] = context.whisters.contains(defender) ? .whister : .defender
             }
-            if context.defenderPlayMode == .open && policy.revealOpenDefenderHandsToAll {
+            if context.contract.tricks == 10
+                && context.whisters.isEmpty
+                && context.whistCalls.isEmpty {
+                // A non-whisted ten is checked, not defended: every seat sees
+                // the complete layout and verifies the declarer's ten tricks.
+                frame.revealHandOwners.formUnion(activePlayers)
+            } else if context.defenderPlayMode == .open && policy.revealOpenDefenderHandsToAll {
                 frame.revealHandOwners.formUnion(context.defenders)
             }
             frame.whistCalls = context.whistCalls

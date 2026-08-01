@@ -437,17 +437,17 @@ final class MatchSettingsTests: XCTestCase {
 
         _ = try engine.apply(.declareContract(player: "north", contract: GameContract(10, .suit(.spades))))
 
-        // The dedicated policy carries requireWhist, so both defenders are
-        // routed through a mandatory whist before play starts.
+        // The dedicated policy enables the normal whist decision. This
+        // fixture deliberately has both defenders accept the risk.
         var whisters: [PlayerID] = []
         while case let .awaitingWhist(whist) = engine.state {
-            XCTAssertEqual(engine.legalWhistCalls(for: whist.currentPlayer), [.whist])
+            XCTAssertEqual(engine.legalWhistCalls(for: whist.currentPlayer), [.pass, .whist])
             whisters.append(whist.currentPlayer)
             _ = try engine.apply(.whist(player: whist.currentPlayer, call: .whist))
         }
         guard case let .playing(playing) = engine.state,
               case let .game(context) = playing.kind else {
-            return XCTFail("Totus declaration should enter card play after the forced whists.")
+            return XCTFail("Totus declaration should enter card play after both defenders choose whist.")
         }
         XCTAssertEqual(context.whisters, whisters)
         XCTAssertEqual(whisters.count, 2)
@@ -464,7 +464,7 @@ final class MatchSettingsTests: XCTestCase {
         // Responsible whist at requirement 1: the defense took no trick, so
         // the second whister owes one trick's value on the mountain.
         XCTAssertEqual(engine.score.mountain[whisters[1]], 10,
-                       "requireWhist carries the 1-trick responsibility quota.")
+                       "A defender who whists carries the 1-trick responsibility quota.")
     }
 
     func testTotusOrderingPlacesItDirectlyAboveMisere() {
