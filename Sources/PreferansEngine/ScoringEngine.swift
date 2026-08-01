@@ -111,15 +111,17 @@ struct PreferansScoring {
             )
         }
 
-        switch rules.singleWhistScoring {
-        case .greedy where context.whisters.count == 1:
+        switch (rules.singleWhistScoring, context.whisters.count) {
+        case (.greedy, 1):
             delta.addWhists(whistUnit * defenderTricks, writer: context.whisters[0], on: context.declarer)
-        case .gentleman where context.whisters.count == 1:
+        case (.gentleman, 1) where declarerTricks >= context.contract.tricks:
+            delta.addWhists(whistUnit * defenderTricks, writer: context.whisters[0], on: context.declarer)
+        case (.gentleman, 1):
             let share = whistUnit * defenderTricks / context.defenders.count
             for defender in context.defenders {
                 delta.addWhists(share, writer: defender, on: context.declarer)
             }
-        case .greedy, .ownHandOnly, .gentleman:
+        case (.greedy, _), (.ownHandOnly, _), (.gentleman, _):
             for whister in context.whisters {
                 delta.addWhists(
                     whistUnit * tricks(whister, in: playing.trickCounts),
@@ -374,14 +376,6 @@ struct PreferansScoring {
         delta: inout ScoreDelta
     ) {
         guard rules.failedDeclarerConsolation == .eachDefender else { return }
-
-        if rules.singleWhistScoring == .gentleman, context.whisters.count == 1 {
-            let share = whistValue * undertricks / context.defenders.count
-            for defender in context.defenders {
-                delta.addWhists(share, writer: defender, on: context.declarer)
-            }
-            return
-        }
 
         for defender in context.defenders {
             delta.addWhists(whistValue * undertricks, writer: defender, on: context.declarer)

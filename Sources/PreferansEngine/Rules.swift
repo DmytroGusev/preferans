@@ -4,8 +4,10 @@ public struct PreferansRules: Hashable, Codable, Sendable {
     public enum SingleWhistScoring: String, Codable, Sendable {
         case greedy
         case ownHandOnly
-        /// The lone whister and their passing partner split both the
-        /// defender-trick whists and declarer-remise consolation equally.
+        /// When the declarer fails, the lone whister and their passing partner
+        /// split the defender-trick whists equally. A made contract remains
+        /// greedy, and remise consolation is still written in full by each
+        /// defender.
         case gentleman
     }
 
@@ -117,7 +119,8 @@ public struct PreferansRules: Hashable, Codable, Sendable {
 
     /// Tournament-style Leningrad profile: pool entries keep the standard
     /// ladder, while mountain and direct-whist entries are doubled. Whist is
-    /// semi-responsible and a lone whister splits the score with the passer.
+    /// semi-responsible and, on a declarer remise, a lone whister splits the
+    /// defender-trick score with the passer.
     public static let leningrad = PreferansRules(
         requireWhistOnTenTrickContracts: true,
         singleWhistScoring: .gentleman,

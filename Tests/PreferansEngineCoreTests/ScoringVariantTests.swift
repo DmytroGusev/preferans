@@ -235,6 +235,18 @@ final class ScoringVariantTests: XCTestCase {
         XCTAssertEqual(failed.whists["south"]?["north"], 12)
     }
 
+    func testLeningradGentlemanWhistIsGreedyWhenDeclarerMakesContract() {
+        let made = scoreGame(
+            contract: GameContract(6, .suit(.clubs)),
+            whisters: ["east"],
+            trickCounts: ["north": 6, "east": 1, "south": 3],
+            rules: .leningrad
+        )
+
+        XCTAssertEqual(made.whists["east"]?["north"], 16)
+        XCTAssertNil(made.whists["south"]?["north"])
+    }
+
     func testLeningradMisereKeepsTenPoolButDoublesRemise() {
         let made = scoreMisere(
             trickCounts: ["north": 0, "east": 5, "south": 5],

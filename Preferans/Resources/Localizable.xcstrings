@@ -501,9 +501,9 @@
       "comment" : "Wien whist explanation.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gentleman’s, semi-responsible whist: defenders split remuneration and a whist remise costs half." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменский полуответственный вист: защитники делят выигрыш, а ремиз на висте стоит половину." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменський напіввідповідальний віст: захисники ділять виграш, а реміз на вісті коштує половину." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Gentleman’s, semi-responsible whist: when the declarer remises, defenders split trick remuneration; each still writes full consolation, while a whist remise costs half." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменский полуответственный вист: при подсаде разыгрывающего защитники делят висты за взятки; консоляцию каждый пишет полностью, а ремиз на висте стоит половину." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Джентльменський напіввідповідальний віст: при підсаді розігрувача захисники ділять вісти за взятки; консоляцію кожен пише повністю, а реміз на вісті коштує половину." } }
       }
     },
     "rules.talon" : {

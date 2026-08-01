@@ -227,11 +227,11 @@ final class PreferansEngineTests: XCTestCase {
         ).completedPlay(playing)
 
         // 6-game is worth 4 in Leningrad. North is two short: 8 mountain.
-        // The lone whister and the passer share 6 defender tricks (24) and
-        // two undertricks of consolation (8): 16 whists each.
+        // The lone whister and passer share 6 defender tricks (24): 12 each.
+        // Both also write the full two-undertrick consolation (8): 20 each.
         XCTAssertEqual(result.scoreDelta.mountain["north"], 8)
-        XCTAssertEqual(result.scoreDelta.whists["east"]?["north"], 16)
-        XCTAssertEqual(result.scoreDelta.whists["south"]?["north"], 16)
+        XCTAssertEqual(result.scoreDelta.whists["east"]?["north"], 20)
+        XCTAssertEqual(result.scoreDelta.whists["south"]?["north"], 20)
     }
 
     func testHalfWhistRequiresFirstDefenderSecondChanceAndScores() throws {
