@@ -4,6 +4,19 @@ import PreferansEngine
 import AuthenticationServices
 #endif
 
+struct LobbyLayoutPolicy: Equatable {
+    var isRegularWidth: Bool
+    var usesAccessibilityText: Bool
+
+    var usesTabletChrome: Bool { isRegularWidth }
+    var usesTwoRegionComposition: Bool {
+        isRegularWidth && !usesAccessibilityText
+    }
+    var stacksModeChoices: Bool {
+        isRegularWidth || usesAccessibilityText
+    }
+}
+
 public struct LobbyView: View {
     private enum Sheet: Identifiable {
         case settings
@@ -20,6 +33,7 @@ public struct LobbyView: View {
     }
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// The invisible 1×1 automation affordances exist only under XCUITest —
     /// in a shipping build they were VoiceOver-reachable unlabeled buttons
@@ -44,12 +58,23 @@ public struct LobbyView: View {
             : "local"
     }
 
+    private var layoutPolicy: LobbyLayoutPolicy {
+        LobbyLayoutPolicy(
+            isRegularWidth: horizontalSizeClass == .regular,
+            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize
+        )
+    }
+
     private var usesTabletLobby: Bool {
-        horizontalSizeClass == .regular
+        layoutPolicy.usesTabletChrome
+    }
+
+    private var usesTwoRegionLobby: Bool {
+        layoutPolicy.usesTwoRegionComposition
     }
 
     private var adaptiveLobbyLayout: AnyLayout {
-        if usesTabletLobby {
+        if usesTwoRegionLobby {
             AnyLayout(HStackLayout(alignment: .top, spacing: 32))
         } else {
             AnyLayout(VStackLayout(spacing: 18))
@@ -57,7 +82,7 @@ public struct LobbyView: View {
     }
 
     private var adaptiveModeLayout: AnyLayout {
-        if usesTabletLobby {
+        if layoutPolicy.stacksModeChoices {
             AnyLayout(VStackLayout(spacing: 10))
         } else {
             AnyLayout(HStackLayout(spacing: 8))
@@ -163,7 +188,7 @@ public struct LobbyView: View {
         ScrollView {
             adaptiveLobbyLayout {
                 lobbyNavigationRegion
-                    .frame(maxWidth: usesTabletLobby ? 340 : .infinity)
+                    .frame(maxWidth: usesTwoRegionLobby ? 340 : (usesTabletLobby ? 620 : .infinity))
 
                 lobbyModeRegion
                     .frame(maxWidth: usesTabletLobby ? 620 : .infinity)
@@ -222,6 +247,8 @@ public struct LobbyView: View {
                     )
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.lobbyNavigationRegion)
     }
 
     private var lobbyModeRegion: some View {
@@ -255,6 +282,8 @@ public struct LobbyView: View {
             }
             conventionsFooterLink
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.lobbyModeRegion)
     }
 
     /// Hero on the felt: gold suit glyph, large cream title. The house-

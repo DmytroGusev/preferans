@@ -58,6 +58,72 @@ final class RedesignScreenshotTests: XCTestCase {
             .capture(name: "onboarding-accessibility-xxxl", force: true)
     }
 
+    /// Normal iPad keeps the dedicated navigation/setup columns, while
+    /// Accessibility text stacks both regions on every device so controls are
+    /// never squeezed into the tablet's narrow navigation column.
+    func testCaptureLobbyDeviceLayouts() {
+        let output = screenDir("screens-lobby-layout")
+        try? FileManager.default.removeItem(at: output)
+
+        let defaultApp = XCUIApplication()
+        defaultApp.launchArguments += [UITestFlags.disableAnimations]
+        defaultApp.pinTestLocaleEnglish()
+        defaultApp.launch()
+
+        let defaultNavigation = defaultApp.descendants(matching: .any)[UIIdentifiers.lobbyNavigationRegion]
+        let defaultMode = defaultApp.descendants(matching: .any)[UIIdentifiers.lobbyModeRegion]
+        XCTAssertTrue(defaultNavigation.waitForExistence(timeout: 5))
+        XCTAssertTrue(defaultMode.waitForExistence(timeout: 2))
+        if defaultApp.windows.firstMatch.frame.width >= 700 {
+            XCTAssertLessThan(defaultNavigation.frame.maxX, defaultMode.frame.minX)
+        } else {
+            XCTAssertLessThan(defaultNavigation.frame.maxY, defaultMode.frame.minY)
+        }
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: defaultApp,
+            outputDirectory: output,
+            filePrefix: "lobby"
+        )
+        .capture(name: "default", force: true, attach: false)
+        defaultApp.terminate()
+
+        let accessibilityApp = XCUIApplication()
+        accessibilityApp.launchArguments += [
+            UITestFlags.disableAnimations,
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        accessibilityApp.pinTestLocaleEnglish()
+        accessibilityApp.launch()
+
+        let accessibleNavigation = accessibilityApp.descendants(matching: .any)[UIIdentifiers.lobbyNavigationRegion]
+        let accessibleMode = accessibilityApp.descendants(matching: .any)[UIIdentifiers.lobbyModeRegion]
+        let accessibleLocalMode = accessibilityApp.buttons[UIIdentifiers.lobbyModeLocal]
+        let accessibleOnlineMode = accessibilityApp.buttons[UIIdentifiers.lobbyModeOnline]
+        XCTAssertTrue(accessibleNavigation.waitForExistence(timeout: 5))
+        XCTAssertTrue(accessibleMode.waitForExistence(timeout: 2))
+        XCTAssertTrue(accessibleLocalMode.waitForExistence(timeout: 2))
+        XCTAssertTrue(accessibleOnlineMode.waitForExistence(timeout: 2))
+        XCTAssertLessThan(
+            accessibleNavigation.frame.maxY,
+            accessibleMode.frame.minY,
+            "Accessibility text should stack the lobby regions instead of squeezing either column"
+        )
+        XCTAssertLessThan(
+            accessibleLocalMode.frame.maxY,
+            accessibleOnlineMode.frame.minY,
+            "Accessibility text should stack the play-mode choices instead of clipping their labels"
+        )
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: accessibilityApp,
+            outputDirectory: output,
+            filePrefix: "lobby"
+        )
+        .capture(name: "accessibility-xxxl", force: true, attach: false)
+    }
+
     /// The settlement control uses deliberately different compositions:
     /// stacked actions on iPhone and a bounded action column on iPad.
     func testCaptureSettlementComposerDeviceLayout() {

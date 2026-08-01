@@ -124,6 +124,8 @@ public enum UIIdentifiers {
     // MARK: - Lobby
 
     public static let lobbyTitle               = "lobby.title"
+    public static let lobbyNavigationRegion    = "lobby.region.navigation"
+    public static let lobbyModeRegion          = "lobby.region.mode"
     public static let lobbyStartLocalTable     = "button.startLocalTable"
     public static let lobbyPlayerCountThree    = "button.playerCount.3"
     public static let lobbyPlayerCountFour     = "button.playerCount.4"

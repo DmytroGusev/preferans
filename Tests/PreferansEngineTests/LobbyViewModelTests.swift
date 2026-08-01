@@ -31,6 +31,41 @@ private actor AccountClientStub: OnlineAccountServing {
 
 @MainActor
 final class LobbyViewModelTests: AppTestCase {
+    func testLobbyLayoutKeepsDefaultIPadTwoRegionComposition() {
+        let policy = LobbyLayoutPolicy(
+            isRegularWidth: true,
+            usesAccessibilityText: false
+        )
+
+        XCTAssertTrue(policy.usesTabletChrome)
+        XCTAssertTrue(policy.usesTwoRegionComposition)
+        XCTAssertTrue(policy.stacksModeChoices)
+    }
+
+    func testLobbyLayoutStacksIPadRegionsForAccessibilityText() {
+        let policy = LobbyLayoutPolicy(
+            isRegularWidth: true,
+            usesAccessibilityText: true
+        )
+
+        XCTAssertTrue(policy.usesTabletChrome)
+        XCTAssertFalse(policy.usesTwoRegionComposition)
+        XCTAssertTrue(policy.stacksModeChoices)
+    }
+
+    func testLobbyLayoutKeepsIPhoneSingleColumn() {
+        for usesAccessibilityText in [false, true] {
+            let policy = LobbyLayoutPolicy(
+                isRegularWidth: false,
+                usesAccessibilityText: usesAccessibilityText
+            )
+
+            XCTAssertFalse(policy.usesTabletChrome)
+            XCTAssertFalse(policy.usesTwoRegionComposition)
+            XCTAssertEqual(policy.stacksModeChoices, usesAccessibilityText)
+        }
+    }
+
     func testBotStepperAddsAndRemovesFourthBot() {
         let model = LobbyViewModel()
 
