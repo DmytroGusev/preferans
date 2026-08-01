@@ -270,6 +270,46 @@ final class BotTests: XCTestCase {
         XCTAssertNoThrow(try engine.apply(action))
     }
 
+    func testGameDiscardScoresAgainstDeclaredTrump() async throws {
+        let north = cards(.clubs, [.seven, .queen, .ace])
+            + cards(.diamonds, [.nine, .jack])
+            + cards(.spades, [.seven, .ace])
+            + cards(.hearts, [.seven, .nine, .ten])
+        let talon = cards(.hearts, [.queen]) + cards(.diamonds, [.queen])
+        let used = Set(north + talon)
+        let remaining = Deck.standard32.filter { !used.contains($0) }
+        let exchange = ExchangeState(
+            dealer: "S",
+            activePlayers: players,
+            hands: [
+                "N": north,
+                "E": Array(remaining.prefix(10)),
+                "S": Array(remaining.dropFirst(10).prefix(10))
+            ],
+            talon: talon,
+            declarer: "N",
+            finalBid: .game(GameContract(6, .suit(.spades))),
+            auction: []
+        )
+        let snapshot = PreferansSnapshot(
+            players: players,
+            rules: .sochi,
+            state: .awaitingDiscard(exchange),
+            score: ScoreSheet(players: players),
+            nextDealer: "E"
+        )
+        let engine = try PreferansEngine(snapshot: snapshot)
+        let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 1))
+
+        let action = await strategy.decide(snapshot: engine.snapshot, viewer: "N")
+
+        guard case let .discard(player, discarded) = action else {
+            return XCTFail("Expected a game discard, got \(String(describing: action))")
+        }
+        XCTAssertEqual(player, "N")
+        XCTAssertEqual(Set(discarded), Set(cards(.hearts, [.seven]) + cards(.spades, [.seven])))
+    }
+
     func testDefenderRolloutTakesCheapestWinningCard() {
         let planner = CardPlayPlanner(samples: 1)
         let state = rolloutState(

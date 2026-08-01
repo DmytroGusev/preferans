@@ -86,14 +86,19 @@ final class ScoringCalculationTests: XCTestCase {
         XCTAssertEqual(delta.whists["south"]?["north"], 6)
     }
 
-    func testFailedJointWhistUsesFixedHalfSharePenalty() {
+    func testFailedJointWhistChargesEachPartnerForTheirOwnHalfShare() {
         let delta = scoreGame(
             contract: GameContract(6, .suit(.clubs)),
             whisters: ["east", "south"],
             trickCounts: ["north": 7, "east": 0, "south": 3]
         )
 
-        XCTAssertEqual(delta.mountain["east"], 2)
+        // The six-game quota is four tricks, split into two per whister.
+        // East took none and therefore owes two mountain units; South took
+        // three and owes none. Responsibility follows each partner's own
+        // half-share rather than collapsing the partnership shortfall to one
+        // fixed unit.
+        XCTAssertEqual(delta.mountain["east"], 4)
         XCTAssertEqual(delta.mountain["south"], 0)
     }
 

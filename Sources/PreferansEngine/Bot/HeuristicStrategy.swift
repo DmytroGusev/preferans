@@ -308,7 +308,18 @@ public struct HeuristicStrategy: PlayerStrategy {
         switch finalBid {
         case .misere:
             return HandEvaluator.expectedMisereTricks(grouped: grouped)
-        case .game, .totus:
+        case let .game(contract):
+            // The auction has already fixed the trump strain. Scoring this
+            // discard against whichever suit happens to produce the highest
+            // estimate can throw away cards that are vital in the declared
+            // contract (and is especially misleading when the best alternate
+            // strain is a long side suit). Keep the discard objective tied to
+            // the actual contract the bot must play.
+            return HandEvaluator.expectedDeclarerTricks(
+                grouped: grouped,
+                trump: contract.strain.suit
+            )
+        case .totus:
             return Strain.allStandard
                 .map { HandEvaluator.expectedDeclarerTricks(grouped: grouped, trump: $0.suit) }
                 .max() ?? 0
