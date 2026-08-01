@@ -72,7 +72,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private let heartbeat: HeartbeatConfig
     private var heartbeatTask: Task<Void, Never>?
-    private var lastHostContact: ContinuousClock.Instant?
+    private var hostLiveness = RoomHostLiveness()
     private let livenessClock = ContinuousClock()
 
     public init(
@@ -128,9 +128,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.variantTag = variantTag
         self.errorText = nil
         self.state = .selectingHost
-        self.liveness = .connecting
+        resetHostLiveness()
         self.transportStatus = .connecting
-        self.lastHostContact = nil
         self.didAutoStartOnlineDeal = false
         self.transport = transport
         self.listenTask?.cancel()
@@ -173,6 +172,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             }
         } else {
             self.state = .connectedAsClient
+            beginClientLiveness()
             await sendHello()
             startHeartbeat()
         }
@@ -210,9 +210,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         isHost = false
         localSeat = nil
         tableID = nil
-        liveness = .connecting
+        resetHostLiveness()
         transportStatus = .disconnected
-        lastHostContact = nil
         didAutoStartOnlineDeal = false
         roster.reset()
         rosterSeats = []
@@ -405,7 +404,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func startHeartbeat() {
         guard heartbeat.isEnabled, !isHost else { return }
         heartbeatTask?.cancel()
-        lastHostContact = livenessClock.now
         let interval = heartbeat.interval
         heartbeatTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
@@ -423,10 +421,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func heartbeatTick() async {
         guard !isHost, let tableID, let hostPeer, let transport else { return }
-        if let last = lastHostContact,
-           last.duration(to: livenessClock.now) > heartbeat.hostTimeout,
-           liveness != .hostUnreachable {
-            liveness = .hostUnreachable
+        if hostLiveness.markUnreachableIfTimedOut(
+            at: livenessClock.now,
+            timeout: heartbeat.hostTimeout
+        ) {
+            publishHostLiveness()
         }
         try? await transport.send(.ping(PingEnvelope(tableID: tableID)), to: [hostPeer], reliably: false)
     }
@@ -437,13 +436,26 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// projection so we catch up on anything missed while we were away.
     private func noteHostContact() {
         guard !isHost else { return }
-        let wasUnreachable = liveness == .hostUnreachable
-        lastHostContact = livenessClock.now
-        if liveness != .live {
-            liveness = .live
-        }
-        if wasUnreachable {
+        let needsResync = hostLiveness.noteHostContact(at: livenessClock.now)
+        publishHostLiveness()
+        if needsResync {
             requestResync()
+        }
+    }
+
+    private func resetHostLiveness() {
+        hostLiveness.reset()
+        publishHostLiveness()
+    }
+
+    private func beginClientLiveness() {
+        hostLiveness.beginClientSession(at: livenessClock.now)
+        publishHostLiveness()
+    }
+
+    private func publishHostLiveness() {
+        if liveness != hostLiveness.status {
+            liveness = hostLiveness.status
         }
     }
 
@@ -508,7 +520,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.tableID = tableID
         self.hostActor = actor
         self.state = .connectedAsHost
-        self.liveness = .live
+        self.hostLiveness.becomeHost()
+        self.publishHostLiveness()
         await publish(update, authorityGeneration: authorityGeneration)
     }
 
@@ -618,7 +631,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         let authorityGeneration = advanceAuthorityGeneration()
         isHost = true
         state = .selectingHost
-        liveness = .connecting
+        resetHostLiveness()
         errorText = nil
 
         hostRecoveryTask = Task { @MainActor [weak self, weak transport] in
@@ -677,8 +690,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         isHost = false
         hostPeer = elected
         state = .connectedAsClient
-        liveness = .connecting
-        lastHostContact = livenessClock.now
+        beginClientLiveness()
         errorText = nil
         Task { [weak self] in
             await self?.sendHello()

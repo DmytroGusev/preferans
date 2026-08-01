@@ -211,8 +211,9 @@ public struct HeartbeatConfig: Sendable, Equatable {
     public var isEnabled: Bool
 
     public init(interval: Duration, hostTimeout: Duration, isEnabled: Bool = true) {
-        self.interval = interval
-        self.hostTimeout = hostTimeout
+        let validInterval = max(interval, .nanoseconds(1))
+        self.interval = validInterval
+        self.hostTimeout = max(hostTimeout, validInterval)
         self.isEnabled = isEnabled
     }
 

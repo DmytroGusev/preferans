@@ -5,6 +5,81 @@ import XCTest
 
 @MainActor
 final class RoomOnlineGameCoordinatorTests: AppTestCase {
+    func testHeartbeatConfigNormalizesInvalidTimingBounds() {
+        let config = HeartbeatConfig(
+            interval: .zero,
+            hostTimeout: .seconds(-1)
+        )
+
+        XCTAssertEqual(config.interval, .nanoseconds(1))
+        XCTAssertEqual(config.hostTimeout, .nanoseconds(1))
+    }
+
+    func testHostLivenessExpiresAtTheConfiguredDeadline() {
+        let clock = ContinuousClock()
+        let start = clock.now
+        let timeout = Duration.seconds(10)
+        var liveness = RoomHostLiveness()
+
+        XCTAssertFalse(liveness.markUnreachableIfTimedOut(at: start, timeout: timeout))
+        liveness.beginClientSession(at: start)
+        XCTAssertFalse(
+            liveness.markUnreachableIfTimedOut(
+                at: start.advanced(by: timeout - .nanoseconds(1)),
+                timeout: timeout
+            )
+        )
+        XCTAssertTrue(
+            liveness.markUnreachableIfTimedOut(
+                at: start.advanced(by: timeout),
+                timeout: timeout
+            )
+        )
+        XCTAssertEqual(liveness.status, .hostUnreachable)
+        XCTAssertFalse(
+            liveness.markUnreachableIfTimedOut(
+                at: start.advanced(by: timeout + .seconds(1)),
+                timeout: timeout
+            ),
+            "The unreachable transition must be emitted only once."
+        )
+    }
+
+    func testHostContactRequestsOneResyncOnRecovery() {
+        let clock = ContinuousClock()
+        let start = clock.now
+        var liveness = RoomHostLiveness()
+        liveness.beginClientSession(at: start)
+        XCTAssertTrue(
+            liveness.markUnreachableIfTimedOut(
+                at: start.advanced(by: .seconds(10)),
+                timeout: .seconds(10)
+            )
+        )
+
+        XCTAssertTrue(liveness.noteHostContact(at: start.advanced(by: .seconds(11))))
+        XCTAssertEqual(liveness.status, .live)
+        XCTAssertFalse(liveness.noteHostContact(at: start.advanced(by: .seconds(12))))
+    }
+
+    func testBecomingHostClearsTheClientDeadline() {
+        let clock = ContinuousClock()
+        let start = clock.now
+        var liveness = RoomHostLiveness()
+        liveness.beginClientSession(at: start)
+
+        liveness.becomeHost()
+
+        XCTAssertEqual(liveness.status, .live)
+        XCTAssertNil(liveness.lastContact)
+        XCTAssertFalse(
+            liveness.markUnreachableIfTimedOut(
+                at: start.advanced(by: .seconds(3_600)),
+                timeout: .seconds(10)
+            )
+        )
+    }
+
     func testSharedRetryBackoffDoublesCapsAndResets() {
         var backoff = RoomRetryBackoff(
             initialDelay: .milliseconds(250),
