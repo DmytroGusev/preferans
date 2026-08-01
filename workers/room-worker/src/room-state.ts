@@ -491,11 +491,55 @@ export function applyStateReport(
     return { room, changed: false };
   }
 
+  const normalizedStatus = normalizeGameStatus(input.status);
+  if (input.status !== undefined && normalizedStatus === undefined) {
+    throw new RoomStateError("invalid_state_report", "State report has an invalid status.", 400);
+  }
+  const requestedStatus = normalizedStatus ?? room.status ?? "lobby";
+  const currentStatus = room.status ?? "lobby";
+  const validLifecycleTransition = requestedStatus === currentStatus
+    || requestedStatus === "abandoned"
+    || (currentStatus === "lobby" && requestedStatus === "playing")
+    || (currentStatus === "playing" && requestedStatus === "finished");
+  if (!validLifecycleTransition) {
+    throw new RoomStateError(
+      "invalid_state_report",
+      `State report cannot move a room from ${currentStatus} to ${requestedStatus}.`,
+      409
+    );
+  }
   const candidateSummary = normalizeGameSummary(input.summary);
+  if (requestedStatus !== "abandoned") {
+    if (candidateSummary === undefined) {
+      throw new RoomStateError("invalid_state_report", "State report requires a summary.", 400);
+    }
+    const rawSummarySequence = isRecord(input.summary) ? input.summary.lastSequence : undefined;
+    const rawSnapshotSequence = input.snapshotSequence;
+    if (typeof rawSummarySequence !== "number"
+        || !Number.isSafeInteger(rawSummarySequence)
+        || rawSummarySequence < 0) {
+      throw new RoomStateError("invalid_state_report", "Summary sequence must be a non-negative integer.", 400);
+    }
+    if (typeof rawSnapshotSequence !== "number"
+        || !Number.isSafeInteger(rawSnapshotSequence)
+        || rawSnapshotSequence !== rawSummarySequence) {
+      throw new RoomStateError(
+        "invalid_state_report",
+        "Snapshot and summary sequences must match.",
+        400
+      );
+    }
+    if (requestedStatus !== "finished" && (input.snapshot === undefined || input.snapshot === null)) {
+      throw new RoomStateError(
+        "invalid_state_report",
+        "A nonterminal state report requires its recoverable snapshot.",
+        400
+      );
+    }
+  }
   const currentSequence = room.summary?.lastSequence ?? room.lastSnapshotSequence ?? 0;
   const staleSummary = candidateSummary !== undefined && candidateSummary.lastSequence < currentSequence;
   const summary = staleSummary ? room.summary : candidateSummary ?? room.summary;
-  const requestedStatus = normalizeGameStatus(input.status) ?? room.status ?? "lobby";
   // Abandonment is an explicit participant action and carries no summary. All
   // other stale reports preserve the newer lifecycle alongside the summary.
   const status = staleSummary && requestedStatus !== "abandoned"

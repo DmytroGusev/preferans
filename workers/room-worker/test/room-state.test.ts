@@ -406,7 +406,17 @@ test("host election is deterministic, monotonic, and limited to connected humans
   assert.equal(electLiveHost(withBot, ["east", "south"]), withBot);
 
   // Terminal history is immutable and never elects a fresh runtime host.
-  const finished = applyStateReport(southHost, { status: "finished" }).room;
+  const playing = applyStateReport(southHost, {
+    status: "playing",
+    summary: { lastSequence: 0, phase: "bidding" },
+    snapshot: { seq: 0 },
+    snapshotSequence: 0
+  }).room;
+  const finished = applyStateReport(playing, {
+    status: "finished",
+    summary: { lastSequence: 1, phase: "finished" },
+    snapshotSequence: 1
+  }).room;
   assert.equal(electLiveHost(finished, ["north"]), finished);
 });
 
@@ -491,6 +501,78 @@ test("a state report records status, summary, and the resume snapshot", () => {
   assert.equal(updated.updatedAt, "2026-05-04T00:00:05.000Z");
 });
 
+test("a nonterminal report cannot advance metadata without an exact matching snapshot", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+
+  assert.throws(
+    () => applyStateReport(room, {
+      status: "playing",
+      summary: { lastSequence: 4, phase: "bidding" },
+      snapshotSequence: 4
+    }),
+    /requires its recoverable snapshot/
+  );
+  assert.throws(
+    () => applyStateReport(room, {
+      status: "playing",
+      summary: { lastSequence: 4, phase: "bidding" },
+      snapshot: { seq: 3 },
+      snapshotSequence: 3
+    }),
+    /sequences must match/
+  );
+
+  assert.equal(room.summary, undefined);
+  assert.equal(room.latestSnapshot, undefined);
+});
+
+test("a state report rejects invalid lifecycle and sequence values", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+
+  assert.throws(
+    () => applyStateReport(room, {
+      status: "paused",
+      summary: { lastSequence: 0 },
+      snapshot: { seq: 0 },
+      snapshotSequence: 0
+    }),
+    /invalid status/
+  );
+  assert.throws(
+    () => applyStateReport(room, {
+      status: "playing",
+      summary: { lastSequence: 1.5 },
+      snapshot: { seq: 1.5 },
+      snapshotSequence: 1.5
+    }),
+    /non-negative integer/
+  );
+  assert.throws(
+    () => applyStateReport(room, {
+      status: "finished",
+      summary: { lastSequence: 1, phase: "finished" },
+      snapshotSequence: 1
+    }),
+    /cannot move a room from lobby to finished/
+  );
+
+  const { room: playing } = applyStateReport(room, {
+    status: "playing",
+    summary: { lastSequence: 1, phase: "bidding" },
+    snapshot: { seq: 1 },
+    snapshotSequence: 1
+  });
+  assert.throws(
+    () => applyStateReport(playing, {
+      status: "lobby",
+      summary: { lastSequence: 2, phase: "waiting" },
+      snapshot: { seq: 2 },
+      snapshotSequence: 2
+    }),
+    /cannot move a room from playing to lobby/
+  );
+});
+
 test("a stale (out-of-order) snapshot never clobbers a newer one", () => {
   const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
   const { room: ahead } = applyStateReport(base, {
@@ -524,7 +606,8 @@ test("terminal lifecycle cannot be resurrected by a delayed host report", () => 
   });
   const { room: finished } = applyStateReport(playing, {
     status: "finished",
-    summary: { lastSequence: 11, phase: "finished", dealNumber: 2 }
+    summary: { lastSequence: 11, phase: "finished", dealNumber: 2 },
+    snapshotSequence: 11
   });
   const result = applyStateReport(finished, {
     status: "playing",
@@ -575,7 +658,8 @@ test("finishing a game keeps the result summary but drops the snapshot", () => {
     summary: {
       lastSequence: 42,
       result: { winner: { rawValue: "north" }, finalScores: { north: 6, east: 2, south: 1 } }
-    }
+    },
+    snapshotSequence: 42
   });
 
   assert.equal(changed, true);

@@ -107,8 +107,11 @@ The host reports progress to `POST /v2/rooms/{code}/state` with its `playerID`
 and current `seatToken`. The worker verifies both the bearer account and the
 rotating credential own the current host seat; no separate host secret exists.
 Snapshots and summaries are monotonic, and terminal lifecycle is immutable, so
-a delayed report cannot roll back or resurrect a game. The iOS coordinator
-commits this snapshot before publishing the corresponding projections.
+a delayed report cannot roll back or resurrect a game. Nonterminal reports are
+accepted only when they carry a recoverable snapshot at exactly the summary's
+sequence, and lifecycle transitions cannot regress or skip directly from lobby
+to finished. The iOS coordinator commits this snapshot before publishing the
+corresponding projections.
 
 Resume and abandon require both layers of proof:
 
