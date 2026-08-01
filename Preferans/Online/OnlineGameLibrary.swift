@@ -29,7 +29,9 @@ public struct OnlineGameSummary: Codable, Sendable, Identifiable, Equatable {
 /// `GameResultSummary`). Seats are `PlayerID.rawValue` keys.
 public struct OnlineGameResult: Codable, Sendable, Equatable {
     public var winner: PlayerID?
-    public var finalScores: [String: Int]?
+    /// Authoritative normalized whist balance per seat. These are the same
+    /// zero-sum values used to order the engine's final standings.
+    public var finalBalances: [String: Double]?
 }
 
 /// The host-authored progress summary sent to `POST /v2/rooms/{code}/state`.

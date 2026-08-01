@@ -41,7 +41,7 @@ enum LobbyFormat {
 // MARK: - Finished-game result sheet
 
 /// Read-only summary for a finished online game: winner + each seat's final
-/// pool. "Summaries only" per the lobby spec — no deal-by-deal replay.
+/// zero-sum balance. "Summaries only" per the lobby spec — no deal replay.
 struct OnlineGameSummarySheet: View {
     let game: OnlineGameSummary
     @Environment(\.dismiss) private var dismiss
@@ -49,7 +49,7 @@ struct OnlineGameSummarySheet: View {
     private struct Row: Identifiable {
         let id: PlayerID
         let name: String
-        let score: Int?
+        let balance: Double?
         let isBot: Bool
         let isWinner: Bool
     }
@@ -59,7 +59,7 @@ struct OnlineGameSummarySheet: View {
             Row(
                 id: peer.playerID,
                 name: peer.displayName,
-                score: game.result?.finalScores?[peer.playerID.rawValue],
+                balance: game.result?.finalBalances?[peer.playerID.rawValue],
                 isBot: peer.isBotSeat,
                 isWinner: game.result?.winner == peer.playerID
             )
@@ -80,7 +80,7 @@ struct OnlineGameSummarySheet: View {
                         }
                     }
 
-                    Text("Final pool scores")
+                    Text("Final balances")
                         .font(.caption2.weight(.semibold))
                         .tracking(1.2)
                         .textCase(.uppercase)
@@ -94,10 +94,14 @@ struct OnlineGameSummarySheet: View {
                                 Text(verbatim: row.name)
                                     .foregroundStyle(TableTheme.inkCream)
                                 Spacer()
-                                if let score = row.score {
-                                    Text("\(score)")
+                                if let balance = row.balance {
+                                    Text(ScoreFormatting.balance(balance))
                                         .font(.headline.monospacedDigit())
-                                        .foregroundStyle(TableTheme.inkCreamSoft)
+                                        .foregroundStyle(
+                                            balance > 0.05
+                                                ? Color.green
+                                                : (balance < -0.05 ? Color.red : TableTheme.inkCreamSoft)
+                                        )
                                 }
                             }
                             .padding(10)

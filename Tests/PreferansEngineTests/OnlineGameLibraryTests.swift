@@ -156,7 +156,7 @@ final class OnlineGameLibraryTests: XCTestCase {
           "youSeat": { "rawValue": "north" },
           "variant": "odesa",
           "lastSequence": 42,
-          "result": { "winner": { "rawValue": "north" }, "finalScores": { "north": 6, "east": 2 } },
+          "result": { "winner": { "rawValue": "north" }, "finalBalances": { "north": 18.5, "east": -18.5 } },
           "createdAt": "2026-06-04T08:00:00.000Z",
           "updatedAt": "2026-06-04T10:00:00.000Z"
         }
@@ -168,7 +168,7 @@ final class OnlineGameLibraryTests: XCTestCase {
         XCTAssertEqual(game.status, .finished)
         XCTAssertEqual(game.youSeat, "north")
         XCTAssertEqual(game.result?.winner, "north")
-        XCTAssertEqual(game.result?.finalScores?["east"], 2)
+        XCTAssertEqual(game.result?.finalBalances?["east"], -18.5)
         XCTAssertEqual(game.winnerName, "North")
         // The bot seat is excluded from "opponents" (humans you played against).
         XCTAssertEqual(game.opponents.map(\.playerID), [])
@@ -199,7 +199,7 @@ final class OnlineGameLibraryTests: XCTestCase {
             dealNumber: 1,
             lastSequence: 4,
             result: status == .finished
-                ? OnlineGameResult(winner: "north", finalScores: ["north": 6, "east": 2, "south": 1])
+                ? OnlineGameResult(winner: "north", finalBalances: ["north": 18.5, "east": -4, "south": -14.5])
                 : nil,
             createdAt: updatedAt,
             updatedAt: updatedAt

@@ -146,6 +146,59 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertFalse(barrier.recordFailure(for: ticket))
     }
 
+    func testStateReportBuilderPublishesAuthoritativeBalancesAndStableWinner() {
+        let players: [PlayerID] = ["north", "east", "south"]
+        let lastDeal = DealResult(
+            kind: .passedOut,
+            activePlayers: players,
+            trickCounts: players.dictionary(filledWith: 0),
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: players)
+        )
+        let match = MatchSummary(
+            finalScore: ScoreSheet(players: players),
+            dealsPlayed: 7,
+            lastDeal: lastDeal,
+            standings: [
+                .init(player: "north", balance: 18.5, pool: 2, mountain: 0),
+                .init(player: "east", balance: 18.5, pool: 10, mountain: 4),
+                .init(player: "south", balance: -37, pool: 8, mountain: 9),
+            ]
+        )
+
+        let summary = RoomStateReportBuilder.summary(
+            variantTag: "odesa",
+            sequence: 42,
+            dealNumber: 7,
+            state: .gameOver(match)
+        )
+
+        XCTAssertEqual(summary.variant, "odesa")
+        XCTAssertEqual(summary.lastSequence, 42)
+        XCTAssertEqual(summary.phase, "finished")
+        XCTAssertEqual(summary.dealNumber, 7)
+        XCTAssertEqual(
+            summary.result,
+            OnlineGameResult(
+                winner: "north",
+                finalBalances: ["north": 18.5, "east": 18.5, "south": -37]
+            ),
+            "The worker summary must use the engine's stable standing order and balances, not pool entries."
+        )
+    }
+
+    func testStateReportBuilderOmitsResultBeforeGameOver() {
+        let summary = RoomStateReportBuilder.summary(
+            variantTag: "wien",
+            sequence: 3,
+            dealNumber: 1,
+            state: .waitingForDeal
+        )
+
+        XCTAssertEqual(summary.phase, "waiting")
+        XCTAssertNil(summary.result)
+    }
+
     private let peers: [OnlinePeer] = [
         OnlinePeer(playerID: "north", accountID: "dev:north@example.test", provider: .dev, displayName: "North"),
         OnlinePeer(playerID: "east", accountID: "dev:east@example.test", provider: .dev, displayName: "East"),
@@ -156,7 +209,13 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         let fixture = try await makeFixture()
 
         fixture.coordinators["north"]?.send(.startDeal(dealer: nil, deck: nil))
-        await pump(until: { fixture.allProjectionsAre(at: 1) })
+        await pump(until: {
+            fixture.allProjectionsAre(at: 1)
+                && fixture.coordinators["east"]?.recentEvents.contains { event in
+                    if case .dealStarted = event { return true }
+                    return false
+                } == true
+        })
 
         let eastProjection = try XCTUnwrap(fixture.coordinators["east"]?.projection)
         XCTAssertEqual(eastProjection.viewer, "east")

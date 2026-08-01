@@ -657,7 +657,7 @@ test("finishing a game keeps the result summary but drops the snapshot", () => {
     status: "finished",
     summary: {
       lastSequence: 42,
-      result: { winner: { rawValue: "north" }, finalScores: { north: 6, east: 2, south: 1 } }
+      result: { winner: { rawValue: "north" }, finalBalances: { north: 18.5, east: -4, south: -14.5 } }
     },
     snapshotSequence: 42
   });
@@ -665,7 +665,7 @@ test("finishing a game keeps the result summary but drops the snapshot", () => {
   assert.equal(changed, true);
   assert.equal(finished.status, "finished");
   assert.equal(finished.summary?.result?.winner?.rawValue, "north");
-  assert.deepEqual(finished.summary?.result?.finalScores, { north: 6, east: 2, south: 1 });
+  assert.deepEqual(finished.summary?.result?.finalBalances, { north: 18.5, east: -4, south: -14.5 });
   // A finished game is never resumed, so the heavy blob is released.
   assert.equal(finished.latestSnapshot, undefined);
 });

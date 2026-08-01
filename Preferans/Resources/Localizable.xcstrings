@@ -839,26 +839,26 @@
         }
       }
     },
-    "Final pool scores" : {
-      "comment" : "Section label above the per-player rows in the finished-game sheet.",
+    "Final balances" : {
+      "comment" : "Section label above the zero-sum balance rows in the finished-game sheet.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Final pool scores"
+            "value" : "Final balances"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Итоговая пулька"
+            "value" : "Итоговый баланс"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Підсумкова пулька"
+            "value" : "Підсумковий баланс"
           }
         }
       }

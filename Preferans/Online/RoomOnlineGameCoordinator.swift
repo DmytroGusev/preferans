@@ -986,12 +986,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         transport: any RoomRealtimeTransport
     ) async throws {
         let snapshot = await hostActor.engineSnapshot
-        let summary = OnlineStateSummary(
-            variant: variantTag,
-            lastSequence: update.sequence,
-            phase: Self.phaseLabel(for: update.snapshot.state),
+        let summary = RoomStateReportBuilder.summary(
+            variantTag: variantTag,
+            sequence: update.sequence,
             dealNumber: update.dealNumber,
-            result: Self.finishedResult(from: update.snapshot.state)
+            state: update.snapshot.state
         )
         try await transport.reportState(
             status: update.status,
@@ -1044,33 +1043,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             snapshot: nil,
             snapshotSequence: sequence
         )
-    }
-
-    /// Coarse, lobby-facing phase label for a deal state.
-    private static func phaseLabel(for state: DealState) -> String {
-        switch state {
-        case .waitingForDeal:      return "waiting"
-        case .bidding:             return "bidding"
-        case .awaitingDiscard:     return "exchange"
-        case .awaitingContract:    return "declaring"
-        case .awaitingWhist:       return "whist"
-        case .awaitingDefenderMode: return "defending"
-        case .playing:             return "playing"
-        case .dealFinished:        return "scoring"
-        case .gameOver:            return "finished"
-        }
-    }
-
-    /// Distill a finished match into the worker-readable result: the
-    /// best-balance seat as winner plus each seat's final pool.
-    private static func finishedResult(from state: DealState) -> OnlineGameResult? {
-        guard case let .gameOver(summary) = state else { return nil }
-        let winner = summary.standings.max(by: { $0.balance < $1.balance })?.player
-        var finalScores: [String: Int] = [:]
-        for standing in summary.standings {
-            finalScores[standing.player.rawValue] = standing.pool
-        }
-        return OnlineGameResult(winner: winner, finalScores: finalScores)
     }
 
     private func sendHostError(to peer: OnlinePeer, recipient: PlayerID?, nonce: UUID?, message: String) async {

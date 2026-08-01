@@ -45,12 +45,12 @@ export type OnlineAccountProvider = "gameCenter" | "apple" | "email" | "guest" |
 export type GameStatus = "lobby" | "playing" | "finished" | "abandoned";
 
 /// Tiny, worker-readable result kept for finished games so the History list can
-/// render a winner + final pool without decoding the (dropped) snapshot blob.
+/// render a winner + final balance without decoding the dropped snapshot blob.
 export interface GameResultSummary {
   /// Seat that won the match, when there is a single winner.
   winner?: WirePlayerID;
-  /// Final pool score per seat (`playerID.rawValue` → points).
-  finalScores?: Record<string, number>;
+  /// Final normalized whist balance per seat (`playerID.rawValue` → points).
+  finalBalances?: Record<string, number>;
 }
 
 /// Host-authored, worker-readable metadata about a table's progress. Fanned out
@@ -721,15 +721,15 @@ function normalizeGameResult(value: unknown): GameResultSummary | undefined {
       // Ignore an unparseable winner — the rest of the result still stands.
     }
   }
-  if (isRecord(value.finalScores)) {
-    const scores: Record<string, number> = {};
-    for (const [seat, raw] of Object.entries(value.finalScores)) {
-      const score = Number(raw);
-      if (Number.isFinite(score)) {
-        scores[seat] = score;
+  if (isRecord(value.finalBalances)) {
+    const balances: Record<string, number> = {};
+    for (const [seat, raw] of Object.entries(value.finalBalances)) {
+      const balance = Number(raw);
+      if (seat && Number.isFinite(balance)) {
+        balances[seat] = balance;
       }
     }
-    result.finalScores = scores;
+    result.finalBalances = balances;
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
