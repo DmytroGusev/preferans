@@ -3,6 +3,10 @@ import Foundation
 public struct PlayerID: Hashable, Codable, Sendable, ExpressibleByStringLiteral, CustomStringConvertible {
     public let rawValue: String
 
+    private enum CodingKeys: String, CodingKey {
+        case rawValue
+    }
+
     public init(_ rawValue: String) {
         precondition(!rawValue.isEmpty, "PlayerID cannot be empty")
         self.rawValue = rawValue
@@ -10,6 +14,24 @@ public struct PlayerID: Hashable, Codable, Sendable, ExpressibleByStringLiteral,
 
     public init(stringLiteral value: StringLiteralType) {
         self.init(value)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let rawValue = try values.decode(String.self, forKey: .rawValue)
+        guard !rawValue.isEmpty else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .rawValue,
+                in: values,
+                debugDescription: "PlayerID cannot be empty."
+            )
+        }
+        self.rawValue = rawValue
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(rawValue, forKey: .rawValue)
     }
 
     public var description: String { rawValue }
@@ -160,6 +182,11 @@ public struct GameContract: Hashable, Codable, Sendable, Comparable, CustomStrin
     public let tricks: Int
     public let strain: Strain
 
+    private enum CodingKeys: String, CodingKey {
+        case tricks
+        case strain
+    }
+
     public init(tricks: Int, strain: Strain) throws {
         guard (6...10).contains(tricks) else {
             throw PreferansError.invalidContract("Game contracts require 6...10 tricks.")
@@ -172,6 +199,26 @@ public struct GameContract: Hashable, Codable, Sendable, Comparable, CustomStrin
         precondition((6...10).contains(tricks), "Game contracts require 6...10 tricks.")
         self.tricks = tricks
         self.strain = strain
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let tricks = try values.decode(Int.self, forKey: .tricks)
+        guard (6...10).contains(tricks) else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .tricks,
+                in: values,
+                debugDescription: "Game contracts require 6...10 tricks."
+            )
+        }
+        self.tricks = tricks
+        self.strain = try values.decode(Strain.self, forKey: .strain)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(tricks, forKey: .tricks)
+        try values.encode(strain, forKey: .strain)
     }
 
     public var bidOrder: Int {

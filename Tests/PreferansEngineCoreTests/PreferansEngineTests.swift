@@ -662,6 +662,46 @@ final class PreferansEngineTests: XCTestCase {
         }
     }
 
+    func testDomainDecodersRejectValuesThatPublicInitializersForbid() throws {
+        let encodedPlayer = try JSONEncoder().encode(PlayerID("north"))
+        var playerObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encodedPlayer) as? [String: Any]
+        )
+        playerObject["rawValue"] = ""
+        let invalidPlayer = try JSONSerialization.data(withJSONObject: playerObject)
+        XCTAssertThrowsError(try JSONDecoder().decode(PlayerID.self, from: invalidPlayer)) { error in
+            XCTAssertTrue(error is DecodingError)
+        }
+
+        let encodedContract = try JSONEncoder().encode(GameContract(6, .suit(.spades)))
+        var contractObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: encodedContract) as? [String: Any]
+        )
+        contractObject["tricks"] = 5
+        let invalidContract = try JSONSerialization.data(withJSONObject: contractObject)
+        XCTAssertThrowsError(try JSONDecoder().decode(GameContract.self, from: invalidContract)) { error in
+            XCTAssertTrue(error is DecodingError)
+        }
+    }
+
+    func testCheckedDomainEncodingPreservesTheExistingWireShape() throws {
+        let player = PlayerID("north")
+        let contract = GameContract(9, .noTrump)
+
+        XCTAssertEqual(try JSONDecoder().decode(PlayerID.self, from: JSONEncoder().encode(player)), player)
+        XCTAssertEqual(try JSONDecoder().decode(GameContract.self, from: JSONEncoder().encode(contract)), contract)
+
+        let playerObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(player)) as? [String: Any]
+        )
+        let contractObject = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(contract)) as? [String: Any]
+        )
+        XCTAssertEqual(playerObject["rawValue"] as? String, "north")
+        XCTAssertEqual(contractObject["tricks"] as? Int, 9)
+        XCTAssertNotNil(contractObject["strain"])
+    }
+
     func testSnapshotAndActionsAreCodable() throws {
         var engine = try PreferansEngine(players: ["north", "east", "south"])
         try engine.startDeal(deck: Deck.standard32)
