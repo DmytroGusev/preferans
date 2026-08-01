@@ -67,4 +67,59 @@ final class MatchUITests: XCTestCase {
         XCTAssertEqual(robot.scoreSnapshot(for: ["east"])["east"]?.pool, 0)
         XCTAssertNil(robot.errorBanner(), "Engine should not have surfaced any errors during the auction.")
     }
+
+    /// The optional ten-trick whist convention enters the ordinary defense
+    /// decision flow. It must not turn the deal into a forced-whist variant:
+    /// both defenders may independently pass, and half-whist is unavailable
+    /// above level seven.
+    func testTenTrickConventionOffersBothDefendersPassOrWhist() {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.players, "north,east,south",
+            UITestFlags.firstDealer, "south",
+            UITestFlags.dealScenario, "sortedDeck",
+            UITestFlags.totusPolicy, "asTenTrickGame:true",
+        ]
+        app.disableUITestAnimations()
+        app.launch()
+
+        let robot = MatchUIRobot(app: app)
+        let contract = GameContract(10, .suit(.spades))
+
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
+
+        robot.bid(.bid(.game(contract)))
+        robot.bid(.pass)
+        robot.bid(.pass)
+
+        robot.waitForPhase("Prikup")
+        robot.takeTalon()
+        robot.discard([
+            Card(.spades, .king),
+            Card(.spades, .ace),
+        ])
+        robot.waitForPhase("Contract")
+        robot.declareContract(contract)
+
+        robot.waitForPhase("Whist")
+        XCTAssertEqual(robot.currentViewer(), "east")
+        XCTAssertTrue(app.buttons[UIIdentifiers.whistButton(.pass)].exists)
+        XCTAssertTrue(app.buttons[UIIdentifiers.whistButton(.whist)].exists)
+        XCTAssertFalse(app.buttons[UIIdentifiers.whistButton(.halfWhist)].exists)
+        robot.whist(.pass)
+
+        robot.waitForPhase("Whist")
+        XCTAssertEqual(robot.currentViewer(), "south")
+        XCTAssertTrue(app.buttons[UIIdentifiers.whistButton(.pass)].exists)
+        XCTAssertTrue(app.buttons[UIIdentifiers.whistButton(.whist)].exists)
+        XCTAssertFalse(app.buttons[UIIdentifiers.whistButton(.halfWhist)].exists)
+        robot.whist(.pass)
+
+        robot.waitForPhase("Deal complete")
+        XCTAssertEqual(robot.scoreSnapshot(for: ["north"])["north"]?.pool, 10)
+        XCTAssertNil(robot.errorBanner())
+    }
 }

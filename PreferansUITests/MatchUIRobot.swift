@@ -45,7 +45,11 @@ final class MatchUIRobot {
     // MARK: - In-game actions
 
     func bid(_ call: BidCall) {
-        tapButton(id: UIIdentifiers.bidButton(call), descriptor: "bid \(call)")
+        tapChoiceButton(id: UIIdentifiers.bidButton(call), descriptor: "bid \(call)")
+    }
+
+    func takeTalon() {
+        tapButton(id: UIIdentifiers.buttonTakeTalon, descriptor: "take prikup")
     }
 
     func discard(_ cards: [Card]) {
@@ -57,7 +61,7 @@ final class MatchUIRobot {
     }
 
     func declareContract(_ contract: GameContract) {
-        tapButton(id: UIIdentifiers.contractButton(contract), descriptor: "declare \(contract)")
+        tapChoiceButton(id: UIIdentifiers.contractButton(contract), descriptor: "declare \(contract)")
     }
 
     func concedeWithoutThree() {
@@ -276,6 +280,25 @@ final class MatchUIRobot {
     }
 
     // MARK: - Internal helpers
+
+    /// iPad renders every auction/contract option in a regular-width grid.
+    /// iPhone uses a lazy horizontal rail, so a high bid may not exist in the
+    /// accessibility tree until the rail has been scrolled. Keep that
+    /// device-specific navigation here rather than leaking it into scenarios.
+    private func tapChoiceButton(id: String, descriptor: String) {
+        let button = app.buttons[id]
+        let compactRail = app.descendants(matching: .any)
+            .matching(identifier: UIIdentifiers.actionChoiceRailCompact)
+            .element
+
+        if (!button.exists || !button.isHittable), compactRail.exists {
+            for _ in 0..<8 {
+                compactRail.swipeLeft()
+                if button.exists, button.isHittable { break }
+            }
+        }
+        tapButton(id: id, descriptor: descriptor)
+    }
 
     private func tapButton(id: String, descriptor: String) {
         let button = app.buttons[id]
