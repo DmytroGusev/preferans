@@ -127,8 +127,10 @@ public struct CardPlayPlanner: Sendable {
     }
 
     /// Greedy in-rollout policy — used for both the bot itself and every
-    /// opponent during simulation. Trick-winning vs trick-dumping based on
-    /// whether the seat wants tricks under the active contract.
+    /// opponent during simulation. Trick-winning vs trick-dumping follows
+    /// the seat's role under the active contract. In particular, a misere
+    /// declarer sheds tricks while the two defenders cooperate to take
+    /// control and force a declarer trick.
     func greedyChoice(
         legal: [Card],
         playing: PlayingState,
@@ -208,7 +210,8 @@ public struct CardPlayPlanner: Sendable {
     private func wantsTricks(actor: PlayerID, kind: PlayKind) -> Bool {
         switch kind {
         case .game: return true
-        case .misere, .allPass: return false
+        case let .misere(context): return actor != context.declarer
+        case .allPass: return false
         }
     }
 
@@ -217,7 +220,9 @@ public struct CardPlayPlanner: Sendable {
         case let .game(ctx):
             if actor == ctx.declarer || candidate == ctx.declarer { return false }
             return ctx.defenders.contains(actor) && ctx.defenders.contains(candidate)
-        case .misere, .allPass:
+        case let .misere(context):
+            return actor != context.declarer && candidate != context.declarer
+        case .allPass:
             return false
         }
     }

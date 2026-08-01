@@ -229,6 +229,60 @@ final class BotTests: XCTestCase {
         XCTAssertEqual(choice, Card(.hearts, .queen))
     }
 
+    func testMisereDeclarerRolloutShedsHighestLosingCard() {
+        let planner = CardPlayPlanner(samples: 1)
+        let state = rolloutState(
+            currentPlayer: "N",
+            currentTrick: [CardPlay(player: "E", card: Card(.hearts, .ten))],
+            kind: .misere(MiserePlayContext(declarer: "N"))
+        )
+
+        let choice = planner.greedyChoice(
+            legal: [Card(.hearts, .seven), Card(.hearts, .nine)],
+            playing: state,
+            actor: "N"
+        )
+
+        XCTAssertEqual(choice, Card(.hearts, .nine))
+    }
+
+    func testMisereDefenderRolloutTakesCheapestWinningCard() {
+        let planner = CardPlayPlanner(samples: 1)
+        let state = rolloutState(
+            currentPlayer: "N",
+            currentTrick: [CardPlay(player: "E", card: Card(.hearts, .ten))],
+            kind: .misere(MiserePlayContext(declarer: "E"))
+        )
+
+        let choice = planner.greedyChoice(
+            legal: [Card(.hearts, .ace), Card(.hearts, .jack)],
+            playing: state,
+            actor: "N"
+        )
+
+        XCTAssertEqual(choice, Card(.hearts, .jack))
+    }
+
+    func testMisereDefenderRolloutDoesNotOvertakeWinningPartner() {
+        let planner = CardPlayPlanner(samples: 1)
+        let state = rolloutState(
+            currentPlayer: "N",
+            currentTrick: [
+                CardPlay(player: "E", card: Card(.hearts, .ten)),
+                CardPlay(player: "S", card: Card(.hearts, .king))
+            ],
+            kind: .misere(MiserePlayContext(declarer: "E"))
+        )
+
+        let choice = planner.greedyChoice(
+            legal: [Card(.hearts, .ace), Card(.hearts, .queen)],
+            playing: state,
+            actor: "N"
+        )
+
+        XCTAssertEqual(choice, Card(.hearts, .queen))
+    }
+
     func testStrategyDrivesEntireGameDealToFinish() async throws {
         let strategy = HeuristicStrategy(planner: CardPlayPlanner(samples: 6))
         let outcome = try await playOneDeal(strategy: strategy, deck: makeDeck(.strongSpades))
@@ -434,7 +488,8 @@ final class BotTests: XCTestCase {
 
     private func rolloutState(
         currentPlayer: PlayerID,
-        currentTrick: [CardPlay]
+        currentTrick: [CardPlay],
+        kind: PlayKind? = nil
     ) -> PlayingState {
         PlayingState(
             dealer: "S",
@@ -444,7 +499,7 @@ final class BotTests: XCTestCase {
             leader: "E",
             currentPlayer: currentPlayer,
             currentTrick: currentTrick,
-            kind: .game(GamePlayContext(
+            kind: kind ?? .game(GamePlayContext(
                 declarer: "E",
                 contract: GameContract(6, .suit(.clubs)),
                 defenders: ["N", "S"],
