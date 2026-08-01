@@ -41,6 +41,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var transport: (any RoomRealtimeTransport)?
     private var hostActor: HostGameActor?
     private let transportSubscriptions = RoomTransportSubscriptions()
+    private let inboundMessageDispatcher: RoomInboundMessageDispatcher
     private let hostRecoveryRunner: RoomHostRecoveryRunner
     private let durabilityRetryRunner: RoomDurabilityRetryRunner<HostUpdate>
     /// Invalidates async authority work whenever attachment or host ownership
@@ -97,6 +98,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             maximumDelay: hostRecoveryRetryMaximumDelay
         )
         self.runsServerSideBots = runsServerSideBots
+        self.inboundMessageDispatcher = RoomInboundMessageDispatcher()
+        configureInboundMessageDispatcher()
     }
 
     deinit {
@@ -571,7 +574,31 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func listen(to transport: any RoomRealtimeTransport) {
         transportSubscriptions.observeMessages(transport.messages()) { [weak self, weak transport] received in
             guard let self, let transport, self.transport === transport else { return }
-            await self.handle(received)
+            await self.inboundMessageDispatcher.dispatch(received)
+        }
+    }
+
+    private func configureInboundMessageDispatcher() {
+        inboundMessageDispatcher.seatAssignment = { [weak self] assignment, received in
+            await self?.handleSeatAssignment(assignment, received: received)
+        }
+        inboundMessageDispatcher.hello = { [weak self] hello, received in
+            await self?.handleHello(hello, received: received)
+        }
+        inboundMessageDispatcher.clientAction = { [weak self] envelope, received in
+            await self?.handleClientAction(envelope, received: received)
+        }
+        inboundMessageDispatcher.projection = { [weak self] envelope, received in
+            await self?.handleProjection(envelope, received: received)
+        }
+        inboundMessageDispatcher.hostError = { [weak self] error, received in
+            await self?.handleHostError(error, received: received)
+        }
+        inboundMessageDispatcher.resyncRequest = { [weak self] request, received in
+            await self?.handleResyncRequest(request, received: received)
+        }
+        inboundMessageDispatcher.ping = { [weak self] ping, received in
+            await self?.handlePing(ping, received: received)
         }
     }
 
@@ -715,158 +742,182 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         )
     }
 
-    private func handle(_ received: ReceivedRoomMessage) async {
-        switch received.message {
-        case let .seatAssignment(assignment):
-            guard isFromHost(received.sender),
-                  let localPlayer = transport?.localPeer.playerID,
-                  RoomInboundMessagePolicy.acceptsSeatAssignment(
-                    assignment,
-                    sender: received.sender,
-                    localPlayer: localPlayer
-                  ) else { return }
-            noteHostContact()
-            let authorityChanged = tableID != assignment.tableID
-            tableID = assignment.tableID
-            if authorityChanged {
-                // Never let controls from the previous authority remain live
-                // under the replacement table ID. The incoming full projection
-                // will repopulate the UI after snapshot recovery completes.
-                projection = nil
-                pendingAdvance = nil
-                botInsights = []
-                pendingAdvanceTask?.cancel()
-                pendingAdvanceTask = nil
-            }
-            rules = assignment.rules
-            match = assignment.match
-            roster.replaceSeats(assignment.seats)
-            hostPeer = roster.peer(for: assignment.hostPlayerID) ?? hostPeer
-            localSeat = transport?.localPeer.playerID
-            state = .connectedAsClient
-            recomputeRoster()
-            requestResync()
+    private func handleSeatAssignment(
+        _ assignment: SeatAssignmentEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        guard isFromHost(received.sender),
+              let localPlayer = transport?.localPeer.playerID,
+              RoomInboundMessagePolicy.acceptsSeatAssignment(
+                assignment,
+                sender: received.sender,
+                localPlayer: localPlayer
+              ) else { return }
+        noteHostContact()
+        let authorityChanged = tableID != assignment.tableID
+        tableID = assignment.tableID
+        if authorityChanged {
+            // Never let controls from the previous authority remain live
+            // under the replacement table ID. The incoming full projection
+            // will repopulate the UI after snapshot recovery completes.
+            projection = nil
+            pendingAdvance = nil
+            botInsights = []
+            pendingAdvanceTask?.cancel()
+            pendingAdvanceTask = nil
+        }
+        rules = assignment.rules
+        match = assignment.match
+        roster.replaceSeats(assignment.seats)
+        hostPeer = roster.peer(for: assignment.hostPlayerID) ?? hostPeer
+        localSeat = transport?.localPeer.playerID
+        state = .connectedAsClient
+        recomputeRoster()
+        requestResync()
+    }
 
-        case let .hello(hello):
-            guard isHost else { return }
-            if tableID == nil { tableID = hello.tableID }
-            guard shouldAcceptHello(from: received.sender, identity: hello.player) else { return }
-            await refreshPeerMapping(peer: received.sender, identity: hello.player)
-            if let hostActor, let peer = roster.peer(for: hello.player.playerID) {
-                do {
-                    if let tableID, let localSeat {
-                        let assignment = SeatAssignmentEnvelope(
-                            tableID: tableID,
-                            hostPlayerID: localSeat,
-                            seats: roster.seats,
-                            rules: rules,
-                            match: match
-                        )
-                        try await transport?.send(.seatAssignment(assignment), to: [peer], reliably: true)
-                    }
-                    var envelope = try await hostActor.fullResync(for: hello.player.playerID)
-                    envelope.botInsights = botInsights
-                    try await transport?.send(.projection(envelope), to: [peer], reliably: true)
-                    await autoStartOnlineDealIfNeeded(afterJoin: hello.player.playerID)
-                } catch {
-                    await sendHostError(to: peer, recipient: hello.player.playerID, nonce: nil, message: error.localizedDescription)
+    private func handleHello(
+        _ hello: HelloEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        guard isHost else { return }
+        if tableID == nil { tableID = hello.tableID }
+        guard shouldAcceptHello(from: received.sender, identity: hello.player) else { return }
+        await refreshPeerMapping(peer: received.sender, identity: hello.player)
+        if let hostActor, let peer = roster.peer(for: hello.player.playerID) {
+            do {
+                if let tableID, let localSeat {
+                    let assignment = SeatAssignmentEnvelope(
+                        tableID: tableID,
+                        hostPlayerID: localSeat,
+                        seats: roster.seats,
+                        rules: rules,
+                        match: match
+                    )
+                    try await transport?.send(.seatAssignment(assignment), to: [peer], reliably: true)
                 }
+                var envelope = try await hostActor.fullResync(for: hello.player.playerID)
+                envelope.botInsights = botInsights
+                try await transport?.send(.projection(envelope), to: [peer], reliably: true)
+                await autoStartOnlineDealIfNeeded(afterJoin: hello.player.playerID)
+            } catch {
+                await sendHostError(to: peer, recipient: hello.player.playerID, nonce: nil, message: error.localizedDescription)
             }
+        }
+    }
 
-        case let .clientAction(envelope):
-            guard isHost else { return }
-            await applyClientAction(envelope, sender: received.sender.playerID) { error in
-                await sendHostError(
-                    to: received.sender,
-                    recipient: received.sender.playerID,
-                    nonce: envelope.clientNonce,
-                    message: error.localizedDescription
-                )
-            }
-
-        case let .projection(envelope):
-            guard isFromHost(received.sender) else { return }
-            noteHostContact()
-            let decision = RoomInboundMessagePolicy.projectionDecision(
-                for: envelope,
-                localPlayer: localSeat,
-                currentTable: tableID,
-                currentSequence: projection?.sequence
+    private func handleClientAction(
+        _ envelope: ClientActionEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        guard isHost else { return }
+        await applyClientAction(envelope, sender: received.sender.playerID) { error in
+            await sendHostError(
+                to: received.sender,
+                recipient: received.sender.playerID,
+                nonce: envelope.clientNonce,
+                message: error.localizedDescription
             )
-            guard decision != .reject else { return }
-            if decision == .refresh {
-                // A host sequence identifies immutable projected game state.
-                // A same-sequence live frame may repair rolling metadata and
-                // activity omitted by a racing resync, but cannot rewrite the
-                // accepted deal projection.
-                botInsights = envelope.botInsights
-                appendProjectionActivityIfNeeded(envelope)
-                state = .connectedAsClient
-                return
-            }
-            let preProjection = projection
-            tableID = envelope.tableID
-            projection = envelope.projection
+        }
+    }
+
+    private func handleProjection(
+        _ envelope: ProjectionEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        guard isFromHost(received.sender) else { return }
+        noteHostContact()
+        let decision = RoomInboundMessagePolicy.projectionDecision(
+            for: envelope,
+            localPlayer: localSeat,
+            currentTable: tableID,
+            currentSequence: projection?.sequence
+        )
+        guard decision != .reject else { return }
+        if decision == .refresh {
+            // A host sequence identifies immutable projected game state.
+            // A same-sequence live frame may repair rolling metadata and
+            // activity omitted by a racing resync, but cannot rewrite the
+            // accepted deal projection.
             botInsights = envelope.botInsights
-            beginTrickResultHoldIfNeeded(
-                events: envelope.events,
-                preProjection: preProjection,
-                projection: envelope.projection
-            )
-            logOnlineFlowProjection(envelope.projection, source: "receive")
             appendProjectionActivityIfNeeded(envelope)
             state = .connectedAsClient
+            return
+        }
+        let preProjection = projection
+        tableID = envelope.tableID
+        projection = envelope.projection
+        botInsights = envelope.botInsights
+        beginTrickResultHoldIfNeeded(
+            events: envelope.events,
+            preProjection: preProjection,
+            projection: envelope.projection
+        )
+        logOnlineFlowProjection(envelope.projection, source: "receive")
+        appendProjectionActivityIfNeeded(envelope)
+        state = .connectedAsClient
+    }
 
-        case let .hostError(error):
-            // The host reports its own failures directly, so a wire host-error
-            // is only ever legitimate on a client, from the host's seat.
-            guard isFromHost(received.sender) else { return }
-            noteHostContact()
-            guard RoomInboundMessagePolicy.acceptsHostError(
-                error,
-                localPlayer: localSeat,
-                currentTable: tableID,
-                currentSequence: projection?.sequence
-            ) else { return }
-            errorText = error.message
+    private func handleHostError(
+        _ error: HostErrorEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        // The host reports its own failures directly, so a wire host-error
+        // is only ever legitimate on a client, from the host's seat.
+        guard isFromHost(received.sender) else { return }
+        noteHostContact()
+        guard RoomInboundMessagePolicy.acceptsHostError(
+            error,
+            localPlayer: localSeat,
+            currentTable: tableID,
+            currentSequence: projection?.sequence
+        ) else { return }
+        errorText = error.message
+    }
 
-        case let .resyncRequest(request):
-            guard isHost, let hostActor else { return }
-            guard RoomInboundMessagePolicy.acceptsResyncRequest(
-                request,
-                sender: received.sender,
+    private func handleResyncRequest(
+        _ request: ResyncRequestEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        guard isHost, let hostActor else { return }
+        guard RoomInboundMessagePolicy.acceptsResyncRequest(
+            request,
+            sender: received.sender,
+            currentTable: tableID
+        ) else { return }
+        do {
+            var envelope = try await hostActor.fullResync(for: request.requester)
+            envelope.botInsights = botInsights
+            if request.requester == localSeat {
+                projection = envelope.projection
+            } else if let peer = roster.peer(for: request.requester) {
+                try await transport?.send(.projection(envelope), to: [peer], reliably: true)
+            }
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func handlePing(
+        _ ping: PingEnvelope,
+        received: ReceivedRoomMessage
+    ) async {
+        if isHost {
+            // A client's liveness probe — echo it back so the client knows
+            // the host process is alive even when no projection is pending
+            // (e.g. while waiting on a human player's turn).
+            guard RoomInboundMessagePolicy.acceptsPing(
+                ping,
                 currentTable: tableID
             ) else { return }
-            do {
-                var envelope = try await hostActor.fullResync(for: request.requester)
-                envelope.botInsights = botInsights
-                if request.requester == localSeat {
-                    projection = envelope.projection
-                } else if let peer = roster.peer(for: request.requester) {
-                    try await transport?.send(.projection(envelope), to: [peer], reliably: true)
-                }
-            } catch {
-                errorText = error.localizedDescription
-            }
-
-        case let .ping(ping):
-            if isHost {
-                // A client's liveness probe — echo it back so the client knows
-                // the host process is alive even when no projection is pending
-                // (e.g. while waiting on a human player's turn).
-                guard RoomInboundMessagePolicy.acceptsPing(
+            let table = tableID
+            try? await transport?.send(.ping(PingEnvelope(tableID: table)), to: [received.sender], reliably: false)
+        } else if isFromHost(received.sender),
+                  RoomInboundMessagePolicy.acceptsPing(
                     ping,
                     currentTable: tableID
-                ) else { return }
-                let table = tableID
-                try? await transport?.send(.ping(PingEnvelope(tableID: table)), to: [received.sender], reliably: false)
-            } else if isFromHost(received.sender),
-                      RoomInboundMessagePolicy.acceptsPing(
-                        ping,
-                        currentTable: tableID
-                      ) {
-                noteHostContact()
-            }
+                  ) {
+            noteHostContact()
         }
     }
 

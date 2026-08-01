@@ -5,6 +5,92 @@ import XCTest
 
 @MainActor
 final class RoomOnlineGameCoordinatorTests: AppTestCase {
+    func testInboundDispatcherRoutesEveryWireMessageExactlyOnce() async throws {
+        let tableID = UUID(uuidString: "11111111-2222-3333-4444-555555555555")!
+        let sender = OnlinePeer(
+            playerID: "north",
+            accountID: "dev:north",
+            provider: .dev,
+            displayName: "North"
+        )
+        let identities = ["north", "east", "south"].map { player in
+            PlayerIdentity(
+                playerID: player,
+                gamePlayerID: "dev:\(player.rawValue)",
+                displayName: player.rawValue.capitalized
+            )
+        }
+        var engine = try PreferansEngine(
+            players: ["north", "east", "south"],
+            rules: .sochi,
+            firstDealer: "south"
+        )
+        _ = try engine.startDeal(deck: Deck.standard32)
+        let projection = PlayerProjectionBuilder.projection(
+            for: "east",
+            tableID: tableID,
+            sequence: 0,
+            engine: engine,
+            identities: identities,
+            policy: .online
+        )
+        let messages: [(String, GameWireMessage)] = [
+            ("hello", .hello(HelloEnvelope(
+                tableID: tableID,
+                player: identities[0],
+                lastSeenSequence: 0
+            ))),
+            ("seatAssignment", .seatAssignment(SeatAssignmentEnvelope(
+                tableID: tableID,
+                hostPlayerID: "north",
+                seats: identities,
+                rules: .sochi
+            ))),
+            ("clientAction", .clientAction(ClientActionEnvelope(
+                tableID: tableID,
+                actor: "north",
+                action: .startDeal(dealer: nil, deck: nil),
+                baseHostSequence: 0
+            ))),
+            ("projection", .projection(ProjectionEnvelope(
+                tableID: tableID,
+                sequence: 0,
+                viewer: "east",
+                projection: projection,
+                eventSummaries: []
+            ))),
+            ("hostError", .hostError(HostErrorEnvelope(
+                tableID: tableID,
+                sequence: 0,
+                recipient: "east",
+                clientNonce: nil,
+                message: "test"
+            ))),
+            ("resyncRequest", .resyncRequest(ResyncRequestEnvelope(
+                tableID: tableID,
+                requester: "east",
+                lastSeenSequence: 0
+            ))),
+            ("ping", .ping(PingEnvelope(tableID: tableID)))
+        ]
+
+        let dispatcher = RoomInboundMessageDispatcher()
+        var visited: [String] = []
+        dispatcher.hello = { _, _ in visited.append("hello") }
+        dispatcher.seatAssignment = { _, _ in visited.append("seatAssignment") }
+        dispatcher.clientAction = { _, _ in visited.append("clientAction") }
+        dispatcher.projection = { _, _ in visited.append("projection") }
+        dispatcher.hostError = { _, _ in visited.append("hostError") }
+        dispatcher.resyncRequest = { _, _ in visited.append("resyncRequest") }
+        dispatcher.ping = { _, _ in visited.append("ping") }
+
+        for (_, message) in messages {
+            await dispatcher.dispatch(ReceivedRoomMessage(message: message, sender: sender))
+        }
+
+        XCTAssertEqual(visited, messages.map(\.0))
+    }
+
     func testHeartbeatConfigNormalizesInvalidTimingBounds() {
         let config = HeartbeatConfig(
             interval: .zero,
