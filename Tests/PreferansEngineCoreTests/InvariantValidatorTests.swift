@@ -84,6 +84,39 @@ final class InvariantValidatorTests: XCTestCase {
         )
     }
 
+    /// Builds a reducer-produced raspasy position, then returns it for a
+    /// single-field mutation. Starting from valid play keeps each negative
+    /// test focused on the recovered-history invariant it names.
+    private func progressedPlayingFixture(
+        completedTricks targetCompleted: Int = 1,
+        currentPlays targetCurrent: Int = 0
+    ) throws -> PlayingState {
+        var engine = try PreferansEngine(
+            players: seats,
+            rules: .sochi,
+            firstDealer: south
+        )
+        try engine.startDeal(deck: Deck.standard32)
+        while case let .bidding(bidding) = engine.state {
+            _ = try engine.apply(.bid(player: bidding.currentPlayer, call: .pass))
+        }
+
+        while true {
+            guard case let .playing(playing) = engine.state else {
+                throw PreferansError.invalidState(
+                    expected: "playing",
+                    actual: engine.state.description
+                )
+            }
+            if playing.completedTricks.count == targetCompleted,
+               playing.currentTrick.count == targetCurrent {
+                return playing
+            }
+            let card = try XCTUnwrap(engine.legalCards(for: playing.currentPlayer).first)
+            _ = try engine.apply(.playCard(player: playing.currentPlayer, card: card))
+        }
+    }
+
     private func whistFixture(
         defenders: [PlayerID] = ["east", "south"],
         currentPlayer: PlayerID = "east",
@@ -605,6 +638,143 @@ final class InvariantValidatorTests: XCTestCase {
             try { _ = try PreferansEngine(snapshot: snapshot) }(),
             contains: "completed-trick winners"
         )
+    }
+
+    func testValidatorRejectsCompletedTrickWithForgedPlayOrder() throws {
+        var playing = try progressedPlayingFixture()
+        let original = playing.completedTricks[0]
+        var reordered = original.plays
+        reordered.swapAt(0, 1)
+        playing.completedTricks[0] = Trick(
+            leader: original.leader,
+            leadSuit: original.leadSuit,
+            talonLead: original.talonLead,
+            plays: reordered,
+            winner: original.winner
+        )
+
+        assertViolation(.playing(playing), contains: "play order")
+    }
+
+    func testValidatorRejectsCompletedTrickWithForgedLeader() throws {
+        var playing = try progressedPlayingFixture()
+        let original = playing.completedTricks[0]
+        let forgedLeader = seats.first { $0 != original.leader }!
+        playing.completedTricks[0] = Trick(
+            leader: forgedLeader,
+            leadSuit: original.leadSuit,
+            talonLead: original.talonLead,
+            plays: original.plays,
+            winner: original.winner
+        )
+
+        assertViolation(.playing(playing), contains: "leader does not follow")
+    }
+
+    func testValidatorRejectsCompletedTrickWithForgedLeadSuit() throws {
+        var playing = try progressedPlayingFixture()
+        let original = playing.completedTricks[0]
+        let forgedSuit = Suit.allCases.first { $0 != original.leadSuit }!
+        playing.completedTricks[0] = Trick(
+            leader: original.leader,
+            leadSuit: forgedSuit,
+            talonLead: original.talonLead,
+            plays: original.plays,
+            winner: original.winner
+        )
+
+        assertViolation(.playing(playing), contains: "wrong lead suit")
+    }
+
+    func testValidatorRejectsCompletedTrickWithForgedWinner() throws {
+        var playing = try progressedPlayingFixture()
+        let original = playing.completedTricks[0]
+        let forgedWinner = playing.trickTakingPlayers.first { $0 != original.winner }!
+        playing.completedTricks[0] = Trick(
+            leader: original.leader,
+            leadSuit: original.leadSuit,
+            talonLead: original.talonLead,
+            plays: original.plays,
+            winner: forgedWinner
+        )
+        playing.trickCounts = playing.trickTakingPlayers.dictionary(filledWith: 0)
+        playing.trickCounts[forgedWinner] = 1
+
+        assertViolation(.playing(playing), contains: "winner does not match")
+    }
+
+    func testValidatorRejectsHistoricalRevoke() throws {
+        var playing = try progressedPlayingFixture()
+        let original = playing.completedTricks[0]
+        let requiredSuit = original.leadSuit
+        let playIndex = try XCTUnwrap(original.plays.firstIndex { play in
+            play.card.suit == requiredSuit
+                && (playing.hands[play.player] ?? []).contains { $0.suit != requiredSuit }
+        })
+        let originalPlay = original.plays[playIndex]
+        let replacement = try XCTUnwrap(
+            playing.hands[originalPlay.player]?.first { $0.suit != requiredSuit }
+        )
+        let handIndex = try XCTUnwrap(
+            playing.hands[originalPlay.player]?.firstIndex(of: replacement)
+        )
+        playing.hands[originalPlay.player]?[handIndex] = originalPlay.card
+        var forgedPlays = original.plays
+        forgedPlays[playIndex] = CardPlay(player: originalPlay.player, card: replacement)
+        playing.completedTricks[0] = Trick(
+            leader: original.leader,
+            leadSuit: original.leadSuit,
+            talonLead: original.talonLead,
+            plays: forgedPlays,
+            winner: original.winner
+        )
+
+        assertViolation(.playing(playing), contains: "illegal revoke")
+    }
+
+    func testSnapshotRehydrationRejectsForgedNextActor() throws {
+        var playing = try progressedPlayingFixture(currentPlays: 1)
+        playing.currentPlayer = playing.activePlayers.first {
+            $0 != playing.currentPlayer
+        }!
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .playing(playing),
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(
+            try { _ = try PreferansEngine(snapshot: snapshot) }(),
+            contains: "currentPlayer does not follow"
+        )
+    }
+
+    func testValidatorRejectsCompletedDealStillMarkedPlaying() throws {
+        var playing = try progressedPlayingFixture(completedTricks: 9, currentPlays: 2)
+        let lastPlayer = playing.currentPlayer
+        let lastCard = try XCTUnwrap(playing.hands[lastPlayer]?.first)
+        playing.hands[lastPlayer]?.removeAll()
+        playing.currentTrick.append(CardPlay(player: lastPlayer, card: lastCard))
+        let leadSuit = try XCTUnwrap(playing.currentTrick.first?.card.suit)
+        let winner = PreferansEngine.trickWinner(
+            for: playing.currentTrick,
+            leadSuit: leadSuit,
+            trump: playing.kind.trumpSuit
+        ).player
+        playing.completedTricks.append(Trick(
+            leader: playing.leader,
+            leadSuit: leadSuit,
+            plays: playing.currentTrick,
+            winner: winner
+        ))
+        playing.currentTrick = []
+        playing.trickCounts[winner, default: 0] += 1
+        playing.leader = winner
+        playing.currentPlayer = winner
+
+        assertViolation(.playing(playing), contains: "fewer than 10")
     }
 
     func testValidatorRejectsDealFinishedWithBadTrickCountsKeys() {

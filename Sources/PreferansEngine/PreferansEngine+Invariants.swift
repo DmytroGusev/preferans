@@ -205,6 +205,7 @@ extension PreferansEngine {
                 try require(s.discard.isEmpty, "all-pass playing discard must be empty, got \(s.discard.count)")
                 try checkFullDeck(cardsInHands(s.hands) + playedCards + s.talon, context: "all-pass playing cards")
             }
+            try checkPlayedHistory(s)
             if let proposal = s.pendingSettlement {
                 try require(s.currentTrick.isEmpty, "pending settlement requires an empty current trick")
                 try require(
@@ -466,6 +467,193 @@ extension PreferansEngine {
         try require(cards.count == Deck.standard32.count, "\(context) has \(cards.count) cards, expected \(Deck.standard32.count)")
         try require(Set(cards).count == cards.count, "\(context) contains duplicate cards")
         try require(Set(cards) == Set(Deck.standard32), "\(context) must contain the standard Preferans deck")
+    }
+
+    /// Replays every recorded card from reconstructed opening hands. A live
+    /// reducer can only create this sequence one legal action at a time, but a
+    /// recovered multiplayer snapshot crosses a trust boundary and must prove
+    /// the same facts: seat order, lead ownership, follow-suit/trump duties,
+    /// the recorded winner, and the next actor all derive from the cards.
+    private static func checkPlayedHistory(_ playing: PlayingState) throws {
+        let active = Set(playing.activePlayers)
+        try require(
+            playing.completedTricks.count < 10,
+            "live playing state must contain fewer than 10 completed tricks"
+        )
+        try require(
+            playing.currentTrick.count < playing.activePlayers.count,
+            "playing current trick must be incomplete"
+        )
+
+        let recordedPlays = playing.completedTricks.flatMap(\.plays) + playing.currentTrick
+        try require(
+            recordedPlays.allSatisfy { active.contains($0.player) },
+            "playing history contains a card played by a non-active seat"
+        )
+
+        var replayHands = playing.hands
+        for play in recordedPlays {
+            replayHands[play.player, default: []].append(play.card)
+        }
+        for player in playing.activePlayers {
+            try require(
+                replayHands[player]?.count == 10,
+                "playing history must reconstruct a 10-card opening hand for \(player)"
+            )
+        }
+
+        var expectedLeader = playing.isClassicFourPlayerAllPass
+            ? playing.dealer
+            : playing.activePlayers[0]
+        var expectedPlayer = playing.activePlayers[0]
+
+        for (index, trick) in playing.completedTricks.enumerated() {
+            let expectedTalonLead: CardPlay? = playing.isClassicFourPlayerAllPass && index < 2
+                ? CardPlay(player: playing.dealer, card: playing.talon[index])
+                : nil
+            try require(
+                trick.talonLead == expectedTalonLead,
+                "completed trick \(index + 1) has an invalid talon lead"
+            )
+            try require(
+                trick.leader == expectedLeader,
+                "completed trick \(index + 1) leader does not follow play history"
+            )
+            try require(
+                trick.plays.count == playing.activePlayers.count,
+                "completed trick \(index + 1) must contain one play per active seat"
+            )
+
+            let expectedPlayers = expectedPlayOrder(
+                startingWith: expectedPlayer,
+                activePlayers: playing.activePlayers,
+                count: playing.activePlayers.count
+            )
+            try require(
+                trick.plays.map(\.player) == expectedPlayers,
+                "completed trick \(index + 1) play order does not follow seating order"
+            )
+
+            guard let firstPlay = trick.plays.first else { continue }
+            let requiredSuit = playing.usesTalonLeads && index < 2
+                ? playing.talon[index].suit
+                : firstPlay.card.suit
+            try require(
+                trick.leadSuit == requiredSuit,
+                "completed trick \(index + 1) records the wrong lead suit"
+            )
+            for play in trick.plays {
+                try replay(
+                    play,
+                    requiredSuit: requiredSuit,
+                    trump: playing.kind.trumpSuit,
+                    hands: &replayHands,
+                    context: "completed trick \(index + 1)"
+                )
+            }
+
+            let table = (expectedTalonLead.map { [$0] } ?? []) + trick.plays
+            let computedWinner = trickWinner(
+                for: table,
+                leadSuit: requiredSuit,
+                trump: playing.kind.trumpSuit
+            ).player
+            try require(
+                trick.winner == computedWinner,
+                "completed trick \(index + 1) winner does not match its cards"
+            )
+
+            if playing.usesTalonLeads, index < 2 {
+                expectedPlayer = playing.activePlayers[0]
+                expectedLeader = playing.isClassicFourPlayerAllPass && index == 0
+                    ? playing.dealer
+                    : playing.activePlayers[0]
+            } else {
+                expectedPlayer = computedWinner
+                expectedLeader = computedWinner
+            }
+        }
+
+        try require(
+            playing.leader == expectedLeader,
+            "playing leader does not follow completed-trick history"
+        )
+
+        let currentPlayers = expectedPlayOrder(
+            startingWith: expectedPlayer,
+            activePlayers: playing.activePlayers,
+            count: playing.currentTrick.count
+        )
+        try require(
+            playing.currentTrick.map(\.player) == currentPlayers,
+            "current trick play order does not follow seating order"
+        )
+
+        if let firstPlay = playing.currentTrick.first {
+            let index = playing.completedTricks.count
+            let requiredSuit = playing.usesTalonLeads && index < 2
+                ? playing.talon[index].suit
+                : firstPlay.card.suit
+            for play in playing.currentTrick {
+                try replay(
+                    play,
+                    requiredSuit: requiredSuit,
+                    trump: playing.kind.trumpSuit,
+                    hands: &replayHands,
+                    context: "current trick"
+                )
+            }
+        }
+
+        let expectedCurrent = playing.currentTrick.last.map {
+            playing.activePlayers.cyclicNext(after: $0.player)
+        } ?? expectedPlayer
+        try require(
+            playing.currentPlayer == expectedCurrent,
+            "playing currentPlayer does not follow card-play history"
+        )
+        try require(
+            replayHands == playing.hands,
+            "playing hands do not match the recorded card-play history"
+        )
+    }
+
+    private static func expectedPlayOrder(
+        startingWith first: PlayerID,
+        activePlayers: [PlayerID],
+        count: Int
+    ) -> [PlayerID] {
+        guard let start = activePlayers.firstIndex(of: first) else { return [] }
+        return (0..<count).map { activePlayers[(start + $0) % activePlayers.count] }
+    }
+
+    private static func replay(
+        _ play: CardPlay,
+        requiredSuit: Suit,
+        trump: Suit?,
+        hands: inout [PlayerID: [Card]],
+        context: String
+    ) throws {
+        guard var hand = hands[play.player], let cardIndex = hand.firstIndex(of: play.card) else {
+            throw InvariantViolation(message: "\(context) card \(play.card) is absent from \(play.player)'s reconstructed hand")
+        }
+
+        if hand.contains(where: { $0.suit == requiredSuit }) {
+            try require(
+                play.card.suit == requiredSuit,
+                "\(context) contains an illegal revoke by \(play.player)"
+            )
+        } else if let trump,
+                  requiredSuit != trump,
+                  hand.contains(where: { $0.suit == trump }) {
+            try require(
+                play.card.suit == trump,
+                "\(context) requires \(play.player) to play trump"
+            )
+        }
+
+        hand.remove(at: cardIndex)
+        hands[play.player] = hand
     }
 
     private static func checkResult(_ result: DealResult, context: String) throws {
