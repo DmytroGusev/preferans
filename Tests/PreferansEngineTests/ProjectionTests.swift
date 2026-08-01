@@ -4,6 +4,22 @@ import PreferansEngine
 @testable import PreferansEngineTestSupport
 
 final class ProjectionTests: AppTestCase {
+    func testProjectionBuildHasPerformanceBaseline() throws {
+        let players: [PlayerID] = ["north", "east", "south"]
+        let engine = try makeProjectionPerformanceEngine(players: players)
+        let tableID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+
+        measure(metrics: [XCTClockMetric(), XCTCPUMetric()]) {
+            _ = PlayerProjectionBuilder.projection(
+                for: "north",
+                tableID: tableID,
+                sequence: 0,
+                engine: engine,
+                policy: .online
+            )
+        }
+    }
+
     func testBiddingProjectionDoesNotLeakOtherHandsOrTalon() throws {
         let players: [PlayerID] = ["north", "east", "south"]
         var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
@@ -416,6 +432,12 @@ final class ProjectionTests: AppTestCase {
                 nextDealer: "north"
             )
         )
+    }
+
+    private func makeProjectionPerformanceEngine(players: [PlayerID]) throws -> PreferansEngine {
+        var engine = try PreferansEngine(players: players, rules: .sochi, firstDealer: "south")
+        _ = try engine.apply(.startDeal(dealer: "south", deck: Deck.standard32))
+        return engine
     }
 
     private func assertPlayingHandVisibility(

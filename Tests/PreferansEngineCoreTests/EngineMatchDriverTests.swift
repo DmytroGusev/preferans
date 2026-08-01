@@ -13,6 +13,22 @@ import XCTest
 final class EngineMatchDriverTests: XCTestCase {
     // MARK: - Per-script smoke tests
 
+    /// Keep a repeatable performance signal beside the canonical replay. This
+    /// is intentionally a metric-only test: the engine's correctness tests
+    /// own the outcome assertions, while this baseline catches accidental
+    /// quadratic work in reducers and invariant validation.
+    func testCanonicalMatchReplayHasPerformanceBaseline() throws {
+        let script = MatchScriptFixtures.game1ClassicSochi
+        measure(metrics: [XCTClockMetric(), XCTCPUMetric()]) {
+            do {
+                let summary = try EngineMatchDriver(script: script).run()
+                XCTAssertEqual(summary.dealsPlayed, script.deals.count)
+            } catch {
+                XCTFail("Canonical replay failed during performance measurement: \(error)")
+            }
+        }
+    }
+
     func testGame1ClassicSochiReachesGameOverOnExpectedDeal() throws {
         let script = MatchScriptFixtures.game1ClassicSochi
         let summary = try EngineMatchDriver(script: script).run()
