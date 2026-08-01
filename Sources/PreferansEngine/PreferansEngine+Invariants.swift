@@ -62,6 +62,13 @@ extension PreferansEngine {
             try require(s.talon.count == 2, "awaitingContract talon must be 2 cards, got \(s.talon.count)")
             try require(s.discard.count == 2, "awaitingContract discard must be 2 cards, got \(s.discard.count)")
             try checkFullDeck(cardsInHands(s.hands) + s.discard, context: "awaitingContract cards")
+            try checkExchangedTalon(
+                s.talon,
+                declarer: s.declarer,
+                hands: s.hands,
+                discard: s.discard,
+                context: "awaitingContract"
+            )
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingContract declarer \(s.declarer) ∉ activePlayers"
@@ -72,6 +79,13 @@ extension PreferansEngine {
             try require(s.talon.count == 2, "awaitingWhist talon must be 2 cards, got \(s.talon.count)")
             try require(s.discard.count == 2, "awaitingWhist discard must be 2 cards, got \(s.discard.count)")
             try checkFullDeck(cardsInHands(s.hands) + s.discard, context: "awaitingWhist cards")
+            try checkExchangedTalon(
+                s.talon,
+                declarer: s.declarer,
+                hands: s.hands,
+                discard: s.discard,
+                context: "awaitingWhist"
+            )
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingWhist declarer \(s.declarer) ∉ activePlayers"
@@ -101,6 +115,13 @@ extension PreferansEngine {
             try require(s.talon.count == 2, "awaitingDefenderMode talon must be 2 cards, got \(s.talon.count)")
             try require(s.discard.count == 2, "awaitingDefenderMode discard must be 2 cards, got \(s.discard.count)")
             try checkFullDeck(cardsInHands(s.hands) + s.discard, context: "awaitingDefenderMode cards")
+            try checkExchangedTalon(
+                s.talon,
+                declarer: s.declarer,
+                hands: s.hands,
+                discard: s.discard,
+                context: "awaitingDefenderMode"
+            )
             try require(
                 s.activePlayers.contains(s.declarer),
                 "awaitingDefenderMode declarer \(s.declarer) ∉ activePlayers"
@@ -171,6 +192,14 @@ extension PreferansEngine {
             case let .game(ctx):
                 try require(s.discard.count == 2, "playing discard must be 2 cards, got \(s.discard.count)")
                 try checkFullDeck(cardsInHands(s.hands) + playedCards + s.discard, context: "playing cards")
+                try checkExchangedTalon(
+                    s.talon,
+                    declarer: ctx.declarer,
+                    hands: s.hands,
+                    discard: s.discard,
+                    playedCards: playedCards,
+                    context: "playing"
+                )
                 // 10-trick contracts skip the whist phase, so an empty
                 // whisters list is intentional. For shorter contracts
                 // every whister must be a defender and the declarer
@@ -201,6 +230,16 @@ extension PreferansEngine {
             case .misere:
                 try require(s.discard.count == 2, "playing discard must be 2 cards, got \(s.discard.count)")
                 try checkFullDeck(cardsInHands(s.hands) + playedCards + s.discard, context: "playing cards")
+                if case let .misere(ctx) = s.kind {
+                    try checkExchangedTalon(
+                        s.talon,
+                        declarer: ctx.declarer,
+                        hands: s.hands,
+                        discard: s.discard,
+                        playedCards: playedCards,
+                        context: "playing"
+                    )
+                }
             case .allPass:
                 try require(s.discard.isEmpty, "all-pass playing discard must be empty, got \(s.discard.count)")
                 try checkFullDeck(cardsInHands(s.hands) + playedCards + s.talon, context: "all-pass playing cards")
@@ -535,6 +574,29 @@ extension PreferansEngine {
         try require(cards.count == Deck.standard32.count, "\(context) has \(cards.count) cards, expected \(Deck.standard32.count)")
         try require(Set(cards).count == cards.count, "\(context) contains duplicate cards")
         try require(Set(cards) == Set(Deck.standard32), "\(context) must contain the standard Preferans deck")
+    }
+
+    /// After exchange, the historical talon is retained for projections and
+    /// replay, but both cards must still be traceable to the declarer's
+    /// post-exchange hand, discard, or already-played cards. The full deck
+    /// check alone cannot prove this because every standard card appears
+    /// somewhere in the three hands plus discard.
+    private static func checkExchangedTalon(
+        _ talon: [Card],
+        declarer: PlayerID,
+        hands: [PlayerID: [Card]],
+        discard: [Card],
+        playedCards: [Card] = [],
+        context: String
+    ) throws {
+        try require(talon.count == 2, "\(context) exchanged talon must contain 2 cards")
+        try require(Set(talon).count == talon.count, "\(context) exchanged talon contains duplicate cards")
+        let declarerCards = hands[declarer] ?? []
+        let traceableCards = Set(declarerCards + discard + playedCards)
+        try require(
+            Set(talon).isSubset(of: traceableCards),
+            "\(context) exchanged talon must remain with declarer hand, discard, or played cards"
+        )
     }
 
     /// Replays every recorded card from reconstructed opening hands. A live

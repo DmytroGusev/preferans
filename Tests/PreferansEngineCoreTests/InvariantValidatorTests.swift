@@ -325,6 +325,33 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(state, contains: "discard must be 2 cards")
     }
 
+    func testSnapshotRejectsExchangedTalonNotHeldByDeclarer() {
+        let (hands, talon) = dealHands()
+        let foreignTalon = Array(hands[east]!.prefix(2))
+        let state = DealState.awaitingContract(ContractDeclarationState(
+            dealer: north,
+            activePlayers: seats,
+            hands: hands,
+            talon: foreignTalon,
+            discard: talon,
+            declarer: north,
+            finalBid: .game(GameContract(6, .suit(.spades))),
+            auction: []
+        ))
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: state,
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(
+            snapshot,
+            contains: "exchanged talon must remain with declarer"
+        )
+    }
+
     // MARK: - Membership invariants
 
     func testValidatorRejectsBiddingWithCurrentPlayerNotInActivePlayers() {
