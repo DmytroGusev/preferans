@@ -40,6 +40,7 @@
 		B00000000000000000000063 /* TableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000073 /* TableView.swift */; };
 		B0000000000000000000C332 /* TableCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C333 /* TableCenterView.swift */; };
 		B0000000000000000000C334 /* RoomInboundMessageDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C335 /* RoomInboundMessageDispatcher.swift */; };
+		B0000000000000000000C336 /* DealScoreDeltaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C337 /* DealScoreDeltaView.swift */; };
 		B00000000000000000000064 /* ActionBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000074 /* ActionBarView.swift */; };
 		B00000000000000000000C00 /* SettlementComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000C01 /* SettlementComposer.swift */; };
 		B00000000000000000000065 /* TableTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000075 /* TableTheme.swift */; };
@@ -159,6 +160,7 @@
 		B00000000000000000000073 /* TableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableView.swift; sourceTree = "<group>"; };
 		B0000000000000000000C333 /* TableCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableCenterView.swift; sourceTree = "<group>"; };
 		B0000000000000000000C335 /* RoomInboundMessageDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/RoomInboundMessageDispatcher.swift; sourceTree = "<group>"; };
+		B0000000000000000000C337 /* DealScoreDeltaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/DealScoreDeltaView.swift; sourceTree = "<group>"; };
 		B00000000000000000000074 /* ActionBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ActionBarView.swift; sourceTree = "<group>"; };
 		B00000000000000000000C01 /* SettlementComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/SettlementComposer.swift; sourceTree = "<group>"; };
 		B00000000000000000000075 /* TableTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/TableTheme.swift; sourceTree = "<group>"; };
@@ -308,6 +310,7 @@
 				B0000000000000000000C30D /* GameHeaderStrip.swift */,
 				B0000000000000000000C319 /* GameDetailSheet.swift */,
 				B0000000000000000000C30F /* DealSummaryCard.swift */,
+				B0000000000000000000C337 /* DealScoreDeltaView.swift */,
 				B0000000000000000000C311 /* AuctionPanel.swift */,
 				B0000000000000000000C211 /* OnboardingView.swift */,
 				B00000000000000000000046 /* LocalGameScreen.swift */,
@@ -494,6 +497,7 @@
 				B0000000000000000000C32C /* RoomDurabilityRetryRunner.swift in Sources */,
 				B0000000000000000000C32E /* RoomInboundMessagePolicy.swift in Sources */,
 				B0000000000000000000C334 /* RoomInboundMessageDispatcher.swift in Sources */,
+				B0000000000000000000C336 /* DealScoreDeltaView.swift in Sources */,
 				B0000000000000000000C330 /* ViewerHandRail.swift in Sources */,
 				B0000000000000000000C314 /* RoomRealtimeTransport.swift in Sources */,
 				B0000000000000000000C316 /* InMemoryRoomTransport.swift in Sources */,

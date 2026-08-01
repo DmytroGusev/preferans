@@ -36,6 +36,12 @@ struct DealSummaryCard: View {
                     .accessibilityHidden(true)
             }
             trickTallyGrid(result: result)
+            DealScoreDeltaView(
+                scoreDelta: result.scoreDelta,
+                players: projection.players,
+                rules: projection.rules,
+                displayName: projection.displayName(for:)
+            )
             if let initialHands = result.initialHands, !initialHands.isEmpty {
                 openingHandsDisclosure(hands: initialHands, activePlayers: result.activePlayers)
             }

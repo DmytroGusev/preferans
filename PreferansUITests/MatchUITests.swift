@@ -119,6 +119,7 @@ final class MatchUITests: XCTestCase {
         robot.whist(.pass)
 
         robot.waitForPhase("Deal complete")
+        robot.waitForElement(UIIdentifiers.dealScoreDelta)
         XCTAssertEqual(robot.scoreSnapshot(for: ["north"])["north"]?.pool, 10)
         XCTAssertNil(robot.errorBanner())
     }

@@ -319,6 +319,7 @@ public enum UIIdentifiers {
     public static let dealResultContract = "dealResult.contract"
     public static let dealResultTricks   = "dealResult.tricks"
     public static let dealInitialHandsToggle = "dealResult.initialHands.toggle"
+    public static let dealScoreDelta = "dealResult.scoreDelta"
     public static func dealInitialHand(_ player: PlayerID) -> String {
         "dealResult.initialHand.\(player.rawValue)"
     }
