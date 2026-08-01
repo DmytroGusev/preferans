@@ -424,188 +424,35 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     selectPlayCard(card)
                 }
             }
-            VStack(spacing: 0) {
-                ZStack(alignment: .topLeading) {
-                    CardFanView(
-                        cards: cards,
-                        playableCards: playable,
-                        selectedCards: selected,
-                        talonCards: Set(talonKnown),
-                        seat: seat.player,
-                        size: horizontalSizeClass == .compact ? .standard : .large,
-                        animationNamespace: cardNamespace,
-                        onTap: onCardTap,
-                        onDoubleTap: isDiscardPhase ? nil : { card in
-                            playCard(card, from: seat.player)
-                        },
-                        onDragEnded: isDiscardPhase ? nil : { card in
-                            playCard(card, from: seat.player)
-                        }
-                    )
-                    .shadow(color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.35) : .clear,
-                            radius: seat.isCurrentActor ? 12 : 0)
-                    .accessibilityElement(children: .contain)
-                    .accessibilityIdentifier(UIIdentifiers.seatContainer(seat.player))
-
-                    if seat.isCurrentActor {
-                        viewerActorAccessibilityMarker
-                    }
+            ViewerHandRail(
+                seat: seat,
+                viewer: projection.viewer,
+                viewerDisplayName: projection.displayName(for: projection.viewer),
+                seatOrder: seatOrderNumber(for: seat.player),
+                roleBadge: seatRoleBadges[seat.player],
+                lastAction: seatActions[seat.player],
+                showsTrickCount: seat.trickCount > 0 || isPlayingPhase,
+                cards: cards,
+                playableCards: playable,
+                selectedCards: selected,
+                talonCards: Set(talonKnown),
+                cardSize: horizontalSizeClass == .compact ? .standard : .large,
+                animationNamespace: cardNamespace,
+                onTap: onCardTap,
+                onDoubleTap: isDiscardPhase ? nil : { card in
+                    playCard(card, from: seat.player)
+                },
+                onDragEnded: isDiscardPhase ? nil : { card in
+                    playCard(card, from: seat.player)
                 }
-                ownerNamePlate(seat: seat)
-            }
-            .padding(.vertical, 6)
-            .padding(.horizontal, 4)
+            )
         }
-    }
-
-    private var viewerActorAccessibilityMarker: some View {
-        Text("Acting")
-            .frame(width: 0, height: 0)
-            .clipped()
-            .opacity(0)
-            .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(projection.viewer))
-    }
-
-    /// Hidden probe re-exposing the viewer-pill contract to UI tests: a
-    /// `viewer.label` static text whose accessibility label is
-    /// "Viewing as <viewer>", parsed back by `MatchUIRobot.currentViewer()`.
-    /// Sourced from `projection.viewer` (not the name-plate's seat) so it
-    /// still names the viewer when the bottom fan flips to a controlled
-    /// passer during single-whist play. Kept barely-there (1×1, opacity
-    /// 0.001) rather than zero-frame or `.accessibilityHidden` — XCUITest
-    /// elides fully transparent, zero-size views from its query tree, which
-    /// is exactly what orphaned this contract before.
-    private var viewerAccessibilityLabel: some View {
-        Text(AccessibilityStrings.viewerLabelPrefix + projection.displayName(for: projection.viewer))
-            .font(.caption2)
-            .frame(width: 1, height: 1)
-            .clipped()
-            .opacity(0.001)
-            .accessibilityIdentifier(UIIdentifiers.viewerLabel)
     }
 
     private func sortedHandFan(_ cards: [ProjectedCard]) -> [ProjectedCard] {
         cards.sortedForTableDisplay(order: cardSuitDisplayOrder)
     }
 
-    /// Single-row name plate for the viewer's seat. One signal per piece of
-    /// info: name (always cream — gold-on-turn was redundant with the
-    /// "Your turn" pill below), one inline status pill (Your turn > Dealer
-    /// > Sitting out > silent fallback), one persistent role pill
-    /// ("Declarer" / "Whist" / "½" / "Pass") so the player can see their
-    /// own contract role without scanning the strip, and a quiet trick
-    /// counter.
-    private func ownerNamePlate(seat: SeatProjection) -> some View {
-        HStack(spacing: 8) {
-            if let seatOrder = seatOrderNumber(for: seat.player) {
-                SeatOrderBadge(
-                    number: seatOrder,
-                    player: seat.player,
-                    isCurrentActor: seat.isCurrentActor
-                )
-            }
-            Text(seat.displayName)
-                .font(.caption.bold())
-                .foregroundStyle(TableTheme.inkCream)
-                .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
-                .accessibilityLabel("Viewing as \(projection.displayName(for: projection.viewer))")
-                .accessibilityValue("you")
-            viewerAccessibilityLabel
-            seatStatusPill(seat: seat)
-            if let badge = seatRoleBadges[seat.player] {
-                viewerRolePill(badge: badge, player: seat.player)
-            }
-            if let lastAction = seatActions[seat.player] {
-                viewerLastActionPill(action: lastAction)
-            }
-            Spacer(minLength: 4)
-            if seat.trickCount > 0 || isPlayingPhase {
-                Text("\(seat.trickCount)")
-                    .font(.caption2.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(TableTheme.inkCreamSoft)
-                    .accessibilityLabel("\(seat.trickCount) tricks")
-                    .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.top, 4)
-    }
-
-    /// Persistent contract-role pill for the viewer, matching the seat
-    /// version on opponents. Sticks for the entire deal once a contract
-    /// is on the table.
-    private func viewerRolePill(badge: SeatRoleBadge, player: PlayerID) -> some View {
-        Text(badge.label)
-            .font(.caption2.weight(.bold))
-            .tracking(0.3)
-            .foregroundStyle(badge.isAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(
-                // Dim gold (not bright) for the contract role: a second,
-                // quieter tier so it reads as identity while bright gold stays
-                // reserved for whose-turn and the viewer's live controls.
-                Capsule().fill(
-                    badge.isAccent
-                        ? TableTheme.gold
-                        : Color.black.opacity(0.30)
-                )
-            )
-            .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(player))
-    }
-
-    /// Inline gold-tinted pill rendering the viewer's most recent
-    /// auction-trail action (bid / pass / whist / declared / discarded /
-    /// defender mode). Cleared once trick play starts — the role pill
-    /// then carries the same information persistently.
-    private func viewerLastActionPill(action: RecentAction) -> some View {
-        HStack(spacing: 4) {
-            action.label.glyph(emphasis: .seat)
-                .font(.caption2.weight(.bold))
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 1)
-        .background(Capsule().fill(TableTheme.gold.opacity(0.20)))
-        .overlay(
-            Capsule().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.5)
-        )
-        .accessibilityIdentifier(UIIdentifiers.seatLastAction(action.player))
-    }
-
-    /// Mutually-exclusive status pill for the viewer's seat. "Your turn"
-    /// wins because it's actionable; everything else is informational and
-    /// lower-priority. Sitting-out 4-player dealers get the same treatment
-    /// as opponent tiles so the user knows the deal will skip them.
-    @ViewBuilder
-    private func seatStatusPill(seat: SeatProjection) -> some View {
-        if seat.isCurrentActor {
-            Text("Your turn")
-                .font(.caption2.bold())
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.feltDeep)
-                .background(TableTheme.goldBright, in: Capsule())
-                .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
-        } else if seat.role == .sittingOut {
-            Text("Sitting out")
-                .font(.caption2)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .background(Color.black.opacity(0.30), in: Capsule())
-                .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
-        } else if seat.isDealer {
-            Text("Dealer")
-                .font(.caption2)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .background(Color.black.opacity(0.30), in: Capsule())
-                .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
-        } else {
-            EmptyView()
-        }
-    }
 
     /// True during the trick-play phase. Used to surface "0" tricks during
     /// play (so the user can see they haven't won any yet) but suppress it
