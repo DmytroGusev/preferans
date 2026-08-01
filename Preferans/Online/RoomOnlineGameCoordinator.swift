@@ -121,6 +121,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         variantTag: String? = nil,
         resume: OnlineResumeContext? = nil
     ) async {
+        // One coordinator represents exactly one attachment. Invalidate every
+        // task and every visible table value before awaiting the new room's
+        // host election; otherwise a reattach can leave the previous socket
+        // connected and briefly expose its projection under the new identity.
+        let authorityGeneration = resetAttachment(
+            disconnectCurrentTransport: self.transport !== transport
+        )
         // On resume the snapshot's rules are authoritative — adopt them so the
         // seat assignment we broadcast matches the engine we rebuild.
         self.rules = resume?.snapshot.rules ?? rules
@@ -132,14 +139,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.transportStatus = .connecting
         self.didAutoStartOnlineDeal = false
         self.transport = transport
-        self.listenTask?.cancel()
-        self.participantsTask?.cancel()
-        self.transportEventsTask?.cancel()
-        self.hostRecoveryTask?.cancel()
-        self.durabilityRetryTask?.cancel()
-        self.durabilityBarrier.reset()
-        let authorityGeneration = advanceAuthorityGeneration()
-        self.heartbeatTask?.cancel()
         self.transportEventsTask = observeConnectionEvents(of: transport)
         self.listenTask = listen(to: transport)
 
@@ -183,6 +182,17 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     public func detach() {
+        resetAttachment(disconnectCurrentTransport: true)
+        transportStatus = .disconnected
+        state = .disconnected
+    }
+
+    /// Tear down all work and presentation state owned by the current room.
+    /// The authority generation advances before `disconnect()` because a
+    /// transport may resume a non-cooperative durability await as it closes;
+    /// that completion must already be stale when it reaches the coordinator.
+    @discardableResult
+    private func resetAttachment(disconnectCurrentTransport: Bool) -> UInt64 {
         listenTask?.cancel()
         listenTask = nil
         participantsTask?.cancel()
@@ -193,16 +203,23 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         hostRecoveryTask = nil
         durabilityRetryTask?.cancel()
         durabilityRetryTask = nil
-        durabilityBarrier.reset()
-        advanceAuthorityGeneration()
-        stopHeartbeat()
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         pendingBotTask?.cancel()
         pendingBotTask = nil
         pendingAdvanceTask?.cancel()
         pendingAdvanceTask = nil
-        transport?.disconnect()
+
+        durabilityBarrier.reset()
+        let generation = advanceAuthorityGeneration()
+        let previousTransport = transport
         transport = nil
+        if disconnectCurrentTransport {
+            previousTransport?.disconnect()
+        }
+
         hostActor = nil
+        hostPeer = nil
         projection = nil
         pendingAdvance = nil
         eventLog = []
@@ -211,12 +228,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         localSeat = nil
         tableID = nil
         resetHostLiveness()
-        transportStatus = .disconnected
         didAutoStartOnlineDeal = false
         roster.reset()
         rosterSeats = []
         canHostStart = false
-        state = .disconnected
+        return generation
     }
 
     public func send(_ action: PreferansAction) {

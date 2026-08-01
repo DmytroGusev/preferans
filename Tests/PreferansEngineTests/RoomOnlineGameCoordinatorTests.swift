@@ -271,6 +271,54 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         })
     }
 
+    func testReattachDisconnectsOldTransportAndClearsOldTableState() async throws {
+        let north = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
+        let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
+        let south = OnlinePeer(playerID: "south", accountID: "dev:south", provider: .dev, displayName: "South")
+        let participants = [north, east, south]
+        let oldTransport = PresenceDrivenTransport(
+            localPeer: north,
+            hostPlayerID: "north",
+            participants: participants
+        )
+        let coordinator = RoomOnlineGameCoordinator(heartbeat: .disabled, runsServerSideBots: false)
+        await coordinator.attach(transport: oldTransport)
+        await pump(until: { coordinator.projection?.sequence == 0 })
+        XCTAssertTrue(coordinator.isHost)
+        XCTAssertNotNil(coordinator.tableID)
+
+        let replacementTransport = PresenceDrivenTransport(
+            localPeer: east,
+            hostPlayerID: "north",
+            participants: participants
+        )
+        await coordinator.attach(transport: replacementTransport)
+
+        XCTAssertEqual(oldTransport.disconnectCount, 1)
+        XCTAssertEqual(replacementTransport.disconnectCount, 0)
+        XCTAssertEqual(coordinator.state, .connectedAsClient)
+        XCTAssertEqual(coordinator.localSeat, "east")
+        XCTAssertFalse(coordinator.isHost)
+        XCTAssertNil(coordinator.projection)
+        XCTAssertNil(coordinator.tableID)
+        XCTAssertTrue(coordinator.eventLog.isEmpty)
+        XCTAssertTrue(coordinator.recentEvents.isEmpty)
+
+        await pump(until: { replacementTransport.connectionObserverCount == 1 })
+        replacementTransport.simulateConnectionEvent(.connected)
+        await pump(until: { coordinator.transportStatus == .connected })
+        oldTransport.simulateConnectionEvent(.seatTakenOver)
+        await Task.yield()
+        XCTAssertEqual(
+            coordinator.transportStatus,
+            .connected,
+            "events from the disconnected room must not mutate the replacement attachment"
+        )
+
+        coordinator.detach()
+        XCTAssertEqual(replacementTransport.disconnectCount, 1)
+    }
+
     func testNewerDeviceTakeoverMakesTheStaleCoordinatorReadOnly() async throws {
         let host = OnlinePeer(playerID: "north", accountID: "dev:north", provider: .dev, displayName: "North")
         let east = OnlinePeer(playerID: "east", accountID: "dev:east", provider: .dev, displayName: "East")
@@ -1335,10 +1383,13 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
     private(set) var participants: [OnlinePeer]
     var blockedReportSequences: Set<Int> = []
     private(set) var events: [String] = []
+    private(set) var disconnectCount = 0
 
     private let hostPlayerID: PlayerID
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
     private var connectionContinuations: [UUID: AsyncStream<RoomTransportEvent>.Continuation] = [:]
+
+    var connectionObserverCount: Int { connectionContinuations.count }
 
     init(localPeer: OnlinePeer, hostPlayerID: PlayerID, participants: [OnlinePeer]) {
         self.localPeer = localPeer
@@ -1401,6 +1452,7 @@ private final class PresenceDrivenTransport: RoomRealtimeTransport {
     }
 
     func disconnect() {
+        disconnectCount += 1
         for continuation in participantContinuations.values {
             continuation.finish()
         }
