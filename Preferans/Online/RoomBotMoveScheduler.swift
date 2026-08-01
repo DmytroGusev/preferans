@@ -82,7 +82,7 @@ final class RoomBotMoveScheduler {
 
             // A human command or prior bot move may have advanced the actor
             // while pacing/deciding. Never emit that stale command.
-            guard await hostActor.stillAwaiting(plan.snapshot.state),
+            guard await hostActor.stillAwaiting(plan.snapshot),
                   self.generation == ticket,
                   !Task.isCancelled else { return }
 

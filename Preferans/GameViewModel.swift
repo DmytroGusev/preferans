@@ -335,11 +335,12 @@ public final class GameViewModel: ObservableObject {
             guard let decision = await strategy.decision(snapshot: snap, viewer: decider),
                   !Task.isCancelled else { return }
             await MainActor.run {
-                // The snapshot equality re-check catches the case where a
-                // user input or another bot turn slipped in while we were
-                // computing. Without it, a stale action could be applied
-                // against a state where it's no longer legal.
-                guard let self, self.engine.snapshot.state == snap.state else { return }
+                // The full snapshot re-check catches the case where a user
+                // input or another bot turn slipped in while we were
+                // computing. Comparing only DealState would allow a delayed
+                // decision to cross a score/match boundary that happened to
+                // retain the same phase shape.
+                guard let self, self.engine.snapshot == snap else { return }
                 if let explanation = decision.explanation {
                     self.botInsights.append(explanation)
                     if self.botInsights.count > 24 {

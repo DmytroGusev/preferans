@@ -234,12 +234,12 @@ public actor HostGameActor {
         return BotDecisionPlan(decider: decider, snapshot: engine.snapshot, baseSequence: sequence)
     }
 
-    /// True while the engine is still in the exact `state` a bot decision was
-    /// computed against — the same snapshot-equality guard the local loop uses
-    /// (`GameViewModel.scheduleBotIfNeeded`) to drop a move that a concurrent
-    /// human action superseded.
-    public func stillAwaiting(_ state: DealState) -> Bool {
-        engine.state == state
+    /// True while the engine is still in the exact full snapshot a bot decision
+    /// was computed against. Checking only ``DealState`` is insufficient: a
+    /// delayed decision must also be invalidated by score, match policy, or
+    /// hidden-hand changes that leave the phase shape looking similar.
+    public func stillAwaiting(_ snapshot: PreferansSnapshot) -> Bool {
+        engine.snapshot == snapshot
     }
 
     public func initialUpdate() -> HostUpdate {

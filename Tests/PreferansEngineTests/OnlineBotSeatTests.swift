@@ -206,15 +206,20 @@ final class OnlineBotSeatTests: XCTestCase {
         let humanPlan = await actor.nextBotDecisionPlan(botSeats: everySeat.subtracting([bidder]))
         XCTAssertNil(humanPlan, "A human-controlled seat must not be auto-played.")
 
-        // stillAwaiting tracks the captured state.
+        // stillAwaiting tracks the captured full snapshot.
         let plan = try XCTUnwrap(botPlan)
-        let stillThere = await actor.stillAwaiting(plan.snapshot.state)
+        let stillThere = await actor.stillAwaiting(plan.snapshot)
         XCTAssertTrue(stillThere)
+        var samePhaseButDifferentHistory = plan.snapshot
+        samePhaseButDifferentHistory.dealsPlayed += 1
+        let samePhaseStillThere = await actor.stillAwaiting(samePhaseButDifferentHistory)
+        XCTAssertFalse(samePhaseStillThere,
+                       "A matching phase is not enough when authoritative match history changed.")
         _ = try await actor.applyClientAction(
             ClientActionEnvelope(tableID: actor.tableID, actor: bidder, action: .bid(player: bidder, call: .pass), baseHostSequence: 1),
             sender: bidder
         )
-        let movedOn = await actor.stillAwaiting(plan.snapshot.state)
+        let movedOn = await actor.stillAwaiting(plan.snapshot)
         XCTAssertFalse(movedOn, "After an action the previously captured state is stale.")
     }
 
