@@ -1,6 +1,18 @@
 import SwiftUI
 import PreferansEngine
 
+struct DealSummaryLayoutPolicy: Equatable {
+    var isRegularWidth: Bool
+    var usesAccessibilityText: Bool
+
+    /// A regular iPad can give the result and the score explanation separate
+    /// reading columns. Accessibility text sizes keep the compact flow so
+    /// the score explanation never gets squeezed into a narrow pane.
+    var usesTwoRegionComposition: Bool {
+        isRegularWidth && !usesAccessibilityText
+    }
+}
+
 /// Rich centered card shown when a deal has just been scored. Its disclosure
 /// state belongs to this deal-scoped surface, so leaving the phase destroys
 /// the state instead of leaking "show opening hands" into a later deal.
@@ -11,6 +23,8 @@ struct DealSummaryCard: View {
     let onAdvance: (() -> Void)?
 
     @State private var showInitialHands = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Rich centered card shown when a deal has just been scored. Replaces
     /// the empty "Deal complete" placeholder with the outcome headline,
@@ -18,6 +32,50 @@ struct DealSummaryCard: View {
     /// has something to look at and a clear action without dismissing a
     /// modal sheet.
     var body: some View {
+        Group {
+            if layoutPolicy.usesTwoRegionComposition {
+                regularLayout
+            } else {
+                compactLayout
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var layoutPolicy: DealSummaryLayoutPolicy {
+        DealSummaryLayoutPolicy(
+            isRegularWidth: horizontalSizeClass == .regular,
+            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize
+        )
+    }
+
+    private var compactLayout: some View {
+        VStack(spacing: 14) {
+            resultColumn
+            scoreColumn
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .background(dealSummaryBackground)
+    }
+
+    /// iPad keeps the outcome and the accounting explanation side by side so
+    /// the next-deal action remains visible without scrolling past the score
+    /// delta or opening-hands disclosure.
+    private var regularLayout: some View {
+        HStack(alignment: .top, spacing: 22) {
+            resultColumn
+                .frame(maxWidth: .infinity, alignment: .top)
+            scoreColumn
+                .frame(maxWidth: 360, alignment: .top)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .background(dealSummaryBackground)
+    }
+
+    private var resultColumn: some View {
         VStack(spacing: 14) {
             VStack(spacing: 6) {
                 Text("Deal complete")
@@ -36,6 +94,11 @@ struct DealSummaryCard: View {
                     .accessibilityHidden(true)
             }
             trickTallyGrid(result: result)
+        }
+    }
+
+    private var scoreColumn: some View {
+        VStack(spacing: 14) {
             DealScoreDeltaView(
                 scoreDelta: result.scoreDelta,
                 players: projection.players,
@@ -60,11 +123,6 @@ struct DealSummaryCard: View {
                 .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .background(dealSummaryBackground)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
     }
 
     private func openingHandsDisclosure(

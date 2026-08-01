@@ -52,6 +52,21 @@ final class TableLayoutModelTests: XCTestCase {
         )
     }
 
+    func testDealSummaryUsesSeparateIPadResultAndScoreRegions() {
+        XCTAssertTrue(
+            DealSummaryLayoutPolicy(isRegularWidth: true, usesAccessibilityText: false)
+                .usesTwoRegionComposition
+        )
+        XCTAssertFalse(
+            DealSummaryLayoutPolicy(isRegularWidth: false, usesAccessibilityText: false)
+                .usesTwoRegionComposition
+        )
+        XCTAssertFalse(
+            DealSummaryLayoutPolicy(isRegularWidth: true, usesAccessibilityText: true)
+                .usesTwoRegionComposition
+        )
+    }
+
     func testSeatOrderBadgesScaleForPhoneAndIPadCompositions() {
         XCTAssertEqual(
             SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .compact, isCondensed: false).diameter,
