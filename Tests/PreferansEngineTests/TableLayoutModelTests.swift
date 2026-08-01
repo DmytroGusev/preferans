@@ -172,6 +172,11 @@ final class TableLayoutModelTests: XCTestCase {
         XCTAssertEqual(landscape.tableWidth, 994, accuracy: 0.001)
     }
 
+    func testRegularSplitStacksWhenAnIPadWindowCannotFitTheSidebar() {
+        XCTAssertFalse(TableLayoutModel.RegularSplit(totalWidth: 899).usesSidebar)
+        XCTAssertTrue(TableLayoutModel.RegularSplit(totalWidth: 900).usesSidebar)
+    }
+
     func testRegularSplitClampsInvalidDimensions() {
         let split = TableLayoutModel.RegularSplit(
             totalWidth: -10,

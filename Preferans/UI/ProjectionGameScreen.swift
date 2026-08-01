@@ -293,43 +293,101 @@ public struct ProjectionGameScreen<Menu: View>: View {
     private var regularBody: some View {
         GeometryReader { geometry in
             let split = TableLayoutModel.RegularSplit(totalWidth: geometry.size.width)
-            HStack(alignment: .top, spacing: split.spacing) {
-                VStack(spacing: 0) {
-                    headerStrip
-                        .padding(.horizontal, 12)
-                        .padding(.top, 6)
-                        .padding(.bottom, 8)
-                        .dynamicTypeSize(denseTableTypeRange)
-                    tableView()
-                        .frame(maxHeight: .infinity)
-                        .dynamicTypeSize(denseTableTypeRange)
-                    if shouldShowHandRail {
-                        viewerHandFan
-                            .padding(.horizontal, 8)
-                            .padding(.top, 4)
-                            .dynamicTypeSize(denseTableTypeRange)
-                    }
-                    if shouldShowActionBar {
-                        actionBar(availableChoiceWidth: max(0, split.tableWidth - 24))
-                    }
-                }
-                .frame(width: split.tableWidth)
-                ScrollView {
-                    ScoreBoardView(
-                        score: projection.score,
-                        rules: projection.rules,
-                        presentation: .feltSidebar,
-                        displayName: projection.displayName(for:)
-                    )
-                }
-                    .scrollIndicators(.hidden)
-                    .frame(width: split.sidebarWidth)
-                    .dynamicTypeSize(denseTableTypeRange)
+            if split.usesSidebar {
+                regularSplitBody(split: split)
+            } else {
+                narrowRegularBody(width: geometry.size.width)
             }
-            .padding(.vertical, 16)
-            .padding(.trailing, split.trailingInset)
         }
         .feltBackground()
+    }
+
+    private func regularSplitBody(split: TableLayoutModel.RegularSplit) -> some View {
+        HStack(alignment: .top, spacing: split.spacing) {
+            VStack(spacing: 0) {
+                headerStrip
+                    .padding(.horizontal, 12)
+                    .padding(.top, 6)
+                    .padding(.bottom, 8)
+                    .dynamicTypeSize(denseTableTypeRange)
+                tableView()
+                    .frame(maxHeight: .infinity)
+                    .dynamicTypeSize(denseTableTypeRange)
+                if shouldShowHandRail {
+                    viewerHandFan
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
+                        .dynamicTypeSize(denseTableTypeRange)
+                }
+                if shouldShowActionBar {
+                    actionBar(availableChoiceWidth: max(0, split.tableWidth - 24))
+                }
+            }
+            .frame(width: split.tableWidth)
+            ScrollView {
+                ScoreBoardView(
+                    score: projection.score,
+                    rules: projection.rules,
+                    presentation: .feltSidebar,
+                    displayName: projection.displayName(for:)
+                )
+            }
+                .scrollIndicators(.hidden)
+                .frame(width: split.sidebarWidth)
+                .dynamicTypeSize(denseTableTypeRange)
+        }
+        .padding(.vertical, 16)
+        .padding(.trailing, split.trailingInset)
+    }
+
+    /// Narrow regular-width iPad windows (for example, a 1/3 Split View)
+    /// keep the table and scoresheet readable by stacking the scoresheet below
+    /// the gameplay surface instead of squeezing both into one row.
+    private func narrowRegularBody(width: CGFloat) -> some View {
+        let contentWidth = max(320, width - 32)
+        let tableHeight = min(max(360, contentWidth * 0.74), 520)
+        return ScrollView {
+            VStack(spacing: 0) {
+                headerStrip
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                    .dynamicTypeSize(denseTableTypeRange)
+                tableView()
+                    .frame(height: tableHeight)
+                    .dynamicTypeSize(denseTableTypeRange)
+                if shouldShowHandRail {
+                    viewerHandFan
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
+                        .dynamicTypeSize(denseTableTypeRange)
+                }
+                if shouldShowActionBar {
+                    // Keep the compact two-row auction rail in a narrow
+                    // regular window too. The stacked layout gives the table
+                    // room to breathe, but the full seven-column grid would
+                    // still make the decision surface too dense in Split
+                    // View and would diverge from the phone contract.
+                    actionBar(
+                        availableChoiceWidth: min(
+                            contentWidth - 24,
+                            ActionChoiceLayoutPolicy.minimumRegularGridWidth - 1
+                        )
+                    )
+                }
+                ScoreBoardView(
+                    score: projection.score,
+                    rules: projection.rules,
+                    presentation: .feltSidebar,
+                    displayName: projection.displayName(for:)
+                )
+                .padding(.top, 16)
+                .dynamicTypeSize(denseTableTypeRange)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
+        .scrollIndicators(.hidden)
     }
 
     /// A card table is a dense spatial interface: allowing every passive seat

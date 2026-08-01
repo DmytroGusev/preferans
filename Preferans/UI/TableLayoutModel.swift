@@ -6,6 +6,11 @@ public struct TableLayoutModel: Equatable {
     /// remains the primary surface while the score sheet stays readable at a
     /// stable, bounded width across iPad sizes and orientations.
     public struct RegularSplit: Equatable {
+        /// Below this width, reserving the scoresheet's minimum readable
+        /// column leaves too little room for the felt and action surface.
+        /// Narrow regular-width iPad windows use the stacked composition.
+        public static let minimumSidebarLayoutWidth: CGFloat = 900
+
         public var totalWidth: CGFloat
         public var spacing: CGFloat
         public var trailingInset: CGFloat
@@ -26,6 +31,10 @@ public struct TableLayoutModel: Equatable {
 
         public var tableWidth: CGFloat {
             max(0, totalWidth - sidebarWidth - spacing - trailingInset)
+        }
+
+        public var usesSidebar: Bool {
+            totalWidth >= Self.minimumSidebarLayoutWidth
         }
     }
 
