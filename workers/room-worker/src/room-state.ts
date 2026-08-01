@@ -443,7 +443,15 @@ export function authorizeRelayMessage(room: RoomState, senderPlayerID: unknown, 
 /// the last 200 entries (each carrying a full projection JSON) that nothing
 /// ever read back, so every relayed frame rewrote a megabyte-class room blob.
 export function recordRelay(room: RoomState, { senderPlayerID, recipientPlayerIDs, message }: RelayInput, now = new Date().toISOString()): { room: RoomState; entry: RelayEntry } {
-  const serverSequence = (room.relaySequence ?? 0) + 1;
+  const currentSequence = room.relaySequence ?? 0;
+  if (!Number.isSafeInteger(currentSequence) || currentSequence < 0 || currentSequence >= Number.MAX_SAFE_INTEGER) {
+    throw new RoomStateError(
+      "relay_sequence_exhausted",
+      "Room relay sequence is invalid or exhausted.",
+      409
+    );
+  }
+  const serverSequence = currentSequence + 1;
   const entry = {
     serverSequence,
     senderPlayerID: playerIDValue(senderPlayerID),

@@ -271,6 +271,22 @@ test("relay entries are sequenced and the room stores no message history", () =>
   assert.ok(!("recentMessages" in room) || (room as Record<string, unknown>).recentMessages === undefined);
 });
 
+test("relay sequence rejects negative, fractional, and exhausted counters", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const input = {
+    senderPlayerID: "north",
+    recipientPlayerIDs: ["east"],
+    message: { ping: true }
+  };
+
+  for (const relaySequence of [-1, 1.5, Number.MAX_SAFE_INTEGER]) {
+    assert.throws(
+      () => recordRelay({ ...room, relaySequence }, input),
+      /invalid or exhausted/
+    );
+  }
+});
+
 test("seat tokens: minted for claimed human seats, never exposed publicly", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, openSouth] });
 
