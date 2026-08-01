@@ -131,6 +131,28 @@ final class RedesignScreenshotTests: XCTestCase {
             sixNoTrump.waitForExistence(timeout: 1) && sixNoTrump.isHittable,
             "The complete opening bid level must be immediately reachable without scrolling"
         )
+        let tenNoTrump = app.buttons[
+            UIIdentifiers.bidButton(.bid(.game(GameContract(10, .noTrump))))
+        ]
+        if app.windows.firstMatch.frame.width >= 700 {
+            XCTAssertTrue(
+                app.descendants(matching: .any)[UIIdentifiers.actionChoiceGridRegular].exists,
+                "iPad should expose bidding in its regular-width grid"
+            )
+            XCTAssertTrue(
+                tenNoTrump.exists && tenNoTrump.isHittable,
+                "iPad should expose the full auction without horizontal scrolling"
+            )
+        } else {
+            XCTAssertTrue(
+                app.descendants(matching: .any)[UIIdentifiers.actionChoiceRailCompact].exists,
+                "iPhone should retain the compact two-row bidding rail"
+            )
+            XCTAssertFalse(
+                tenNoTrump.isHittable,
+                "iPhone should not compress every auction level into its compact width"
+            )
+        }
         recorder.capture(name: "03-bidding-east")
 
         robot.bid(.bid(.game(GameContract(6, .suit(.spades)))))

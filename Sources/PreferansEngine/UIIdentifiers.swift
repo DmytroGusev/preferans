@@ -336,6 +336,8 @@ public enum UIIdentifiers {
     public static let matchTotusPolicy = "match.totusPolicy"
     public static let matchRaspasyPolicy = "match.raspasyPolicy"
     public static let settlementSplitControl = "settlement.splitControl"
+    public static let actionChoiceGridRegular = "action.choiceGrid.regular"
+    public static let actionChoiceRailCompact = "action.choiceRail.compact"
 }
 
 // MARK: - Result-kind encoding

@@ -16,6 +16,7 @@ public struct ActionBarView: View {
     @State private var isComposingSettlement = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     public init(
         projection: PlayerGameProjection,
@@ -65,7 +66,7 @@ public struct ActionBarView: View {
     private var bidRow: some View {
         return VStack(spacing: 10) {
             actionSectionTitle("Your bid")
-            adaptiveChoiceRail {
+            adaptiveChoiceSurface {
                 bidChips
             }
         }
@@ -116,7 +117,11 @@ public struct ActionBarView: View {
                         .foregroundStyle(suit.color(on: .felt))
                 }
             }
-            .frame(minWidth: 82, minHeight: 24)
+            .frame(
+                minWidth: usesRegularChoiceGrid ? 0 : 82,
+                maxWidth: usesRegularChoiceGrid ? .infinity : nil,
+                minHeight: 24
+            )
         }
         .buttonStyle(label.style)
         .accessibilityIdentifier(UIIdentifiers.bidButton(call))
@@ -124,7 +129,7 @@ public struct ActionBarView: View {
 
     private var contractRow: some View {
         let isTotus = isTotusDeclaration
-        return adaptiveChoiceRail {
+        return adaptiveChoiceSurface {
             ForEach(projection.legal.contractOptions, id: \.self) { contract in
                 Button {
                     onSend(.declareContract(player: projection.viewer, contract: contract))
@@ -138,6 +143,7 @@ public struct ActionBarView: View {
                             .foregroundStyle(strainColor(contract.strain))
                             .fontWeight(.bold)
                     }
+                    .frame(maxWidth: usesRegularChoiceGrid ? .infinity : nil)
                 }
                 .buttonStyle(.feltSecondary)
                 .accessibilityIdentifier(UIIdentifiers.contractButton(contract))
@@ -160,27 +166,52 @@ public struct ActionBarView: View {
     /// post-prikup contract declaration. Keeping this in one helper prevents
     /// the two adjacent choice phases from drifting into different behavior.
     @ViewBuilder
-    private func adaptiveChoiceRail<Content: View>(
+    private func adaptiveChoiceSurface<Content: View>(
         @ViewBuilder content: () -> Content
     ) -> some View {
-        scrollableRow {
-            if usesTwoRowChoiceRail {
-                LazyHGrid(
-                    rows: [
-                        GridItem(.fixed(44), spacing: 8),
-                        GridItem(.fixed(44))
-                    ],
-                    spacing: 8
-                ) {
-                    content()
-                }
-                .frame(height: 96)
-            } else {
-                HStack(spacing: 8) {
-                    content()
+        if usesRegularChoiceGrid {
+            LazyVGrid(columns: regularChoiceColumns, spacing: 8) {
+                content()
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.actionChoiceGridRegular)
+        } else {
+            scrollableRow {
+                if usesTwoRowChoiceRail {
+                    LazyHGrid(
+                        rows: [
+                            GridItem(.fixed(44), spacing: 8),
+                            GridItem(.fixed(44))
+                        ],
+                        spacing: 8
+                    ) {
+                        content()
+                    }
+                    .frame(height: 96)
+                } else {
+                    HStack(spacing: 8) {
+                        content()
+                    }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.actionChoiceRailCompact)
         }
+    }
+
+    /// iPad has enough vertical and horizontal room to expose the full auction
+    /// instead of making players scrub through a phone rail. Accessibility
+    /// sizes retain the scroller so large labels never get squeezed into seven
+    /// narrow columns.
+    private var usesRegularChoiceGrid: Bool {
+        horizontalSizeClass == .regular && !dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var regularChoiceColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 74, maximum: 112), spacing: 8),
+            count: 7
+        )
     }
 
     /// Horizontal scroller with a trailing fade so users get a visual hint
