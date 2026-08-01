@@ -158,6 +158,11 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     private var socketTask: URLSessionWebSocketTask?
     private var connectionTask: Task<Void, Never>?
     private var isClosed = false
+    /// Highest worker relay sequence delivered to this client. The worker does
+    /// not retain a replay log, so after a reconnect the coordinator requests a
+    /// fresh projection; accepting an older frame here would only reintroduce
+    /// stale control messages.
+    private var lastRelaySequence: Int
     private var continuations: [UUID: AsyncStream<ReceivedRoomMessage>.Continuation] = [:]
     private var participantContinuations: [UUID: AsyncStream<[OnlinePeer]>.Continuation] = [:]
     private var connectionEventContinuations: [UUID: AsyncStream<RoomTransportEvent>.Continuation] = [:]
@@ -175,6 +180,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         guard summary.schemaVersion == AppIdentifiers.gameWireSchemaVersion else {
             throw CloudflareRoomTransportError.serverError("Room server returned an incompatible room version.")
         }
+        guard summary.relaySequence >= 0 else {
+            throw CloudflareRoomTransportError.serverError("Room server returned an invalid relay sequence.")
+        }
         guard let seatToken = summary.seatToken, !seatToken.isEmpty else {
             throw CloudflareRoomTransportError.serverError("Room server did not return a seat credential.")
         }
@@ -191,6 +199,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.accountSessionToken = accountSessionToken
         self.seatToken = seatToken
         self.session = session
+        self.lastRelaySequence = summary.relaySequence
     }
 
     deinit {
@@ -589,7 +598,25 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 
         let envelope = try decoder.decode(ServerSocketEnvelope.self, from: data)
         switch envelope.type {
-        case .room, .presence:
+        case .room:
+            // The initial room frame can be newer than the HTTP create/join
+            // response, so use it to advance the relay floor before accepting
+            // any wire frames from this socket.
+            if let room = envelope.room,
+               room.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
+               room.hostEpoch >= hostEpoch,
+               room.relaySequence >= lastRelaySequence {
+                lastRelaySequence = room.relaySequence
+                participants = room.peers
+                hostPlayerID = room.hostPlayerID
+                hostEpoch = room.hostEpoch
+                emitParticipants()
+            }
+        case .presence:
+            // Presence carries the room's current relay counter for display,
+            // but it is broadcast to every seat while wire frames are routed
+            // selectively. Advancing the local wire floor from presence could
+            // therefore drop a valid targeted frame that is still in flight.
             if let room = envelope.room,
                room.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
                room.hostEpoch >= hostEpoch {
@@ -600,6 +627,11 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             }
         case .wire:
             guard let sender = envelope.sender, let message = envelope.message else { return }
+            guard RoomInboundMessagePolicy.acceptsRelaySequence(
+                envelope.serverSequence,
+                after: lastRelaySequence
+            ), let serverSequence = envelope.serverSequence else { return }
+            lastRelaySequence = serverSequence
             for continuation in continuations.values {
                 continuation.yield(ReceivedRoomMessage(message: message, sender: sender))
             }

@@ -70,6 +70,21 @@ enum RoomInboundMessagePolicy {
         FrameID(tableID: envelope.tableID, sequence: envelope.sequence)
     }
 
+    /// Relay frames are globally sequenced by the room worker. A client may
+    /// receive a frame after reconnecting or after a transient network reorder,
+    /// so only a strictly newer server sequence may enter the message stream.
+    /// This gate belongs at the transport boundary: projection validation is
+    /// intentionally narrower and does not cover hello, seat assignment, or
+    /// other wire messages.
+    static func acceptsRelaySequence(_ serverSequence: Int?, after lastSequence: Int) -> Bool {
+        guard lastSequence >= 0,
+              let serverSequence,
+              serverSequence > lastSequence else {
+            return false
+        }
+        return true
+    }
+
     static func acceptsHostError(
         _ error: HostErrorEnvelope,
         localPlayer: PlayerID?,

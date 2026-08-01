@@ -166,6 +166,14 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
         XCTAssertEqual(decision(envelope), .reject)
     }
 
+    func testRelaySequenceRequiresAStrictlyNewerServerFrame() {
+        XCTAssertTrue(RoomInboundMessagePolicy.acceptsRelaySequence(6, after: 5))
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsRelaySequence(5, after: 5))
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsRelaySequence(4, after: 5))
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsRelaySequence(nil, after: 5))
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsRelaySequence(1, after: -1))
+    }
+
     func testErrorsAndResyncRequestsStayBoundToTableAndSender() {
         let error = HostErrorEnvelope(
             tableID: tableID,
