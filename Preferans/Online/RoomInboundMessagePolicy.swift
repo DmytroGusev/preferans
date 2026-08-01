@@ -18,6 +18,14 @@ enum RoomInboundMessagePolicy {
         case advance
     }
 
+    static func acceptsHello(_ hello: HelloEnvelope) -> Bool {
+        hello.schemaVersion == AppIdentifiers.gameWireSchemaVersion
+    }
+
+    static func acceptsClientAction(_ envelope: ClientActionEnvelope) -> Bool {
+        envelope.schemaVersion == AppIdentifiers.gameWireSchemaVersion
+    }
+
     static func isFromElectedHost(
         _ sender: OnlinePeer,
         localIsHost: Bool,
@@ -31,6 +39,7 @@ enum RoomInboundMessagePolicy {
         sender: OnlinePeer,
         localPlayer: PlayerID
     ) -> Bool {
+        guard assignment.schemaVersion == AppIdentifiers.gameWireSchemaVersion else { return false }
         let players = assignment.seats.map(\.playerID)
         let gamePlayerIDs = assignment.seats.map(\.gamePlayerID)
         return (3...4).contains(assignment.seats.count)
@@ -49,7 +58,8 @@ enum RoomInboundMessagePolicy {
         currentTable: UUID?,
         currentSequence: Int?
     ) -> ProjectionDecision {
-        guard envelope.sequence >= 0,
+        guard envelope.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
+              envelope.sequence >= 0,
               let localPlayer,
               let currentTable,
               envelope.viewer == localPlayer,
@@ -91,7 +101,8 @@ enum RoomInboundMessagePolicy {
         currentTable: UUID?,
         currentSequence: Int? = nil
     ) -> Bool {
-        guard error.sequence >= 0,
+        guard error.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
+              error.sequence >= 0,
               let currentTable,
               error.tableID == currentTable,
               currentSequence.map({ error.sequence >= $0 }) ?? true else {
@@ -105,10 +116,13 @@ enum RoomInboundMessagePolicy {
         sender: OnlinePeer,
         currentTable: UUID?
     ) -> Bool {
-        request.tableID == currentTable && request.requester == sender.playerID
+        request.schemaVersion == AppIdentifiers.gameWireSchemaVersion
+            && request.tableID == currentTable
+            && request.requester == sender.playerID
     }
 
     static func acceptsPing(_ ping: PingEnvelope, currentTable: UUID?) -> Bool {
-        ping.tableID == currentTable
+        ping.schemaVersion == AppIdentifiers.gameWireSchemaVersion
+            && ping.tableID == currentTable
     }
 }

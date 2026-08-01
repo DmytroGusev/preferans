@@ -118,7 +118,7 @@ final class WireCompatibilityTests: XCTestCase {
         XCTAssertNoThrow(try PreferansEngine(snapshot: decoded))
     }
 
-    func testLegacySeatAssignmentDecodesWithUnboundedMatch() throws {
+    func testSeatAssignmentRequiresTheCurrentWireSchema() throws {
         let envelope = SeatAssignmentEnvelope(
             tableID: tableID,
             hostPlayerID: "north",
@@ -132,17 +132,12 @@ final class WireCompatibilityTests: XCTestCase {
         legacy.removeValue(forKey: "match")
 
         let legacyData = try JSONSerialization.data(withJSONObject: legacy)
-        let decoded = try PreferansJSONCoder.decoder.decode(SeatAssignmentEnvelope.self, from: legacyData)
-
-        XCTAssertEqual(decoded.schemaVersion, AppIdentifiers.gameWireSchemaVersion)
-        XCTAssertEqual(decoded.tableID, envelope.tableID)
-        XCTAssertEqual(decoded.hostPlayerID, envelope.hostPlayerID)
-        XCTAssertEqual(decoded.seats, envelope.seats)
-        XCTAssertEqual(decoded.rules, envelope.rules)
-        XCTAssertEqual(decoded.match, .unbounded)
+        XCTAssertThrowsError(
+            try PreferansJSONCoder.decoder.decode(SeatAssignmentEnvelope.self, from: legacyData)
+        )
     }
 
-    func testLegacyProjectionEnvelopeDecodesWithDefaultSchemaAndEmptyEvents() throws {
+    func testProjectionEnvelopeRequiresTheCurrentWireSchema() throws {
         let projection = try makeProjection(sequence: 2)
         let envelope = ProjectionEnvelope(
             tableID: tableID,
@@ -160,15 +155,9 @@ final class WireCompatibilityTests: XCTestCase {
         legacy.removeValue(forKey: "botInsights")
 
         let legacyData = try JSONSerialization.data(withJSONObject: legacy)
-        let decoded = try PreferansJSONCoder.decoder.decode(ProjectionEnvelope.self, from: legacyData)
-
-        XCTAssertEqual(decoded.schemaVersion, AppIdentifiers.gameWireSchemaVersion)
-        XCTAssertEqual(decoded.tableID, envelope.tableID)
-        XCTAssertEqual(decoded.sequence, envelope.sequence)
-        XCTAssertEqual(decoded.viewer, envelope.viewer)
-        XCTAssertEqual(decoded.eventSummaries, [])
-        XCTAssertEqual(decoded.events, [])
-        XCTAssertEqual(decoded.botInsights, [])
+        XCTAssertThrowsError(
+            try PreferansJSONCoder.decoder.decode(ProjectionEnvelope.self, from: legacyData)
+        )
     }
 
     func testEngineSnapshotRoundTripsThroughConfiguredJSONCoder() throws {

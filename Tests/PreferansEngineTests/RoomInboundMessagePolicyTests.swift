@@ -35,6 +35,72 @@ final class RoomInboundMessagePolicyTests: AppTestCase {
         ))
     }
 
+    func testEveryInboundWireKindRejectsAnOlderSchema() throws {
+        var hello = HelloEnvelope(tableID: tableID, player: identities()[0], lastSeenSequence: 0)
+        hello.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsHello(hello))
+
+        var action = ClientActionEnvelope(
+            tableID: tableID,
+            actor: host.playerID,
+            action: .bid(player: host.playerID, call: .pass),
+            baseHostSequence: 0
+        )
+        action.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsClientAction(action))
+
+        let seats = identities()
+        var assignment = SeatAssignmentEnvelope(
+            tableID: tableID,
+            hostPlayerID: host.playerID,
+            seats: seats,
+            rules: .sochi
+        )
+        assignment.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsSeatAssignment(
+            assignment,
+            sender: host,
+            localPlayer: "east"
+        ))
+
+        let projection = try makeProjection(sequence: 1)
+        var frame = ProjectionEnvelope(
+            tableID: tableID,
+            sequence: 1,
+            viewer: "east",
+            projection: projection,
+            eventSummaries: []
+        )
+        frame.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertEqual(decision(frame, currentTable: tableID), .reject)
+
+        var error = HostErrorEnvelope(
+            tableID: tableID,
+            sequence: 0,
+            recipient: "east",
+            clientNonce: nil,
+            message: "old"
+        )
+        error.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsHostError(
+            error,
+            localPlayer: "east",
+            currentTable: tableID
+        ))
+
+        var request = ResyncRequestEnvelope(tableID: tableID, requester: guest.playerID, lastSeenSequence: 0)
+        request.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsResyncRequest(
+            request,
+            sender: guest,
+            currentTable: tableID
+        ))
+
+        var ping = PingEnvelope(tableID: tableID)
+        ping.schemaVersion = AppIdentifiers.gameWireSchemaVersion - 1
+        XCTAssertFalse(RoomInboundMessagePolicy.acceptsPing(ping, currentTable: tableID))
+    }
+
     func testSeatAssignmentBindsDeclaredHostAndRequiresUniqueLocalSeat() {
         let seats = identities()
         let valid = SeatAssignmentEnvelope(

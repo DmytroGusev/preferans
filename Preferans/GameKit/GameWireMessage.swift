@@ -48,7 +48,7 @@ public struct SeatAssignmentEnvelope: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? AppIdentifiers.gameWireSchemaVersion
+        self.schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         self.tableID = try container.decode(UUID.self, forKey: .tableID)
         self.hostPlayerID = try container.decode(PlayerID.self, forKey: .hostPlayerID)
         self.seats = try container.decode([PlayerIdentity].self, forKey: .seats)
@@ -126,7 +126,7 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? AppIdentifiers.gameWireSchemaVersion
+        self.schemaVersion = try container.decode(Int.self, forKey: .schemaVersion)
         self.tableID = try container.decode(UUID.self, forKey: .tableID)
         self.sequence = try container.decode(Int.self, forKey: .sequence)
         self.viewer = try container.decode(PlayerID.self, forKey: .viewer)

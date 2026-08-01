@@ -799,7 +799,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         _ hello: HelloEnvelope,
         received: ReceivedRoomMessage
     ) async {
-        guard isHost else { return }
+        guard isHost, RoomInboundMessagePolicy.acceptsHello(hello) else { return }
         if tableID == nil { tableID = hello.tableID }
         guard shouldAcceptHello(from: received.sender, identity: hello.player) else { return }
         await refreshPeerMapping(peer: received.sender, identity: hello.player)
@@ -829,7 +829,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         _ envelope: ClientActionEnvelope,
         received: ReceivedRoomMessage
     ) async {
-        guard isHost else { return }
+        guard isHost, RoomInboundMessagePolicy.acceptsClientAction(envelope) else { return }
         await applyClientAction(envelope, sender: received.sender.playerID) { error in
             await sendHostError(
                 to: received.sender,
