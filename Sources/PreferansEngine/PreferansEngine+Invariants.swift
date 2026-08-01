@@ -231,6 +231,7 @@ extension PreferansEngine {
         try require(snapshot.rules.configurationError == nil, "invalid rules: \(snapshot.rules.configurationError ?? "unknown")")
         try checkMatchSettings(snapshot.match, playerCount: snapshot.players.count)
         try snapshot.score.validate(players: snapshot.players)
+        try checkScoreAgainstMatch(snapshot.score, match: snapshot.match)
         try checkPlayerReferences(snapshot.state, players: snapshot.players)
         let poolIsClosed = snapshot.match.isPoolClosed(snapshot.score)
         switch snapshot.state {
@@ -256,6 +257,20 @@ extension PreferansEngine {
     private static func checkMatchSettings(_ match: MatchSettings, playerCount: Int) throws {
         let error = match.configurationError(playerCount: playerCount)
         try require(error == nil, "invalid match: \(error ?? "unknown")")
+    }
+
+    private static func checkScoreAgainstMatch(_ score: ScoreSheet, match: MatchSettings) throws {
+        guard match.poolTarget != .max,
+              match.poolClosure == .individualWithAmericanAid,
+              match.poolTarget.isMultiple(of: score.players.count)
+        else { return }
+
+        let target = match.poolTarget / score.players.count
+        if let player = score.players.first(where: { (score.pool[$0] ?? 0) > target }) {
+            throw InvariantViolation(
+                message: "individual pool entry exceeds its target: \(player) has \(score.pool[player] ?? 0), target \(target)"
+            )
+        }
     }
 
     private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {

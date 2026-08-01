@@ -635,6 +635,123 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(try delta.validate(players: seats), contains: "unknown players")
     }
 
+    func testScoreSheetValidationRejectsNegativePoolEntry() {
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: [north: -1, east: 0, south: 0],
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+
+        assertViolation(try score.validate(players: seats), contains: "pool entries cannot be negative")
+    }
+
+    func testScoreSheetValidationRejectsNegativeDirectWhistEntry() {
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 0),
+            mountain: seats.dictionary(filledWith: 0),
+            whists: [
+                north: [east: -1],
+                east: [:],
+                south: [:],
+            ]
+        )
+
+        assertViolation(try score.validate(players: seats), contains: "direct whist entries cannot be negative")
+    }
+
+    func testScoreDeltaValidationRejectsNegativePoolEntry() {
+        let delta = ScoreDelta(
+            uncheckedPlayers: seats,
+            pool: [north: -1, east: 0, south: 0],
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+
+        assertViolation(try delta.validate(players: seats), contains: "pool entries cannot be negative")
+    }
+
+    func testScoreDeltaValidationRejectsNegativeDirectWhistEntry() {
+        let delta = ScoreDelta(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 0),
+            mountain: seats.dictionary(filledWith: 0),
+            whists: [
+                north: [east: -1],
+                east: [:],
+                south: [:],
+            ]
+        )
+
+        assertViolation(try delta.validate(players: seats), contains: "direct whist entries cannot be negative")
+    }
+
+    func testScoreSheetDecodingRejectsNegativePoolEntry() throws {
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: [north: -1, east: 0, south: 0],
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+        let data = try JSONEncoder().encode(score)
+
+        XCTAssertThrowsError(try JSONDecoder().decode(ScoreSheet.self, from: data)) { error in
+            guard case let DecodingError.dataCorrupted(context) = error else {
+                return XCTFail("Expected dataCorrupted; got \(error)")
+            }
+            XCTAssertTrue(context.debugDescription.contains("pool entries cannot be negative"))
+        }
+    }
+
+    func testScoreDeltaDecodingRejectsNegativeDirectWhistEntry() throws {
+        let delta = ScoreDelta(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 0),
+            mountain: seats.dictionary(filledWith: 0),
+            whists: [
+                north: [east: -1],
+                east: [:],
+                south: [:],
+            ]
+        )
+        let data = try JSONEncoder().encode(delta)
+
+        XCTAssertThrowsError(try JSONDecoder().decode(ScoreDelta.self, from: data)) { error in
+            guard case let DecodingError.dataCorrupted(context) = error else {
+                return XCTFail("Expected dataCorrupted; got \(error)")
+            }
+            XCTAssertTrue(context.debugDescription.contains("direct whist entries cannot be negative"))
+        }
+    }
+
+    func testScoreDecodingPreservesLegitimateNegativeMountainRelief() throws {
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 1),
+            mountain: [north: -1, east: 0, south: 0],
+            whists: seats.dictionary(filledWith: [:])
+        )
+        let delta = ScoreDelta(
+            uncheckedPlayers: seats,
+            pool: seats.dictionary(filledWith: 0),
+            mountain: [north: -1, east: 0, south: 0],
+            whists: seats.dictionary(filledWith: [:])
+        )
+
+        let decodedScore = try JSONDecoder().decode(
+            ScoreSheet.self,
+            from: JSONEncoder().encode(score)
+        )
+        let decodedDelta = try JSONDecoder().decode(
+            ScoreDelta.self,
+            from: JSONEncoder().encode(delta)
+        )
+
+        XCTAssertEqual(decodedScore, score)
+        XCTAssertEqual(decodedDelta, delta)
+    }
+
     func testSnapshotValidatorRejectsScorePlayerMismatch() {
         let score = ScoreSheet(
             uncheckedPlayers: [north, east],
@@ -791,5 +908,24 @@ final class InvariantValidatorTests: XCTestCase {
         )
 
         assertViolation(snapshot, contains: "open deal state cannot carry a closed pulka")
+    }
+
+    func testSnapshotValidatorRejectsIndividualPoolOvershoot() {
+        let score = ScoreSheet(
+            uncheckedPlayers: seats,
+            pool: [north: 2, east: 0, south: 0],
+            mountain: seats.dictionary(filledWith: 0),
+            whists: seats.dictionary(filledWith: [:])
+        )
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            match: MatchSettings(poolTarget: 3),
+            state: .waitingForDeal,
+            score: score,
+            nextDealer: north
+        )
+
+        assertViolation(snapshot, contains: "individual pool entry exceeds its target")
     }
 }

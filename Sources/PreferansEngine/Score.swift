@@ -17,6 +17,31 @@ public struct ScoreDelta: Equatable, Codable, Sendable {
         self.whists = whists
     }
 
+    private enum CodingKeys: String, CodingKey {
+        case pool
+        case mountain
+        case whists
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let decoded = ScoreDelta(
+            uncheckedPlayers: [],
+            pool: try values.decode([PlayerID: Int].self, forKey: .pool),
+            mountain: try values.decode([PlayerID: Int].self, forKey: .mountain),
+            whists: try values.decode([PlayerID: [PlayerID: Int]].self, forKey: .whists)
+        )
+        do {
+            try decoded.validate(players: Array(decoded.pool.keys))
+        } catch let violation as InvariantViolation {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: violation.message
+            ))
+        }
+        self = decoded
+    }
+
     public mutating func addPool(_ points: Int, to player: PlayerID) {
         precondition(hasKnownPlayer(player), "ScoreDelta pool target \(player) is not in the score player set.")
         guard points != 0 else { return }
@@ -43,28 +68,19 @@ public struct ScoreDelta: Equatable, Codable, Sendable {
     }
 
     public func validate(players expectedPlayers: [PlayerID]) throws {
-        try Self.require(Set(expectedPlayers).count == expectedPlayers.count, "scoreDelta players must be unique")
-        let expected = Set(expectedPlayers)
-        try Self.require(Set(pool.keys) == expected, "scoreDelta pool keys must match players")
-        try Self.require(Set(mountain.keys) == expected, "scoreDelta mountain keys must match players")
-        try Self.require(Set(whists.keys) == expected, "scoreDelta whist writer keys must match players")
-        for (writer, entries) in whists {
-            try Self.require(expected.contains(writer), "scoreDelta whist writer \(writer) is not in players")
-            try Self.require(Set(entries.keys).isSubset(of: expected), "scoreDelta whist targets for \(writer) contain unknown players")
-            try Self.require(entries[writer] == nil || entries[writer] == 0, "scoreDelta cannot write whists against self")
-        }
+        try ScoreStorageValidator.validate(
+            label: "scoreDelta",
+            expectedPlayers: expectedPlayers,
+            pool: pool,
+            mountain: mountain,
+            whists: whists
+        )
     }
 
     private func hasKnownPlayer(_ player: PlayerID) -> Bool {
         pool.keys.contains(player)
             && mountain.keys.contains(player)
             && whists.keys.contains(player)
-    }
-
-    private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {
-        if !condition {
-            throw InvariantViolation(message: message())
-        }
     }
 }
 
@@ -86,6 +102,33 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
         self.pool = pool
         self.mountain = mountain
         self.whists = whists
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case players
+        case pool
+        case mountain
+        case whists
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedPlayers = try values.decode([PlayerID].self, forKey: .players)
+        let decoded = ScoreSheet(
+            uncheckedPlayers: decodedPlayers,
+            pool: try values.decode([PlayerID: Int].self, forKey: .pool),
+            mountain: try values.decode([PlayerID: Int].self, forKey: .mountain),
+            whists: try values.decode([PlayerID: [PlayerID: Int]].self, forKey: .whists)
+        )
+        do {
+            try decoded.validate(players: decodedPlayers)
+        } catch let violation as InvariantViolation {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: violation.message
+            ))
+        }
+        self = decoded
     }
 
     /// Adds `delta` to the sheet verbatim, with **no pulka-closing
@@ -201,16 +244,13 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
 
     public func validate(players expectedPlayers: [PlayerID]) throws {
         try Self.require(players == expectedPlayers, "score players must match engine players")
-        try Self.require(Set(players).count == players.count, "score players must be unique")
-        let expected = Set(expectedPlayers)
-        try Self.require(Set(pool.keys) == expected, "score pool keys must match players")
-        try Self.require(Set(mountain.keys) == expected, "score mountain keys must match players")
-        try Self.require(Set(whists.keys) == expected, "score whist writer keys must match players")
-        for (writer, entries) in whists {
-            try Self.require(expected.contains(writer), "score whist writer \(writer) is not in players")
-            try Self.require(Set(entries.keys).isSubset(of: expected), "score whist targets for \(writer) contain unknown players")
-            try Self.require(entries[writer] == nil || entries[writer] == 0, "score cannot write whists against self")
-        }
+        try ScoreStorageValidator.validate(
+            label: "score",
+            expectedPlayers: expectedPlayers,
+            pool: pool,
+            mountain: mountain,
+            whists: whists
+        )
     }
 
     private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {
@@ -295,6 +335,44 @@ public struct ScoreSheet: Equatable, Codable, Sendable {
             preconditionFailure(violation.message)
         } catch {
             preconditionFailure("unexpected score delta validation error: \(error)")
+        }
+    }
+}
+
+private enum ScoreStorageValidator {
+    static func validate(
+        label: String,
+        expectedPlayers: [PlayerID],
+        pool: [PlayerID: Int],
+        mountain: [PlayerID: Int],
+        whists: [PlayerID: [PlayerID: Int]]
+    ) throws {
+        try require(
+            Set(expectedPlayers).count == expectedPlayers.count,
+            "\(label) players must be unique"
+        )
+        let expected = Set(expectedPlayers)
+        try require(Set(pool.keys) == expected, "\(label) pool keys must match players")
+        try require(Set(mountain.keys) == expected, "\(label) mountain keys must match players")
+        try require(Set(whists.keys) == expected, "\(label) whist writer keys must match players")
+        try require(pool.values.allSatisfy { $0 >= 0 }, "\(label) pool entries cannot be negative")
+        for (writer, entries) in whists {
+            try require(expected.contains(writer), "\(label) whist writer \(writer) is not in players")
+            try require(
+                Set(entries.keys).isSubset(of: expected),
+                "\(label) whist targets for \(writer) contain unknown players"
+            )
+            try require(
+                entries.values.allSatisfy { $0 >= 0 },
+                "\(label) direct whist entries cannot be negative"
+            )
+            try require(entries[writer] == nil || entries[writer] == 0, "\(label) cannot write whists against self")
+        }
+    }
+
+    private static func require(_ condition: Bool, _ message: @autoclosure () -> String) throws {
+        if !condition {
+            throw InvariantViolation(message: message())
         }
     }
 }
