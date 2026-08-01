@@ -1,6 +1,27 @@
 import SwiftUI
 import PreferansEngine
 
+/// Resolves the table composition from both device idiom and size classes.
+/// An iPad in a narrow Split View can report a compact horizontal size class,
+/// but it must still keep the tablet table/scoreboard composition rather than
+/// silently switching to the phone UI.
+enum ProjectionGameLayoutPolicy: Equatable {
+    case phonePortrait
+    case phoneLandscape
+    case iPad
+
+    static func resolve(
+        isPadDevice: Bool,
+        horizontalSizeClass: UserInterfaceSizeClass?,
+        verticalSizeClass: UserInterfaceSizeClass?
+    ) -> Self {
+        guard !isPadDevice, horizontalSizeClass == .compact else {
+            return .iPad
+        }
+        return verticalSizeClass == .compact ? .phoneLandscape : .phonePortrait
+    }
+}
+
 public struct TableLayoutModel: Equatable {
     /// Width allocation for the persistent iPad score sheet. The live table
     /// remains the primary surface while the score sheet stays readable at a

@@ -3,6 +3,44 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testIPadSplitViewKeepsTabletCompositionEvenWithCompactWidth() {
+        XCTAssertEqual(
+            ProjectionGameLayoutPolicy.resolve(
+                isPadDevice: true,
+                horizontalSizeClass: .compact,
+                verticalSizeClass: .regular
+            ),
+            .iPad
+        )
+        XCTAssertEqual(
+            ProjectionGameLayoutPolicy.resolve(
+                isPadDevice: true,
+                horizontalSizeClass: .compact,
+                verticalSizeClass: .compact
+            ),
+            .iPad
+        )
+    }
+
+    func testIPhoneUsesCompactPortraitAndLandscapeCompositions() {
+        XCTAssertEqual(
+            ProjectionGameLayoutPolicy.resolve(
+                isPadDevice: false,
+                horizontalSizeClass: .compact,
+                verticalSizeClass: .regular
+            ),
+            .phonePortrait
+        )
+        XCTAssertEqual(
+            ProjectionGameLayoutPolicy.resolve(
+                isPadDevice: false,
+                horizontalSizeClass: .compact,
+                verticalSizeClass: .compact
+            ),
+            .phoneLandscape
+        )
+    }
+
     func testTrickCardScaleFollowsDeviceWidth() {
         XCTAssertEqual(
             TableCenterLayoutPolicy.trickCardSize(for: .compact),

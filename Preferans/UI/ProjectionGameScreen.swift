@@ -1,5 +1,8 @@
 import SwiftUI
 import PreferansEngine
+#if os(iOS)
+import UIKit
+#endif
 
 public struct ProjectionGameScreen<Menu: View>: View {
     public var projection: PlayerGameProjection
@@ -89,11 +92,12 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     public var body: some View {
         Group {
-            if isCompactLandscape {
+            switch layoutPolicy {
+            case .phoneLandscape:
                 landscapeBody
-            } else if horizontalSizeClass == .compact {
+            case .phonePortrait:
                 compactBody
-            } else {
+            case .iPad:
                 regularBody
             }
         }
@@ -121,6 +125,22 @@ public struct ProjectionGameScreen<Menu: View>: View {
             reconcileDiscardSelection()
             reconcilePlaySelection()
         }
+    }
+
+    private var layoutPolicy: ProjectionGameLayoutPolicy {
+        ProjectionGameLayoutPolicy.resolve(
+            isPadDevice: isPadDevice,
+            horizontalSizeClass: horizontalSizeClass,
+            verticalSizeClass: verticalSizeClass
+        )
+    }
+
+    private var isPadDevice: Bool {
+        #if os(iOS)
+        return UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        return false
+        #endif
     }
 
     // MARK: - Compact (iPhone)
