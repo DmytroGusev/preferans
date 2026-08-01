@@ -3,6 +3,21 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testTrickCardScaleFollowsDeviceWidth() {
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.trickCardSize(for: .compact),
+            .standard
+        )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.trickCardSize(for: .regular),
+            .large
+        )
+        XCTAssertEqual(
+            TableCenterLayoutPolicy.trickCardSize(for: nil),
+            .standard
+        )
+    }
+
     func testSeatOrderBadgesScaleForPhoneAndIPadCompositions() {
         XCTAssertEqual(
             SeatOrderBadgeLayoutPolicy(horizontalSizeClass: .compact, isCondensed: false).diameter,

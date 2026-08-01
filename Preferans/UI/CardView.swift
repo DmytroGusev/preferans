@@ -70,7 +70,7 @@ extension Array where Element == ProjectedCard {
 }
 
 public struct CardView: View {
-    public enum Size {
+    public enum Size: Equatable {
         case standard
         case compact
         case large

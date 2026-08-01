@@ -164,15 +164,20 @@ struct TableCenterView: View {
     }
 
     private func trickPlays() -> some View {
-        ZStack {
+        let cardSize = TableCenterLayoutPolicy.trickCardSize(for: horizontalSizeClass)
+        return ZStack {
             ForEach(Array(projection.currentTrick.enumerated()), id: \.offset) { _, play in
                 let pos = TableLayoutModel.trickOffset(
                     for: play.player,
                     viewer: projection.viewer,
                     opponents: opponentSeats,
-                    cardSize: .large
+                    cardSize: cardSize
                 )
-                trickPlayMarker(play: play, isWinner: play.player == pendingAdvance?.trickWinner)
+                trickPlayMarker(
+                    play: play,
+                    cardSize: cardSize,
+                    isWinner: play.player == pendingAdvance?.trickWinner
+                )
                     .matchedGeometryEffect(id: play.card, in: animationNamespace)
                     .offset(x: pos.width, y: pos.height)
                     .transition(.scale.combined(with: .opacity))
@@ -181,11 +186,15 @@ struct TableCenterView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func trickPlayMarker(play: CardPlay, isWinner: Bool) -> some View {
+    private func trickPlayMarker(
+        play: CardPlay,
+        cardSize: CardView.Size,
+        isWinner: Bool
+    ) -> some View {
         VStack(spacing: 4) {
             CardView(
                 card: .known(play.card),
-                size: .large,
+                size: cardSize,
                 region: .trick(seat: play.player)
             )
             .overlay(
@@ -209,4 +218,13 @@ struct TableCenterView: View {
         }
     }
 
+}
+
+/// The trick is the most spatially sensitive phase of the table. Compact
+/// iPhone surfaces keep the center readable without letting large cards crowd
+/// the hand rail; regular-width iPad tables have room for the larger cards.
+enum TableCenterLayoutPolicy {
+    static func trickCardSize(for horizontalSizeClass: UserInterfaceSizeClass?) -> CardView.Size {
+        horizontalSizeClass == .regular ? .large : .standard
+    }
 }
