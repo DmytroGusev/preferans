@@ -40,8 +40,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private var hostActor: HostGameActor?
     private let transportSubscriptions = RoomTransportSubscriptions()
     private let hostRecoveryRunner: RoomHostRecoveryRunner
-    private var durabilityRetryTask: Task<Void, Never>?
-    private var durabilityBarrier: RoomDurabilityBarrier<HostUpdate>
+    private let durabilityRetryRunner: RoomDurabilityRetryRunner<HostUpdate>
     /// Invalidates async authority work whenever attachment or host ownership
     /// changes. Cancellation alone is insufficient because transport awaits do
     /// not all cooperate with task cancellation.
@@ -88,8 +87,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.heartbeat = heartbeat
         self.botMoveScheduler = RoomBotMoveScheduler(delay: botMoveDelay)
         self.trickResultHoldDuration = trickResultHoldDuration
-        self.durabilityBarrier = RoomDurabilityBarrier(
-            initialRetryDelay: durabilityRetryInitialDelay
+        self.durabilityRetryRunner = RoomDurabilityRetryRunner(
+            initialDelay: durabilityRetryInitialDelay
         )
         self.hostRecoveryRunner = RoomHostRecoveryRunner(
             initialDelay: hostRecoveryRetryInitialDelay,
@@ -99,7 +98,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     deinit {
-        durabilityRetryTask?.cancel()
         heartbeatTask?.cancel()
         pendingAdvanceTask?.cancel()
     }
@@ -189,15 +187,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func resetAttachment(disconnectCurrentTransport: Bool) -> UInt64 {
         transportSubscriptions.cancelAll()
         hostRecoveryRunner.cancel()
-        durabilityRetryTask?.cancel()
-        durabilityRetryTask = nil
+        durabilityRetryRunner.cancel()
         heartbeatTask?.cancel()
         heartbeatTask = nil
         botMoveScheduler.cancel()
         pendingAdvanceTask?.cancel()
         pendingAdvanceTask = nil
 
-        durabilityBarrier.reset()
         let generation = advanceAuthorityGeneration()
         let previousTransport = transport
         transport = nil
@@ -608,9 +604,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         case .seatTakenOver:
             transportStatus = .seatTakenOver
             hostRecoveryRunner.cancel()
-            durabilityRetryTask?.cancel()
-            durabilityRetryTask = nil
-            durabilityBarrier.reset()
+            durabilityRetryRunner.cancel()
             advanceAuthorityGeneration()
             isHost = false
             hostActor = nil
@@ -640,9 +634,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func beginHostRecovery(as elected: OnlinePeer, using transport: any RoomRealtimeTransport) {
-        durabilityRetryTask?.cancel()
-        durabilityRetryTask = nil
-        durabilityBarrier.reset()
+        durabilityRetryRunner.cancel()
         stopHeartbeat()
         botMoveScheduler.cancel()
         stagedBotInsights = [:]
@@ -695,9 +687,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private func becomeClient(of elected: OnlinePeer) {
         hostRecoveryRunner.cancel()
-        durabilityRetryTask?.cancel()
-        durabilityRetryTask = nil
-        durabilityBarrier.reset()
+        durabilityRetryRunner.cancel()
         advanceAuthorityGeneration()
         botMoveScheduler.cancel()
         stagedBotInsights = [:]
@@ -858,7 +848,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     ) async {
         guard let hostActor else { return }
         let authorityGeneration = self.authorityGeneration
-        guard durabilityBarrier.acceptsAction else {
+        guard durabilityRetryRunner.acceptsAction else {
             await onError(CloudflareRoomTransportError.serverError(
                 String(localized: "Saving the previous move… Try again in a moment.")
             ))
@@ -892,39 +882,41 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         after error: Error,
         authorityGeneration: UInt64
     ) {
-        guard let ticket = durabilityBarrier.stage(update) else {
-            assertionFailure("Durability barrier accepted two pending host updates")
-            return
-        }
         let message = String(localized: "Connection interrupted — saving your move…")
         errorText = message
         logOnlineFlow("event=reportStateRetry sequence=\(update.sequence) error=\(error.localizedDescription)")
-        durabilityRetryTask?.cancel()
-        durabilityRetryTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            while !Task.isCancelled {
-                guard let delay = self.durabilityBarrier.delay(for: ticket) else { return }
-                try? await Task.sleep(for: delay)
-                guard !Task.isCancelled,
-                      self.ownsHostAuthority(authorityGeneration),
-                      let pending = self.durabilityBarrier.update(for: ticket) else { return }
-                do {
-                    try await self.reportStateToWorker(pending)
-                    guard self.ownsHostAuthority(authorityGeneration),
-                          self.durabilityBarrier.update(for: ticket) != nil else { return }
-                    await self.publish(pending, authorityGeneration: authorityGeneration)
-                    guard self.ownsHostAuthority(authorityGeneration) else { return }
-                    guard self.durabilityBarrier.complete(ticket) != nil else { return }
-                    self.durabilityRetryTask = nil
-                    if self.errorText == message {
-                        self.errorText = nil
-                    }
-                    return
-                } catch {
-                    logOnlineFlow("event=reportStateRetryFailed sequence=\(pending.sequence) error=\(error.localizedDescription)")
-                    guard self.durabilityBarrier.recordFailure(for: ticket) else { return }
+        let started = durabilityRetryRunner.start(
+            update,
+            isCurrent: { [weak self] in
+                self?.ownsHostAuthority(authorityGeneration) == true
+            },
+            persist: { [weak self] pending in
+                guard let self,
+                      self.ownsHostAuthority(authorityGeneration) else {
+                    throw CancellationError()
+                }
+                try await self.reportStateToWorker(pending)
+            },
+            publish: { [weak self] pending in
+                await self?.publish(
+                    pending,
+                    authorityGeneration: authorityGeneration
+                )
+            },
+            onRetryFailure: { [weak self] pending, error in
+                self?.logOnlineFlow(
+                    "event=reportStateRetryFailed sequence=\(pending.sequence) error=\(error.localizedDescription)"
+                )
+            },
+            onSuccess: { [weak self] in
+                guard let self else { return }
+                if self.errorText == message {
+                    self.errorText = nil
                 }
             }
+        )
+        if !started {
+            assertionFailure("Durability retry runner accepted two pending host updates")
         }
     }
 
