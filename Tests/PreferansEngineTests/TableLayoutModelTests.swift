@@ -3,6 +3,46 @@ import XCTest
 import PreferansEngine
 
 final class TableLayoutModelTests: XCTestCase {
+    func testCompactActionBarOmitsPassiveCardPlayStatus() {
+        let legal = LegalActionProjection(
+            playableCards: [Card(.spades, .ace)]
+        )
+
+        XCTAssertFalse(
+            ActionBarLayoutPolicy.shouldShow(
+                legal: legal,
+                horizontalSizeClass: .compact
+            )
+        )
+        XCTAssertTrue(
+            ActionBarLayoutPolicy.shouldShow(
+                legal: legal,
+                horizontalSizeClass: .regular
+            )
+        )
+    }
+
+    func testCompactActionBarKeepsEveryDedicatedControlSurface() {
+        let controlStates = [
+            LegalActionProjection(bidCalls: [.pass]),
+            LegalActionProjection(whistCalls: [.pass]),
+            LegalActionProjection(contractOptions: [GameContract(6, .noTrump)]),
+            LegalActionProjection(defenderModes: [.open, .closed]),
+            LegalActionProjection(canDiscard: true),
+            LegalActionProjection(canAcceptSettlement: true),
+            LegalActionProjection(canRejectSettlement: true),
+        ]
+
+        for legal in controlStates {
+            XCTAssertTrue(
+                ActionBarLayoutPolicy.shouldShow(
+                    legal: legal,
+                    horizontalSizeClass: .compact
+                )
+            )
+        }
+    }
+
     func testRegularSplitKeepsGameplayPrimaryAcrossIPadWidths() {
         let compactPortrait = TableLayoutModel.RegularSplit(totalWidth: 744)
         XCTAssertEqual(compactPortrait.sidebarWidth, 280, accuracy: 0.001)

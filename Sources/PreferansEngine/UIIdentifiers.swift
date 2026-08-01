@@ -198,6 +198,10 @@ public enum UIIdentifiers {
     /// than only mutating state.
     public static let actionBanner             = "action.banner"
     public static let botInsightBanner         = "bot.insight.banner"
+    /// Passive bottom-lane status used on regular-width tables. Compact
+    /// phones omit it when there are no controls because the header and hand
+    /// rail already identify the current actor.
+    public static let actionBarPassiveStatus   = "actionBar.passiveStatus"
     /// Tap-to-advance overlay shown on the felt while the table is paused
     /// between card-play beats. Tests can target this to confirm the
     /// gate is up; tapping it resumes the table.

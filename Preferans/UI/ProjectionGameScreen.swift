@@ -347,7 +347,10 @@ public struct ProjectionGameScreen<Menu: View>: View {
         if shouldShowCenterDealCTA { return false }
         if isTalonTakePending { return false }
         if case .gameOver = projection.phase { return false }
-        return true
+        return ActionBarLayoutPolicy.shouldShow(
+            legal: projection.legal,
+            horizontalSizeClass: horizontalSizeClass
+        )
     }
 
     /// Hand rail visibility. The rail is purely decorative when the viewer
@@ -675,5 +678,27 @@ public struct ProjectionGameScreen<Menu: View>: View {
         if !visiblePlayable.contains(selectedPlayCard) {
             self.selectedPlayCard = nil
         }
+    }
+}
+
+/// Compact tables already name the current actor in the header and mark the
+/// viewer's hand when it is playable. Keep the bottom surface only when it
+/// contains a real control; regular-width tables retain the persistent status
+/// lane because it does not compete with the play area for vertical space.
+enum ActionBarLayoutPolicy {
+    static func shouldShow(
+        legal: LegalActionProjection,
+        horizontalSizeClass: UserInterfaceSizeClass?
+    ) -> Bool {
+        guard horizontalSizeClass == .compact else { return true }
+        return !legal.bidCalls.isEmpty
+            || !legal.contractOptions.isEmpty
+            || !legal.whistCalls.isEmpty
+            || !legal.defenderModes.isEmpty
+            || legal.canDiscard
+            || !legal.settlementOptions.isEmpty
+            || legal.pendingSettlement != nil
+            || legal.canAcceptSettlement
+            || legal.canRejectSettlement
     }
 }

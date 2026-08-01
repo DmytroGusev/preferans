@@ -103,6 +103,20 @@ final class PreferansUITests: XCTestCase {
         }
 
         robot.waitForPhase("Play")
+        let passiveStatus = app.descendants(matching: .any)
+            .matching(identifier: UIIdentifiers.actionBarPassiveStatus)
+            .firstMatch
+        if app.windows.firstMatch.frame.width >= 700 {
+            XCTAssertTrue(
+                passiveStatus.waitForExistence(timeout: 1),
+                "iPad should retain the persistent passive play-status lane"
+            )
+        } else {
+            XCTAssertFalse(
+                passiveStatus.exists,
+                "iPhone should not repeat passive play status below the hand"
+            )
+        }
     }
 
     func testFourPlayerRaspasyShowsDealerLeadWithoutRevealingNextTalonCard() {

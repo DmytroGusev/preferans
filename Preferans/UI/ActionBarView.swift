@@ -394,6 +394,8 @@ public struct ActionBarView: View {
                     .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.actionBarPassiveStatus)
         }
     }
 
