@@ -176,6 +176,8 @@ public enum UIIdentifiers {
     public static func onlineSeatKindPicker(index: Int) -> String { "online.seatKind.\(index)" }
     // Online waiting room (pre-first-deal).
     public static let screenWaitingRoom        = "screen.waitingRoom"
+    public static let waitingRoomInviteRegion  = "waitingRoom.region.invite"
+    public static let waitingRoomRosterRegion  = "waitingRoom.region.roster"
     public static func waitingRoomSeat(index: Int) -> String { "waitingRoom.seat.\(index)" }
     public static func waitingRoomSeatOccupancy(index: Int) -> String { "waitingRoom.seat.\(index).occupancy" }
     public static let onlineStartGame          = "online.startGame"

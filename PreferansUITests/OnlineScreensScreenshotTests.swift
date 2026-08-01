@@ -146,6 +146,70 @@ final class OnlineScreensScreenshotTests: XCTestCase {
         field.typeText(text)
     }
 
+    /// Default iPad uses a real invite/roster split; iPhone and Accessibility
+    /// text use a readable single-column flow. Geometry assertions keep the
+    /// device distinction and its large-text fallback from silently regressing.
+    func testCaptureWaitingRoomDeviceLayouts() {
+        let output = screenDir("screens-waiting-room-layout")
+        try? FileManager.default.removeItem(at: output)
+
+        let defaultApp = XCUIApplication()
+        defaultApp.disableUITestAnimations()
+        defaultApp.launchArguments += [UITestFlags.autoCreateInMemoryRoom]
+        defaultApp.launch()
+        let defaultRecorder = MatchScreenshotRecorder(
+            testCase: self,
+            app: defaultApp,
+            outputDirectory: output,
+            filePrefix: "waiting-room"
+        )
+
+        let defaultInvite = defaultApp.descendants(matching: .any)[UIIdentifiers.waitingRoomInviteRegion]
+        let defaultRoster = defaultApp.descendants(matching: .any)[UIIdentifiers.waitingRoomRosterRegion]
+        XCTAssertTrue(defaultInvite.waitForExistence(timeout: 5))
+        XCTAssertTrue(defaultRoster.waitForExistence(timeout: 2))
+        if defaultApp.windows.firstMatch.frame.width >= 700 {
+            XCTAssertLessThan(defaultInvite.frame.maxX, defaultRoster.frame.minX)
+        } else {
+            XCTAssertLessThan(defaultInvite.frame.maxY, defaultRoster.frame.minY)
+        }
+        defaultRecorder.capture(name: "default", force: true, attach: false)
+        defaultApp.terminate()
+
+        let accessibilityApp = XCUIApplication()
+        accessibilityApp.disableUITestAnimations()
+        accessibilityApp.launchArguments += [
+            UITestFlags.autoCreateInMemoryRoom,
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        accessibilityApp.launch()
+        let accessibilityRecorder = MatchScreenshotRecorder(
+            testCase: self,
+            app: accessibilityApp,
+            outputDirectory: output,
+            filePrefix: "waiting-room"
+        )
+
+        let accessibleInvite = accessibilityApp.descendants(matching: .any)[UIIdentifiers.waitingRoomInviteRegion]
+        let accessibleRoster = accessibilityApp.descendants(matching: .any)[UIIdentifiers.waitingRoomRosterRegion]
+        let accessibleCode = accessibilityApp.staticTexts[UIIdentifiers.onlineRoomCode]
+        XCTAssertTrue(accessibleInvite.waitForExistence(timeout: 5))
+        XCTAssertTrue(accessibleRoster.waitForExistence(timeout: 2))
+        XCTAssertTrue(accessibleCode.waitForExistence(timeout: 2))
+        XCTAssertLessThan(
+            accessibleInvite.frame.maxY,
+            accessibleRoster.frame.minY,
+            "Accessibility text should stack invite and roster regions on every device"
+        )
+        XCTAssertLessThan(
+            accessibleCode.frame.height,
+            accessibleCode.frame.width,
+            "The room code should remain on one readable line at Accessibility sizes"
+        )
+        accessibilityRecorder.capture(name: "accessibility-xxxl", force: true, attach: false)
+    }
+
     /// Waiting room (all-bot in-memory room), its leave-confirmation dialog,
     /// and the live table once the host starts.
     func testCaptureWaitingRoomAndLiveTable() {

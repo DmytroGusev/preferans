@@ -4,6 +4,15 @@ import PreferansEngine
 import UIKit
 #endif
 
+struct OnlineWaitingRoomLayoutPolicy: Equatable {
+    var isRegularWidth: Bool
+    var usesAccessibilityText: Bool
+
+    var usesTwoRegionComposition: Bool {
+        isRegularWidth && !usesAccessibilityText
+    }
+}
+
 /// Pre-first-deal lobby for an online table. Replaces the old behavior of
 /// dropping the host straight onto a bare felt with a "Deal" button: here the
 /// host sees who's joined, shares the invite up front, and starts only once
@@ -11,6 +20,10 @@ import UIKit
 /// "waiting for the host" caption. Once the host starts (sequence ≥ 1) the
 /// parent swaps this for the live table.
 public struct OnlineWaitingRoomView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .title3) private var seatIconWidth: CGFloat = 24
+
     @ObservedObject public var coordinator: RoomOnlineGameCoordinator
     public var roomCode: String
     public var inviteURL: URL?
@@ -37,25 +50,17 @@ public struct OnlineWaitingRoomView: View {
         ScrollView {
             VStack(spacing: 18) {
                 header
-                invitePanel
-                seatList
-                if coordinator.isHost {
-                    hostControls
-                } else {
-                    waitingCaption
-                }
-                if let error = coordinator.errorText {
-                    Text(error)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(TableTheme.errorInk)
-                        .multilineTextAlignment(.center)
-                        .accessibilityIdentifier(UIIdentifiers.errorBanner)
+                adaptiveRoomLayout {
+                    inviteRegion
+                        .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 380 : .infinity)
+                    rosterRegion
+                        .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 620 : .infinity)
                 }
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 18)
+            .padding(.horizontal, layoutPolicy.isRegularWidth ? 36 : 18)
+            .padding(.top, layoutPolicy.isRegularWidth ? 36 : 18)
             .padding(.bottom, 24)
-            .frame(maxWidth: 560)
+            .frame(maxWidth: layoutPolicy.usesTwoRegionComposition ? 1_040 : (layoutPolicy.isRegularWidth ? 700 : 560))
             .frame(maxWidth: .infinity)
         }
         .scrollIndicators(.hidden)
@@ -77,6 +82,47 @@ public struct OnlineWaitingRoomView: View {
             // button — re-enable the controls so they can retry.
             if newValue != nil { isStarting = false }
         }
+    }
+
+    private var layoutPolicy: OnlineWaitingRoomLayoutPolicy {
+        OnlineWaitingRoomLayoutPolicy(
+            isRegularWidth: horizontalSizeClass == .regular,
+            usesAccessibilityText: dynamicTypeSize.isAccessibilitySize
+        )
+    }
+
+    private var adaptiveRoomLayout: AnyLayout {
+        if layoutPolicy.usesTwoRegionComposition {
+            AnyLayout(HStackLayout(alignment: .top, spacing: 32))
+        } else {
+            AnyLayout(VStackLayout(spacing: 18))
+        }
+    }
+
+    private var inviteRegion: some View {
+        invitePanel
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(UIIdentifiers.waitingRoomInviteRegion)
+    }
+
+    private var rosterRegion: some View {
+        VStack(spacing: 18) {
+            seatList
+            if coordinator.isHost {
+                hostControls
+            } else {
+                waitingCaption
+            }
+            if let error = coordinator.errorText {
+                Text(error)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(TableTheme.errorInk)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(UIIdentifiers.errorBanner)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(UIIdentifiers.waitingRoomRosterRegion)
     }
 
     // MARK: - Header
@@ -132,29 +178,7 @@ public struct OnlineWaitingRoomView: View {
                     withAnimation(.easeIn(duration: 0.3)) { didCopyCode = false }
                 }
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "number")
-                        .foregroundStyle(TableTheme.goldBright)
-                    Text(verbatim: roomCode)
-                        .font(.title2.bold().monospaced())
-                        .foregroundStyle(TableTheme.inkCream)
-                        .accessibilityLabel("Room code")
-                        .accessibilityValue(roomCode)
-                        .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
-                    if didCopyCode {
-                        Label("Copied", systemImage: "checkmark")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(TableTheme.feltDeep)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(TableTheme.goldBright, in: Capsule())
-                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
-                    } else {
-                        Image(systemName: "doc.on.doc")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(TableTheme.inkCreamSoft)
-                    }
-                }
+                inviteCodeLabel
             }
             .buttonStyle(.plain)
             .accessibilityHint("Copies the room code")
@@ -197,6 +221,56 @@ public struct OnlineWaitingRoomView: View {
         )
     }
 
+    @ViewBuilder
+    private var inviteCodeLabel: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 8) {
+                Text(verbatim: roomCode)
+                    .font(.title2.bold().monospaced())
+                    .foregroundStyle(TableTheme.inkCream)
+                    .accessibilityLabel("Room code")
+                    .accessibilityValue(roomCode)
+                    .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
+                if didCopyCode {
+                    Label("Copied", systemImage: "checkmark")
+                        .foregroundStyle(TableTheme.feltDeep)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(TableTheme.goldBright, in: Capsule())
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                } else {
+                    Label("Copy code", systemImage: "doc.on.doc")
+                        .foregroundStyle(TableTheme.goldBright)
+                }
+            }
+            .font(.headline.weight(.semibold))
+        } else {
+            HStack(spacing: 8) {
+                Image(systemName: "number")
+                    .foregroundStyle(TableTheme.goldBright)
+                Text(verbatim: roomCode)
+                    .font(.title2.bold().monospaced())
+                    .foregroundStyle(TableTheme.inkCream)
+                    .accessibilityLabel("Room code")
+                    .accessibilityValue(roomCode)
+                    .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
+                if didCopyCode {
+                    Label("Copied", systemImage: "checkmark")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(TableTheme.feltDeep)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(TableTheme.goldBright, in: Capsule())
+                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                } else {
+                    Image(systemName: "doc.on.doc")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(TableTheme.inkCreamSoft)
+                }
+            }
+        }
+    }
+
     // MARK: - Seats
 
     private var seatList: some View {
@@ -214,7 +288,7 @@ public struct OnlineWaitingRoomView: View {
             Image(systemName: info.icon)
                 .foregroundStyle(info.iconColor)
                 .font(.title3)
-                .frame(width: 24)
+                .frame(width: seatIconWidth)
             info.title
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(info.isOpen ? TableTheme.inkCreamSoft : TableTheme.inkCream)
