@@ -144,7 +144,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     .layoutPriority(1)
             }
             if shouldShowActionBar {
-                ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                actionBar
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -172,7 +172,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     landscapeTablePlayArea
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if shouldShowActionBar {
-                        ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                        actionBar
                     }
                     if shouldShowHandRail {
                         viewerHandFan
@@ -301,7 +301,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                             .padding(.top, 4)
                     }
                     if shouldShowActionBar {
-                        ActionBarView(projection: projection, selectedDiscard: selectedDiscard, onSend: onSend)
+                        actionBar
                     }
                 }
                 .frame(width: split.tableWidth)
@@ -349,7 +349,18 @@ public struct ProjectionGameScreen<Menu: View>: View {
         if case .gameOver = projection.phase { return false }
         return ActionBarLayoutPolicy.shouldShow(
             legal: projection.legal,
+            hasSelectedPlayCard: selectedPlayCard != nil,
             horizontalSizeClass: horizontalSizeClass
+        )
+    }
+
+    private var actionBar: some View {
+        ActionBarView(
+            projection: projection,
+            selectedDiscard: selectedDiscard,
+            selectedPlayCard: selectedPlayCard,
+            onSend: onSend,
+            onPlaySelected: playSelectedCard
         )
     }
 
@@ -672,6 +683,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
         onSend(.playCard(player: owner, card: card))
     }
 
+    private func playSelectedCard() {
+        guard let selectedPlayCard else { return }
+        playCard(selectedPlayCard, from: playableOwner)
+    }
+
     private func reconcilePlaySelection() {
         guard let selectedPlayCard else { return }
         let visiblePlayable = Set(projection.legal.playableCards)
@@ -688,10 +704,12 @@ public struct ProjectionGameScreen<Menu: View>: View {
 enum ActionBarLayoutPolicy {
     static func shouldShow(
         legal: LegalActionProjection,
+        hasSelectedPlayCard: Bool = false,
         horizontalSizeClass: UserInterfaceSizeClass?
     ) -> Bool {
         guard horizontalSizeClass == .compact else { return true }
-        return !legal.bidCalls.isEmpty
+        return hasSelectedPlayCard
+            || !legal.bidCalls.isEmpty
             || !legal.contractOptions.isEmpty
             || !legal.whistCalls.isEmpty
             || !legal.defenderModes.isEmpty

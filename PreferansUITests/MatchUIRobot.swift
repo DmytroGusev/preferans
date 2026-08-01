@@ -133,6 +133,23 @@ final class MatchUIRobot {
         return false
     }
 
+    /// Selects one playable card without committing it. Returns the card's
+    /// stable identifier so a caller can prove it stays in hand until the
+    /// explicit Play action is pressed.
+    @discardableResult
+    func selectFirstPlayableHandCard() -> String? {
+        let playable = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier CONTAINS %@ AND value == %@", ".hand.", "Playable")
+        )
+        for card in playable.allElementsBoundByIndex {
+            guard let coordinate = cardTapCoordinate(card) else { continue }
+            let identifier = card.identifier
+            coordinate.tap()
+            return identifier
+        }
+        return nil
+    }
+
     // MARK: - Reading state
 
     /// Current phase title (e.g. "Bidding", "Prikup", "Game over").

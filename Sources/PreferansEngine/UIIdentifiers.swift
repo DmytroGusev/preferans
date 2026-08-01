@@ -251,6 +251,7 @@ public enum UIIdentifiers {
 
     public static let buttonStartDeal          = "button.startDeal"
     public static let buttonDiscardSelected    = "button.discardSelected"
+    public static let buttonPlaySelectedCard   = "button.playSelectedCard"
     public static let buttonLastTrick          = "button.lastTrick"
     public static let buttonScoreSheet         = "button.scoreSheet"
     public static let buttonDismissSheet       = "button.dismissSheet"

@@ -7,7 +7,9 @@ import PreferansEngine
 public struct ActionBarView: View {
     public var projection: PlayerGameProjection
     public var selectedDiscard: Set<Card>
+    public var selectedPlayCard: Card?
     public var onSend: (PreferansAction) -> Void
+    public var onPlaySelected: (() -> Void)?
 
     /// True while the proposer has the tug-of-war settlement composer open.
     /// Local view state — opening it doesn't touch the engine until an offer
@@ -21,11 +23,15 @@ public struct ActionBarView: View {
     public init(
         projection: PlayerGameProjection,
         selectedDiscard: Set<Card>,
-        onSend: @escaping (PreferansAction) -> Void
+        selectedPlayCard: Card? = nil,
+        onSend: @escaping (PreferansAction) -> Void,
+        onPlaySelected: (() -> Void)? = nil
     ) {
         self.projection = projection
         self.selectedDiscard = selectedDiscard
+        self.selectedPlayCard = selectedPlayCard
         self.onSend = onSend
+        self.onPlaySelected = onPlaySelected
     }
 
     public var body: some View {
@@ -360,7 +366,22 @@ public struct ActionBarView: View {
             .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
         } else {
             HStack(spacing: 8) {
-                if !projection.legal.playableCards.isEmpty {
+                if let selectedPlayCard {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(TableTheme.goldBright)
+                    HStack(spacing: 2) {
+                        Text("Selected")
+                        Text(selectedPlayCard.rank.symbol)
+                            .fontWeight(.bold)
+                        Text(selectedPlayCard.suit.symbol)
+                            .fontWeight(.bold)
+                            .foregroundStyle(selectedPlayCard.suit.color(on: .felt))
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(TableTheme.inkCream)
+                    .lineLimit(1)
+                } else if !projection.legal.playableCards.isEmpty {
                     // The viewer is on lead: say what to do instead of
                     // repeating the header's "Trick N: <name>" line.
                     Image(systemName: "hand.tap.fill")
@@ -392,6 +413,16 @@ public struct ActionBarView: View {
                     }
                     .buttonStyle(.feltSecondary)
                     .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
+                }
+                if selectedPlayCard != nil, let onPlaySelected {
+                    Button {
+                        onPlaySelected()
+                    } label: {
+                        Label("Play card", systemImage: "arrow.up.circle.fill")
+                            .font(.subheadline.weight(.bold))
+                    }
+                    .buttonStyle(.feltPrimary)
+                    .accessibilityIdentifier(UIIdentifiers.buttonPlaySelectedCard)
                 }
             }
             .accessibilityElement(children: .contain)

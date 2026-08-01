@@ -3881,6 +3881,54 @@
         }
       }
     },
+    "Play card": {
+      "comment": "Button that commits the card currently selected in the player's hand.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сыграть"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зіграти"
+          }
+        }
+      }
+    },
+    "Selected": {
+      "comment": "Label preceding the rank and suit of a selected card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selected"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбрано"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вибрано"
+          }
+        }
+      }
+    },
     "Preferans": {
       "comment": "App title (proper noun).",
       "extractionState": "manual",

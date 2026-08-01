@@ -22,6 +22,20 @@ final class TableLayoutModelTests: XCTestCase {
         )
     }
 
+    func testCompactActionBarAppearsAfterSelectingAPlayableCard() {
+        let legal = LegalActionProjection(
+            playableCards: [Card(.spades, .ace)]
+        )
+
+        XCTAssertTrue(
+            ActionBarLayoutPolicy.shouldShow(
+                legal: legal,
+                hasSelectedPlayCard: true,
+                horizontalSizeClass: .compact
+            )
+        )
+    }
+
     func testCompactActionBarKeepsEveryDedicatedControlSurface() {
         let controlStates = [
             LegalActionProjection(bidCalls: [.pass]),

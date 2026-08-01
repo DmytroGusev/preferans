@@ -119,6 +119,43 @@ final class PreferansUITests: XCTestCase {
         }
     }
 
+    func testSingleTapOffersExplicitPlayConfirmation() throws {
+        let app = launchedApp(extraArguments: manualThreePlayerHarness())
+        let robot = MatchUIRobot(app: app)
+
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
+        for _ in 0..<3 {
+            robot.bid(.pass)
+        }
+        robot.waitForPhase("Play")
+
+        let selectedIdentifier = try XCTUnwrap(robot.selectFirstPlayableHandCard())
+        let selectedCard = app.descendants(matching: .any)
+            .matching(identifier: selectedIdentifier)
+            .firstMatch
+        let play = app.buttons[UIIdentifiers.buttonPlaySelectedCard]
+
+        XCTAssertTrue(
+            play.waitForExistence(timeout: 2) && play.isHittable,
+            "A single card tap should expose an explicit Play action."
+        )
+        XCTAssertTrue(selectedCard.exists, "Selecting must not commit an irreversible play.")
+
+        play.tap()
+
+        let cardLeavesHand = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: selectedCard
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [cardLeavesHand], timeout: 2),
+            .completed,
+            "The explicit Play action should commit the selected card."
+        )
+    }
+
     func testFourPlayerRaspasyShowsDealerLeadWithoutRevealingNextTalonCard() {
         let app = launchedApp(
             extraArguments: manualFourPlayerHarness(),
