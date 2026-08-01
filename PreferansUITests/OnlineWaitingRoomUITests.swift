@@ -95,6 +95,7 @@ final class OnlineWaitingRoomUITests: XCTestCase {
         app.launchArguments += [
             UITestFlags.autoCreateInMemoryRoom,
             UITestFlags.onlineFlowLogging,
+            UITestFlags.dealScenario, "northBidsSpadesSix",
         ]
         app.launch()
         let robot = MatchUIRobot(app: app)

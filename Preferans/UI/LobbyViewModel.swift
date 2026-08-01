@@ -225,7 +225,18 @@ public final class LobbyViewModel: ObservableObject {
                 rejectOnlineOperation(String(localized: "Enter your name to play online."))
                 return
             }
-            let players = OnlineSeatSlot.canonicalPlayerIDs(count: 3)
+            let defaultPlayers = OnlineSeatSlot.canonicalPlayerIDs(count: 3)
+            let arguments = ProcessInfo.processInfo.arguments
+            let configuration = TestHarness.resolveConfiguration(
+                from: arguments,
+                defaults: TestHarness.Defaults(
+                    players: defaultPlayers,
+                    firstDealer: defaultPlayers.last,
+                    rules: onlineVariant.rules,
+                    match: selectedMatchSettings(playerCount: defaultPlayers.count)
+                )
+            )
+            let players = configuration.players
             let localPlayer = players[0]
             let account = normalizedOnlineAccount(for: localPlayer)
             let peers = players.enumerated().map { index, player -> OnlinePeer in
@@ -263,7 +274,7 @@ public final class LobbyViewModel: ObservableObject {
                 localPlayerID: localPlayer,
                 hostPlayerID: peers.first?.playerID,
                 automatedPlayerIDs: automatedPlayers,
-                dealSource: RandomDealSource(),
+                dealSource: configuration.dealSource,
                 botDelay: onlineBotMoveDelay,
                 runsServerSideBots: true
             )
@@ -271,8 +282,8 @@ public final class LobbyViewModel: ObservableObject {
                 guard let self else { return }
                 do {
                     try await session.start(
-                        rules: self.onlineVariant.rules,
-                        match: self.selectedMatchSettings(playerCount: players.count)
+                        rules: configuration.rules,
+                        match: configuration.match
                     )
                     onlineSession = session
                     errorText = nil

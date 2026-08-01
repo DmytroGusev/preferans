@@ -7189,6 +7189,30 @@
         }
       }
     },
+    "A joined player must reconnect before the host can start.": {
+      "comment": "Online waiting-room readiness message shown when a claimed human seat has lost its socket.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A joined player must reconnect before the host can start."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Подключившемуся игроку нужно переподключиться, прежде чем ведущий сможет начать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гравцеві, який приєднався, потрібно перепідключитися, перш ніж ведучий зможе почати."
+          }
+        }
+      }
+    },
     "Start is available once every seat is filled — invite a friend or fill the empty seats with bots.": {
       "comment": "Online waiting-room validation message shown when open invite seats block starting the game.",
       "extractionState": "manual",

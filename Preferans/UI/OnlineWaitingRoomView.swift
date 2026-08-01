@@ -24,7 +24,7 @@ struct OnlineWaitingRoomLayoutPolicy: Equatable {
 /// Pre-first-deal lobby for an online table. Replaces the old behavior of
 /// dropping the host straight onto a bare felt with a "Deal" button: here the
 /// host sees who's joined, shares the invite up front, and starts only once
-/// every seat is filled by a human or a bot. Guests see the same roster and a
+/// every human seat is connected (or replaced by a bot). Guests see the same roster and a
 /// "waiting for the host" caption. Once the host starts (sequence ≥ 1) the
 /// parent swaps this for the live table.
 public struct OnlineWaitingRoomView: View {
@@ -387,7 +387,13 @@ public struct OnlineWaitingRoomView: View {
             }
 
             if !coordinator.canHostStart {
-                Text("Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
+                Group {
+                    if coordinator.hasDisconnectedHumanSeat {
+                        Text("A joined player must reconnect before the host can start.")
+                    } else {
+                        Text("Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
+                    }
+                }
                     .font(.caption2)
                     .foregroundStyle(TableTheme.inkCreamDim)
                     .multilineTextAlignment(.center)

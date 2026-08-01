@@ -1390,7 +1390,7 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
     }
 
     private func makeFixture(
-        trickResultHoldDuration: Duration = .milliseconds(1_400)
+        trickResultHoldDuration: Duration = .milliseconds(2_400)
     ) async throws -> RoomFixture {
         let room = InMemoryRoom(peers: peers, hostPlayerID: "north")
         let transports = try Dictionary(uniqueKeysWithValues: peers.map { peer in

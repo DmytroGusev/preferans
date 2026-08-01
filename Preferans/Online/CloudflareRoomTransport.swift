@@ -141,6 +141,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     public let localPeer: OnlinePeer
 
     @Published public private(set) var participants: [OnlinePeer]
+    @Published public private(set) var connectedPlayerIDs: Set<PlayerID>
     @Published public private(set) var hostPlayerID: PlayerID
     @Published public private(set) var hostEpoch: Int
     @Published public private(set) var lastError: String?
@@ -193,6 +194,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.roomCode = summary.roomCode
         self.localPeer = localPeer
         self.participants = summary.peers
+        self.connectedPlayerIDs = [localPeer.playerID]
         self.hostPlayerID = summary.hostPlayerID
         self.hostEpoch = summary.hostEpoch
         self.socketURL = socketURL
@@ -608,6 +610,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                room.relaySequence >= lastRelaySequence {
                 lastRelaySequence = room.relaySequence
                 participants = room.peers
+                adoptConnectedPlayerIDs(envelope.connectedPlayerIDs, validPeers: room.peers)
                 hostPlayerID = room.hostPlayerID
                 hostEpoch = room.hostEpoch
                 emitParticipants()
@@ -621,6 +624,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                room.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
                room.hostEpoch >= hostEpoch {
                 participants = room.peers
+                adoptConnectedPlayerIDs(envelope.connectedPlayerIDs, validPeers: room.peers)
                 hostPlayerID = room.hostPlayerID
                 hostEpoch = room.hostEpoch
                 emitParticipants()
@@ -650,6 +654,21 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         for continuation in connectionEventContinuations.values {
             continuation.yield(event)
         }
+    }
+
+    private func adoptConnectedPlayerIDs(
+        _ ids: [PlayerID]?,
+        validPeers: [OnlinePeer]
+    ) {
+        guard let ids else {
+            // An absent list is an older/malformed presence frame. Keep only
+            // this device eligible so Start fails closed until a current
+            // server-authoritative list arrives.
+            connectedPlayerIDs = [localPeer.playerID]
+            return
+        }
+        let validIDs = Set(validPeers.map(\.playerID))
+        connectedPlayerIDs = Set(ids).intersection(validIDs)
     }
 
     private static func postRoomRequest<Request: Encodable>(
@@ -767,6 +786,7 @@ private struct ClientSocketEnvelope: Encodable {
 private struct ServerSocketEnvelope: Decodable {
     var type: SocketEnvelopeType
     var room: CloudflareRoomSummary?
+    var connectedPlayerIDs: [PlayerID]?
     var sender: OnlinePeer?
     var message: GameWireMessage?
     var error: String?

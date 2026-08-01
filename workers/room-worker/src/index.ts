@@ -28,7 +28,8 @@ import {
   recordRelay,
   removeAccountFromRoom,
   routeRecipients,
-  humanPeers
+  humanPeers,
+  wirePlayerID
 } from "./room-state";
 import {
   type GameSummaryEntry,
@@ -486,7 +487,11 @@ export class PreferansRoomV2 {
     });
     this.closeOtherSocketsForSeat(playerID, server);
     const activeRoom = await this.reconcileHost(room);
-    server.send(JSON.stringify({ type: "room", room: publicRoom(activeRoom) }));
+    server.send(JSON.stringify({
+      type: "room",
+      room: publicRoom(activeRoom),
+      connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
+    }));
     await this.broadcastPresence(activeRoom);
 
     return new Response(null, {
@@ -590,7 +595,11 @@ export class PreferansRoomV2 {
   }
 
   async broadcastPresence(room: RoomState): Promise<void> {
-    const message = JSON.stringify({ type: "presence", room: publicRoom(room) });
+    const message = JSON.stringify({
+      type: "presence",
+      room: publicRoom(room),
+      connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
+    });
     for (const socket of this.ctx.getWebSockets()) {
       try {
         socket.send(message);

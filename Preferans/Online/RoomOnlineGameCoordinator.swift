@@ -35,6 +35,11 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// True when every seat is filled by a human or a bot — i.e. the host may
     /// start the first deal. False while any `pending:` seat is still open.
     @Published public private(set) var canHostStart: Bool = false
+    /// True when a claimed human seat is present in the roster but currently
+    /// has no live socket. The waiting room uses this to explain why Start is
+    /// disabled instead of telling the host to invite someone who already
+    /// joined.
+    @Published public private(set) var hasDisconnectedHumanSeat: Bool = false
 
     private var lastSummaryFrame: RoomInboundMessagePolicy.FrameID?
     private var lastEventFrame: RoomInboundMessagePolicy.FrameID?
@@ -62,7 +67,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private let botMoveScheduler: RoomBotMoveScheduler
     /// Local presentation hold after a trick closes in online play. The host
     /// still publishes immediately; each client keeps the completed trick on
-    /// screen briefly so humans can read who won before the next state appears.
+    /// screen long enough for a render cycle even when several fast bot moves
+    /// arrive back-to-back, so humans can read who won before the next state.
     private let trickResultHoldDuration: Duration
     /// When false, this coordinator never runs the server-side bot loop. The
     /// in-memory demo/test room sets this off because it drives its bots through
@@ -80,7 +86,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         dealSource: DealSource = RandomDealSource(),
         heartbeat: HeartbeatConfig = .default,
         botMoveDelay: Duration = BotPacing.interactive,
-        trickResultHoldDuration: Duration = .milliseconds(1_400),
+        trickResultHoldDuration: Duration = .milliseconds(2_400),
         durabilityRetryInitialDelay: Duration = .milliseconds(500),
         hostRecoveryRetryInitialDelay: Duration = .milliseconds(250),
         hostRecoveryRetryMaximumDelay: Duration = .seconds(4),
@@ -224,6 +230,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         roster.reset()
         rosterSeats = []
         canHostStart = false
+        hasDisconnectedHumanSeat = false
         return generation
     }
 
@@ -391,7 +398,13 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     private func recomputeRoster() {
         let seats = roster.waitingRoomSeats(localSeat: localSeat)
         if rosterSeats != seats { rosterSeats = seats }
-        if canHostStart != roster.isReadyToStart { canHostStart = roster.isReadyToStart }
+        let connectedPlayerIDs = transport?.connectedPlayerIDs ?? []
+        let isReady = roster.isReadyToStart(connectedPlayerIDs: connectedPlayerIDs)
+        let hasDisconnectedHuman = roster.hasDisconnectedHuman(connectedPlayerIDs: connectedPlayerIDs)
+        if canHostStart != isReady { canHostStart = isReady }
+        if hasDisconnectedHumanSeat != hasDisconnectedHuman {
+            hasDisconnectedHumanSeat = hasDisconnectedHuman
+        }
     }
 
     // MARK: - Server-side bots
@@ -1252,7 +1265,9 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     private func allExpectedOnlinePlayersConnected() -> Bool {
-        roster.isReadyToStart
+        roster.isReadyToStart(
+            connectedPlayerIDs: transport?.connectedPlayerIDs ?? []
+        )
     }
 
     private func logOnlineFlowProjection(_ projection: PlayerGameProjection, source: String) {

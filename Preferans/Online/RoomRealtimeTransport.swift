@@ -116,6 +116,10 @@ public struct OnlineResumeContext: Sendable {
 public protocol RoomRealtimeTransport: AnyObject {
     var localPeer: OnlinePeer { get }
     var participants: [OnlinePeer] { get }
+    /// Seats with a live room socket. Bots are intentionally absent because
+    /// the host drives them in-process; local transports default to treating
+    /// every modeled peer as connected.
+    var connectedPlayerIDs: Set<PlayerID> { get }
 
     func chooseHost() async -> OnlinePeer?
     func messages() -> AsyncStream<ReceivedRoomMessage>
@@ -150,6 +154,10 @@ public protocol RoomRealtimeTransport: AnyObject {
 }
 
 public extension RoomRealtimeTransport {
+    var connectedPlayerIDs: Set<PlayerID> {
+        Set(participants.map(\.playerID))
+    }
+
     /// Default: no server-pushed presence, so the roster is fixed at attach time.
     func participantUpdates() -> AsyncStream<[OnlinePeer]> {
         AsyncStream { $0.finish() }

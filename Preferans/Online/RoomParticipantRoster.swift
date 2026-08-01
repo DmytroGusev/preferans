@@ -155,6 +155,27 @@ struct RoomParticipantRoster {
         }
     }
 
+    /// A claimed human seat is not enough to start a live table: the host must
+    /// also know that the seat currently has a socket. Bot seats are driven by
+    /// the host and therefore count as connected without appearing in the
+    /// transport's live-seat set.
+    func isReadyToStart(connectedPlayerIDs: Set<PlayerID>) -> Bool {
+        guard isReadyToStart else { return false }
+        return seats.allSatisfy { identity in
+            guard let peer = peersBySeat[identity.playerID] else { return false }
+            return peer.isBotSeat || connectedPlayerIDs.contains(identity.playerID)
+        }
+    }
+
+    func hasDisconnectedHuman(connectedPlayerIDs: Set<PlayerID>) -> Bool {
+        seats.contains { identity in
+            guard let peer = peersBySeat[identity.playerID],
+                  !peer.isPendingSeat,
+                  !peer.isBotSeat else { return false }
+            return !connectedPlayerIDs.contains(identity.playerID)
+        }
+    }
+
     private static func shouldReplace(_ existing: OnlinePeer?, with candidate: OnlinePeer) -> Bool {
         guard let existing else { return true }
         if existing.isPendingSeat { return true }

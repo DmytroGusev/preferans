@@ -174,6 +174,34 @@ final class OnlineBotSeatTests: XCTestCase {
         XCTAssertTrue(candidate.peer(for: "east")?.isBotSeat == true)
     }
 
+    func testRosterStartReadinessRequiresConnectedHumansButAllowsBots() {
+        let host = OnlinePeer(
+            playerID: "north",
+            accountID: "apple:host",
+            provider: .apple,
+            displayName: "Host"
+        )
+        let guest = OnlinePeer(
+            playerID: "east",
+            accountID: "apple:guest",
+            provider: .apple,
+            displayName: "Guest"
+        )
+        let bot = OnlinePeer(
+            playerID: "south",
+            accountID: "bot:south",
+            provider: .dev,
+            displayName: "Bot 3"
+        )
+        let roster = RoomParticipantRoster(participants: [host, guest, bot])
+
+        XCTAssertTrue(roster.isReadyToStart)
+        XCTAssertFalse(roster.isReadyToStart(connectedPlayerIDs: [host.playerID]))
+        XCTAssertTrue(roster.isReadyToStart(connectedPlayerIDs: [host.playerID, guest.playerID]))
+        XCTAssertTrue(roster.hasDisconnectedHuman(connectedPlayerIDs: [host.playerID]))
+        XCTAssertFalse(roster.hasDisconnectedHuman(connectedPlayerIDs: [host.playerID, guest.playerID]))
+    }
+
     // MARK: - HostGameActor bot decision plan
 
     func testHostActorReportsBotPlanOnlyForBotControlledSeats() async throws {
