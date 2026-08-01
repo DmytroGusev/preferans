@@ -34,9 +34,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     private var transport: (any RoomRealtimeTransport)?
     private var hostActor: HostGameActor?
-    private var listenTask: Task<Void, Never>?
-    private var participantsTask: Task<Void, Never>?
-    private var transportEventsTask: Task<Void, Never>?
+    private let transportSubscriptions = RoomTransportSubscriptions()
     private var hostRecoveryTask: Task<Void, Never>?
     private var durabilityRetryTask: Task<Void, Never>?
     private var durabilityBarrier: RoomDurabilityBarrier<HostUpdate>
@@ -100,9 +98,6 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     }
 
     deinit {
-        listenTask?.cancel()
-        participantsTask?.cancel()
-        transportEventsTask?.cancel()
         hostRecoveryTask?.cancel()
         durabilityRetryTask?.cancel()
         heartbeatTask?.cancel()
@@ -139,8 +134,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.transportStatus = .connecting
         self.didAutoStartOnlineDeal = false
         self.transport = transport
-        self.transportEventsTask = observeConnectionEvents(of: transport)
-        self.listenTask = listen(to: transport)
+        observeConnectionEvents(of: transport)
+        listen(to: transport)
 
         let participants = RoomParticipantRoster.ordered(transport.participants)
         self.roster = RoomParticipantRoster(participants: participants)
@@ -178,7 +173,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         // Subscribe after the initial authority decision. The transport replays
         // its latest room state, so a migration that raced attach is still
         // observed without letting the replay compete with initial setup.
-        self.participantsTask = observeParticipants(of: transport)
+        observeParticipants(of: transport)
     }
 
     public func detach() {
@@ -193,12 +188,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// that completion must already be stale when it reaches the coordinator.
     @discardableResult
     private func resetAttachment(disconnectCurrentTransport: Bool) -> UInt64 {
-        listenTask?.cancel()
-        listenTask = nil
-        participantsTask?.cancel()
-        participantsTask = nil
-        transportEventsTask?.cancel()
-        transportEventsTask = nil
+        transportSubscriptions.cancelAll()
         hostRecoveryTask?.cancel()
         hostRecoveryTask = nil
         durabilityRetryTask?.cancel()
@@ -561,12 +551,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         }
     }
 
-    private func listen(to transport: any RoomRealtimeTransport) -> Task<Void, Never> {
-        Task { [weak self] in
-            let stream = transport.messages()
-            for await received in stream {
-                await self?.handle(received)
-            }
+    private func listen(to transport: any RoomRealtimeTransport) {
+        transportSubscriptions.observeMessages(transport.messages()) { [weak self, weak transport] received in
+            guard let self, let transport, self.transport === transport else { return }
+            await self.handle(received)
         }
     }
 
@@ -575,44 +563,44 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
     /// a later peer's arrival updates the host and the new joiner, but already-
     /// connected clients froze on a stale roster. Driving off the relay's presence
     /// keeps the Durable Object the single source of truth for who is seated.
-    private func observeParticipants(of transport: any RoomRealtimeTransport) -> Task<Void, Never> {
-        Task { [weak self] in
-            for await _ in transport.participantUpdates() {
-                guard let self else { return }
-                self.refreshPeersFromTransport()
-                await self.reconcileHostAuthority(using: transport)
-            }
+    private func observeParticipants(of transport: any RoomRealtimeTransport) {
+        transportSubscriptions.observeParticipants(transport.participantUpdates()) { [weak self, weak transport] _ in
+            guard let self, let transport, self.transport === transport else { return }
+            self.refreshPeersFromTransport()
+            await self.reconcileHostAuthority(using: transport)
         }
     }
 
-    private func observeConnectionEvents(of transport: any RoomRealtimeTransport) -> Task<Void, Never> {
-        Task { [weak self] in
-            for await event in transport.connectionEvents() {
-                guard let self else { return }
-                switch event {
-                case .connected:
-                    let recovered = self.transportStatus == .reconnecting
-                    self.transportStatus = .connected
-                    if recovered, !self.isHost {
-                        self.requestResync()
-                    }
-                case .reconnecting:
-                    self.transportStatus = .reconnecting
-                case .seatTakenOver:
-                    self.transportStatus = .seatTakenOver
-                    self.hostRecoveryTask?.cancel()
-                    self.hostRecoveryTask = nil
-                    self.durabilityRetryTask?.cancel()
-                    self.durabilityRetryTask = nil
-                    self.durabilityBarrier.reset()
-                    self.advanceAuthorityGeneration()
-                    self.isHost = false
-                    self.hostActor = nil
-                    self.stopHeartbeat()
-                    self.pendingBotTask?.cancel()
-                    self.pendingBotTask = nil
-                }
+    private func observeConnectionEvents(of transport: any RoomRealtimeTransport) {
+        transportSubscriptions.observeConnectionEvents(transport.connectionEvents()) { [weak self, weak transport] event in
+            guard let self, let transport, self.transport === transport else { return }
+            self.handleConnectionEvent(event)
+        }
+    }
+
+    private func handleConnectionEvent(_ event: RoomTransportEvent) {
+        switch event {
+        case .connected:
+            let recovered = transportStatus == .reconnecting
+            transportStatus = .connected
+            if recovered, !isHost {
+                requestResync()
             }
+        case .reconnecting:
+            transportStatus = .reconnecting
+        case .seatTakenOver:
+            transportStatus = .seatTakenOver
+            hostRecoveryTask?.cancel()
+            hostRecoveryTask = nil
+            durabilityRetryTask?.cancel()
+            durabilityRetryTask = nil
+            durabilityBarrier.reset()
+            advanceAuthorityGeneration()
+            isHost = false
+            hostActor = nil
+            stopHeartbeat()
+            pendingBotTask?.cancel()
+            pendingBotTask = nil
         }
     }
 

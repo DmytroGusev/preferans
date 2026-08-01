@@ -199,6 +199,73 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertNil(summary.result)
     }
 
+    func testTransportSubscriptionsReplaceStreamsAndCancelAsOneUnit() async throws {
+        let oldMessages = AsyncStream<ReceivedRoomMessage>.makeStream()
+        let newMessages = AsyncStream<ReceivedRoomMessage>.makeStream()
+        let participants = AsyncStream<[OnlinePeer]>.makeStream()
+        let connectionEvents = AsyncStream<RoomTransportEvent>.makeStream()
+        let subscriptions = RoomTransportSubscriptions()
+        let sender = OnlinePeer(
+            playerID: "north",
+            accountID: "dev:north@example.test",
+            provider: .dev,
+            displayName: "North"
+        )
+        let tableID = UUID()
+        var receivedSequences: [Int] = []
+        var participantCounts: [Int] = []
+        var receivedConnectionEvents: [RoomTransportEvent] = []
+
+        subscriptions.observeMessages(oldMessages.stream) { message in
+            if case let .ping(ping) = message.message, ping.tableID == tableID {
+                receivedSequences.append(1)
+            }
+        }
+        subscriptions.observeMessages(newMessages.stream) { message in
+            if case let .ping(ping) = message.message, ping.tableID == tableID {
+                receivedSequences.append(2)
+            }
+        }
+        subscriptions.observeParticipants(participants.stream) { peers in
+            participantCounts.append(peers.count)
+        }
+        subscriptions.observeConnectionEvents(connectionEvents.stream) { event in
+            receivedConnectionEvents.append(event)
+        }
+
+        let ping = ReceivedRoomMessage(
+            message: .ping(PingEnvelope(tableID: tableID)),
+            sender: sender
+        )
+        oldMessages.continuation.yield(ping)
+        newMessages.continuation.yield(ping)
+        participants.continuation.yield([sender])
+        connectionEvents.continuation.yield(.connected)
+        await pump(until: {
+            receivedSequences.count == 1
+                && participantCounts.count == 1
+                && receivedConnectionEvents.count == 1
+        })
+
+        XCTAssertEqual(receivedSequences, [2], "Replacing a stream must cancel its predecessor.")
+        XCTAssertEqual(participantCounts, [1])
+        XCTAssertEqual(receivedConnectionEvents, [.connected])
+
+        subscriptions.cancelAll()
+        newMessages.continuation.yield(ping)
+        participants.continuation.yield([])
+        connectionEvents.continuation.yield(.seatTakenOver)
+        await Task.yield()
+        XCTAssertEqual(receivedSequences, [2])
+        XCTAssertEqual(participantCounts, [1])
+        XCTAssertEqual(receivedConnectionEvents, [.connected])
+
+        oldMessages.continuation.finish()
+        newMessages.continuation.finish()
+        participants.continuation.finish()
+        connectionEvents.continuation.finish()
+    }
+
     private let peers: [OnlinePeer] = [
         OnlinePeer(playerID: "north", accountID: "dev:north@example.test", provider: .dev, displayName: "North"),
         OnlinePeer(playerID: "east", accountID: "dev:east@example.test", provider: .dev, displayName: "East"),
