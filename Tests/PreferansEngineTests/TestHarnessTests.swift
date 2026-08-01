@@ -31,4 +31,16 @@ final class TestHarnessTests: XCTestCase {
             )
         )
     }
+
+    func testAutomationLanguagePinsAreExplicitAndDeterministic() {
+        XCTAssertEqual(
+            TestHarness.pinnedLanguage(in: [UITestFlags.pinLanguageEn]),
+            .en
+        )
+        XCTAssertEqual(
+            TestHarness.pinnedLanguage(in: [UITestFlags.pinLanguageRu]),
+            .ru
+        )
+        XCTAssertNil(TestHarness.pinnedLanguage(in: []))
+    }
 }

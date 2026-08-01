@@ -13,6 +13,7 @@ public struct SettingsScreen: View {
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
     @AppStorage(SettingsKeys.trackingPermissionRequested) private var trackingPermissionRequested = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var showRelaunchPrompt = false
     @State private var showDeleteAccountConfirm = false
@@ -106,13 +107,22 @@ public struct SettingsScreen: View {
             }
             .disabled(onDeleteOnlineAccount == nil || isDeletingAccount)
             .accessibilityIdentifier(UIIdentifiers.onlineDeleteAccount)
+
+            if usesCollapsibleExplanations {
+                DisclosureGroup {
+                    Text(accountExplanation)
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("What account deletion removes", systemImage: "info.circle")
+                }
+            }
         } header: {
             Text("Account")
         } footer: {
-            Text(onDeleteOnlineAccount == nil
-                ? "Return to the lobby before deleting the online account."
-                : "Permanently deletes the server account, revokes its sessions and room credentials, and clears local account data. Shared game results retain only an anonymized seat.")
+            if !usesCollapsibleExplanations {
+                Text(accountExplanation)
                 .font(.footnote)
+            }
         }
     }
 
@@ -136,12 +146,42 @@ public struct SettingsScreen: View {
                 }
             }
             #endif
+
+            if usesCollapsibleExplanations {
+                DisclosureGroup {
+                    Text(privacyExplanation)
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("Why this permission is needed", systemImage: "info.circle")
+                }
+            }
         } header: {
             Text("Privacy")
         } footer: {
-            Text("If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites.")
-                .font(.footnote)
+            if !usesCollapsibleExplanations {
+                Text(privacyExplanation)
+                    .font(.footnote)
+            }
         }
+    }
+
+    /// Large-content users should encounter the controls first rather than
+    /// having to scroll through several screens of secondary legal copy. The
+    /// explanations remain available at the requested text size in explicit
+    /// disclosure rows; normal content sizes retain the familiar form footer.
+    private var usesCollapsibleExplanations: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var accountExplanation: String {
+        if onDeleteOnlineAccount == nil {
+            return String(localized: "Return to the lobby before deleting the online account.")
+        }
+        return String(localized: "Permanently deletes the server account, revokes its sessions and room credentials, and clears local account data. Shared game results retain only an anonymized seat.")
+    }
+
+    private var privacyExplanation: String {
+        String(localized: "If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites.")
     }
 
     private var tableSection: some View {

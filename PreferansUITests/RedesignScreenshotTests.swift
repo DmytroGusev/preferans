@@ -58,6 +58,99 @@ final class RedesignScreenshotTests: XCTestCase {
             .capture(name: "onboarding-accessibility-xxxl", force: true)
     }
 
+    /// Settings is a scrollable administrative surface rather than a card
+    /// table. At the largest supported content size every row must remain
+    /// reachable, and choosing a language must keep the app alive while it
+    /// explains that the new catalog is applied on the next launch.
+    func testCaptureSettingsAtAccessibilityXXXL() {
+        let output = screenDir("screens-settings-accessibility")
+        try? FileManager.default.removeItem(at: output)
+
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launchArguments += [
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+
+        let robot = MatchUIRobot(app: app)
+        robot.waitForElement(UIIdentifiers.screenLobby)
+        let settingsButton = app.buttons[UIIdentifiers.lobbySettingsButton]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
+        settingsButton.tap()
+        robot.waitForElement(UIIdentifiers.screenSettings)
+
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.waitForExistence(timeout: 2) && done.isHittable)
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: output,
+            filePrefix: "settings"
+        )
+        .capture(name: "top-accessibility-xxxl", force: true, attach: false)
+
+        let language = app.descendants(matching: .any)[UIIdentifiers.settingsLanguagePicker]
+        for _ in 0..<4 where !language.isHittable {
+            app.swipeUp()
+        }
+        XCTAssertTrue(language.isHittable, "Language must remain reachable at Accessibility XXXL")
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: output,
+            filePrefix: "settings"
+        )
+        .capture(name: "language-accessibility-xxxl", force: true, attach: false)
+
+        language.tap()
+        let russian = app.buttons["Русский"]
+        XCTAssertTrue(russian.waitForExistence(timeout: 2) && russian.isHittable)
+        russian.tap()
+
+        XCTAssertTrue(app.staticTexts["Restart required"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Language will switch on next launch."].exists)
+        app.alerts.buttons["Done"].tap()
+        robot.waitForElement(UIIdentifiers.screenSettings)
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
+    /// Launch Russian directly so catalog verification does not depend on
+    /// test ordering or a second app process inside one XCUITest.
+    func testCaptureSettingsRussianAtAccessibilityXXXL() {
+        let output = screenDir("screens-settings-russian-accessibility")
+        try? FileManager.default.removeItem(at: output)
+
+        let app = XCUIApplication()
+        app.launchArguments += [
+            UITestFlags.disableAnimations,
+            UITestFlags.pinLanguageRu,
+            "-AppleLanguages", "(ru)",
+            "-AppleLocale", "ru_RU",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXXL",
+        ]
+        app.launch()
+
+        let robot = MatchUIRobot(app: app)
+        robot.waitForElement(UIIdentifiers.screenLobby)
+        let settingsButton = app.buttons[UIIdentifiers.lobbySettingsButton]
+        XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
+        settingsButton.tap()
+        robot.waitForElement(UIIdentifiers.screenSettings)
+        XCTAssertTrue(app.staticTexts["Аккаунт"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.staticTexts["Онлайн-аккаунт"].exists)
+        XCTAssertTrue(app.buttons["Удалить онлайн-аккаунт"].exists)
+        MatchScreenshotRecorder(
+            testCase: self,
+            app: app,
+            outputDirectory: output,
+            filePrefix: "settings"
+        )
+        .capture(name: "russian-accessibility-xxxl", force: true, attach: false)
+    }
+
     /// Normal iPad keeps the dedicated navigation/setup columns, while
     /// Accessibility text stacks both regions on every device so controls are
     /// never squeezed into the tablet's narrow navigation column.

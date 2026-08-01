@@ -19,12 +19,11 @@ struct PreferansApp: App {
     init() {
         // Default to Ukrainian on first launch (overridable in Settings). Has
         // to land before any view loads so `Bundle.main`'s catalog lookup
-        // picks the right language for this process. The UI-test flag
-        // pins English so XCUI assertions don't drift on simulators
-        // whose preferred language differs from the app default.
+        // picks the right language for this process. Explicit UI-test flags
+        // pin a catalog without depending on simulator or persisted state.
         let args = ProcessInfo.processInfo.arguments
-        if args.contains(UITestFlags.pinLanguageEn) {
-            AppLanguage.apply(.en)
+        if let pinnedLanguage = TestHarness.pinnedLanguage(in: args) {
+            AppLanguage.apply(pinnedLanguage)
         } else {
             AppLanguage.apply(AppLanguage.current)
         }

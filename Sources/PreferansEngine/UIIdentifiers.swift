@@ -410,6 +410,10 @@ public enum UITestFlags {
     /// simulators whose preferred language is neither English nor the
     /// app's `AppLanguage.default`.
     public static let pinLanguageEn      = "-uiTestPinLanguageEn"
+    /// Pin Russian independently of persisted settings so localization UI
+    /// tests can launch one process instead of terminating and relaunching
+    /// inside the same XCUITest (a pattern that can wedge iPad runners).
+    public static let pinLanguageRu      = "-uiTestPinLanguageRu"
     /// Emit concise room/projection progress lines for multi-simulator
     /// invite-flow verification. Manual simulator runs leave this off.
     public static let onlineFlowLogging  = "-uiTestOnlineFlowLogging"

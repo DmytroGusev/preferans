@@ -48,6 +48,14 @@ public enum TestHarness {
         arguments.contains(Flag.disableAnimations)
     }
 
+    /// Resolve an explicit UI-test locale without coupling localization
+    /// verification to UserDefaults left behind by another test process.
+    public static func pinnedLanguage(in arguments: [String]) -> AppLanguage? {
+        if arguments.contains(Flag.pinLanguageEn) { return .en }
+        if arguments.contains(Flag.pinLanguageRu) { return .ru }
+        return nil
+    }
+
     /// True when the test harness has asked for the automated-test bot
     /// pacing (`BotPacing.testFast`). Decoupled from `disableAnimations`
     /// so an interactive `bin/sim` run can disable visual animations

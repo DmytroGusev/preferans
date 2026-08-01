@@ -668,6 +668,141 @@
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Безповоротно видаляє акаунт із сервера, відкликає його сесії та доступ до кімнат і очищає локальні дані. У спільних результатах ігор залишиться лише знеособлене місце." } }
       }
     },
+    "Account" : {
+      "comment" : "Settings section for online-account status and deletion.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Account" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Аккаунт" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Акаунт" } }
+      }
+    },
+    "Online account" : {
+      "comment" : "Settings label for the persisted online identity.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Online account" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-аккаунт" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Онлайн-акаунт" } }
+      }
+    },
+    "What account deletion removes" : {
+      "comment" : "Accessibility-size disclosure for account deletion details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "What account deletion removes" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Что удаляется вместе с аккаунтом" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Що видаляється разом з акаунтом" } }
+      }
+    },
+    "Privacy" : {
+      "comment" : "Settings section for tracking permission.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Конфиденциальность" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Приватність" } }
+      }
+    },
+    "Tracking permission" : {
+      "comment" : "Settings label for the current App Tracking Transparency status.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tracking permission" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Разрешение на отслеживание" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Дозвіл на відстеження" } }
+      }
+    },
+    "Request tracking permission" : {
+      "comment" : "Settings action that requests App Tracking Transparency permission.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Request tracking permission" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Запросить разрешение на отслеживание" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Запросити дозвіл на відстеження" } }
+      }
+    },
+    "Open Privacy Settings" : {
+      "comment" : "Settings action opening the app's privacy permissions in iOS Settings.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Privacy Settings" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Открыть настройки конфиденциальности" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкрити налаштування приватності" } }
+      }
+    },
+    "If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites." : {
+      "comment" : "Settings explanation for App Tracking Transparency permission.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Если отслеживание указано в сведениях о конфиденциальности App Store, iOS требует это разрешение, прежде чем приложение сможет получить доступ к рекламному идентификатору или отслеживать действия в других приложениях и на веб-сайтах." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Якщо відстеження вказано у відомостях про приватність App Store, iOS вимагає цей дозвіл, перш ніж застосунок зможе отримати доступ до рекламного ідентифікатора або відстежувати дії в інших застосунках і на вебсайтах." } }
+      }
+    },
+    "Why this permission is needed" : {
+      "comment" : "Accessibility-size disclosure for tracking-permission details.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this permission is needed" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Зачем нужно это разрешение" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Навіщо потрібен цей дозвіл" } }
+      }
+    },
+    "Table" : {
+      "comment" : "Settings section for card-table presentation preferences.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Table" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Стол" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Стіл" } }
+      }
+    },
+    "Suit order" : {
+      "comment" : "Settings picker controlling the order of suits in visible hands.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Suit order" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Порядок мастей" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Порядок мастей" } }
+      }
+    },
+    "Controls the visual order of face-up cards in hands." : {
+      "comment" : "Settings explanation for the suit-order preference.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Controls the visual order of face-up cards in hands." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Задаёт порядок мастей для открытых карт в руках." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Визначає порядок мастей для відкритих карт у руках." } }
+      }
+    },
+    "Signed in with Apple" : {
+      "comment" : "Settings status for a registered Sign in with Apple account.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Signed in with Apple" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Выполнен вход через Apple" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Виконано вхід через Apple" } }
+      }
+    },
+    "Display name saved" : {
+      "comment" : "Settings status when a display name is saved without a registered account.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Display name saved" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Имя сохранено" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ім’я збережено" } }
+      }
+    },
+    "No saved account" : {
+      "comment" : "Settings status when no online identity is stored.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No saved account" } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Нет сохранённого аккаунта" } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Немає збереженого акаунта" } }
+      }
+    },
     "Guest account registered" : {
       "comment" : "Settings status for a registered guest account.",
       "extractionState" : "manual",
