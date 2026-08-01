@@ -575,12 +575,36 @@ final class InvariantValidatorTests: XCTestCase {
         assertViolation(state, contains: "expected 10")
     }
 
-    func testValidatorRejectsPlayingWithTrickSumNotMatchingCompletedCount() {
+    func testValidatorRejectsPlayingWithCountsNotMatchingCompletedWinners() {
         // Counts say 5 tricks have been won, but completedTricks is empty.
         let state = DealState.playing(playingFixture(
             trickCounts: [north: 3, east: 2, south: 0]
         ))
-        assertViolation(state, contains: "trickCounts sum")
+        assertViolation(state, contains: "completed-trick winners")
+    }
+
+    func testValidatorRejectsNegativePlayingCountsEvenWhenTheirSumMatches() {
+        let state = DealState.playing(playingFixture(
+            trickCounts: [north: -1, east: 1, south: 0]
+        ))
+        assertViolation(state, contains: "completed-trick winners")
+    }
+
+    func testSnapshotRehydrationRejectsNegativePlayingCounts() {
+        let snapshot = PreferansSnapshot(
+            players: seats,
+            rules: .sochi,
+            state: .playing(playingFixture(
+                trickCounts: [north: -1, east: 1, south: 0]
+            )),
+            score: ScoreSheet(players: seats),
+            nextDealer: east
+        )
+
+        assertViolation(
+            try { _ = try PreferansEngine(snapshot: snapshot) }(),
+            contains: "completed-trick winners"
+        )
     }
 
     func testValidatorRejectsDealFinishedWithBadTrickCountsKeys() {
@@ -597,14 +621,61 @@ final class InvariantValidatorTests: XCTestCase {
     func testValidatorRejectsDealFinishedWithBadInitialHandsKeys() {
         let (hands, _) = dealHands()
         let result = DealResult(
-            kind: .allPass,
+            kind: .passedOut,
             activePlayers: seats,
-            trickCounts: [north: 10, east: 0, south: 0],
+            trickCounts: seats.dictionary(filledWith: 0),
             completedTricks: [],
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands.filter { $0.key != south }
         )
         assertViolation(.dealFinished(result), contains: "initialHands keys")
+    }
+
+    func testValidatorRejectsNegativeFinishedCountsEvenWhenTheyTotalTen() {
+        let result = DealResult(
+            kind: .allPass,
+            activePlayers: seats,
+            trickCounts: [north: -1, east: 11, south: 0],
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: seats)
+        )
+        assertViolation(.dealFinished(result), contains: "between 0 and 10")
+    }
+
+    func testValidatorRejectsFinishedCountsWithoutCompletedTricks() {
+        let result = DealResult(
+            kind: .allPass,
+            activePlayers: seats,
+            trickCounts: [north: 10, east: 0, south: 0],
+            completedTricks: [],
+            scoreDelta: ScoreDelta(players: seats)
+        )
+        assertViolation(.dealFinished(result), contains: "completed-trick winners")
+    }
+
+    func testValidatorRejectsNegativePendingSettlementCounts() {
+        let (hands, talon) = dealHands()
+        let proposal = TrickSettlementProposal(
+            proposer: north,
+            settlement: TrickSettlement(
+                target: north,
+                targetTricks: -1,
+                finalTrickCounts: [north: -1, east: 11, south: 0]
+            ),
+            acceptedBy: [north]
+        )
+        let state = DealState.playing(PlayingState(
+            dealer: north,
+            activePlayers: seats,
+            hands: hands,
+            talon: talon,
+            discard: talon,
+            leader: north,
+            currentPlayer: north,
+            kind: .misere(MiserePlayContext(declarer: north)),
+            pendingSettlement: proposal
+        ))
+        assertViolation(state, contains: "final trick counts must stay between 0 and 10")
     }
 
     // MARK: - Score invariants
@@ -834,9 +905,9 @@ final class InvariantValidatorTests: XCTestCase {
             whists: seats.dictionary(filledWith: [:])
         )
         let result = DealResult(
-            kind: .allPass,
+            kind: .passedOut,
             activePlayers: seats,
-            trickCounts: [north: 10, east: 0, south: 0],
+            trickCounts: seats.dictionary(filledWith: 0),
             completedTricks: [],
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands
@@ -867,9 +938,9 @@ final class InvariantValidatorTests: XCTestCase {
         let (hands, _) = dealHands()
         let score = ScoreSheet(players: seats)
         let result = DealResult(
-            kind: .allPass,
+            kind: .passedOut,
             activePlayers: seats,
-            trickCounts: [north: 10, east: 0, south: 0],
+            trickCounts: seats.dictionary(filledWith: 0),
             completedTricks: [],
             scoreDelta: ScoreDelta(players: seats),
             initialHands: hands

@@ -151,10 +151,16 @@ extension PreferansEngine {
                 )
                 try require(Set(hand).count == hand.count, "\(player) holds duplicate cards")
             }
-            let trickSum = s.trickCounts.values.reduce(0, +)
+            let completedTrickCounts = s.completedTricks.reduce(
+                s.trickTakingPlayers.dictionary(filledWith: 0)
+            ) { counts, trick in
+                var updated = counts
+                updated[trick.winner, default: 0] += 1
+                return updated
+            }
             try require(
-                trickSum == s.completedTricks.count,
-                "trickCounts sum \(trickSum) ≠ completedTricks \(s.completedTricks.count)"
+                s.trickCounts == completedTrickCounts,
+                "playing trickCounts must match completed-trick winners"
             )
             try require(
                 s.completedTricks.allSatisfy { s.trickCounts.keys.contains($0.winner) },
@@ -477,12 +483,29 @@ extension PreferansEngine {
             countPlayers == active || hasFourPlayerRaspasyDealer,
             "\(context) trickCounts keys \(sorted(result.trickCounts.keys)) do not match the deal's trick takers"
         )
+        try require(
+            result.trickCounts.values.allSatisfy { (0...10).contains($0) },
+            "\(context) trick counts must stay between 0 and 10"
+        )
         let trickTotal = result.trickCounts.values.reduce(0, +)
         switch result.kind {
         case .game, .misere, .allPass:
             try require(trickTotal == 10, "\(context) played trick total \(trickTotal), expected 10")
         case .passedOut, .withoutThree, .halfWhist:
             try require(trickTotal == 0, "\(context) unplayed trick total \(trickTotal), expected 0")
+        }
+        if result.settlement == nil {
+            let completedTrickCounts = result.completedTricks.reduce(
+                result.trickCounts.keys.dictionary(filledWith: 0)
+            ) { counts, trick in
+                var updated = counts
+                updated[trick.winner, default: 0] += 1
+                return updated
+            }
+            try require(
+                result.trickCounts == completedTrickCounts,
+                "\(context) trick counts must match completed-trick winners"
+            )
         }
         if let initialHands = result.initialHands {
             try checkHands(initialHands, seats: result.activePlayers, expected: 10, context: "\(context) initialHands")
@@ -518,6 +541,10 @@ extension PreferansEngine {
         try require(
             Set(settlement.finalTrickCounts.keys) == Set(activePlayers),
             "\(context) final trick-count keys \(sorted(settlement.finalTrickCounts.keys)) ≠ activePlayers \(sorted(activePlayers))"
+        )
+        try require(
+            settlement.finalTrickCounts.values.allSatisfy { (0...10).contains($0) },
+            "\(context) final trick counts must stay between 0 and 10"
         )
         try require(
             settlement.finalTrickCounts[settlement.target] == settlement.targetTricks,
