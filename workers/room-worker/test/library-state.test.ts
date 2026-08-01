@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   applyStateReport,
   createInitialRoom,
+  fillOpenSeatsWithBots,
   type OnlinePeer
 } from "../src/room-state.ts";
 import {
@@ -43,7 +44,7 @@ function playingRoom(now: string): ReturnType<typeof createInitialRoom> {
     now
   });
   return applyStateReport(
-    base,
+    fillOpenSeatsWithBots(base, now),
     {
       status: "playing",
       summary: { variant: "odesa", lastSequence: 4, phase: "bidding", dealNumber: 1 },

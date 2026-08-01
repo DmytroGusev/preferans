@@ -374,6 +374,27 @@ test("converting an open seat to a bot leaves it without a credential", () => {
   assert.equal(bot?.seatToken, undefined);
 });
 
+test("bot filling is rejected after the room leaves the lobby", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  assert.throws(
+    () => fillOpenSeatsWithBots({ ...room, status: "playing" }),
+    /only be filled while the room is in the lobby/
+  );
+});
+
+test("a late account cannot claim a pending seat in a live room", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  assert.throws(
+    () => joinRoom({ ...room, status: "playing" }, {
+      playerID: { rawValue: "east" },
+      accountID: "apple:late",
+      provider: "apple",
+      displayName: "Late"
+    }),
+    /cannot claim seats after the room leaves the lobby/
+  );
+});
+
 test("a returning host account is recognized; guests and placeholder seats are not", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
   const joined = joinRoom(room, {
@@ -540,6 +561,19 @@ test("a state report records status, summary, and the resume snapshot", () => {
   assert.deepEqual(updated.latestSnapshot, { opaque: "deal-1-state" });
   assert.equal(updated.lastSnapshotSequence, 4);
   assert.equal(updated.updatedAt, "2026-05-04T00:00:05.000Z");
+});
+
+test("a room cannot enter play while a seat is still pending", () => {
+  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
+  assert.throws(
+    () => applyStateReport(room, {
+      status: "playing",
+      summary: { variant: "odesa", lastSequence: 1, phase: "bidding", dealNumber: 1 },
+      snapshot: { opaque: "deal-1-state" },
+      snapshotSequence: 1
+    }),
+    /cannot enter play while it still has open seats/
+  );
 });
 
 test("progress summaries reject fractional and unsafe counters", () => {

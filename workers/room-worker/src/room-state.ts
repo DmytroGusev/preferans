@@ -310,6 +310,13 @@ export function createInitialRoom({
 /// left untouched. Returns the same room reference when nothing was open, so the
 /// caller can skip the storage write and presence broadcast.
 export function fillOpenSeatsWithBots(room: RoomState, now = new Date().toISOString()): RoomState {
+  if ((room.status ?? "lobby") !== "lobby") {
+    throw new RoomStateError(
+      "room_in_progress",
+      "Bot seats can only be filled while the room is in the lobby.",
+      409
+    );
+  }
   let changed = false;
   const peers = room.peers.map((peer, index) => {
     if (!peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX)) {
@@ -362,6 +369,13 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
   // an occupied seat (e.g. the host): two fresh installs that both default to the
   // same seat name are redirected to different open seats instead of colliding.
   const isOpenSeat = (candidate: OnlinePeer) => candidate.accountID.startsWith(PENDING_ACCOUNT_PREFIX);
+  if (room.status !== "lobby" && peers.some(isOpenSeat)) {
+    throw new RoomStateError(
+      "room_in_progress",
+      "New players cannot claim seats after the room leaves the lobby.",
+      409
+    );
+  }
   const declaredID = peerID(peer);
   const requestedIndex = peers.findIndex((candidate) => isOpenSeat(candidate) && peerID(candidate) === declaredID);
   const openIndex = requestedIndex >= 0 ? requestedIndex : peers.findIndex(isOpenSeat);
@@ -517,6 +531,14 @@ export function applyStateReport(
     throw new RoomStateError(
       "invalid_state_report",
       `State report cannot move a room from ${currentStatus} to ${requestedStatus}.`,
+      409
+    );
+  }
+  if (requestedStatus === "playing"
+      && room.peers.some((peer) => peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX))) {
+    throw new RoomStateError(
+      "invalid_state_report",
+      "A room cannot enter play while it still has open seats.",
       409
     );
   }
