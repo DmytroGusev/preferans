@@ -180,6 +180,12 @@ struct RoomParticipantRoster {
         guard let existing else { return true }
         if existing.isPendingSeat { return true }
         if candidate.isPendingSeat { return false }
+        // The worker treats bot seats as occupied forever once it fills them.
+        // Presence delivery can still reorder around that transition, so a
+        // stale bot frame must not evict a claimed human and a stale human
+        // frame must not reopen a bot seat.
+        if existing.isBotSeat { return candidate.isBotSeat }
+        if candidate.isBotSeat { return false }
         return true
     }
 

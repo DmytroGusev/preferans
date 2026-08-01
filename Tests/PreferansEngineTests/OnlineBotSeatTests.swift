@@ -62,6 +62,40 @@ final class OnlineBotSeatTests: XCTestCase {
         )
     }
 
+    func testRosterNeverLetsDelayedBotPresenceEvictAHumanOrReclaimABotSeat() {
+        let human = OnlinePeer(
+            playerID: "east",
+            accountID: "apple:east",
+            provider: .apple,
+            displayName: "Eve"
+        )
+        let bot = OnlinePeer(
+            playerID: "south",
+            accountID: "bot:south",
+            provider: .dev,
+            displayName: "Bot 3"
+        )
+        let staleBot = OnlinePeer(
+            playerID: "east",
+            accountID: "bot:east",
+            provider: .dev,
+            displayName: "Bot 2"
+        )
+        let staleHuman = OnlinePeer(
+            playerID: "south",
+            accountID: "apple:south",
+            provider: .apple,
+            displayName: "Sam"
+        )
+        var roster = RoomParticipantRoster(participants: [human, bot])
+
+        roster.refresh(with: [staleBot, staleHuman])
+
+        XCTAssertEqual(roster.peer(for: "east"), human)
+        XCTAssertEqual(roster.peer(for: "south"), bot)
+        XCTAssertTrue(roster.peer(for: "south")?.isBotSeat == true)
+    }
+
     func testRosterDeduplicatesSeatsAndPrefersOccupiedParticipant() {
         let pending = OnlinePeer(
             playerID: "east",
