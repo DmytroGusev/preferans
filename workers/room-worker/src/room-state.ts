@@ -519,7 +519,11 @@ export function applyStateReport(
   const candidateSummary = normalizeGameSummary(input.summary);
   if (requestedStatus !== "abandoned") {
     if (candidateSummary === undefined) {
-      throw new RoomStateError("invalid_state_report", "State report requires a summary.", 400);
+      throw new RoomStateError(
+        "invalid_state_report",
+        "State report requires a summary with a non-negative integer sequence.",
+        400
+      );
     }
     const rawSummarySequence = isRecord(input.summary) ? input.summary.lastSequence : undefined;
     const rawSnapshotSequence = input.snapshotSequence;
@@ -591,8 +595,11 @@ export function normalizeGameSummary(value: unknown): GameSummary | undefined {
     return undefined;
   }
   const lastSequenceRaw = Number(value.lastSequence ?? 0);
+  if (!Number.isSafeInteger(lastSequenceRaw) || lastSequenceRaw < 0) {
+    return undefined;
+  }
   const summary: GameSummary = {
-    lastSequence: Number.isFinite(lastSequenceRaw) ? lastSequenceRaw : 0
+    lastSequence: lastSequenceRaw
   };
   if (typeof value.variant === "string") {
     summary.variant = value.variant;
@@ -600,8 +607,11 @@ export function normalizeGameSummary(value: unknown): GameSummary | undefined {
   if (typeof value.phase === "string") {
     summary.phase = value.phase;
   }
-  const dealNumber = Number(value.dealNumber);
-  if (Number.isFinite(dealNumber) && dealNumber > 0) {
+  if (value.dealNumber !== undefined) {
+    const dealNumber = Number(value.dealNumber);
+    if (!Number.isSafeInteger(dealNumber) || dealNumber <= 0) {
+      return undefined;
+    }
     summary.dealNumber = dealNumber;
   }
   const result = normalizeGameResult(value.result);

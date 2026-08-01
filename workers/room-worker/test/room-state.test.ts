@@ -11,6 +11,7 @@ import {
   isHostAccount,
   isHumanAccount,
   joinRoom,
+  normalizeGameSummary,
   normalizeGameStatus,
   removeAccountFromRoom,
   type OnlinePeer,
@@ -515,6 +516,17 @@ test("a state report records status, summary, and the resume snapshot", () => {
   assert.deepEqual(updated.latestSnapshot, { opaque: "deal-1-state" });
   assert.equal(updated.lastSnapshotSequence, 4);
   assert.equal(updated.updatedAt, "2026-05-04T00:00:05.000Z");
+});
+
+test("progress summaries reject fractional and unsafe counters", () => {
+  assert.deepEqual(
+    normalizeGameSummary({ lastSequence: 4, dealNumber: 2 }),
+    { lastSequence: 4, dealNumber: 2 }
+  );
+  assert.equal(normalizeGameSummary({ lastSequence: 1.5, dealNumber: 2 }), undefined);
+  assert.equal(normalizeGameSummary({ lastSequence: Number.MAX_SAFE_INTEGER + 1 }), undefined);
+  assert.equal(normalizeGameSummary({ lastSequence: 4, dealNumber: 2.25 }), undefined);
+  assert.equal(normalizeGameSummary({ lastSequence: 4, dealNumber: 0 }), undefined);
 });
 
 test("a nonterminal report cannot advance metadata without an exact matching snapshot", () => {
