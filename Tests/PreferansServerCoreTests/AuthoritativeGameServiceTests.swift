@@ -9,6 +9,30 @@ final class AuthoritativeGameServiceTests: XCTestCase {
         .init(playerID: "south", gamePlayerID: "account:south", displayName: "South"),
     ]
 
+    func testCompleteThreeAndFourSeatMatchesThroughServerBoundary() async throws {
+        for count in [3, 4] {
+            let seats = Array(["north", "east", "south", "west"].prefix(count)).map { PlayerID($0) }
+            let identities = seats.map { PlayerIdentity(playerID: $0, gamePlayerID: "bot:\($0.rawValue)", displayName: $0.rawValue) }
+            var result = try AuthoritativeGameService.create(.init(identities: identities,
+                match: .init(poolTarget: 6, poolClosure: .tableTotal),
+                botProfiles: Dictionary(uniqueKeysWithValues: seats.map { ($0, BotProfile.standard) })), dealSeed: 42)
+            for step in 0..<2_000 {
+                if result.status == .finished { break }
+                if result.botPending {
+                    result = try await AuthoritativeGameService.advanceBot(state: result.state)
+                } else {
+                    print("SERVER_MATCH seats=\(count) step=\(step) deal=\(result.dealNumber)")
+                    result = try await AuthoritativeGameService.apply(.init(state: result.state,
+                        sender: seats[0], actor: seats[0], action: .startDeal(dealer: nil, deck: nil),
+                        clientNonce: UUID(), baseSequence: result.sequence))
+                }
+                XCTAssertEqual(result.projections.count, count)
+                XCTAssertTrue(result.projections.allSatisfy { $0.sequence == result.sequence })
+            }
+            XCTAssertEqual(result.status, .finished, "A bounded match must not stall")
+        }
+    }
+
     func testExchangeEventsDoNotExposeDiscardToOtherSeats() throws {
         let cards = Array(Deck.shuffled(seed: 7).prefix(2))
         let event = PreferansEvent.talonExchanged(declarer: "north", talon: cards, discard: cards)

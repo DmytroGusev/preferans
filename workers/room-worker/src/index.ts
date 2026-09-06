@@ -476,7 +476,7 @@ export class PreferansRoomV2 {
       }
 
       if (request.method === "GET" && url.pathname.endsWith("/socket")) {
-        return this.connectWebSocket(request);
+        return await this.connectWebSocket(request);
       }
 
       return json({ error: "Method not allowed." }, 405);

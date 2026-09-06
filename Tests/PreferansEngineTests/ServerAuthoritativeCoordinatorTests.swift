@@ -4,6 +4,52 @@ import XCTest
 
 @MainActor
 final class ServerAuthoritativeCoordinatorTests: XCTestCase {
+    func testPendingMoveSurvivesClientRestartAndReceiptClearsIt() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let outbox = OnlineCommandOutbox(directory: directory)
+        let table = UUID()
+        let peer = OnlinePeer(playerID: "north", accountID: "guest:north", provider: .guest, displayName: "North")
+        let command = ClientActionEnvelope(tableID: table, actor: "north",
+            action: .startDeal(dealer: nil, deck: nil), baseHostSequence: 0)
+        try outbox.store(command, account: peer.accountID)
+        let transport = ServerAuthoritativeTestTransport(localPeer: peer, participants: [peer], tableID: table)
+        let coordinator = ServerGameCoordinator(outbox: outbox)
+        await coordinator.attach(transport: transport)
+        XCTAssertTrue(coordinator.isSubmitting)
+        transport.receiveConnectionEvent(.connected)
+        await eventually { transport.sentMessages.count == 1 }
+        XCTAssertEqual(transport.sentMessages.first, .clientAction(command), "Retry preserves the exact ID and payload")
+        transport.receiveConnectionEvent(.commandReceipt(.init(tableID: table, clientNonce: command.clientNonce,
+            sequence: 1, status: .accepted)))
+        await eventually { !coordinator.isSubmitting }
+        XCTAssertNil(try outbox.load(table: table, account: peer.accountID))
+        coordinator.detach()
+    }
+
+    func testUnrelatedReceiptCannotClearPendingMoveAndTakeoverStopsSubmission() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let outbox = OnlineCommandOutbox(directory: directory)
+        let table = UUID()
+        let peer = OnlinePeer(playerID: "north", accountID: "guest:north", provider: .guest, displayName: "North")
+        let command = ClientActionEnvelope(tableID: table, actor: "north",
+            action: .startDeal(dealer: nil, deck: nil), baseHostSequence: 0)
+        try outbox.store(command, account: peer.accountID)
+        let transport = ServerAuthoritativeTestTransport(localPeer: peer, participants: [peer], tableID: table)
+        let coordinator = ServerGameCoordinator(outbox: outbox)
+        await coordinator.attach(transport: transport)
+        transport.receiveConnectionEvent(.commandReceipt(.init(tableID: table, clientNonce: UUID(),
+            sequence: 1, status: .accepted)))
+        transport.receiveConnectionEvent(.seatTakenOver)
+        await eventually { coordinator.transportStatus == .seatTakenOver }
+        XCTAssertTrue(coordinator.isSubmitting)
+        XCTAssertEqual(try outbox.load(table: table, account: peer.accountID), command)
+        XCTAssertTrue(transport.sentMessages.isEmpty)
+        XCTAssertNil(try outbox.load(table: table, account: "another-account"))
+        coordinator.detach()
+    }
+
     func testCloudAuthorityNeverCreatesAClientHostAndAcceptsServerProjection() async throws {
         let tableID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
         let peers = ["north", "east", "south"].map {
@@ -19,7 +65,9 @@ final class ServerAuthoritativeCoordinatorTests: XCTestCase {
             participants: peers,
             tableID: tableID
         )
-        let coordinator = ServerGameCoordinator()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let coordinator = ServerGameCoordinator(outbox: OnlineCommandOutbox(directory: directory))
 
         await coordinator.attach(transport: transport)
 

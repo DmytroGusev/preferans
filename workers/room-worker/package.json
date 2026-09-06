@@ -7,12 +7,17 @@
     "deploy": "wrangler deploy",
     "smoke:live": "bun scripts/smoke-live.ts",
     "test": "node --test test/*.test.ts",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test:runtime": "vitest run",
+    "check": "bun run typecheck && bun run test && bun run test:runtime"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.1.2",
     "@cloudflare/workers-types": "^4.20260504.1",
     "@types/node": "^25.6.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.127.1"
   },
   "dependencies": {
     "@cloudflare/containers": "^0.3.7"
