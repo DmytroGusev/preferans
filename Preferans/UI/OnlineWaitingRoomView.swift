@@ -27,12 +27,12 @@ struct OnlineWaitingRoomLayoutPolicy: Equatable {
 /// every human seat is connected (or replaced by a bot). Guests see the same roster and a
 /// "waiting for the host" caption. Once the host starts (sequence ≥ 1) the
 /// parent swaps this for the live table.
-public struct OnlineWaitingRoomView: View {
+public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .title3) private var seatIconWidth: CGFloat = 24
 
-    @ObservedObject public var coordinator: RoomOnlineGameCoordinator
+    @ObservedObject public var coordinator: Coordinator
     public var roomCode: String
     public var inviteURL: URL?
     public var onLeaveTable: () -> Void
@@ -43,7 +43,7 @@ public struct OnlineWaitingRoomView: View {
     @State private var didCopyCode = false
 
     public init(
-        coordinator: RoomOnlineGameCoordinator,
+        coordinator: Coordinator,
         roomCode: String,
         inviteURL: URL? = nil,
         onLeaveTable: @escaping () -> Void

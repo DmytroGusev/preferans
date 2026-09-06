@@ -705,6 +705,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             stopHeartbeat()
             botMoveScheduler.cancel()
             stagedBotInsights = [:]
+        case .commandReceipt:
+            break // Offline peer simulation never receives durable server receipts.
         case let .serverError(message):
             errorText = message
         }

@@ -4,14 +4,14 @@ import PreferansEngine
 import UIKit
 #endif
 
-public struct OnlineRoomGameScreen: View {
-    @ObservedObject public var coordinator: RoomOnlineGameCoordinator
+public struct OnlineRoomGameScreen<Coordinator: OnlineGamePresenting>: View {
+    @ObservedObject public var coordinator: Coordinator
     public var roomCode: String
     public var inviteURL: URL?
     public var onLeaveTable: () -> Void
 
     public init(
-        coordinator: RoomOnlineGameCoordinator,
+        coordinator: Coordinator,
         roomCode: String,
         inviteURL: URL? = nil,
         onLeaveTable: @escaping () -> Void
@@ -46,6 +46,9 @@ public struct OnlineRoomGameScreen: View {
         .overlay(alignment: .top) {
             VStack(spacing: 6) {
                 connectionStatusBanner
+                if coordinator.isSubmitting {
+                    connectionBanner("Sending move…", systemImage: "arrow.up.circle", color: .secondary)
+                }
                 if let error = coordinator.errorText {
                     Text(error)
                         .font(.caption)
@@ -109,6 +112,7 @@ public struct OnlineRoomGameScreen: View {
                     }
                 }
             )
+            .disabled(coordinator.isSubmitting || coordinator.transportStatus == .seatTakenOver)
             onlineFlowState(projection: authoritativeProjection)
         }
         // No screen-level id here: it would propagate onto the inner

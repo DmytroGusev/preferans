@@ -55,7 +55,8 @@ public struct AppliedCommandNonce: Codable, Equatable, Sendable {
 /// an opaque JSON string so UInt64 seeds and hidden hands never pass through
 /// JavaScript number conversion or reach a player-controlled device.
 public struct AuthoritativeGameState: Codable, Equatable, Sendable {
-    public static let schemaVersion = 1
+    public static let schemaVersion = 2
+    public static let engineVersion = "preferans-1"
 
     public var schemaVersion: Int
     public var tableID: UUID
@@ -149,6 +150,8 @@ public struct AuthoritativeCommandRequest: Codable, Equatable, Sendable {
 }
 
 public struct AuthoritativeGameResponse: Codable, Equatable, Sendable {
+    public var engineVersion: String = AuthoritativeGameState.engineVersion
+    public var botPending: Bool = false
     public var state: String
     public var sequence: Int
     public var projections: [ProjectionEnvelope]
@@ -234,7 +237,7 @@ public enum AuthoritativeGameService {
         }
 
         let action = authoritativeAction(request.action, state: &state)
-        var events = try engine.apply(action)
+        let events = try engine.apply(action)
         state.sequence += 1
         state.appliedNonces.append(.init(id: request.clientNonce, sequence: state.sequence, request: request))
         if state.appliedNonces.count > maximumRememberedNonces {
@@ -242,12 +245,19 @@ public enum AuthoritativeGameService {
         }
         state.snapshot = engine.snapshot
 
-        let botEvents = try await advanceBots(
-            engine: &engine,
-            state: &state,
-            strategyFactory: strategyFactory
-        )
-        events.append(contentsOf: botEvents)
+        state.snapshot = engine.snapshot
+        return try response(for: state, events: events)
+    }
+
+    /// One durable scheduled move. A retry evaluates the same input revision.
+    public static func advanceBot(state blob: String) async throws -> AuthoritativeGameResponse {
+        var state = try decodeState(blob)
+        guard state.schemaVersion == AuthoritativeGameState.schemaVersion else {
+            throw AuthoritativeGameError.invalidSchema(state.schemaVersion)
+        }
+        var engine = try PreferansEngine(snapshot: state.snapshot)
+        let events = try await advanceBots(engine: &engine, state: &state,
+            strategyFactory: { HeuristicStrategy(profile: $0) })
         state.snapshot = engine.snapshot
         return try response(for: state, events: events)
     }
@@ -331,6 +341,7 @@ public enum AuthoritativeGameService {
             }
             state.snapshot = engine.snapshot
             actionCount += 1
+            break // pacing and continuation belong to the durable room alarm
         }
         return events
     }
@@ -359,7 +370,7 @@ public enum AuthoritativeGameService {
                 botInsights: state.botInsights
             )
         }
-        return AuthoritativeGameResponse(
+        var result = AuthoritativeGameResponse(
             state: try encodeState(state),
             sequence: state.sequence,
             projections: projections,
@@ -367,6 +378,10 @@ public enum AuthoritativeGameService {
             dealNumber: engine.dealsPlayed + 1,
             phase: projections.first?.projection.phase.token ?? "waitingForDeal"
         )
+        if let actor = engine.state.currentActor {
+            result.botPending = state.botProfiles[engine.controllingActor(of: actor)] != nil
+        }
+        return result
     }
 
     private static func status(

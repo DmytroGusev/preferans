@@ -583,6 +583,8 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                     authority: envelope.authority == .server ? .server : .peer
                 ))
             }
+        case .receipt:
+            if let receipt = envelope.receipt { emitConnectionEvent(.commandReceipt(receipt)) }
         case .error:
             lastError = envelope.error
             if envelope.code == "seat_credential_invalid" {
@@ -722,6 +724,7 @@ private struct ClientSocketEnvelope: Encodable {
 
 private struct ServerSocketEnvelope: Decodable {
     var type: SocketEnvelopeType
+    var receipt: OnlineCommandReceipt?
     var room: CloudflareRoomSummary?
     var authority: ServerAuthority?
     var connectedPlayerIDs: [PlayerID]?
@@ -738,6 +741,7 @@ private enum ServerAuthority: String, Decodable {
 }
 
 private enum SocketEnvelopeType: String, Codable {
+    case receipt
     case room
     case presence
     case wire

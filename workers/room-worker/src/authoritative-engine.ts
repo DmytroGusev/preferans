@@ -15,7 +15,11 @@ export interface AuthoritativeProjectionEnvelope {
   [key: string]: unknown;
 }
 
+export const ENGINE_VERSION = "preferans-1";
+
 export interface AuthoritativeGameResponse {
+  engineVersion: string;
+  botPending: boolean;
   state: string;
   sequence: number;
   projections: AuthoritativeProjectionEnvelope[];
@@ -25,6 +29,8 @@ export interface AuthoritativeGameResponse {
 }
 
 export interface EngineCommandEnvelope {
+  schemaVersion?: unknown;
+  tableID?: unknown;
   actor?: unknown;
   action?: unknown;
   clientNonce?: unknown;
@@ -67,6 +73,9 @@ export async function applyAuthoritativeCommand(
   if (!room.authoritativeState) {
     throw new RoomStateError("engine_state_missing", "The server game has not been initialized.", 409);
   }
+  if (envelope.schemaVersion !== room.schemaVersion || envelope.tableID !== room.authoritativeTableID) {
+    throw new RoomStateError("protocol_mismatch", "Update the app or reopen this table.", 409);
+  }
   const actor = playerIDValue(envelope.actor);
   const nonce = String(envelope.clientNonce ?? "").trim();
   const baseSequence = numberValue(envelope.baseHostSequence, "baseHostSequence");
@@ -92,6 +101,12 @@ export function adoptingEngineResponse(
   response: AuthoritativeGameResponse,
   now = new Date().toISOString()
 ): RoomState {
+  if (response.engineVersion !== ENGINE_VERSION) {
+    throw new RoomStateError("engine_version_mismatch", "The table engine version is unavailable.", 503);
+  }
+  if (typeof response.botPending !== "boolean" || !["lobby", "playing", "finished"].includes(response.status)) {
+    throw new RoomStateError("engine_invalid_response", "Invalid engine status.", 502);
+  }
   if (typeof response.state !== "string" || !response.state) {
     throw new RoomStateError("engine_invalid_response", "Engine response omitted private state.", 502);
   }
@@ -112,15 +127,26 @@ export function adoptingEngineResponse(
     if (tableID !== envelope.tableID) {
       throw new RoomStateError("engine_invalid_response", "Engine returned multiple table identities.", 502);
     }
+    if (projections[viewer] !== undefined) {
+      throw new RoomStateError("engine_invalid_response", "Duplicate projection seat.", 502);
+    }
     projections[viewer] = envelope;
   }
   if (Object.keys(projections).length !== room.peers.length || !tableID) {
     throw new RoomStateError("engine_invalid_response", "Engine did not return one projection per seat.", 502);
   }
+  if (room.authoritativeTableID && tableID !== room.authoritativeTableID) {
+    throw new RoomStateError("engine_invalid_response", "Engine changed the table identity.", 502);
+  }
+  if (room.status !== "lobby" && response.sequence < (room.authoritativeSequence ?? 0)) {
+    throw new RoomStateError("engine_invalid_response", "Engine revision moved backwards.", 502);
+  }
   const status = response.status;
   const phase = typeof response.phase === "string" ? response.phase : undefined;
   return {
     ...room,
+    engineVersion: response.engineVersion,
+    botPending: response.botPending,
     authoritativeState: status === "finished" ? undefined : response.state,
     authoritativeSequence: response.sequence,
     authoritativeTableID: tableID,
@@ -199,7 +225,7 @@ function botProfiles(peers: OnlinePeer[]): unknown[] {
   return encoded;
 }
 
-async function callEngine(
+export async function callEngine(
   engine: AuthoritativeEngineBinding,
   path: string,
   body: unknown

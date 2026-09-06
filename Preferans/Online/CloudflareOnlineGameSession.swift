@@ -9,7 +9,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     public let roomCode: String
     public let inviteURL: URL
     public let localPeer: OnlinePeer
-    public let localCoordinator: RoomOnlineGameCoordinator
+    public let localCoordinator: ServerGameCoordinator
 
     private let transport: CloudflareRoomTransport
     private let rules: PreferansRules
@@ -26,7 +26,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         rules: PreferansRules = .sochi,
         match: MatchSettings = .unbounded,
         botMoveDelay: Duration = BotPacing.interactive,
-        coordinator: RoomOnlineGameCoordinator? = nil,
+        coordinator: ServerGameCoordinator? = nil,
         variantTag: String? = nil,
         resume: OnlineResumeContext? = nil
     ) {
@@ -38,7 +38,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         self.match = match
         self.variantTag = variantTag
         self.resume = resume
-        self.localCoordinator = coordinator ?? RoomOnlineGameCoordinator(botMoveDelay: botMoveDelay)
+        self.localCoordinator = coordinator ?? ServerGameCoordinator()
         // Persist this seat's credential so lobby flows without a live
         // transport (abandon, a later resume) can still prove seat ownership.
         OnlineSeatCredentialStore.store(transport.seatToken, roomCode: transport.roomCode)
@@ -145,7 +145,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     }
 
     public func start() async {
-        await localCoordinator.attach(transport: transport, rules: rules, match: match, variantTag: variantTag, resume: resume)
+        await localCoordinator.attach(transport: transport)
     }
 
     public func stop() {

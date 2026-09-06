@@ -1,3 +1,4 @@
+import { commandIdentity, MutationQueue, type StoredCommand, type CommandReceipt } from "./command-contract";
 import {
   type CreateRoomInput,
   type OnlinePeer,
@@ -57,6 +58,8 @@ import { Container, getRandom } from "@cloudflare/containers";
 import {
   type AuthoritativeEngineBinding,
   applyAuthoritativeCommand,
+  callEngine,
+  adoptingEngineResponse,
   clientActionFromWireMessage,
   createAuthoritativeGame,
   isStartDealCommand,
@@ -318,7 +321,7 @@ export class PreferansEngineContainer extends Container<Env> {
 export class PreferansRoomV2 {
   private readonly ctx: DurableObjectState;
   private readonly env: Env;
-  private mutationTail: Promise<void> = Promise.resolve();
+  private mutations = new MutationQueue();
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
@@ -326,18 +329,7 @@ export class PreferansRoomV2 {
   }
 
   async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    const mutatesRoom = request.method === "POST" && [
-      "/create",
-      "/join",
-      "/seats/fill-bots",
-      "/state",
-      "/abandon",
-      "/account-deleted"
-    ].includes(url.pathname);
-    return mutatesRoom
-      ? this.serializeMutation(() => this.fetchUnlocked(request))
-      : this.fetchUnlocked(request);
+    return this.serializeMutation(() => this.fetchUnlocked(request));
   }
 
   private async fetchUnlocked(request: Request): Promise<Response> {
@@ -363,7 +355,7 @@ export class PreferansRoomV2 {
         // it; transition-only refreshes remain best-effort below.
         const initialized = await createAuthoritativeGame(room, this.engine());
         await this.upsertLibraryEntry(initialized, creator);
-        await this.ctx.storage.put(ROOM_STORAGE_KEY, initialized);
+        await this.commitRoom(initialized);
         return json(createResult(initialized), 201);
       }
 
@@ -382,7 +374,8 @@ export class PreferansRoomV2 {
         // Make membership durable before publishing the roster. This is the
         // account's authoritative room index for resume and later deletion.
         await this.upsertLibraryEntry(updated, joinedSeat);
-        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+        await this.commitRoom(updated);
+        this.closeSocketsForPlayers([peerID(joinedSeat)], 4009, "seat_replaced");
         await this.broadcastPresence(updated);
         this.broadcastAuthoritativeProjections(
           updated,
@@ -409,7 +402,7 @@ export class PreferansRoomV2 {
           updated = await createAuthoritativeGame(updated, this.engine());
         }
         if (updated !== room) {
-          await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+          await this.commitRoom(updated);
           await this.broadcastPresence(updated);
           this.broadcastAuthoritativeProjections(
             updated,
@@ -449,7 +442,7 @@ export class PreferansRoomV2 {
         }
         const updated = abandonRoom(room);
         if (updated !== room) {
-          await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+          await this.commitRoom(updated);
           await this.broadcastPresence(updated);
           await this.fanOutToLibraries(updated);
         }
@@ -471,7 +464,7 @@ export class PreferansRoomV2 {
         const remainingLivePlayers = this.activePlayerIDs()
           .filter((playerID) => !removedPlayerIDs.includes(playerID));
         const updated = electLiveHost(scrubbed, remainingLivePlayers);
-        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+        await this.commitRoom(updated);
         this.closeSocketsForPlayers(removedPlayerIDs, 4010, "account_deleted");
         await this.broadcastPresence(updated);
         await this.fanOutToLibraries(updated);
@@ -564,6 +557,10 @@ export class PreferansRoomV2 {
   }
 
   async webSocketClose(ws: WebSocket): Promise<void> {
+    return this.serializeMutation(() => this.disconnectSocket(ws));
+  }
+
+  private async disconnectSocket(ws: WebSocket): Promise<void> {
     const room = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
     if (room) {
       const activeRoom = await this.reconcileHost(room, ws);
@@ -572,33 +569,60 @@ export class PreferansRoomV2 {
   }
 
   async webSocketError(ws: WebSocket): Promise<void> {
-    const room = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
-    if (room) {
-      const activeRoom = await this.reconcileHost(room, ws);
-      await this.broadcastPresence(activeRoom);
-    }
+    return this.serializeMutation(() => this.disconnectSocket(ws));
   }
 
   async relayWireMessage(room: RoomState, sender: OnlinePeer, payload: ClientSocketEnvelope): Promise<void> {
     const senderPlayerID = peerID(sender);
     const command = clientActionFromWireMessage(payload.message);
     if (command) {
-      if (isStartDealCommand(command)) {
-        validateStartDealAuthority(room, sender, new Set(this.activePlayerIDs()));
+      const identity = await commandIdentity(sender.accountID, command);
+      const stored = await this.ctx.storage.get<StoredCommand>(identity.key);
+      if (stored) {
+        if (stored.fingerprint !== identity.fingerprint) {
+          this.sendReceipt(room, senderPlayerID, {
+            ...stored.receipt, status: "rejected", code: "command_id_conflict",
+            message: "This command ID was used for another action."
+          });
+        } else {
+          this.sendReceipt(room, senderPlayerID, stored.receipt);
+        }
+        this.sendProjectionToPlayer(room, senderPlayerID, room.relaySequence, new Date().toISOString());
+        return;
       }
-      const transitioned = await applyAuthoritativeCommand(room, sender, command, this.engine());
-      const recipientPlayerIDs = humanPeers(transitioned).map(peerID);
-      const { room: updated, entry } = recordRelay(transitioned, {
-        senderPlayerID,
-        recipientPlayerIDs,
-        message: payload.message
-      });
-      await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
-      this.broadcastAuthoritativeProjections(updated, entry.serverSequence, entry.sentAt);
-      if (libraryProgressSignature(room) !== libraryProgressSignature(updated)) {
-        await this.broadcastPresence(updated);
-        await this.fanOutToLibraries(updated);
+      let updated: RoomState;
+      try {
+        if (room.status === "abandoned" || room.status === "finished") {
+          throw new RoomStateError("table_closed", "This table has ended.", 409);
+        }
+        if (isStartDealCommand(command)) {
+          validateStartDealAuthority(room, sender, new Set(this.activePlayerIDs()));
+        }
+        const transitioned = await applyAuthoritativeCommand(room, sender, command, this.engine());
+        updated = recordRelay(transitioned, {
+          senderPlayerID, recipientPlayerIDs: humanPeers(transitioned).map(peerID), message: payload.message
+        }).room;
+      } catch (error) {
+        // Infrastructure failures are uncertain/retryable, never permanent rejections.
+        if (!(error instanceof RoomStateError) || error.status >= 500) throw error;
+        const receipt: CommandReceipt = {
+          tableID: room.authoritativeTableID!, clientNonce: identity.nonce,
+          sequence: room.authoritativeSequence ?? 0, status: "rejected",
+          code: error.code, message: error.message
+        };
+        await this.ctx.storage.put(identity.key, { fingerprint: identity.fingerprint, receipt });
+        this.sendReceipt(room, senderPlayerID, receipt);
+        this.sendProjectionToPlayer(room, senderPlayerID, room.relaySequence, new Date().toISOString());
+        return;
       }
+      const receipt: CommandReceipt = {
+        tableID: updated.authoritativeTableID!, clientNonce: identity.nonce,
+        sequence: updated.authoritativeSequence!, status: "accepted"
+      };
+      await this.commitRoom(updated, identity.key, { fingerprint: identity.fingerprint, receipt });
+      this.sendReceipt(updated, senderPlayerID, receipt);
+      this.broadcastAuthoritativeProjections(updated, updated.relaySequence, new Date().toISOString());
+      await this.broadcastPresence(updated);
       return;
     }
 
@@ -625,7 +649,8 @@ export class PreferansRoomV2 {
         return container.fetch(`http://engine${path}`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(8_000)
         });
       }
     };
@@ -635,15 +660,61 @@ export class PreferansRoomV2 {
   /// container fetch. Keep every room mutation behind an explicit FIFO so two
   /// commands can never both advance the same private state and race to store.
   private async serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
-    const previous = this.mutationTail;
-    let release: (() => void) | undefined;
-    this.mutationTail = new Promise<void>((resolve) => { release = resolve; });
-    await previous;
-    try {
-      return await operation();
-    } finally {
-      release?.();
-    }
+    return this.mutations.run(operation);
+  }
+
+  private sendReceipt(room: RoomState, playerID: string, receipt: CommandReceipt): void {
+    this.sendToPlayers(room, [playerID], JSON.stringify({ type: "receipt", receipt }));
+  }
+
+  private async commitRoom(room: RoomState, key?: string, command?: StoredCommand): Promise<void> {
+    // Schedule before commit: an interruption can leave a harmless extra wakeup,
+    // but never durable work with no alarm to resume it.
+    await this.ctx.storage.setAlarm(Date.now() + 500);
+    await this.ctx.storage.transaction(async txn => {
+      await txn.put(ROOM_STORAGE_KEY, { ...room, botPending: room.status === "playing" && room.botPending, libraryDirty: true });
+      if (key && command) await txn.put(key, command);
+      if (command) await txn.put(`history:${String(room.authoritativeSequence).padStart(12, "0")}`, {
+        receipt: command.receipt, fingerprint: command.fingerprint, engineVersion: room.engineVersion
+      });
+    });
+  }
+
+  async alarm(): Promise<void> {
+    await this.serializeMutation(async () => {
+      let room = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
+      if (!room) return;
+      // The next alarm is installed before any external work. Crashes and exhausted
+      // automatic alarm retries therefore cannot strand the durable outbox.
+      if (room.libraryDirty || room.botPending) await this.ctx.storage.setAlarm(Date.now() + 5_000);
+      if (room.botPending && room.status === "playing" && room.authoritativeState) {
+        try {
+          const response = await callEngine(this.engine(), "/v1/bots", { state: room.authoritativeState });
+          if (response.sequence !== (room.authoritativeSequence ?? 0) + 1) {
+            throw new RoomStateError("bot_stalled", "Bot did not advance the table.", 503);
+          }
+          room = adoptingEngineResponse(room, response);
+          await this.commitRoom(room);
+          this.broadcastAuthoritativeProjections(room, room.relaySequence, new Date().toISOString());
+          await this.broadcastPresence(room);
+        } catch {
+          console.warn(JSON.stringify({ event: "bot_retry", room: room.roomCode, revision: room.authoritativeSequence }));
+        }
+      }
+      room = await this.loadRequiredRoom();
+      if (room.libraryDirty) {
+        const results = await Promise.allSettled(humanPeers(room).map(peer => this.upsertLibraryEntry(room!, peer)));
+        if (results.every(result => result.status === "fulfilled")) {
+          room = { ...room, libraryDirty: false };
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
+        }
+      }
+      if (room.botPending || room.libraryDirty) {
+        await this.ctx.storage.setAlarm(Date.now() + (room.botPending ? 500 : 5_000));
+      } else {
+        await this.ctx.storage.deleteAlarm();
+      }
+    });
   }
 
   private broadcastAuthoritativeProjections(room: RoomState, serverSequence: number, sentAt: string): void {
@@ -670,7 +741,7 @@ export class PreferansRoomV2 {
       serverSequence,
       sentAt
     });
-    this.sendToPlayers([playerID], outbound);
+    this.sendToPlayers(room, [playerID], outbound);
   }
 
   private sendProjectionToSocket(ws: WebSocket, room: RoomState, playerID: string): void {
@@ -721,17 +792,8 @@ export class PreferansRoomV2 {
     room: RoomState,
     excludingAccountIDs: ReadonlySet<string> = new Set()
   ): Promise<void> {
-    await Promise.all(
-      humanPeers(room)
-        .filter((peer) => !excludingAccountIDs.has(peer.accountID))
-        .map(async (peer) => {
-          try {
-            await this.upsertLibraryEntry(room, peer);
-          } catch {
-            // Best-effort index update; the room state remains the source of truth.
-          }
-        })
-    );
+    // The write path has already persisted libraryDirty. Delivery happens in alarm().
+    await this.ctx.storage.setAlarm(Date.now() + 500);
   }
 
   private async upsertLibraryEntry(room: RoomState, peer: OnlinePeer): Promise<void> {
@@ -752,12 +814,13 @@ export class PreferansRoomV2 {
     }
   }
 
-  sendToPlayers(playerIDs: string[], message: string): void {
+  sendToPlayers(room: RoomState, playerIDs: string[], message: string): void {
     const recipients = new Set(playerIDs);
     for (const socket of this.ctx.getWebSockets()) {
-      const attachment = socket.deserializeAttachment() as { playerID?: string } | undefined ?? {};
-      if (attachment.playerID && recipients.has(attachment.playerID)) {
-        socket.send(message);
+      const attachment = socket.deserializeAttachment() as SocketAttachment | undefined ?? {};
+      if (socket.readyState === 1 && attachment.playerID && recipients.has(attachment.playerID)
+          && room.peers.some(peer => peerID(peer) === attachment.playerID && peer.seatToken === attachment.seatToken)) {
+        try { socket.send(message); } catch { /* committed state survives delivery failure */ }
       }
     }
   }
@@ -799,7 +862,7 @@ export class PreferansRoomV2 {
     if (updated === room) {
       return room;
     }
-    await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+    await this.commitRoom(updated);
     await this.broadcastPresence(updated);
     await this.fanOutToLibraries(updated);
     return updated;

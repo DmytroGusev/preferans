@@ -151,7 +151,7 @@ final class AuthoritativeGameServiceTests: XCTestCase {
             ),
             dealSeed: 123
         )
-        let advanced = try await AuthoritativeGameService.apply(.init(
+        var advanced = try await AuthoritativeGameService.apply(.init(
             state: created.state,
             sender: "north",
             actor: "north",
@@ -159,6 +159,13 @@ final class AuthoritativeGameServiceTests: XCTestCase {
             clientNonce: UUID(),
             baseSequence: 0
         ))
+        XCTAssertEqual(advanced.sequence, 1, "Human commit must not wait for bots")
+        for _ in 0..<100 where advanced.botPending {
+            let previous = advanced.sequence
+            advanced = try await AuthoritativeGameService.advanceBot(state: advanced.state)
+            XCTAssertEqual(advanced.sequence, previous + 1)
+        }
+        XCTAssertFalse(advanced.botPending)
         let state = try AuthoritativeGameService.decodeState(advanced.state)
 
         XCTAssertGreaterThan(advanced.sequence, 1)

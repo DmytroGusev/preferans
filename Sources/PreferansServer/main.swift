@@ -47,6 +47,12 @@ enum PreferansServerMain {
             }
         }
 
+        router.post("/v1/bots") { request, context -> AuthoritativeGameResponse in
+            struct Input: Decodable { var state: String }
+            let body = try await request.decode(as: Input.self, context: context)
+            return try await AuthoritativeGameService.advanceBot(state: body.state)
+        }
+
         let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "8080") ?? 8080
         let app = Application(
             router: router,

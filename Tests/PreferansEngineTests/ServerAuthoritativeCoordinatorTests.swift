@@ -19,7 +19,7 @@ final class ServerAuthoritativeCoordinatorTests: XCTestCase {
             participants: peers,
             tableID: tableID
         )
-        let coordinator = RoomOnlineGameCoordinator()
+        let coordinator = ServerGameCoordinator()
 
         await coordinator.attach(transport: transport)
 

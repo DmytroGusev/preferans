@@ -46,6 +46,8 @@ function room() {
 
 function response(sequence = 0): AuthoritativeGameResponse {
   return {
+    engineVersion: "preferans-1",
+    botPending: false,
     state: `opaque-${sequence}`,
     sequence,
     status: sequence === 0 ? "lobby" : "playing",
@@ -96,6 +98,8 @@ test("command sender is derived from the authenticated socket seat", async () =>
   };
 
   await applyAuthoritativeCommand(initialized, east, {
+    schemaVersion: initialized.schemaVersion,
+    tableID: initialized.authoritativeTableID,
     actor: { rawValue: "east" },
     action: { bid: { _0: { player: { rawValue: "east" }, bid: "pass" } } },
     clientNonce: "00000000-0000-0000-0000-000000000002",

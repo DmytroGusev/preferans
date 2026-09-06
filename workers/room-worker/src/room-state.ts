@@ -81,6 +81,9 @@ export interface OnlinePeer {
 }
 
 export interface RoomState {
+  engineVersion?: string;
+  botPending?: boolean;
+  libraryDirty?: boolean;
   schemaVersion: number;
   roomCode: string;
   hostPlayerID: string;
