@@ -20,7 +20,7 @@ function initial(): RoomState {
     seats: peers, maxPlayers: 3, rules: {}, match: {} }), response(0));
 }
 function command(nonce = crypto.randomUUID()) {
-  return { schemaVersion: 3, tableID, actor: peers[0].playerID,
+  return { schemaVersion: 4, tableID, actor: peers[0].playerID,
     action: { bid: { player: peers[0].playerID, call: { pass: {} } } },
     clientNonce: nonce, baseHostSequence: 0 };
 }

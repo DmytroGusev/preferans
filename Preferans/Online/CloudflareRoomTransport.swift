@@ -2,6 +2,7 @@ import Foundation
 import PreferansEngine
 
 public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
+    public var status: PreferansGameStatus? = nil
     public var schemaVersion: Int
     public var roomCode: String
     public var hostPlayerID: PlayerID
@@ -161,6 +162,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     /// Exposed so the session can persist it for lobby actions such as abandon.
     public let seatToken: String?
     private var socketTask: URLSessionWebSocketTask?
+    private var keepAliveTask: Task<Void, Never>?
     private var connectionTask: Task<Void, Never>?
     private var isClosed = false
     /// Highest worker relay sequence delivered to this client. The worker does
@@ -210,6 +212,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     }
 
     deinit {
+        keepAliveTask?.cancel(); keepAliveTask = nil
         connectionTask?.cancel()
     }
 
@@ -324,10 +327,18 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     }
 
     public func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool = true) async throws {
+        switch message {
+        case .clientAction, .resyncRequest: break
+        default: throw CloudflareRoomTransportError.serverError("Online clients may only send commands or resync requests.")
+        }
         try await send(ClientSocketEnvelope(type: .wire, recipients: peers.map(\.playerID), reliable: reliably, message: message))
     }
 
     public func sendToAll(_ message: GameWireMessage, reliably: Bool = true) async throws {
+        switch message {
+        case .clientAction, .resyncRequest: break
+        default: throw CloudflareRoomTransportError.serverError("Online clients may only send commands or resync requests.")
+        }
         try await send(ClientSocketEnvelope(type: .wire, recipients: nil, reliable: reliably, message: message))
     }
 
@@ -415,6 +426,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 
     public func disconnect() {
         isClosed = true
+        keepAliveTask?.cancel(); keepAliveTask = nil
         connectionTask?.cancel()
         connectionTask = nil
         socketTask?.cancel(with: .goingAway, reason: nil)
@@ -448,6 +460,27 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         let task = session.webSocketTask(with: socketURL)
         socketTask = task
         task.resume()
+        keepAliveTask?.cancel()
+        keepAliveTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled else { return }
+                let deadline = Task {
+                    try? await Task.sleep(for: .seconds(10))
+                    if !Task.isCancelled { task.cancel(with: .goingAway, reason: nil) }
+                }
+                do {
+                    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                        task.sendPing { error in
+                            if let error { continuation.resume(throwing: error) }
+                            else { continuation.resume() }
+                        }
+                    }
+                }
+                catch { task.cancel(with: .goingAway, reason: nil) }
+                deadline.cancel()
+            }
+        }
         return task
     }
 
@@ -532,6 +565,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         let envelope = try decoder.decode(ServerSocketEnvelope.self, from: data)
         switch envelope.type {
         case .room:
+            if envelope.room?.status == .abandoned { emitConnectionEvent(.tableAbandoned) }
             // The initial room frame can be newer than the HTTP create/join
             // response, so use it to advance the relay floor before accepting
             // any wire frames from this socket.
@@ -547,6 +581,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                 emitParticipants()
             }
         case .presence:
+            if envelope.room?.status == .abandoned { emitConnectionEvent(.tableAbandoned) }
             // Presence carries the room's current relay counter for display,
             // but it is broadcast to every seat while wire frames are routed
             // selectively. Advancing the local wire floor from presence could

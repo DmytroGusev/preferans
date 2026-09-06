@@ -112,7 +112,6 @@ public struct OnlineRoomGameScreen<Coordinator: OnlineGamePresenting>: View {
                     }
                 }
             )
-            .disabled(coordinator.isSubmitting || coordinator.transportStatus == .seatTakenOver)
             onlineFlowState(projection: authoritativeProjection)
         }
         // No screen-level id here: it would propagate onto the inner

@@ -72,6 +72,13 @@ final class MatchSettingsTests: XCTestCase {
 
     // MARK: - Pool target → gameOver
 
+    func testUnboundedWireEncodingAvoidsJavaScriptIntegerOverflow() throws {
+        let data = try JSONEncoder().encode(MatchSettings.unbounded)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertNil(json["poolTarget"])
+        XCTAssertEqual(try JSONDecoder().decode(MatchSettings.self, from: data), .unbounded)
+    }
+
     func testUnboundedMatchNeverFiresGameOver() throws {
         var engine = try makeEngine()
         let events = try runPassedOutSixClubs(&engine)

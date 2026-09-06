@@ -70,6 +70,9 @@ export async function applyAuthoritativeCommand(
   envelope: EngineCommandEnvelope,
   engine: AuthoritativeEngineBinding
 ): Promise<RoomState> {
+  if (room.engineVersion !== ENGINE_VERSION) {
+    throw new RoomStateError("engine_version_mismatch", "The saved table requires another engine version.", 503);
+  }
   if (!room.authoritativeState) {
     throw new RoomStateError("engine_state_missing", "The server game has not been initialized.", 409);
   }
@@ -242,7 +245,7 @@ export async function callEngine(
   if (!response.ok || !data) {
     throw new RoomStateError(
       "engine_rejected_command",
-      data?.message ?? data?.error ?? "The authoritative engine rejected the command.",
+      engineErrorMessage(data),
       response.status >= 400 && response.status < 500 ? 409 : 502
     );
   }
@@ -264,4 +267,13 @@ function numberValue(value: unknown, name: string): number {
 
 function isRecord(value: unknown): value is Record<string, any> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function engineErrorMessage(data: unknown): string {
+  if (isRecord(data)) {
+    if (typeof data.message === "string") return data.message;
+    if (typeof data.error === "string") return data.error;
+    if (isRecord(data.error) && typeof data.error.message === "string") return data.error.message;
+  }
+  return "The authoritative engine rejected the command.";
 }

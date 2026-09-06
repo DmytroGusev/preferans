@@ -10,7 +10,7 @@ APPLE_CLIENT_ID = "com.mixandmatch.preferans"
 
 [[durable_objects.bindings]]
 name = "ROOMS"
-class_name = "PreferansRoomV3"
+class_name = "PreferansTable"
 
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
@@ -44,3 +44,17 @@ new_sqlite_classes = ["PreferansRoomV2", "PlayerAccountV2"]
 [[migrations]]
 tag = "v4-server-authoritative-v3"
 new_sqlite_classes = ["PreferansRoomV3", "PreferansEngineContainer"]
+
+# No compatibility: new tables use the durable receipt protocol.
+[[migrations]]
+tag = "v5-durable-table"
+new_sqlite_classes = ["PreferansTable"]
+deleted_classes = ["PreferansRoom", "PlayerLibrary", "PreferansRoomV2", "PreferansRoomV3"]
+
+[observability]
+enabled = true
+
+[[ratelimits]]
+name = "REQUEST_LIMIT"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }

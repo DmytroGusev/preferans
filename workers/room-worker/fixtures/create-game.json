@@ -1,0 +1,65 @@
+{
+  "botProfiles" : [
+
+  ],
+  "firstDealer" : {
+    "rawValue" : "north"
+  },
+  "identities" : [
+    {
+      "displayName" : "North",
+      "gamePlayerID" : "account:north",
+      "playerID" : {
+        "rawValue" : "north"
+      }
+    },
+    {
+      "displayName" : "East",
+      "gamePlayerID" : "account:east",
+      "playerID" : {
+        "rawValue" : "east"
+      }
+    },
+    {
+      "displayName" : "South",
+      "gamePlayerID" : "account:south",
+      "playerID" : {
+        "rawValue" : "south"
+      }
+    }
+  ],
+  "match" : {
+    "poolClosure" : "tableTotal",
+    "poolTarget" : 6,
+    "raspasy" : {
+      "progressive" : {
+        "exit" : "strict",
+        "penalties" : "arithmetic"
+      }
+    },
+    "totus" : {
+      "asTenTrickGame" : {
+        "requireWhist" : false
+      }
+    }
+  },
+  "rules" : {
+    "allPassPenaltyPolicy" : {
+      "perTrick" : {
+        "amnesty" : false,
+        "multiplier" : 1
+      }
+    },
+    "allPassTalonPolicy" : {
+      "classic" : {
+
+      }
+    },
+    "allowSeniorHandHoldBid" : true,
+    "failedDeclarerConsolation" : "eachDefender",
+    "requireWhistOnTenTrickContracts" : false,
+    "singleWhistScoring" : "greedy",
+    "whistResponsibility" : "responsible",
+    "zeroTricksAllPassPoolBonus" : 1
+  }
+}

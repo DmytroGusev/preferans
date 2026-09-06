@@ -129,6 +129,10 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         variantTag: String? = nil,
         resume: OnlineResumeContext? = nil
     ) async {
+        guard !transport.isServerAuthoritative else {
+            errorText = "Use ServerGameCoordinator for online tables."
+            return
+        }
         // One coordinator represents exactly one attachment. Invalidate every
         // task and every visible table value before awaiting the new room's
         // host election; otherwise a reattach can leave the previous socket
@@ -705,7 +709,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             stopHeartbeat()
             botMoveScheduler.cancel()
             stagedBotInsights = [:]
-        case .commandReceipt:
+        case .commandReceipt, .tableAbandoned:
             break // Offline peer simulation never receives durable server receipts.
         case let .serverError(message):
             errorText = message

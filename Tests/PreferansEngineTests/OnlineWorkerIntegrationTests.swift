@@ -111,11 +111,15 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
             seatToken: newSeatToken,
             accountSessionToken: sessionToken
         )
-        let afterAbandon = try await directory.fetchMyGames(sessionToken: sessionToken)
-        XCTAssertNil(afterAbandon.first { $0.roomCode == transport.roomCode && $0.status != .abandoned })
+        let libraryRepaired = await eventually {
+            let games = try? await directory.fetchMyGames(sessionToken: sessionToken)
+            return games?.first { $0.roomCode == transport.roomCode }?.status == .abandoned
+        }
+        XCTAssertTrue(libraryRepaired, "The durable library outbox must publish terminal status")
 
         transport.disconnect()
         takeover.disconnect()
+        try await CloudflareAccountClient(baseURL: baseURL).deleteAccount(sessionToken: sessionToken)
     }
 
     func testAccountDeletionRevokesSessionAndScrubsLobbySeat() async throws {
@@ -268,12 +272,12 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
 
     private func eventually(
         attempts: Int = 200,
-        condition: @escaping @MainActor () -> Bool
+        condition: @escaping @MainActor () async -> Bool
     ) async -> Bool {
         for _ in 0..<attempts {
-            if condition() { return true }
+            if await condition() { return true }
             try? await Task.sleep(for: .milliseconds(10))
         }
-        return condition()
+        return await condition()
     }
 }

@@ -1,0 +1,15 @@
+name = "preferans-local"
+main = "src/local.ts"
+compatibility_date = "2026-04-07"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "LocalPreferansTable"
+
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "PlayerAccountV2"
+
+[[migrations]]
+tag = "local-v4"
+new_sqlite_classes = ["LocalPreferansTable", "PlayerAccountV2"]

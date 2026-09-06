@@ -37,7 +37,11 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
 
     deinit { retry?.cancel(); hold?.cancel(); subscriptions.forEach { $0.cancel() } }
 
-    public var displayProjection: PlayerGameProjection? { projection?.applyingAdvanceFreeze(pendingAdvance) }
+    public var displayProjection: PlayerGameProjection? {
+        var visible = projection?.applyingAdvanceFreeze(pendingAdvance)
+        if isSubmitting || transportStatus != .connected { visible?.legal = LegalActionProjection() }
+        return visible
+    }
 
     public func attach(transport: any RoomRealtimeTransport) async {
         detach()
@@ -197,6 +201,13 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         case .seatTakenOver:
             transportStatus = .seatTakenOver; retry?.cancel(); retry = nil
             canHostStart = false
+        case .tableAbandoned:
+            if let pending, let transport {
+                try? outbox.remove(table: pending.tableID, account: transport.localPeer.accountID)
+            }
+            pending = nil; isSubmitting = false; retry?.cancel(); retry = nil
+            transportStatus = .disconnected; canHostStart = false
+            errorText = "This table was abandoned. Return to the lobby to start another game."
         case let .serverError(message): errorText = message
         case let .commandReceipt(receipt):
             guard let pending, receipt.tableID == tableID, receipt.clientNonce == pending.clientNonce,

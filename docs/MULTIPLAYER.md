@@ -46,3 +46,27 @@ Fast engine and wire tests; actual Durable Object runtime tests covering interru
 engine requests and reconnects; a bounded multi-client complete match; container
 health and cold/warm latency measurements; and an iOS build. Production deployment
 is a separate operation from preparing and committing the upgrade.
+
+## Implementation and verification (2026-09-06)
+
+1. Server authority and private event filtering; payload-bound command IDs.
+2. Serialized durable commands, atomic receipts/checkpoints, bot alarms, library
+   outbox, and a dedicated iOS ServerGameCoordinator with local command persistence.
+3. Ten workerd tests covering rollback, lost delivery, duplicate/conflicting commands,
+   lifecycle races, retry, takeover, and a real WebSocket resume; Swift tests cover
+   persisted pending moves and complete three/four-seat matches.
+4. Fresh protocol-4 table namespace, obsolete library filtering, request/message
+   bounds, connection heartbeat, local development launcher, CI, wire fixture, and
+   production deployment dry run. Unbounded matches omit the Swift Int.max sentinel
+   at the JSON boundary to avoid JavaScript integer rounding.
+
+Verified locally: 45 Worker unit tests; 10 workerd tests; 19 focused Swift client,
+security, and wire tests; three live Swift-to-Worker integration tests; the unbounded
+integer regression; both full server match sizes; iOS simulator build; Linux container
+build; Worker/container deployment dry run; and 3/4-seat real-network create/join/deal/
+retry/resume smoke with temporary-account cleanup. These are scoped checks, not a
+claim that every repository test or every production failure mode has been exercised.
+
+No production deployment was performed. Cloudflare cold starts, geographical latency,
+and concurrent-table capacity still require measurements in a deployed environment.
+The current pool limit of three is a starting configuration, not a capacity guarantee.

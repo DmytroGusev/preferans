@@ -13,7 +13,6 @@ import {
   RoomStateError,
   abandonRoom,
   authorizeHostSeat,
-  authorizeRelayMessage,
   authorizeSeat,
   createInitialRoom,
   fillOpenSeatsWithBots,
@@ -68,6 +67,7 @@ import {
 } from "./authoritative-engine";
 
 const ROOM_STORAGE_KEY = "room";
+const BOT_MOVE_DELAY_MS = 500; // Matches BotPacing.interactive; server-owned presentation cadence.
 const ACCOUNT_STORAGE_KEY = "account";
 const APP_ID = "3WSQ6X9CDT.com.mixandmatch.preferans";
 const DEFAULT_APPLE_AUDIENCE = "com.mixandmatch.preferans";
@@ -94,6 +94,7 @@ export interface Env {
   ACCOUNTS: DurableObjectNamespace;
   ENGINE: DurableObjectNamespace<PreferansEngineContainer>;
   APPLE_CLIENT_ID?: string;
+  REQUEST_LIMIT?: RateLimit;
 }
 
 interface CreateRoomBody {
@@ -152,6 +153,8 @@ interface SocketAttachment {
   playerID?: string;
   seatToken?: string;
   connectedAt?: string;
+  windowStart?: number;
+  commandCount?: number;
 }
 
 export default {
@@ -162,6 +165,10 @@ export default {
       }
 
       const url = new URL(request.url);
+      if (env.REQUEST_LIMIT && url.pathname.startsWith("/v2/") && request.method !== "GET") {
+        const outcome = await env.REQUEST_LIMIT.limit({ key: request.headers.get("CF-Connecting-IP") ?? "unknown" });
+        if (!outcome.success) throw new RoomStateError("rate_limited", "Too many requests. Try again shortly.", 429);
+      }
       if (request.method === "GET" && url.pathname === "/health") {
         return json({
           ok: true,
@@ -312,13 +319,13 @@ export default {
 };
 
 /// Stateless Linux Swift transition service. Durable room state remains in
-/// `PreferansRoomV2`; this class only manages a small warm container pool.
+/// `PreferansTable`; this class only manages a small warm container pool.
 export class PreferansEngineContainer extends Container<Env> {
   defaultPort = 8080;
   sleepAfter = "10m";
 }
 
-export class PreferansRoomV2 {
+export class PreferansTable {
   private readonly ctx: DurableObjectState;
   private readonly env: Env;
   private mutations = new MutationQueue();
@@ -461,9 +468,14 @@ export class PreferansRoomV2 {
           return json(publicRoom(room));
         }
 
+        const privateKeys = await this.ctx.storage.list({ prefix: "history:" });
+        const receiptKeys = await this.ctx.storage.list({ prefix: `command:${accountID}:` });
+        for (const key of [...privateKeys.keys(), ...receiptKeys.keys()]) await this.ctx.storage.delete(key);
         const remainingLivePlayers = this.activePlayerIDs()
           .filter((playerID) => !removedPlayerIDs.includes(playerID));
-        const updated = electLiveHost(scrubbed, remainingLivePlayers);
+        let updated = electLiveHost(scrubbed, remainingLivePlayers);
+        if (updated.status === "lobby") updated = await createAuthoritativeGame(updated, this.engine());
+        else updated = { ...updated, authoritativeProjections: undefined, authoritativeState: undefined };
         await this.commitRoom(updated);
         this.closeSocketsForPlayers(removedPlayerIDs, 4010, "account_deleted");
         await this.broadcastPresence(updated);
@@ -536,6 +548,13 @@ export class PreferansRoomV2 {
       const attachment = ws.deserializeAttachment() as SocketAttachment | undefined ?? {};
       const room = await this.loadRequiredRoom();
       const sender = authorizeSeat(room, attachment.playerID, attachment.seatToken);
+      const now = Date.now();
+      if (now - (attachment.windowStart ?? 0) > 10_000) {
+        attachment.windowStart = now; attachment.commandCount = 0;
+      }
+      attachment.commandCount = (attachment.commandCount ?? 0) + 1;
+      ws.serializeAttachment(attachment);
+      if (attachment.commandCount > 30) throw new RoomStateError("rate_limited", "Too many table messages.", 429);
 
       const payload = parseSocketPayload(rawMessage);
       switch (payload.type) {
@@ -619,7 +638,7 @@ export class PreferansRoomV2 {
         tableID: updated.authoritativeTableID!, clientNonce: identity.nonce,
         sequence: updated.authoritativeSequence!, status: "accepted"
       };
-      await this.commitRoom(updated, identity.key, { fingerprint: identity.fingerprint, receipt });
+      await this.commitRoom(updated, identity.key, { fingerprint: identity.fingerprint, receipt, command });
       this.sendReceipt(updated, senderPlayerID, receipt);
       this.broadcastAuthoritativeProjections(updated, updated.relaySequence, new Date().toISOString());
       await this.broadcastPresence(updated);
@@ -634,7 +653,6 @@ export class PreferansRoomV2 {
     // Schema v3 has no peer-authored state, identity, or projection messages.
     // Keeping this rejection at the relay boundary prevents an old client from
     // silently recreating the client-host architecture inside a v3 room.
-    authorizeRelayMessage(room, senderPlayerID, payload.message);
     throw new RoomStateError(
       "client_authority_removed",
       "Online rooms accept game commands only; state is produced by the server.",
@@ -642,7 +660,7 @@ export class PreferansRoomV2 {
     );
   }
 
-  private engine(): AuthoritativeEngineBinding {
+  protected engine(): AuthoritativeEngineBinding {
     return {
       fetch: async (path, body) => {
         const container = await getRandom(this.env.ENGINE, 3);
@@ -670,12 +688,14 @@ export class PreferansRoomV2 {
   private async commitRoom(room: RoomState, key?: string, command?: StoredCommand): Promise<void> {
     // Schedule before commit: an interruption can leave a harmless extra wakeup,
     // but never durable work with no alarm to resume it.
-    await this.ctx.storage.setAlarm(Date.now() + 500);
+    await this.ctx.storage.setAlarm(Date.now() + BOT_MOVE_DELAY_MS);
     await this.ctx.storage.transaction(async txn => {
       await txn.put(ROOM_STORAGE_KEY, { ...room, botPending: room.status === "playing" && room.botPending, libraryDirty: true });
-      if (key && command) await txn.put(key, command);
-      if (command) await txn.put(`history:${String(room.authoritativeSequence).padStart(12, "0")}`, {
-        receipt: command.receipt, fingerprint: command.fingerprint, engineVersion: room.engineVersion
+      if (key && command) await txn.put(key, { fingerprint: command.fingerprint, receipt: command.receipt });
+      const historyKey = `history:${String(room.authoritativeSequence).padStart(12, "0")}`;
+      if (room.authoritativeState && (room.authoritativeSequence === 0 || !(await txn.get(historyKey)))) await txn.put(historyKey, {
+        command: command?.command, receipt: command?.receipt,
+        engineVersion: room.engineVersion, state: room.authoritativeState
       });
     });
   }
@@ -693,11 +713,13 @@ export class PreferansRoomV2 {
           if (response.sequence !== (room.authoritativeSequence ?? 0) + 1) {
             throw new RoomStateError("bot_stalled", "Bot did not advance the table.", 503);
           }
-          room = adoptingEngineResponse(room, response);
+          room = { ...adoptingEngineResponse(room, response), retryCount: 0 };
           await this.commitRoom(room);
           this.broadcastAuthoritativeProjections(room, room.relaySequence, new Date().toISOString());
           await this.broadcastPresence(room);
         } catch {
+          room = { ...room, retryCount: Math.min((room.retryCount ?? 0) + 1, 6) };
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
           console.warn(JSON.stringify({ event: "bot_retry", room: room.roomCode, revision: room.authoritativeSequence }));
         }
       }
@@ -710,7 +732,8 @@ export class PreferansRoomV2 {
         }
       }
       if (room.botPending || room.libraryDirty) {
-        await this.ctx.storage.setAlarm(Date.now() + (room.botPending ? 500 : 5_000));
+        const delay = room.retryCount ? Math.min(60_000, 1_000 * 2 ** room.retryCount) : (room.botPending ? BOT_MOVE_DELAY_MS : 5_000);
+        await this.ctx.storage.setAlarm(Date.now() + delay);
       } else {
         await this.ctx.storage.deleteAlarm();
       }
@@ -793,7 +816,7 @@ export class PreferansRoomV2 {
     excludingAccountIDs: ReadonlySet<string> = new Set()
   ): Promise<void> {
     // The write path has already persisted libraryDirty. Delivery happens in alarm().
-    await this.ctx.storage.setAlarm(Date.now() + 500);
+    await this.ctx.storage.setAlarm(Date.now() + BOT_MOVE_DELAY_MS);
   }
 
   private async upsertLibraryEntry(room: RoomState, peer: OnlinePeer): Promise<void> {
@@ -802,7 +825,8 @@ export class PreferansRoomV2 {
     const response = await this.env.ACCOUNTS.get(id).fetch("https://account/upsert", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(entry)
+      body: JSON.stringify(entry),
+      signal: AbortSignal.timeout(3_000)
     });
     if (!response.ok) {
       const data = await response.json() as { code?: string; error?: string };
@@ -885,12 +909,17 @@ function libraryProgressSignature(room: RoomState): string {
 /// presented bearer token has been checked against the same durable record.
 export class PlayerAccountV2 {
   private readonly ctx: DurableObjectState;
+  private mutations = new MutationQueue();
 
   constructor(ctx: DurableObjectState, _env: Env) {
     this.ctx = ctx;
   }
 
   async fetch(request: Request): Promise<Response> {
+    return this.mutations.run(() => this.fetchUnlocked(request));
+  }
+
+  private async fetchUnlocked(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
 
@@ -980,10 +1009,10 @@ export class PlayerAccountV2 {
 // Keep the historical exports present so Cloudflare's old migration records
 // remain valid. New bindings use the v2 classes below and therefore receive
 // completely fresh Durable Object namespaces.
-export class PreferansRoom extends PreferansRoomV2 {}
-export class PlayerLibrary extends PlayerAccountV2 {}
+
+
 /// Fresh schema-v3 room namespace: no v2 client-host snapshots are imported.
-export class PreferansRoomV3 extends PreferansRoomV2 {}
+
 
 interface RegistrationResult {
   account: PublicAccount;
@@ -1184,11 +1213,23 @@ function assignedSeatID(room: PublicRoom, localPeer: unknown): string {
 }
 
 async function readJSON<T>(request: Request): Promise<T> {
-  try {
-    return await request.json() as T;
-  } catch {
-    throw new RoomStateError("invalid_json", "Request body must be JSON.");
+  const reader = request.body?.getReader();
+  if (!reader) throw new RoomStateError("invalid_json", "Request body is required.");
+  let text = "";
+  let size = 0;
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_SOCKET_MESSAGE_BYTES) {
+      await reader.cancel();
+      throw new RoomStateError("message_too_large", "Request exceeds the size limit.", 413);
+    }
+    text += decoder.decode(value, { stream: true });
   }
+  try { return JSON.parse(text + decoder.decode()) as T; }
+  catch { throw new RoomStateError("invalid_json", "Request body must be JSON."); }
 }
 
 function parseSocketPayload(rawMessage: string | ArrayBuffer): ClientSocketEnvelope {
@@ -1198,11 +1239,13 @@ function parseSocketPayload(rawMessage: string | ArrayBuffer): ClientSocketEnvel
   // Reject oversized frames before parsing: relayed messages are persisted
   // work for every recipient, and no legitimate wire message approaches this
   // size. The v3 client socket carries commands and redacted projections only.
-  if (text.length > MAX_SOCKET_MESSAGE_BYTES) {
+  if (new TextEncoder().encode(text).byteLength > MAX_SOCKET_MESSAGE_BYTES) {
     throw new RoomStateError("message_too_large", "Socket message exceeds the size limit.", 413);
   }
   try {
-    return JSON.parse(text) as ClientSocketEnvelope;
+    const value = JSON.parse(text);
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("invalid envelope");
+    return value as ClientSocketEnvelope;
   } catch {
     throw new RoomStateError("invalid_socket_json", "Socket message must be JSON.");
   }

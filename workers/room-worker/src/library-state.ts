@@ -1,4 +1,5 @@
 import {
+  ROOM_SCHEMA_VERSION,
   type GameResultSummary,
   type GameStatus,
   type OnlinePeer,
@@ -13,6 +14,7 @@ import {
 /// Rooms fan these out (one per human seat) into each participant's
 /// `PlayerLibrary` Durable Object on every material transition.
 export interface GameSummaryEntry {
+  roomSchemaVersion?: number;
   roomCode: string;
   hostPlayerID: WirePlayerID;
   status: GameStatus;
@@ -46,6 +48,7 @@ export function emptyLibrary(): LibraryState {
 export function buildSummaryEntry(room: RoomState, seat: OnlinePeer): GameSummaryEntry {
   const summary = room.summary;
   return {
+    roomSchemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: room.roomCode,
     hostPlayerID: wirePlayerID(room.hostPlayerID),
     status: room.status ?? "lobby",
@@ -77,5 +80,5 @@ export function removeGame(state: LibraryState, roomCode: string): LibraryState 
 
 /// Most-recently-updated first — the order the lobby lists "Your games".
 export function listGames(state: LibraryState): GameSummaryEntry[] {
-  return Object.values(state.games).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return Object.values(state.games).filter(game => game.roomSchemaVersion === ROOM_SCHEMA_VERSION).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

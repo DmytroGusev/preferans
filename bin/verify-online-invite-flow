@@ -163,11 +163,10 @@ for index in $(seq 1 $((PLAYER_COUNT - 1))); do
   wait_for_log "${LOG_FILES[$index]}" "ONLINE_FLOW event=join roomCode=$ROOM_CODE local=$seat" "$seat client join"
 done
 
-wait_for_log "$HOST_LOG" "ONLINE_FLOW event=projection source=publishLocal local=north viewer=north sequence=1 phase=bidding" "host bidding projection"
+wait_for_log "$HOST_LOG" "ONLINE_FLOW event=projection source=receive local=north viewer=north sequence=1 phase=bidding" "host bidding projection"
 
 for index in $(seq 1 $((PLAYER_COUNT - 1))); do
   seat="${SEATS[$index]}"
-  wait_for_log "$HOST_LOG" "ONLINE_FLOW event=sendProjection recipient=$seat sequence=1 phase=bidding" "host sending bidding projection to $seat"
   wait_for_log "${LOG_FILES[$index]}" "ONLINE_FLOW event=projection source=receive local=$seat viewer=$seat sequence=1 phase=bidding" "$seat receiving bidding projection"
 done
 

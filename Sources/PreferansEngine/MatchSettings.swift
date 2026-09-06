@@ -108,7 +108,8 @@ public struct MatchSettings: Hashable, Codable, Sendable {
 
     public func encode(to encoder: Encoder) throws {
         var values = encoder.container(keyedBy: CodingKeys.self)
-        try values.encode(poolTarget, forKey: .poolTarget)
+        // Int.max is not representable in JavaScript; absence decodes as unbounded.
+        if poolTarget != .max { try values.encode(poolTarget, forKey: .poolTarget) }
         try values.encode(poolClosure, forKey: .poolClosure)
         try values.encode(raspasy, forKey: .raspasy)
         try values.encode(totus, forKey: .totus)

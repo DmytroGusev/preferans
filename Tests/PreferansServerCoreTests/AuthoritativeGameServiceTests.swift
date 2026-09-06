@@ -9,6 +9,19 @@ final class AuthoritativeGameServiceTests: XCTestCase {
         .init(playerID: "south", gamePlayerID: "account:south", displayName: "South"),
     ]
 
+    func testCheckedInWireFixtureMatchesSwiftCodec() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let fixture = root.appendingPathComponent("workers/room-worker/fixtures/create-game.json")
+        let request = CreateAuthoritativeGameRequest(identities: identities,
+            match: .init(poolTarget: 6, poolClosure: .tableTotal), firstDealer: "north")
+        if ProcessInfo.processInfo.environment["PREFERANS_UPDATE_WIRE_FIXTURE"] == "1" {
+            try FileManager.default.createDirectory(at: fixture.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try encoder.encode(request).write(to: fixture)
+        }
+        XCTAssertEqual(try JSONDecoder().decode(CreateAuthoritativeGameRequest.self, from: Data(contentsOf: fixture)), request)
+    }
+
     func testCompleteThreeAndFourSeatMatchesThroughServerBoundary() async throws {
         for count in [3, 4] {
             let seats = Array(["north", "east", "south", "west"].prefix(count)).map { PlayerID($0) }

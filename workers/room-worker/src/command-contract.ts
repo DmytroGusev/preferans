@@ -11,6 +11,7 @@ export interface CommandReceipt {
 }
 
 export interface StoredCommand {
+  command?: EngineCommandEnvelope;
   fingerprint: string;
   receipt: CommandReceipt;
 }

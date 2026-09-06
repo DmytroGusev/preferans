@@ -12,6 +12,7 @@ xcuserdata/
 .build/
 Packages/
 Package.resolved
+!/Package.resolved
 
 # JavaScript dependencies
 node_modules/

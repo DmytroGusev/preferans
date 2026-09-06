@@ -177,7 +177,7 @@ public struct AuthoritativeGameResponse: Codable, Equatable, Sendable {
 }
 
 public enum AuthoritativeGameService {
-    public static let maximumRememberedNonces = 2_048
+    public static let maximumRememberedNonces = 16
     public static let maximumBotActionsPerCommand = 512
 
     public static func create(

@@ -214,6 +214,7 @@ public enum RoomTransportEvent: Equatable, Sendable {
     /// The authoritative room rejected a command or another socket request.
     case serverError(String)
     case commandReceipt(OnlineCommandReceipt)
+    case tableAbandoned
 }
 
 public enum OnlineTransportStatus: Equatable, Sendable {

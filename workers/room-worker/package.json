@@ -3,13 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --local --port 8787",
+    "dev": "wrangler dev --config wrangler.local.toml --local --port 8787",
     "deploy": "wrangler deploy",
     "smoke:live": "bun scripts/smoke-live.ts",
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test:runtime": "vitest run",
-    "check": "bun run typecheck && bun run test && bun run test:runtime"
+    "check": "bun run typecheck && bun run test && bun run test:runtime",
+    "deploy:check": "wrangler deploy --dry-run --outdir /tmp/preferans-worker-bundle"
   },
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.1.2",

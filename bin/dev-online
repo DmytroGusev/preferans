@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+container_name="preferans-development-$$"
+cleanup() { docker stop "$container_name" >/dev/null 2>&1 || true; }
+trap cleanup EXIT INT TERM
+printf '%s\n' 'Building the shared Swift engine…'
+docker build -f Dockerfile.server -t preferans-engine:local .
+docker run --rm -d --name "$container_name" -p 127.0.0.1:18081:8080 preferans-engine:local >/dev/null
+for attempt in {1..30}; do
+  if curl --fail --silent http://127.0.0.1:18081/health >/dev/null; then break; fi
+  if [[ "$attempt" == 30 ]]; then printf '%s\n' 'Engine did not become healthy.' >&2; exit 1; fi
+  sleep 1
+done
+printf '%s\n' 'Engine ready. Starting local rooms on http://127.0.0.1:8787'
+cd workers/room-worker
+bun install --frozen-lockfile
+bun run wrangler dev --config wrangler.local.toml --local --port 8787

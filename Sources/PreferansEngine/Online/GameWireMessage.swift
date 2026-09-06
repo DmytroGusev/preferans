@@ -1,9 +1,9 @@
 import Foundation
 
 public enum PreferansWireSchema {
-    /// Server-authoritative online protocol. Version 3 is a clean break from
+    /// Server-authoritative online protocol. Version 4 is a clean break from
     /// the client-hosted v2 room model.
-    public static let current = 3
+    public static let current = 4
 }
 
 public enum GameWireMessage: Codable, Sendable, Equatable {

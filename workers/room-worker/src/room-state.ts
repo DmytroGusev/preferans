@@ -1,4 +1,4 @@
-export const ROOM_SCHEMA_VERSION = 3;
+export const ROOM_SCHEMA_VERSION = 4;
 export const DEFAULT_MAX_PLAYERS = 4;
 /// Longest accepted display name; anything longer is truncated on the way in
 /// so a client can't grow the stored room (and every presence broadcast)
@@ -81,6 +81,7 @@ export interface OnlinePeer {
 }
 
 export interface RoomState {
+  retryCount?: number;
   engineVersion?: string;
   botPending?: boolean;
   libraryDirty?: boolean;

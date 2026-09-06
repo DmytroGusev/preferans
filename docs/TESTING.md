@@ -65,8 +65,7 @@ simulators, auto-creates a room on the host, auto-joins every remaining
 simulator, and verifies the first deal by parsing structured `ONLINE_FLOW`
 lines:
 
-- host publishes `sequence=1 phase=bidding`
-- host sends `sequence=1 phase=bidding` to every remote seat
+- server sends the manager `sequence=1 phase=bidding`
 - every remote simulator receives `sequence=1 phase=bidding` for its own seat
 
 Run it once with three UDIDs for the normal 3-player table and once with four

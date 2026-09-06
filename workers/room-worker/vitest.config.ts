@@ -8,7 +8,7 @@ export default defineConfig({
       compatibilityDate: "2026-04-07",
       compatibilityFlags: ["nodejs_compat"],
       durableObjects: {
-        ROOMS: { className: "PreferansRoomV3", useSQLite: true },
+        ROOMS: { className: "PreferansTable", useSQLite: true },
         ACCOUNTS: { className: "PlayerAccountV2", useSQLite: true }
       }
     }

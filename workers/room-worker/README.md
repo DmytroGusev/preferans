@@ -1,150 +1,74 @@
-# Preferans Room Worker
+# Preferans authoritative tables
 
-Cloudflare Worker + Durable Objects backend for authenticated Preferans rooms,
-game libraries, presence, command routing, and seat-redacted projections.
+Cloudflare Workers route authenticated accounts to one SQLite-backed Durable Object
+per table. A stateless Linux Swift container evaluates moves using the same
+PreferansEngine as offline play. Clients receive only their own filtered projection
+and events. Protocol 4 is a clean break; old room namespaces are deleted at deployment.
+Account authentication remains account schema 2, independently of table protocol 4.
 
-Room schema v3 is an intentional clean break. `PreferansRoomV3` uses a fresh
-Durable Object namespace; peer-hosted v2 state is not imported.
+## Development
 
-The Worker owns account and seat identity. One room Durable Object serializes
-commands and durably owns the opaque private state. A stateless Linux Swift
-container validates transitions, runs bots, and returns one redacted projection
-per seat. No client hosts an online game or uploads an engine snapshot.
+From the repository root, run `bin/dev-online` (Docker and Bun required). It builds
+and starts the Linux engine on localhost:18081 and runs real local Durable Objects on
+localhost:8787. The local-only entry point is not part of the production bundle.
+Stop it with Ctrl-C; the engine container is cleaned up. Persistent local room data
+lives in Wrangler's ignored `.wrangler` directory.
 
-## Local run
+From this directory:
 
-```sh
-cd workers/room-worker
-wrangler dev --local --port 8787
+- `bun run check`: TypeScript checks, pure tests, and real workerd lifecycle tests.
+- `bun run smoke:live`: create 3/4-player tables, deal, reconnect, and clean up.
+  Defaults to localhost. Set `PREFERANS_ROOM_WORKER_URL` for an explicitly selected
+  deployed environment. It creates temporary guest accounts and deletes them.
+- `bun run deploy:check`: bundle/validate the production Worker without deploying.
+- `bun run deploy`: deploy the production Worker and container configuration.
+
+The fixture in `fixtures/create-game.json` is verified by the Swift server test
+suite. Regenerate intentionally with `PREFERANS_UPDATE_WIRE_FIXTURE=1 swift test
+--filter testCheckedInWireFixtureMatchesSwiftCodec` from the repository root.
+
+## Wire contract
+
+HTTP account and room routes are under `/v2`; payload `schemaVersion` is 4. Register
+through `/v2/accounts/guest` or `/v2/accounts/apple`. Create and join derive seat
+identity from the account bearer session. Their responses contain only the caller's
+seat credential and WebSocket URL. Rejoining rotates the credential and immediately
+closes the previous controller. Sensitive outbound frames re-check the current seat
+credential. Never log connection URLs or private snapshots.
+
+Clients send only `clientAction` and `resyncRequest` messages. A command requires
+`schemaVersion`, `tableID`, `actor`, `clientNonce` (UUID), `baseHostSequence`, and
+`action`. Swift's codec defines the JSON action shape. Receipts are outer frames:
+
+```json
+{"type":"receipt","receipt":{"tableID":"UUID","clientNonce":"UUID","sequence":1,"status":"accepted"}}
 ```
 
-```sh
-curl http://127.0.0.1:8787/health
-```
+Rejected receipts include `code` and `message`. Retrying an identical command ID
+returns the original result, including after match completion. Reusing it for another
+payload is rejected. Infrastructure errors do not create permanent rejection receipts.
+The iOS outbox persists a move before transmission and reuses its ID until resolved.
 
-The response reports `accountSchemaVersion: 2` and `roomSchemaVersion: 3`.
+All room writes, WebSocket lifecycle handlers, and alarms use the same bounded
+mutation queue. Room state, accepted receipts, and private revision checkpoints commit
+in one transaction. Delivery follows commit. A checkpoint retains the exact opaque
+Swift state and, for human moves, the input command; it has no client HTTP endpoint.
+Account deletion removes private checkpoints and the deleted account's receipts.
 
-## Register
+Bots advance one revision per durable alarm, at the interactive cadence. Library
+refresh intent is persisted with room state and retried by alarms. Engine errors back
+off to one minute. Human disconnects preserve seats and wait at that player's turn.
+Abandoning explicitly ends the whole match. Finishing retains receipts and player
+projections but drops the live engine snapshot.
 
-Guest registration creates a random server-owned account. The response contains
-the public account profile and a bearer session. The raw session is returned
-once; only its SHA-256 digest is stored.
+## Release
 
-```sh
-curl -s http://127.0.0.1:8787/v2/accounts/guest \
-  -H 'content-type: application/json' \
-  -d '{"displayName":"North"}'
-```
+The final migration creates `PreferansTable` and deletes obsolete room classes.
+There is no room import or old-client fallback. Deploy the matching container/Worker
+and client together. `preferans-1` is the pinned engine version; changing it requires
+an explicit policy for existing tables. Incompatible saved tables fail closed.
 
-Apple registration uses `POST /v2/accounts/apple` with `identityToken`, the raw
-nonce used by the app, and `displayName`. The worker verifies the RS256
-signature against Apple's current JWKS and validates issuer, audience, expiry,
-subject, and the SHA-256 nonce before deriving the account identity.
-
-All remaining HTTP examples use:
-
-```sh
--H 'authorization: Bearer <sessionToken>'
-```
-
-## Delete an account
-
-`DELETE /v2/account` permanently deletes the authenticated account, its active
-sessions, and game library. The worker also removes its identity and room
-credential from every indexed room before deleting the account record: lobby
-seats reopen, active games are abandoned and lose their private engine state, and
-shared terminal history retains only an anonymized seat. A later Apple sign-in
-or guest registration creates a fresh account state.
-
-```sh
-curl -i -X DELETE http://127.0.0.1:8787/v2/account \
-  -H 'authorization: Bearer <sessionToken>'
-```
-
-## Create and join
-
-Clients choose only seat IDs and open/bot intent. They never declare account IDs,
-providers, or display names for a human seat; those fields come from the
-authenticated server account.
-
-```sh
-curl -s http://127.0.0.1:8787/v2/rooms \
-  -H 'authorization: Bearer <sessionToken>' \
-  -H 'content-type: application/json' \
-  -d '{"localPlayerID":{"rawValue":"north"},"seats":[{"playerID":{"rawValue":"north"},"kind":"you"},{"playerID":{"rawValue":"east"},"kind":"bot"},{"playerID":{"rawValue":"south"},"kind":"open"}],"maxPlayers":3,"rules":{...},"match":{...}}'
-```
-
-```sh
-curl -s http://127.0.0.1:8787/v2/rooms/ABC123/join \
-  -H 'authorization: Bearer <sessionToken>' \
-  -H 'content-type: application/json' \
-  -d '{"requestedPlayerID":{"rawValue":"south"}}'
-```
-
-Create/join returns the caller's `seatToken` and a server-built `websocketURL`.
-The URL embeds that room-scoped token. Public room, presence, and library
-payloads never expose a seat token. Rejoining an already-held seat rotates its
-token: the newest device becomes the only controller, existing sockets receive
-close code `4009` (`seat_replaced`), and stale HTTP/socket credentials fail.
-
-## Authenticated durable game library
-
-- `PreferansRoomV3`, keyed by room code, stores status, a small readable
-  summary, opaque private Swift state, and the latest redacted projection for
-  each seat. The private state is never returned by a room endpoint.
-- `PlayerAccountV2`, keyed by server account ID, stores the account profile,
-  up to five active expiring session hashes, and one summary per room.
-- `GET /v2/my-games` derives its account from the bearer token. There is no
-  account ID query parameter.
-
-```sh
-curl -s http://127.0.0.1:8787/v2/my-games \
-  -H 'authorization: Bearer <sessionToken>'
-```
-
-`POST /v2/rooms/{code}/state` is retired and returns `410`. Progress is derived
-only from successful Swift engine responses. The room keeps private state as an
-opaque JSON string so hidden cards and 64-bit random seeds are never coerced by
-JavaScript or sent to a player device.
-
-Resume/reconnect sends only the caller's cached redacted projection. Both
-`POST /state` and `GET /snapshot` return `410`; private engine state has no
-client HTTP boundary. Abandon still requires both layers of proof:
-
-- a valid account bearer session; and
-- the token for the claimed room seat.
-
-There is no v1 seat-token compatibility flag. Missing, forged, or legacy
-token-less credentials are rejected on every sensitive v2 path.
-
-## Realtime relay
-
-WebSocket clients may send `clientAction` and `resyncRequest` wire messages.
-The Durable Object derives the sender from the socket's server-minted seat
-token, ignores client-selected recipients, and forwards the command with its
-private state to the Swift service. Every projection frame is explicitly marked
-`authority: "server"`; peer-authored hello, assignment, projection, and state
-messages are rejected.
-
-The legacy `hostPlayerID`/`hostEpoch` fields now identify only the human allowed
-to manage lobby operations such as filling open seats. They grant no engine or
-projection authority.
-
-## Container image
-
-`Dockerfile.server` builds the same `PreferansEngine` package used for offline
-play into the `PreferansServer` Linux executable. `wrangler.toml` binds a pool
-of three `PreferansEngineContainer` instances; containers sleep after ten idle
-minutes and hold no game state.
-
-## Verification
-
-```sh
-bun run typecheck
-bun test
-```
-
-`PREFERANS_WORKER_URL=http://127.0.0.1:8787 swift test --filter OnlineWorkerIntegrationTests`
-exercises guest registration, room creation, retired client-state boundaries,
-token takeover/revocation, lobby-manager migration without engine authority,
-library reads, and abandon across the Swift/Worker boundary.
+The pool currently permits three engine containers. Local tests do not establish
+production capacity: measure cold/warm latency and simultaneous rooms on Cloudflare
+before increasing traffic. Observability is enabled; private state and credentials
+must stay out of logs. See `docs/MULTIPLAYER.md` in the repository for invariants.

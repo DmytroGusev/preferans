@@ -16,9 +16,6 @@ public final class CloudflareOnlineGameSession: ObservableObject {
     private let match: MatchSettings
     /// Variant label carried into the worker summary (presentation-only).
     private let variantTag: String?
-    /// Present when this session was opened to resume an in-progress game; the
-    /// host rebuilds its engine from this instead of dealing fresh.
-    private let resume: OnlineResumeContext?
 
     public init(
         transport: CloudflareRoomTransport,
@@ -27,8 +24,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         match: MatchSettings = .unbounded,
         botMoveDelay: Duration = BotPacing.interactive,
         coordinator: ServerGameCoordinator? = nil,
-        variantTag: String? = nil,
-        resume: OnlineResumeContext? = nil
+        variantTag: String? = nil
     ) {
         self.transport = transport
         self.roomCode = transport.roomCode
@@ -37,7 +33,6 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         self.rules = rules
         self.match = match
         self.variantTag = variantTag
-        self.resume = resume
         self.localCoordinator = coordinator ?? ServerGameCoordinator()
         // Persist this seat's credential so lobby flows without a live
         // transport (abandon, a later resume) can still prove seat ownership.
@@ -139,8 +134,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             rules: .sochi,
             match: .unbounded,
             botMoveDelay: botMoveDelay,
-            variantTag: variantTag,
-            resume: nil
+            variantTag: variantTag
         )
     }
 
