@@ -1,5 +1,4 @@
 import Foundation
-import PreferansEngine
 
 extension PlayerProjectionBuilder {
     static func seatProjections(

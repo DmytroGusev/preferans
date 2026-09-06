@@ -1,15 +1,15 @@
 # Preferans Room Worker
 
 Cloudflare Worker + Durable Objects backend for authenticated Preferans rooms,
-game libraries, resume snapshots, presence, and realtime relay.
+game libraries, presence, command routing, and seat-redacted projections.
 
-API v2 is an intentional clean break. `PreferansRoomV2` and
-`PlayerAccountV2` use fresh Durable Object namespaces; v1 rooms, libraries,
-client-declared identities, and compatibility access are not imported.
+Room schema v3 is an intentional clean break. `PreferansRoomV3` uses a fresh
+Durable Object namespace; peer-hosted v2 state is not imported.
 
-The worker owns account/seat/room authority and durable progress. The Swift host
-still validates game actions and generates player projections, so moving the
-engine into the Durable Object remains the final server-authority boundary.
+The Worker owns account and seat identity. One room Durable Object serializes
+commands and durably owns the opaque private state. A stateless Linux Swift
+container validates transitions, runs bots, and returns one redacted projection
+per seat. No client hosts an online game or uploads an engine snapshot.
 
 ## Local run
 
@@ -22,8 +22,7 @@ wrangler dev --local --port 8787
 curl http://127.0.0.1:8787/health
 ```
 
-The response reports both `accountSchemaVersion: 2` and
-`roomSchemaVersion: 2`.
+The response reports `accountSchemaVersion: 2` and `roomSchemaVersion: 3`.
 
 ## Register
 
@@ -53,7 +52,7 @@ All remaining HTTP examples use:
 `DELETE /v2/account` permanently deletes the authenticated account, its active
 sessions, and game library. The worker also removes its identity and room
 credential from every indexed room before deleting the account record: lobby
-seats reopen, active games are abandoned and lose their resume snapshot, and
+seats reopen, active games are abandoned and lose their private engine state, and
 shared terminal history retains only an anonymized seat. A later Apple sign-in
 or guest registration creates a fresh account state.
 
@@ -72,7 +71,7 @@ authenticated server account.
 curl -s http://127.0.0.1:8787/v2/rooms \
   -H 'authorization: Bearer <sessionToken>' \
   -H 'content-type: application/json' \
-  -d '{"localPlayerID":{"rawValue":"north"},"seats":[{"playerID":{"rawValue":"north"},"kind":"you"},{"playerID":{"rawValue":"east"},"kind":"bot"},{"playerID":{"rawValue":"south"},"kind":"open"}],"maxPlayers":3}'
+  -d '{"localPlayerID":{"rawValue":"north"},"seats":[{"playerID":{"rawValue":"north"},"kind":"you"},{"playerID":{"rawValue":"east"},"kind":"bot"},{"playerID":{"rawValue":"south"},"kind":"open"}],"maxPlayers":3,"rules":{...},"match":{...}}'
 ```
 
 ```sh
@@ -90,9 +89,9 @@ close code `4009` (`seat_replaced`), and stale HTTP/socket credentials fail.
 
 ## Authenticated durable game library
 
-- `PreferansRoomV2`, keyed by room code, stores status, a small readable
-  summary, and an opaque latest snapshot. Finished/abandoned rooms drop the
-  snapshot.
+- `PreferansRoomV3`, keyed by room code, stores status, a small readable
+  summary, opaque private Swift state, and the latest redacted projection for
+  each seat. The private state is never returned by a room endpoint.
 - `PlayerAccountV2`, keyed by server account ID, stores the account profile,
   up to five active expiring session hashes, and one summary per room.
 - `GET /v2/my-games` derives its account from the bearer token. There is no
@@ -103,43 +102,40 @@ curl -s http://127.0.0.1:8787/v2/my-games \
   -H 'authorization: Bearer <sessionToken>'
 ```
 
-The host reports progress to `POST /v2/rooms/{code}/state` with its `playerID`
-and current `seatToken`. The worker verifies both the bearer account and the
-rotating credential own the current host seat; no separate host secret exists.
-Snapshots and summaries are monotonic, and terminal lifecycle is immutable, so
-a delayed report cannot roll back or resurrect a game. Nonterminal reports are
-accepted only when they carry a recoverable snapshot at exactly the summary's
-sequence, and lifecycle transitions cannot regress or skip directly from lobby
-to finished. The iOS coordinator commits this snapshot before publishing the
-corresponding projections.
+`POST /v2/rooms/{code}/state` is retired and returns `410`. Progress is derived
+only from successful Swift engine responses. The room keeps private state as an
+opaque JSON string so hidden cards and 64-bit random seeds are never coerced by
+JavaScript or sent to a player device.
 
-Resume and abandon require both layers of proof:
+Resume/reconnect sends only the caller's cached redacted projection. Both
+`POST /state` and `GET /snapshot` return `410`; private engine state has no
+client HTTP boundary. Abandon still requires both layers of proof:
 
 - a valid account bearer session; and
 - the token for the claimed room seat.
-
-```sh
-curl -s 'http://127.0.0.1:8787/v2/rooms/ABC123/snapshot?playerID=north&seatToken=<seatToken>' \
-  -H 'authorization: Bearer <sessionToken>'
-```
 
 There is no v1 seat-token compatibility flag. Missing, forged, or legacy
 token-less credentials are rejected on every sensitive v2 path.
 
 ## Realtime relay
 
-WebSocket clients send `wire` envelopes containing recipient seat IDs and an
-opaque `GameWireMessage`. The Durable Object binds the socket to the seat proven
-by its URL token, excludes unknown recipients and the sender, sequences frames,
-and does not retain relay history. It rejects projection, seat-assignment, and
-host-error frames from non-host seats.
+WebSocket clients may send `clientAction` and `resyncRequest` wire messages.
+The Durable Object derives the sender from the socket's server-minted seat
+token, ignores client-selected recipients, and forwards the command with its
+private state to the Swift service. Every projection frame is explicitly marked
+`authority: "server"`; peer-authored hello, assignment, projection, and state
+messages are rejected.
 
-The room exposes a monotonic `hostEpoch`. When the current host has no live
-socket, the Durable Object elects the first connected human in stable seat
-order, advances the epoch, and broadcasts the new authority. The elected iOS
-client fetches and validates the durable snapshot before becoming host; a
-playing room with a missing or corrupt snapshot fails closed instead of dealing
-a new game. Terminal rooms never elect another host.
+The legacy `hostPlayerID`/`hostEpoch` fields now identify only the human allowed
+to manage lobby operations such as filling open seats. They grant no engine or
+projection authority.
+
+## Container image
+
+`Dockerfile.server` builds the same `PreferansEngine` package used for offline
+play into the `PreferansServer` Linux executable. `wrangler.toml` binds a pool
+of three `PreferansEngineContainer` instances; containers sleep after ten idle
+minutes and hold no game state.
 
 ## Verification
 
@@ -149,7 +145,6 @@ bun test
 ```
 
 `PREFERANS_WORKER_URL=http://127.0.0.1:8787 swift test --filter OnlineWorkerIntegrationTests`
-exercises guest registration, room creation, authenticated state reporting,
-token takeover/revocation, live WebSocket host migration, exact snapshot
-recovery, former-host rejection, library reads, and abandon across the
-Swift/Worker boundary.
+exercises guest registration, room creation, retired client-state boundaries,
+token takeover/revocation, lobby-manager migration without engine authority,
+library reads, and abandon across the Swift/Worker boundary.

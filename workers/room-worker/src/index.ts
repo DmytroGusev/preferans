@@ -10,7 +10,7 @@ import {
   PENDING_ACCOUNT_PREFIX,
   ROOM_SCHEMA_VERSION,
   RoomStateError,
-  applyStateReport,
+  abandonRoom,
   authorizeHostSeat,
   authorizeRelayMessage,
   authorizeSeat,
@@ -27,7 +27,6 @@ import {
   publicRoom,
   recordRelay,
   removeAccountFromRoom,
-  routeRecipients,
   humanPeers,
   wirePlayerID
 } from "./room-state";
@@ -54,6 +53,16 @@ import {
   publicAccount
 } from "./account-state";
 import { verifyAppleIdentityToken } from "./apple-auth";
+import { Container, getRandom } from "@cloudflare/containers";
+import {
+  type AuthoritativeEngineBinding,
+  applyAuthoritativeCommand,
+  clientActionFromWireMessage,
+  createAuthoritativeGame,
+  isStartDealCommand,
+  projectionWireMessage,
+  validateStartDealAuthority
+} from "./authoritative-engine";
 
 const ROOM_STORAGE_KEY = "room";
 const ACCOUNT_STORAGE_KEY = "account";
@@ -80,6 +89,7 @@ export interface Env {
   ROOMS: DurableObjectNamespace;
   /// Authenticated account + game index, keyed by the server-issued accountID.
   ACCOUNTS: DurableObjectNamespace;
+  ENGINE: DurableObjectNamespace<PreferansEngineContainer>;
   APPLE_CLIENT_ID?: string;
 }
 
@@ -87,6 +97,9 @@ interface CreateRoomBody {
   localPlayerID?: unknown;
   seats?: unknown;
   maxPlayers?: unknown;
+  rules?: unknown;
+  match?: unknown;
+  variant?: unknown;
 }
 
 interface JoinRoomBody {
@@ -97,19 +110,6 @@ interface FillBotsBody {
   accountID?: unknown;
   playerID?: unknown;
   seatToken?: unknown;
-}
-
-/// Host-authored progress report. Carries the lifecycle status, worker-readable
-/// summary, and the opaque resume snapshot. The account bearer and rotating
-/// room credential must both identify the current server-elected host.
-interface StateReportBody {
-  accountID?: unknown;
-  playerID?: unknown;
-  seatToken?: unknown;
-  status?: unknown;
-  summary?: unknown;
-  snapshot?: unknown;
-  snapshotSequence?: unknown;
 }
 
 /// A seated participant gives up an unfinished game. Authorized by holding the
@@ -275,23 +275,17 @@ export default {
       }
 
       if (action === "state" && request.method === "POST") {
-        const account = await authenticateAccount(request, env);
-        const body = await readJSON<StateReportBody>(request);
-        const room = await roomFetch(env, roomCode, "/state", { ...body, accountID: account.accountID });
-        return json(room);
+        return json({
+          code: "client_state_removed",
+          error: "Schema-v3 rooms do not accept client-authored game state."
+        }, 410);
       }
 
       if (action === "snapshot" && request.method === "GET") {
-        const account = await authenticateAccount(request, env);
-        // Forward the participant's seat + token as query params; the DO
-        // authorizes them.
-        const playerID = url.searchParams.get("playerID") ?? "";
-        const seatToken = url.searchParams.get("seatToken") ?? "";
-        return roomStubFetch(
-          env,
-          roomCode,
-          `/snapshot?playerID=${encodeURIComponent(playerID)}&seatToken=${encodeURIComponent(seatToken)}&accountID=${encodeURIComponent(account.accountID)}`
-        );
+        return json({
+          code: "client_snapshot_removed",
+          error: "Schema-v3 rooms resume from server projections, not engine snapshots."
+        }, 410);
       }
 
       if (action === "abandon" && request.method === "POST") {
@@ -314,9 +308,17 @@ export default {
   }
 };
 
+/// Stateless Linux Swift transition service. Durable room state remains in
+/// `PreferansRoomV2`; this class only manages a small warm container pool.
+export class PreferansEngineContainer extends Container<Env> {
+  defaultPort = 8080;
+  sleepAfter = "10m";
+}
+
 export class PreferansRoomV2 {
   private readonly ctx: DurableObjectState;
   private readonly env: Env;
+  private mutationTail: Promise<void> = Promise.resolve();
 
   constructor(ctx: DurableObjectState, env: Env) {
     this.ctx = ctx;
@@ -324,6 +326,21 @@ export class PreferansRoomV2 {
   }
 
   async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    const mutatesRoom = request.method === "POST" && [
+      "/create",
+      "/join",
+      "/seats/fill-bots",
+      "/state",
+      "/abandon",
+      "/account-deleted"
+    ].includes(url.pathname);
+    return mutatesRoom
+      ? this.serializeMutation(() => this.fetchUnlocked(request))
+      : this.fetchUnlocked(request);
+  }
+
+  private async fetchUnlocked(request: Request): Promise<Response> {
     try {
       const url = new URL(request.url);
 
@@ -344,16 +361,20 @@ export class PreferansRoomV2 {
         // Account deletion enumerates this durable membership index. A room
         // must not become visible until its creator can later find and delete
         // it; transition-only refreshes remain best-effort below.
-        await this.upsertLibraryEntry(room, creator);
-        await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
-        return json(createResult(room), 201);
+        const initialized = await createAuthoritativeGame(room, this.engine());
+        await this.upsertLibraryEntry(initialized, creator);
+        await this.ctx.storage.put(ROOM_STORAGE_KEY, initialized);
+        return json(createResult(initialized), 201);
       }
 
       if (request.method === "POST" && url.pathname === "/join") {
         const body = await readJSON<{ localPeer?: unknown }>(request);
         const room = await this.loadRequiredRoom();
         const joiner = normalizePeer(body.localPeer);
-        const updated = joinRoom(room, joiner);
+        let updated = joinRoom(room, joiner);
+        if (updated.status === "lobby") {
+          updated = await createAuthoritativeGame(updated, this.engine());
+        }
         const joinedSeat = updated.peers.find((peer) => peer.accountID === joiner.accountID);
         if (!joinedSeat) {
           throw new RoomStateError("invalid_join", "Joined account does not own a seat.", 500);
@@ -363,6 +384,11 @@ export class PreferansRoomV2 {
         await this.upsertLibraryEntry(updated, joinedSeat);
         await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
         await this.broadcastPresence(updated);
+        this.broadcastAuthoritativeProjections(
+          updated,
+          updated.relaySequence,
+          new Date().toISOString()
+        );
         // A join changes the roster — refresh every participant's library entry
         // (and seed the new joiner's) so the game shows up under "Your games".
         await this.fanOutToLibraries(updated, new Set([joiner.accountID]));
@@ -378,33 +404,37 @@ export class PreferansRoomV2 {
         const body = await readJSON<FillBotsBody>(request);
         const room = await this.loadRequiredRoom();
         authorizeHostSeat(room, String(body.accountID ?? ""), body.playerID, body.seatToken);
-        const updated = fillOpenSeatsWithBots(room);
+        let updated = fillOpenSeatsWithBots(room);
+        if (updated !== room) {
+          updated = await createAuthoritativeGame(updated, this.engine());
+        }
         if (updated !== room) {
           await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
           await this.broadcastPresence(updated);
+          this.broadcastAuthoritativeProjections(
+            updated,
+            updated.relaySequence,
+            new Date().toISOString()
+          );
           await this.fanOutToLibraries(updated);
         }
         return json(publicRoom(updated));
       }
 
       if (request.method === "POST" && url.pathname === "/state") {
-        const body = await readJSON<StateReportBody>(request);
-        const room = await this.loadRequiredRoom();
-        authorizeHostSeat(room, String(body.accountID ?? ""), body.playerID, body.seatToken);
-        const { room: updated, changed } = applyStateReport(room, body);
-        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
-        // Only a material change (status/deal/phase) is worth a presence push
-        // and a library fan-out; per-action snapshot refreshes stay silent to
-        // avoid socket churn and DO-to-DO chatter.
-        if (changed) {
-          await this.broadcastPresence(updated);
-          await this.fanOutToLibraries(updated);
-        }
-        return json(publicRoom(updated));
+        throw new RoomStateError(
+          "client_state_removed",
+          "Schema-v3 rooms do not accept client-authored game state.",
+          410
+        );
       }
 
       if (request.method === "GET" && url.pathname === "/snapshot") {
-        return json(this.resumePayload(await this.loadRequiredRoom(), url));
+        throw new RoomStateError(
+          "client_snapshot_removed",
+          "Schema-v3 rooms resume from server projections, not engine snapshots.",
+          410
+        );
       }
 
       if (request.method === "POST" && url.pathname === "/abandon") {
@@ -417,9 +447,9 @@ export class PreferansRoomV2 {
         if (!isHumanAccount(peer.accountID)) {
           throw new RoomStateError("forbidden", "Only a seated player can abandon this game.", 403);
         }
-        const { room: updated, changed } = applyStateReport(room, { status: "abandoned" });
-        await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
-        if (changed) {
+        const updated = abandonRoom(room);
+        if (updated !== room) {
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
           await this.broadcastPresence(updated);
           await this.fanOutToLibraries(updated);
         }
@@ -492,6 +522,7 @@ export class PreferansRoomV2 {
       room: publicRoom(activeRoom),
       connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
     }));
+    this.sendProjectionToSocket(server, activeRoom, playerID);
     await this.broadcastPresence(activeRoom);
 
     return new Response(null, {
@@ -501,6 +532,13 @@ export class PreferansRoomV2 {
   }
 
   async webSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer): Promise<void> {
+    await this.serializeMutation(() => this.webSocketMessageUnlocked(ws, rawMessage));
+  }
+
+  private async webSocketMessageUnlocked(
+    ws: WebSocket,
+    rawMessage: string | ArrayBuffer
+  ): Promise<void> {
     try {
       const attachment = ws.deserializeAttachment() as SocketAttachment | undefined ?? {};
       const room = await this.loadRequiredRoom();
@@ -543,23 +581,110 @@ export class PreferansRoomV2 {
 
   async relayWireMessage(room: RoomState, sender: OnlinePeer, payload: ClientSocketEnvelope): Promise<void> {
     const senderPlayerID = peerID(sender);
-    authorizeRelayMessage(room, senderPlayerID, payload.message);
-    const recipientPlayerIDs = routeRecipients(room, senderPlayerID, payload.recipients);
-    const { room: updated, entry } = recordRelay(room, {
-      senderPlayerID,
-      recipientPlayerIDs,
-      message: payload.message
-    });
-    await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+    const command = clientActionFromWireMessage(payload.message);
+    if (command) {
+      if (isStartDealCommand(command)) {
+        validateStartDealAuthority(room, sender, new Set(this.activePlayerIDs()));
+      }
+      const transitioned = await applyAuthoritativeCommand(room, sender, command, this.engine());
+      const recipientPlayerIDs = humanPeers(transitioned).map(peerID);
+      const { room: updated, entry } = recordRelay(transitioned, {
+        senderPlayerID,
+        recipientPlayerIDs,
+        message: payload.message
+      });
+      await this.ctx.storage.put(ROOM_STORAGE_KEY, updated);
+      this.broadcastAuthoritativeProjections(updated, entry.serverSequence, entry.sentAt);
+      if (libraryProgressSignature(room) !== libraryProgressSignature(updated)) {
+        await this.broadcastPresence(updated);
+        await this.fanOutToLibraries(updated);
+      }
+      return;
+    }
 
+    if (isResyncRequest(payload.message)) {
+      this.sendProjectionToPlayer(room, senderPlayerID, room.relaySequence, new Date().toISOString());
+      return;
+    }
+
+    // Schema v3 has no peer-authored state, identity, or projection messages.
+    // Keeping this rejection at the relay boundary prevents an old client from
+    // silently recreating the client-host architecture inside a v3 room.
+    authorizeRelayMessage(room, senderPlayerID, payload.message);
+    throw new RoomStateError(
+      "client_authority_removed",
+      "Online rooms accept game commands only; state is produced by the server.",
+      409
+    );
+  }
+
+  private engine(): AuthoritativeEngineBinding {
+    return {
+      fetch: async (path, body) => {
+        const container = await getRandom(this.env.ENGINE, 3);
+        return container.fetch(`http://engine${path}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body)
+        });
+      }
+    };
+  }
+
+  /// Durable Objects may interleave events while one awaits an external
+  /// container fetch. Keep every room mutation behind an explicit FIFO so two
+  /// commands can never both advance the same private state and race to store.
+  private async serializeMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.mutationTail;
+    let release: (() => void) | undefined;
+    this.mutationTail = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release?.();
+    }
+  }
+
+  private broadcastAuthoritativeProjections(room: RoomState, serverSequence: number, sentAt: string): void {
+    for (const peer of humanPeers(room)) {
+      this.sendProjectionToPlayer(room, peerID(peer), serverSequence, sentAt);
+    }
+  }
+
+  private sendProjectionToPlayer(
+    room: RoomState,
+    playerID: string,
+    serverSequence: number,
+    sentAt: string
+  ): void {
+    const projection = room.authoritativeProjections?.[playerID];
+    if (projection === undefined) return;
+    const authorityPeer = room.peers[0];
+    if (!authorityPeer) return;
     const outbound = JSON.stringify({
       type: "wire",
-      sender: normalizePeer(sender),
-      message: payload.message,
-      serverSequence: entry.serverSequence,
-      sentAt: entry.sentAt
+      authority: "server",
+      sender: normalizePeer(authorityPeer),
+      message: projectionWireMessage(projection),
+      serverSequence,
+      sentAt
     });
-    this.sendToPlayers(recipientPlayerIDs, outbound);
+    this.sendToPlayers([playerID], outbound);
+  }
+
+  private sendProjectionToSocket(ws: WebSocket, room: RoomState, playerID: string): void {
+    const projection = room.authoritativeProjections?.[playerID];
+    const authorityPeer = room.peers[0];
+    if (projection === undefined || !authorityPeer) return;
+    ws.send(JSON.stringify({
+      type: "wire",
+      authority: "server",
+      sender: normalizePeer(authorityPeer),
+      message: projectionWireMessage(projection),
+      serverSequence: room.relaySequence,
+      sentAt: new Date().toISOString()
+    }));
   }
 
   async loadRequiredRoom(): Promise<RoomState> {
@@ -571,27 +696,6 @@ export class PreferansRoomV2 {
       throw new RoomStateError("room_upgrade_required", "This room belongs to an older app version.", 410);
     }
     return room;
-  }
-
-  /// The resume payload for a seated participant: the opaque authoritative
-  /// snapshot plus the worker-readable status/summary. The snapshot reveals
-  /// every hidden hand, so v2 requires both the authenticated account and its
-  /// room-scoped seat token.
-  resumePayload(room: RoomState, url: URL): Record<string, unknown> {
-    const peer = authorizeSeat(room, url.searchParams.get("playerID"), url.searchParams.get("seatToken"));
-    if (peer.accountID !== url.searchParams.get("accountID")) {
-      throw new RoomStateError("forbidden", "This account does not own that seat.", 403);
-    }
-    if (!isHumanAccount(peer.accountID)) {
-      throw new RoomStateError("forbidden", "Only a seated player can fetch the resume snapshot.", 403);
-    }
-    return {
-      roomCode: room.roomCode,
-      status: room.status ?? "lobby",
-      summary: room.summary ?? null,
-      lastSnapshotSequence: room.lastSnapshotSequence ?? 0,
-      snapshot: room.latestSnapshot ?? null
-    };
   }
 
   async broadcastPresence(room: RoomState): Promise<void> {
@@ -702,6 +806,17 @@ export class PreferansRoomV2 {
   }
 }
 
+function libraryProgressSignature(room: RoomState): string {
+  const summary = room.summary;
+  return JSON.stringify({
+    status: room.status,
+    variant: summary?.variant,
+    phase: summary?.phase,
+    dealNumber: summary?.dealNumber,
+    result: summary?.result
+  });
+}
+
 /// Account identity, active sessions, and game index share one serialization
 /// boundary per account. That makes room/library access impossible until the
 /// presented bearer token has been checked against the same durable record.
@@ -804,6 +919,8 @@ export class PlayerAccountV2 {
 // completely fresh Durable Object namespaces.
 export class PreferansRoom extends PreferansRoomV2 {}
 export class PlayerLibrary extends PlayerAccountV2 {}
+/// Fresh schema-v3 room namespace: no v2 client-host snapshots are imported.
+export class PreferansRoomV3 extends PreferansRoomV2 {}
 
 interface RegistrationResult {
   account: PublicAccount;
@@ -933,8 +1050,18 @@ function createRoomInput(roomCode: string, body: CreateRoomBody, account: Public
     roomCode,
     localPeer: authenticatedPeer(account, localID),
     seats,
-    maxPlayers: body.seats.length
+    maxPlayers: body.seats.length,
+    rules: requiredEngineConfiguration(body.rules, "rules"),
+    match: requiredEngineConfiguration(body.match, "match"),
+    variant: typeof body.variant === "string" ? body.variant.slice(0, 32) : undefined
   };
+}
+
+function requiredEngineConfiguration(value: unknown, name: string): unknown {
+  if (typeof value !== "object" || value === null) {
+    throw new RoomStateError("invalid_engine_configuration", `Room ${name} are required.`);
+  }
+  return value;
 }
 
 async function roomFetch(env: Env, roomCode: string, pathname: string, body?: unknown): Promise<RoomWithSecret> {
@@ -950,15 +1077,6 @@ async function roomFetch(env: Env, roomCode: string, pathname: string, body?: un
     throw new RoomStateError(data.code ?? "room_error", data.error ?? "Room request failed.", response.status);
   }
   return data;
-}
-
-/// Pass a Durable Object's response straight back to the caller, untouched. Used
-/// for payloads (e.g. the resume snapshot) that don't fit the `RoomWithSecret`
-/// shape `roomFetch` parses, where re-decoding would be wasteful.
-async function roomStubFetch(env: Env, roomCode: string, pathname: string): Promise<Response> {
-  const id = env.ROOMS.idFromName(roomCode);
-  const stub = env.ROOMS.get(id);
-  return stub.fetch(`https://room${pathname}`);
 }
 
 /// The `/create` response: the public room plus the creator's seat token.
@@ -1016,7 +1134,7 @@ function parseSocketPayload(rawMessage: string | ArrayBuffer): ClientSocketEnvel
     : new TextDecoder().decode(rawMessage);
   // Reject oversized frames before parsing: relayed messages are persisted
   // work for every recipient, and no legitimate wire message approaches this
-  // size (snapshots travel over HTTP /state, not the socket).
+  // size. The v3 client socket carries commands and redacted projections only.
   if (text.length > MAX_SOCKET_MESSAGE_BYTES) {
     throw new RoomStateError("message_too_large", "Socket message exceeds the size limit.", 413);
   }
@@ -1025,6 +1143,14 @@ function parseSocketPayload(rawMessage: string | ArrayBuffer): ClientSocketEnvel
   } catch {
     throw new RoomStateError("invalid_socket_json", "Socket message must be JSON.");
   }
+}
+
+function isResyncRequest(message: unknown): boolean {
+  return typeof message === "object"
+    && message !== null
+    && "resyncRequest" in message
+    && typeof message.resyncRequest === "object"
+    && message.resyncRequest !== null;
 }
 
 function json(data: unknown, status = 200): Response {

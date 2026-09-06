@@ -3,12 +3,33 @@
 import PackageDescription
 
 let isEngineTestLane = Context.environment["PREFERANS_ENGINE_TESTS_ONLY"] == "1"
+let isServerLane = Context.environment["PREFERANS_SERVER_ONLY"] == "1"
 
 let products: [Product]
 let dependencies: [Package.Dependency]
 let targets: [Target]
 
-if isEngineTestLane {
+if isServerLane {
+    products = [
+        .library(name: "PreferansEngine", targets: ["PreferansEngine"]),
+        .library(name: "PreferansServerCore", targets: ["PreferansServerCore"]),
+        .executable(name: "PreferansServer", targets: ["PreferansServer"])
+    ]
+    dependencies = [
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.22.0")
+    ]
+    targets = [
+        .target(name: "PreferansEngine"),
+        .target(name: "PreferansServerCore", dependencies: ["PreferansEngine"]),
+        .executableTarget(
+            name: "PreferansServer",
+            dependencies: [
+                "PreferansServerCore",
+                .product(name: "Hummingbird", package: "hummingbird")
+            ]
+        )
+    ]
+} else if isEngineTestLane {
     products = [
         .library(name: "PreferansEngine", targets: ["PreferansEngine"])
     ]
@@ -29,11 +50,14 @@ if isEngineTestLane {
 } else {
     products = [
         .library(name: "PreferansEngine", targets: ["PreferansEngine"]),
-        .library(name: "PreferansApp", targets: ["PreferansApp"])
+        .library(name: "PreferansApp", targets: ["PreferansApp"]),
+        .library(name: "PreferansServerCore", targets: ["PreferansServerCore"]),
+        .executable(name: "PreferansServer", targets: ["PreferansServer"])
     ]
     dependencies = [
         .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.17.0"),
-        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.5.0")
+        .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.5.0"),
+        .package(url: "https://github.com/hummingbird-project/hummingbird.git", from: "2.22.0")
     ]
     targets = [
         .target(name: "PreferansEngine"),
@@ -41,6 +65,21 @@ if isEngineTestLane {
             name: "PreferansEngineTestSupport",
             dependencies: ["PreferansEngine"],
             path: "Tests/PreferansEngineTestSupport"
+        ),
+        .target(
+            name: "PreferansServerCore",
+            dependencies: ["PreferansEngine"]
+        ),
+        .executableTarget(
+            name: "PreferansServer",
+            dependencies: [
+                "PreferansServerCore",
+                .product(name: "Hummingbird", package: "hummingbird")
+            ]
+        ),
+        .testTarget(
+            name: "PreferansServerCoreTests",
+            dependencies: ["PreferansServerCore", "PreferansEngine"]
         ),
         .testTarget(
             name: "PreferansEngineCLITests",

@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "preferans-room-worker",
+      "dependencies": {
+        "@cloudflare/containers": "^0.3.7",
+      },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20260504.1",
         "@types/node": "^25.6.0",
@@ -12,6 +15,8 @@
     },
   },
   "packages": {
+    "@cloudflare/containers": ["@cloudflare/containers@0.3.7", "", {}, "sha512-DM9dm3FnIBSyiSJ1FLavKwl/lk3oAmTaynCzZQ9pZR0ncRPquSxkxd8Nu2MFILxmDDsPkxKsSNEh9mHHMty4Fw=="],
+
     "@cloudflare/workers-types": ["@cloudflare/workers-types@4.20260504.1", "", {}, "sha512-x/7BzBXSGBQS0wHdaY0/1bcaRszkkhCjTc5maQvNSHu/pTVdBF2f/L41W8pRSJJSbLL80ynW7O923O7v3PaLtg=="],
 
     "@types/node": ["@types/node@25.6.0", "", { "dependencies": { "undici-types": "~7.19.0" } }, "sha512-+qIYRKdNYJwY3vRCZMdJbPLJAtGjQBudzZzdzwQYkEPQd+PJGixUL5QfvCLDaULoLv+RhT3LDkwEfKaAkgSmNQ=="],

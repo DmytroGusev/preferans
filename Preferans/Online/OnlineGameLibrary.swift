@@ -34,9 +34,8 @@ public struct OnlineGameResult: Codable, Sendable, Equatable {
     public var finalBalances: [String: Double]?
 }
 
-/// The host-authored progress summary sent to `POST /v2/rooms/{code}/state`.
-/// Mirrors the worker's `GameSummary`; the worker stores it verbatim and fans
-/// it out to participant libraries.
+/// Public-safe progress metadata projected by the authoritative engine and
+/// fanned out to participant libraries.
 public struct OnlineStateSummary: Codable, Sendable, Equatable {
     public var variant: String?
     public var lastSequence: Int
@@ -56,48 +55,6 @@ public struct OnlineStateSummary: Codable, Sendable, Equatable {
         self.phase = phase
         self.dealNumber = dealNumber
         self.result = result
-    }
-}
-
-/// Decoded `GET /v2/rooms/{code}/snapshot` payload. `snapshot` is the opaque blob
-/// the worker stored — a pre-encoded `PreferansSnapshot` JSON *string* (opaque to
-/// the worker, byte-exact across the round-trip). `decodedSnapshot` rehydrates it
-/// here. Nil when the room has no resumable snapshot (still in lobby, or already
-/// finished/abandoned).
-public struct ResumeSnapshotPayload: Decodable, Sendable {
-    public var roomCode: String
-    public var status: PreferansGameStatus
-    public var lastSnapshotSequence: Int
-    public var snapshot: String?
-
-    /// The resumable engine state, decoded from the opaque blob.
-    public var decodedSnapshot: PreferansSnapshot? {
-        guard let snapshot, let data = snapshot.data(using: .utf8) else { return nil }
-        return try? PreferansJSONCoder.decoder.decode(PreferansSnapshot.self, from: data)
-    }
-
-    /// Validate the room lifecycle against its durable snapshot. A lobby may
-    /// legitimately have no engine yet; a playing table may not. Treating a
-    /// missing/corrupt playing snapshot as a fresh lobby would fork the match.
-    public func validatedResumeContext() throws -> OnlineResumeContext? {
-        switch status {
-        case .lobby:
-            guard snapshot != nil else { return nil }
-        case .playing:
-            guard snapshot != nil else {
-                throw CloudflareRoomTransportError.serverError(
-                    "This table cannot be recovered because its latest game state is unavailable."
-                )
-            }
-        case .finished, .abandoned:
-            throw CloudflareRoomTransportError.serverError("This table is no longer in progress.")
-        }
-        guard let decodedSnapshot else {
-            throw CloudflareRoomTransportError.serverError(
-                "This table cannot be recovered because its saved game state is invalid."
-            )
-        }
-        return OnlineResumeContext(snapshot: decodedSnapshot, sequence: lastSnapshotSequence)
     }
 }
 

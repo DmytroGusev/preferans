@@ -11,7 +11,7 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
         ProcessInfo.processInfo.environment["PREFERANS_WORKER_URL"].flatMap { URL(string: $0) }
     }
 
-    func testCreateReportListAndResumeSnapshotRoundTrip() async throws {
+    func testCreateRejectsClientStateAndKeepsPrivateStateOffTheWorkerAPI() async throws {
         guard let baseURL else {
             throw XCTSkip("Set PREFERANS_WORKER_URL to exercise the live worker.")
         }
@@ -37,54 +37,41 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
             maxPlayers: 3
         )
 
-        // Build a representative mid-deal engine and push its snapshot.
-        var engine = try PreferansEngine(players: ["north", "east", "south"], rules: .sochi, firstDealer: "south")
-        _ = try engine.startDeal(deck: Deck.standard32)
-        let snapshot = engine.snapshot
-        try await transport.reportState(
-            status: .playing,
-            summary: OnlineStateSummary(variant: "odesa", lastSequence: 1, phase: "bidding", dealNumber: 1),
-            snapshot: snapshot,
-            snapshotSequence: 1
-        )
+        XCTAssertNotNil(transport.authoritativeTableID)
+        do {
+            try await transport.reportState(
+                status: .playing,
+                summary: OnlineStateSummary(variant: "odesa", lastSequence: 1, phase: "bidding", dealNumber: 1),
+                snapshot: nil,
+                snapshotSequence: 1
+            )
+            XCTFail("A client must never be able to report authoritative state.")
+        } catch let error as CloudflareRoomTransportError {
+            guard case .serverError = error else {
+                return XCTFail("Expected client state reporting to be disabled, got \(error).")
+            }
+        }
 
-        // The host's library lists the game with the reported progress.
+        // The server-created lobby appears in the creator's library. A rejected
+        // client state report cannot move it into playing.
         let directory = CloudflareGameDirectory(baseURL: baseURL)
         let games = try await directory.fetchMyGames(sessionToken: sessionToken)
         let game = try XCTUnwrap(games.first { $0.roomCode == transport.roomCode })
-        XCTAssertEqual(game.status, .playing)
-        XCTAssertEqual(game.phase, "bidding")
+        XCTAssertEqual(game.status, .lobby)
         XCTAssertEqual(game.youSeat, "north")
 
-        // The opaque blob round-trips back into the exact PreferansSnapshot sent.
-        let payload = try await CloudflareRoomTransport.fetchSnapshot(
-            baseURL: baseURL,
-            roomCode: transport.roomCode,
-            playerID: "north",
-            seatToken: try XCTUnwrap(transport.seatToken),
-            accountSessionToken: sessionToken
+        // The old snapshot boundary is gone. Reconnects receive only their
+        // seat-redacted projection over the socket.
+        var snapshotRequest = URLRequest(
+            url: baseURL
+                .appendingPathComponent("v2")
+                .appendingPathComponent("rooms")
+                .appendingPathComponent(transport.roomCode)
+                .appendingPathComponent("snapshot")
         )
-        XCTAssertEqual(payload.status, .playing)
-        XCTAssertEqual(payload.decodedSnapshot, snapshot)
-
-        // A stolen room token is insufficient without the account session that
-        // owns the seat: both layers are checked by the v2 snapshot boundary.
-        let intruder = try await CloudflareAccountClient(baseURL: baseURL)
-            .registerGuest(displayName: "Intruder")
-        do {
-            _ = try await CloudflareRoomTransport.fetchSnapshot(
-                baseURL: baseURL,
-                roomCode: transport.roomCode,
-                playerID: "north",
-                seatToken: try XCTUnwrap(transport.seatToken),
-                accountSessionToken: intruder.sessionToken
-            )
-            XCTFail("A different account must not use a stolen seat token.")
-        } catch let error as CloudflareRoomTransportError {
-            guard case .serverError = error else {
-                return XCTFail("Expected a server authorization error, got \(error).")
-            }
-        }
+        snapshotRequest.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "authorization")
+        let (_, snapshotResponse) = try await URLSession.shared.data(for: snapshotRequest)
+        XCTAssertEqual((snapshotResponse as? HTTPURLResponse)?.statusCode, 410)
 
         var unauthenticated = URLRequest(url: baseURL.appendingPathComponent("v2").appendingPathComponent("my-games"))
         unauthenticated.httpMethod = "GET"
@@ -92,9 +79,8 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
         XCTAssertEqual((unauthenticatedResponse as? HTTPURLResponse)?.statusCode, 401)
 
         // Rejoining the same seat represents opening the table on a newer
-        // device. The room token rotates: the old device immediately loses
-        // snapshot and host-state authority even though its account bearer is
-        // still a valid account session.
+        // device. The room token rotates and the old device immediately loses
+        // room access even though its account bearer remains valid.
         let oldSocketDrain = Task { for await _ in transport.messages() {} }
         defer { oldSocketDrain.cancel() }
         let oldSocketConnected = await eventually {
@@ -117,34 +103,6 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
             transport.latestConnectionEvent == .seatTakenOver
         }
         XCTAssertTrue(takeoverConnected)
-        do {
-            _ = try await CloudflareRoomTransport.fetchSnapshot(
-                baseURL: baseURL,
-                roomCode: transport.roomCode,
-                playerID: "north",
-                seatToken: oldSeatToken,
-                accountSessionToken: sessionToken
-            )
-            XCTFail("The older device credential must be revoked on takeover.")
-        } catch let error as CloudflareRoomTransportError {
-            guard case .serverError = error else {
-                return XCTFail("Expected a room authorization error, got \(error).")
-            }
-        }
-        do {
-            try await transport.reportState(
-                status: .playing,
-                summary: OnlineStateSummary(lastSequence: 2, phase: "bidding", dealNumber: 1),
-                snapshot: snapshot,
-                snapshotSequence: 2
-            )
-            XCTFail("A stale device must not retain host-state authority.")
-        } catch let error as CloudflareRoomTransportError {
-            guard case .serverError = error else {
-                return XCTFail("Expected a host authorization error, got \(error).")
-            }
-        }
-
         // Abandon drops the game out of Continue (status flips to abandoned).
         try await CloudflareRoomTransport.abandon(
             baseURL: baseURL,
@@ -212,7 +170,7 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
         XCTAssertNotEqual(north.accountID, account.accountID)
     }
 
-    func testDisconnectedHostMigratesToAConnectedSeatAndKeepsTheSnapshot() async throws {
+    func testDisconnectedLobbyManagerMigratesWithoutEngineAuthority() async throws {
         guard let baseURL else {
             throw XCTSkip("Set PREFERANS_WORKER_URL to exercise the live worker.")
         }
@@ -259,16 +217,6 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
             accountSessionToken: eastRegistration.sessionToken
         )
 
-        var engine = try PreferansEngine(players: ["north", "east", "south"], rules: .sochi, firstDealer: "south")
-        _ = try engine.startDeal(deck: Deck.standard32)
-        let snapshot = engine.snapshot
-        try await northTransport.reportState(
-            status: .playing,
-            summary: OnlineStateSummary(lastSequence: 1, phase: "bidding", dealNumber: 1),
-            snapshot: snapshot,
-            snapshotSequence: 1
-        )
-
         let northDrain = Task { for await _ in northTransport.messages() {} }
         let eastDrain = Task { for await _ in eastTransport.messages() {} }
         defer {
@@ -292,32 +240,23 @@ final class OnlineWorkerIntegrationTests: XCTestCase {
         }
         XCTAssertTrue(migrated)
 
-        let recoveredContext = try await eastTransport.hostRecoveryContext()
-        let recovery = try XCTUnwrap(recoveredContext)
-        XCTAssertEqual(recovery.sequence, 1)
-        XCTAssertEqual(recovery.snapshot, snapshot)
+        let recoveryContext = try await eastTransport.hostRecoveryContext()
+        XCTAssertNil(recoveryContext)
 
         do {
-            try await northTransport.reportState(
+            try await eastTransport.reportState(
                 status: .playing,
                 summary: OnlineStateSummary(lastSequence: 2, phase: "bidding", dealNumber: 1),
-                snapshot: snapshot,
+                snapshot: nil,
                 snapshotSequence: 2
             )
-            XCTFail("The disconnected former host must lose state authority.")
+            XCTFail("A lobby-manager migration must not grant engine authority.")
         } catch let error as CloudflareRoomTransportError {
             guard case .serverError = error else {
-                return XCTFail("Expected a host authorization error, got \(error).")
+                return XCTFail("Expected client state reporting to stay disabled, got \(error).")
             }
         }
 
-        // The successor can immediately commit the recovered state.
-        try await eastTransport.reportState(
-            status: .playing,
-            summary: OnlineStateSummary(lastSequence: 1, phase: "bidding", dealNumber: 1),
-            snapshot: recovery.snapshot,
-            snapshotSequence: recovery.sequence
-        )
         try await CloudflareRoomTransport.abandon(
             baseURL: baseURL,
             roomCode: eastTransport.roomCode,

@@ -1,12 +1,11 @@
-export const ROOM_SCHEMA_VERSION = 2;
+export const ROOM_SCHEMA_VERSION = 3;
 export const DEFAULT_MAX_PLAYERS = 4;
 /// Longest accepted display name; anything longer is truncated on the way in
 /// so a client can't grow the stored room (and every presence broadcast)
 /// without bound.
 export const MAX_DISPLAY_NAME_LENGTH = 60;
-/// Largest accepted relay frame. Projections are a few KB; the resume
-/// snapshot travels over HTTP `/state`, never the socket — so anything this
-/// large is abuse, not gameplay.
+/// Largest accepted relay frame. Commands and projections are only a few KB,
+/// so anything this large is abuse, not gameplay.
 export const MAX_SOCKET_MESSAGE_BYTES = 128 * 1024;
 
 /// Account-ID prefix the host stamps on a seat it has reserved but nobody has
@@ -34,18 +33,13 @@ export const DELETED_ACCOUNT_PREFIX = "deleted:";
 const ROOM_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const SEAT_TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
 const ACCOUNT_PROVIDERS = new Set<OnlineAccountProvider>(["gameCenter", "apple", "email", "guest", "dev"]);
-const GAME_STATUSES = new Set<GameStatus>(["lobby", "playing", "finished", "abandoned"]);
 
 export type OnlineAccountProvider = "gameCenter" | "apple" | "email" | "guest" | "dev";
 
-/// Lifecycle of a table, mirrored from the Swift client's `PreferansGameStatus`.
-/// The worker treats it as an opaque-but-validated label the host reports; it
-/// drives the lobby's Continue (`playing`/`lobby`) vs History (`finished`)
-/// split and lets a stale room be swept to `abandoned`.
+/// Lifecycle of a table, mirrored from the Swift server's authoritative result.
 export type GameStatus = "lobby" | "playing" | "finished" | "abandoned";
 
-/// Tiny, worker-readable result kept for finished games so the History list can
-/// render a winner + final balance without decoding the dropped snapshot blob.
+/// Tiny, worker-readable result kept for the History list.
 export interface GameResultSummary {
   /// Seat that won the match, when there is a single winner.
   winner?: WirePlayerID;
@@ -53,9 +47,9 @@ export interface GameResultSummary {
   finalBalances?: Record<string, number>;
 }
 
-/// Host-authored, worker-readable metadata about a table's progress. Fanned out
+/// Server-authored, worker-readable metadata about a table's progress. Fanned out
 /// to each participant's `PlayerLibrary` so the lobby can describe a game
-/// ("Odesa · deal 3 · bidding") without ever decoding the opaque snapshot.
+/// ("Odesa · deal 3 · bidding") without decoding private engine state.
 export interface GameSummary {
   /// Rules variant identifier (`"odesa"` | `"wien"`), opaque to the worker.
   variant?: string;
@@ -99,17 +93,26 @@ export interface RoomState {
   createdAt: string;
   updatedAt: string;
   relaySequence: number;
-  /// Lifecycle status, host-reported. Defaults to `lobby` at creation.
+  /// Lifecycle status projected by the Swift engine. Defaults to `lobby`.
   status: GameStatus;
-  /// Latest host-reported progress metadata (worker-readable). `undefined`
-  /// until the host sends its first state report.
+  /// Latest server-produced progress metadata (worker-readable). `undefined`
+  /// until the Swift engine produces its first projection.
   summary?: GameSummary;
-  /// Opaque authoritative engine snapshot the resuming host hydrates from. The
-  /// worker never decodes it; dropped once the game is finished/abandoned.
-  latestSnapshot?: unknown;
-  /// Action sequence the stored `latestSnapshot` was taken at, so an
-  /// out-of-order report can't clobber a newer snapshot with an older one.
-  lastSnapshotSequence?: number;
+  /// Immutable engine configuration selected when the room is created. The
+  /// Worker deliberately treats the Swift Codable payloads as opaque JSON.
+  engineConfiguration?: {
+    rules: unknown;
+    match: unknown;
+    variant?: string;
+  };
+  /// Complete private Swift state. This remains a string so 64-bit seeds and
+  /// every hidden hand cross JavaScript without numeric coercion.
+  authoritativeState?: string;
+  authoritativeSequence?: number;
+  authoritativeTableID?: string;
+  /// Latest already-redacted projection, keyed by seat ID. A reconnect can be
+  /// repaired without exposing the private state or waking the engine.
+  authoritativeProjections?: Record<string, unknown>;
 }
 
 export interface PublicRoom {
@@ -124,8 +127,9 @@ export interface PublicRoom {
   relaySequence: number;
   /// Live status so guests can tell a still-forming room from one in play.
   status: GameStatus;
-  /// Progress metadata (no snapshot blob — that stays server-only).
+  /// Progress metadata; complete engine state stays server-only.
   summary?: GameSummary;
+  authoritativeTableID?: string;
 }
 
 export interface CreateRoomInput {
@@ -134,6 +138,9 @@ export interface CreateRoomInput {
   seats?: unknown[];
   maxPlayers?: number;
   now?: string;
+  rules?: unknown;
+  match?: unknown;
+  variant?: string;
 }
 
 export interface RelayEntry {
@@ -256,7 +263,8 @@ export function publicRoom(room: RoomState): PublicRoom {
     updatedAt: room.updatedAt,
     relaySequence: room.relaySequence ?? 0,
     status: room.status ?? "lobby",
-    summary: room.summary
+    summary: room.summary,
+    authoritativeTableID: room.authoritativeTableID
   };
 }
 
@@ -265,7 +273,10 @@ export function createInitialRoom({
   localPeer,
   seats,
   maxPlayers = DEFAULT_MAX_PLAYERS,
-  now = new Date().toISOString()
+  now = new Date().toISOString(),
+  rules,
+  match,
+  variant
 }: CreateRoomInput): RoomState {
   const normalizedRoomCode = normalizeRoomCode(roomCode);
   const normalizedMaxPlayers = clampMaxPlayers(maxPlayers);
@@ -301,11 +312,16 @@ export function createInitialRoom({
     createdAt: now,
     updatedAt: now,
     relaySequence: 0,
-    status: "lobby"
+    status: "lobby",
+    engineConfiguration: {
+      rules,
+      match,
+      variant
+    }
   };
 }
 
-/// Convert every still-open (`pending:`) seat into a host-driven bot, binding the
+/// Convert every still-open (`pending:`) seat into a server-driven bot, binding the
 /// bot's account to its seat (`bot:<playerID>`). Claimed and already-bot seats are
 /// left untouched. Returns the same room reference when nothing was open, so the
 /// caller can skip the storage write and presence broadcast.
@@ -397,7 +413,7 @@ export interface AccountRemovalResult {
 
 /// Remove every durable identity and credential owned by an account. Lobby
 /// seats reopen for another invitee; an in-progress table is abandoned because
-/// its engine snapshot can no longer have a complete authenticated roster.
+/// its authoritative game can no longer have a complete authenticated roster.
 /// Finished history keeps seat/result facts but anonymizes the deleted player.
 export function removeAccountFromRoom(
   room: RoomState,
@@ -424,9 +440,25 @@ export function removeAccountFromRoom(
   });
   let updated: RoomState = { ...room, peers, updatedAt: now };
   if (room.status === "playing") {
-    updated = applyStateReport(updated, { status: "abandoned" }, now).room;
+    updated = abandonRoom(updated, now);
   }
   return { room: updated, removedPlayerIDs };
+}
+
+export function abandonRoom(
+  room: RoomState,
+  now = new Date().toISOString()
+): RoomState {
+  if (room.status === "finished" || room.status === "abandoned") {
+    return room;
+  }
+  return {
+    ...room,
+    status: "abandoned",
+    authoritativeState: undefined,
+    authoritativeProjections: undefined,
+    updatedAt: now
+  };
 }
 
 export function routeRecipients(room: RoomState, senderPlayerID: unknown, recipients?: unknown[]): string[] {
@@ -487,195 +519,8 @@ export function recordRelay(room: RoomState, { senderPlayerID, recipientPlayerID
   };
 }
 
-export interface StateReportInput {
-  status?: unknown;
-  summary?: unknown;
-  snapshot?: unknown;
-  snapshotSequence?: unknown;
-}
-
-export interface StateReportResult {
-  room: RoomState;
-  /// True when a material change (status / deal / phase / result) means the
-  /// participants' library entries should be refreshed. Per-action snapshot
-  /// pushes that don't move the phase return false, keeping fan-out bounded.
-  changed: boolean;
-}
-
-/// Fold a host state report into the room: validate the status/summary, store
-/// the latest snapshot monotonically (an older out-of-order report can't clobber
-/// a newer one), and drop the snapshot once the game is finished/abandoned (it
-/// is never resumed). Pure so it can be unit-tested without a Durable Object.
-export function applyStateReport(
-  room: RoomState,
-  input: StateReportInput,
-  now: string = new Date().toISOString()
-): StateReportResult {
-  // Terminal history is immutable. A delayed request from a demoted/old host
-  // must never resurrect a finished or abandoned table.
-  if (room.status === "finished" || room.status === "abandoned") {
-    return { room, changed: false };
-  }
-
-  const normalizedStatus = normalizeGameStatus(input.status);
-  if (input.status !== undefined && normalizedStatus === undefined) {
-    throw new RoomStateError("invalid_state_report", "State report has an invalid status.", 400);
-  }
-  const requestedStatus = normalizedStatus ?? room.status ?? "lobby";
-  const currentStatus = room.status ?? "lobby";
-  const validLifecycleTransition = requestedStatus === currentStatus
-    || requestedStatus === "abandoned"
-    || (currentStatus === "lobby" && requestedStatus === "playing")
-    || (currentStatus === "playing" && requestedStatus === "finished");
-  if (!validLifecycleTransition) {
-    throw new RoomStateError(
-      "invalid_state_report",
-      `State report cannot move a room from ${currentStatus} to ${requestedStatus}.`,
-      409
-    );
-  }
-  if (requestedStatus === "playing"
-      && room.peers.some((peer) => peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX))) {
-    throw new RoomStateError(
-      "invalid_state_report",
-      "A room cannot enter play while it still has open seats.",
-      409
-    );
-  }
-  const candidateSummary = normalizeGameSummary(input.summary);
-  if (candidateSummary?.result !== undefined) {
-    if (requestedStatus !== "finished") {
-      throw new RoomStateError(
-        "invalid_state_report",
-        "A game result is only valid when the room is finished.",
-        400
-      );
-    }
-    validateGameResultSeats(candidateSummary.result, room);
-  }
-  if (requestedStatus === "finished" && candidateSummary?.result === undefined) {
-    throw new RoomStateError(
-      "invalid_state_report",
-      "A finished state report requires complete result standings.",
-      400
-    );
-  }
-  if (requestedStatus !== "abandoned") {
-    if (candidateSummary === undefined) {
-      throw new RoomStateError(
-        "invalid_state_report",
-        "State report requires a summary with a non-negative integer sequence.",
-        400
-      );
-    }
-    const rawSummarySequence = isRecord(input.summary) ? input.summary.lastSequence : undefined;
-    const rawSnapshotSequence = input.snapshotSequence;
-    if (typeof rawSummarySequence !== "number"
-        || !Number.isSafeInteger(rawSummarySequence)
-        || rawSummarySequence < 0) {
-      throw new RoomStateError("invalid_state_report", "Summary sequence must be a non-negative integer.", 400);
-    }
-    if (typeof rawSnapshotSequence !== "number"
-        || !Number.isSafeInteger(rawSnapshotSequence)
-        || rawSnapshotSequence !== rawSummarySequence) {
-      throw new RoomStateError(
-        "invalid_state_report",
-        "Snapshot and summary sequences must match.",
-        400
-      );
-    }
-    if (requestedStatus !== "finished" && (input.snapshot === undefined || input.snapshot === null)) {
-      throw new RoomStateError(
-        "invalid_state_report",
-        "A nonterminal state report requires its recoverable snapshot.",
-        400
-      );
-    }
-  }
-  // Both pieces of resumable state are monotonic. A malformed or partially
-  // migrated room may have a newer snapshot than its public summary; treating
-  // the maximum as the freshness floor prevents an intermediate report from
-  // making those two sequences diverge again.
-  const currentSequence = Math.max(
-    room.summary?.lastSequence ?? 0,
-    room.lastSnapshotSequence ?? 0
-  );
-  const staleSummary = candidateSummary !== undefined && candidateSummary.lastSequence < currentSequence;
-  const summary = staleSummary ? room.summary : candidateSummary ?? room.summary;
-  // Abandonment is an explicit participant action and carries no summary. All
-  // other stale reports preserve the newer lifecycle alongside the summary.
-  const status = staleSummary && requestedStatus !== "abandoned"
-    ? room.status ?? "lobby"
-    : requestedStatus;
-  const terminal = status === "finished" || status === "abandoned";
-
-  let latestSnapshot = room.latestSnapshot;
-  let lastSnapshotSequence = room.lastSnapshotSequence ?? 0;
-  if (input.snapshot !== undefined && !terminal) {
-    const raw = Number(input.snapshotSequence ?? summary?.lastSequence ?? 0);
-    const seq = Number.isFinite(raw) ? raw : 0;
-    if (seq >= lastSnapshotSequence) {
-      latestSnapshot = input.snapshot;
-      lastSnapshotSequence = seq;
-    }
-  }
-  if (terminal) {
-    latestSnapshot = undefined;
-  }
-
-  const updated: RoomState = {
-    ...room,
-    status,
-    summary,
-    latestSnapshot,
-    lastSnapshotSequence,
-    updatedAt: now
-  };
-  return { room: updated, changed: summarySignature(room) !== summarySignature(updated) };
-}
-
-export function normalizeGameStatus(value: unknown): GameStatus | undefined {
-  return typeof value === "string" && GAME_STATUSES.has(value as GameStatus)
-    ? (value as GameStatus)
-    : undefined;
-}
-
-export function normalizeGameSummary(value: unknown): GameSummary | undefined {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const lastSequenceRaw = Number(value.lastSequence ?? 0);
-  if (!Number.isSafeInteger(lastSequenceRaw) || lastSequenceRaw < 0) {
-    return undefined;
-  }
-  const summary: GameSummary = {
-    lastSequence: lastSequenceRaw
-  };
-  if (typeof value.variant === "string") {
-    summary.variant = value.variant;
-  }
-  if (typeof value.phase === "string") {
-    summary.phase = value.phase;
-  }
-  if (value.dealNumber !== undefined) {
-    const dealNumber = Number(value.dealNumber);
-    if (!Number.isSafeInteger(dealNumber) || dealNumber <= 0) {
-      return undefined;
-    }
-    summary.dealNumber = dealNumber;
-  }
-  if (value.result !== undefined) {
-    const result = normalizeGameResult(value.result);
-    if (!result) {
-      return undefined;
-    }
-    summary.result = result;
-  }
-  return summary;
-}
-
 /// A participant the lobby should list a game for: any seat that is neither a
-/// reserved-but-unclaimed (`pending:`) seat nor a host-driven bot (`bot:`).
+/// reserved-but-unclaimed (`pending:`) seat nor a server-driven bot (`bot:`).
 export function isHumanAccount(accountID: string): boolean {
   return !accountID.startsWith(PENDING_ACCOUNT_PREFIX)
     && !accountID.startsWith(BOT_ACCOUNT_PREFIX)
@@ -778,77 +623,6 @@ export function isHostAccount(room: RoomState, accountID: string): boolean {
 
 export function humanPeers(room: RoomState): OnlinePeer[] {
   return room.peers.filter((peer) => isHumanAccount(peer.accountID));
-}
-
-function normalizeGameResult(value: unknown): GameResultSummary | undefined {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const result: GameResultSummary = {};
-  let hasField = false;
-  if (Object.hasOwn(value, "winner")) {
-    hasField = true;
-    try {
-      result.winner = wirePlayerID(value.winner);
-    } catch {
-      return undefined;
-    }
-  }
-  if (Object.hasOwn(value, "finalBalances")) {
-    hasField = true;
-    if (!isRecord(value.finalBalances)) {
-      return undefined;
-    }
-    const balances: Record<string, number> = {};
-    for (const [seat, raw] of Object.entries(value.finalBalances)) {
-      const balance = Number(raw);
-      if (!seat.trim() || !Number.isFinite(balance)) {
-        return undefined;
-      }
-      balances[seat] = balance;
-    }
-    if (Object.keys(balances).length === 0) {
-      return undefined;
-    }
-    result.finalBalances = balances;
-  }
-  return hasField ? result : undefined;
-}
-
-function validateGameResultSeats(result: GameResultSummary, room: RoomState): void {
-  const knownSeats = new Set(room.peers.map(peerID));
-  if (result.winner && !knownSeats.has(playerIDValue(result.winner))) {
-    throw new RoomStateError(
-      "invalid_state_report",
-      "Finished result winner must be a seat in this room.",
-      400
-    );
-  }
-  const balances = result.finalBalances;
-  if (!balances) {
-    throw new RoomStateError(
-      "invalid_state_report",
-      "Finished result must include a balance for every seat.",
-      400
-    );
-  }
-  const balanceSeats = Object.keys(balances);
-  if (balanceSeats.length !== knownSeats.size || balanceSeats.some((seat) => !knownSeats.has(seat))) {
-    throw new RoomStateError(
-      "invalid_state_report",
-      "Finished result balances must cover exactly the room seats.",
-      400
-    );
-  }
-}
-
-function summarySignature(room: RoomState): string {
-  return [
-    room.status ?? "lobby",
-    room.summary?.dealNumber ?? "",
-    room.summary?.phase ?? "",
-    room.summary?.result ? "done" : ""
-  ].join("|");
 }
 
 function uniquePeers(peers: OnlinePeer[]): OnlinePeer[] {

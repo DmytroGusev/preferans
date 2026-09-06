@@ -161,6 +161,19 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         self.hostPeer = host
         self.isHost = host.playerID == transport.localPeer.playerID
 
+        if transport.isServerAuthoritative {
+            // `isHost` now means lobby manager only. No client constructs an
+            // engine, accepts another peer's command, or publishes state.
+            self.tableID = transport.authoritativeTableID
+            self.hostActor = nil
+            self.state = isHost ? .connectedAsHost : .connectedAsClient
+            self.hostLiveness.becomeHost()
+            self.publishHostLiveness()
+            self.transportStatus = .connected
+            observeParticipants(of: transport)
+            return
+        }
+
         if isHost {
             do {
                 try await becomeHost(
@@ -267,7 +280,19 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             action: action,
             baseHostSequence: projection?.sequence ?? 0
         )
-        if isHost {
+        if transport?.isServerAuthoritative == true {
+            guard let transport else {
+                errorText = String(localized: "No server connection.")
+                return
+            }
+            Task { [weak self, transport] in
+                do {
+                    try await transport.sendToAll(.clientAction(envelope), reliably: true)
+                } catch {
+                    self?.errorText = error.localizedDescription
+                }
+            }
+        } else if isHost {
             hostActionQueue.enqueue { [weak self] in
                 guard let self else { return }
                 await self.applyClientAction(envelope, sender: localSeat) { error in
@@ -291,15 +316,22 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
 
     public func requestResync() {
         refreshPeersFromTransport()
-        guard let tableID, let localSeat, let hostPeer, let transport else { return }
+        guard let tableID, let localSeat, let transport else { return }
         let lastSeenSequence = projection?.sequence ?? 0
-        Task { [weak self, tableID, localSeat, hostPeer, transport, lastSeenSequence] in
+        Task { [weak self, tableID, localSeat, transport, lastSeenSequence] in
             do {
-                try await transport.send(
-                    .resyncRequest(ResyncRequestEnvelope(tableID: tableID, requester: localSeat, lastSeenSequence: lastSeenSequence)),
-                    to: [hostPeer],
-                    reliably: true
+                let message = GameWireMessage.resyncRequest(
+                    ResyncRequestEnvelope(
+                        tableID: tableID,
+                        requester: localSeat,
+                        lastSeenSequence: lastSeenSequence
+                    )
                 )
+                if transport.isServerAuthoritative {
+                    try await transport.sendToAll(message, reliably: true)
+                } else if let hostPeer = self?.hostPeer {
+                    try await transport.send(message, to: [hostPeer], reliably: true)
+                }
             } catch {
                 self?.errorText = error.localizedDescription
             }
@@ -658,7 +690,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         case .connected:
             let recovered = transportStatus == .reconnecting
             transportStatus = .connected
-            if recovered, !isHost {
+            if recovered, (!isHost || transport?.isServerAuthoritative == true) {
                 requestResync()
             }
         case .reconnecting:
@@ -673,6 +705,8 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             stopHeartbeat()
             botMoveScheduler.cancel()
             stagedBotInsights = [:]
+        case let .serverError(message):
+            errorText = message
         }
     }
 
@@ -688,6 +722,12 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         guard previousHost != elected.playerID else { return }
 
         hostPeer = elected
+        if transport.isServerAuthoritative {
+            isHost = elected.playerID == transport.localPeer.playerID
+            state = isHost ? .connectedAsHost : .connectedAsClient
+            recomputeRoster()
+            return
+        }
         if elected.playerID == transport.localPeer.playerID {
             beginHostRecovery(as: elected, using: transport)
         } else {
@@ -859,7 +899,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         _ envelope: ProjectionEnvelope,
         received: ReceivedRoomMessage
     ) async {
-        guard isFromHost(received.sender) else { return }
+        guard received.authority == .server || isFromHost(received.sender) else { return }
         noteHostContact()
         let decision = RoomInboundMessagePolicy.projectionDecision(
             for: envelope,

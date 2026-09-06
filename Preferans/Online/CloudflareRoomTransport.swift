@@ -16,9 +16,12 @@ public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
     public var websocketURL: URL?
     /// Server-minted proof that this caller owns its seat. Returned by `/create`
     /// and `/join` (each caller only ever sees its own), embedded by the server
-    /// in `websocketURL`, and required by `/snapshot` and `/abandon` once the
-    /// every sensitive v2 path. Absent on summary/presence payloads.
+    /// in `websocketURL`, and required by `/abandon` and every sensitive room
+    /// path. Absent on summary/presence payloads.
     public var seatToken: String?
+    /// UUID minted by the Swift backend. It is public routing metadata; the
+    /// Durable Object keeps the private state separately.
+    public var authoritativeTableID: UUID?
 }
 
 public struct OnlineAccountRegistration: Decodable, Sendable, Equatable {
@@ -139,6 +142,8 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     public let baseURL: URL
     public let roomCode: String
     public let localPeer: OnlinePeer
+    public let authoritativeTableID: UUID?
+    public let isServerAuthoritative = true
 
     @Published public private(set) var participants: [OnlinePeer]
     @Published public private(set) var connectedPlayerIDs: Set<PlayerID>
@@ -153,8 +158,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     /// socket itself uses the narrower room seat token embedded in its URL.
     private let accountSessionToken: String
     /// This seat's ownership credential from the `/create`/`/join` response.
-    /// Exposed so the session can persist it for lobby flows (resume-snapshot
-    /// fetch, abandon) that run without a live transport.
+    /// Exposed so the session can persist it for lobby actions such as abandon.
     public let seatToken: String?
     private var socketTask: URLSessionWebSocketTask?
     private var connectionTask: Task<Void, Never>?
@@ -193,6 +197,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         self.baseURL = baseURL
         self.roomCode = summary.roomCode
         self.localPeer = localPeer
+        self.authoritativeTableID = summary.authoritativeTableID
         self.participants = summary.peers
         self.connectedPlayerIDs = [localPeer.playerID]
         self.hostPlayerID = summary.hostPlayerID
@@ -213,13 +218,19 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         localPeer: OnlinePeer,
         seats: [OnlinePeer],
         accountSessionToken: String,
+        rules: PreferansRules = .sochi,
+        match: MatchSettings = .unbounded,
+        variantTag: String? = nil,
         maxPlayers: Int = 4,
         session: URLSession = .shared
     ) async throws -> CloudflareRoomTransport {
         let request = CreateRoomRequest(
             localPlayerID: localPeer.playerID,
             seats: seats.map(RoomSeatIntent.init(peer:)),
-            maxPlayers: maxPlayers
+            maxPlayers: maxPlayers,
+            rules: rules,
+            match: match,
+            variant: variantTag
         )
         let summary = try await postRoomRequest(
             request,
@@ -341,102 +352,22 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         return summary.peers
     }
 
-    /// Push the host's progress to the worker: lifecycle status, the
-    /// worker-readable summary, and the opaque resume snapshot. Authenticated
-    /// with the account session; the worker accepts it only from the host account.
-    /// Called as a commit barrier before the coordinator publishes the matching
-    /// projections, so every visible action is already recoverable.
+    /// Schema-v3 Cloudflare rooms reject client-authored state. This protocol
+    /// requirement remains for in-memory peer-host fixtures only.
     public func reportState(
         status: PreferansGameStatus,
         summary: OnlineStateSummary,
         snapshot: PreferansSnapshot?,
         snapshotSequence: Int
     ) async throws {
-        // Send the snapshot as a *pre-encoded JSON string*, not an inline object:
-        // the worker stores the blob via JS `JSON.parse`/`stringify`, which would
-        // silently round large engine integers through a double and corrupt them
-        // (> 2^53). Keeping it an opaque string makes the round-trip byte-exact.
-        let snapshotBlob = try snapshot.map { String(decoding: try encoder.encode($0), as: UTF8.self) }
-        let body = StateReportRequest(
-            playerID: localPeer.playerID,
-            seatToken: try requiredSeatToken(),
-            status: status,
-            summary: summary,
-            snapshot: snapshotBlob,
-            snapshotSequence: snapshotSequence
+        throw CloudflareRoomTransportError.serverError(
+            "Online game state is owned by the server."
         )
-        var request = URLRequest(url: Self.endpoint(baseURL, "v2", "rooms", roomCode, "state"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
-        request.httpBody = try encoder.encode(body)
-
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw CloudflareRoomTransportError.invalidHTTPResponse
-        }
-        if !(200..<300).contains(http.statusCode) {
-            if let serverError = try? decoder.decode(RoomServerError.self, from: data) {
-                throw CloudflareRoomTransportError.serverError(serverError.error)
-            }
-            throw CloudflareRoomTransportError.serverError("Room server returned HTTP \(http.statusCode).")
-        }
     }
 
-    /// Fetch the durable resume snapshot for a room, gated server-side on the
-    /// caller presenting a seat they hold. Static because resume runs before a
-    /// live transport exists — the lobby calls this, then hands the snapshot to
-    /// a freshly attached coordinator.
-    public static func fetchSnapshot(
-        baseURL: URL = AppIdentifiers.roomWorkerBaseURL,
-        roomCode: String,
-        playerID: PlayerID,
-        seatToken: String,
-        accountSessionToken: String,
-        session: URLSession = .shared
-    ) async throws -> ResumeSnapshotPayload {
-        var components = URLComponents(
-            url: endpoint(baseURL, "v2", "rooms", roomCode, "snapshot"),
-            resolvingAgainstBaseURL: false
-        )
-        let queryItems = [
-            URLQueryItem(name: "playerID", value: playerID.rawValue),
-            URLQueryItem(name: "seatToken", value: seatToken)
-        ]
-        components?.queryItems = queryItems
-        guard let url = components?.url else {
-            throw CloudflareRoomTransportError.invalidHTTPResponse
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
-
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw CloudflareRoomTransportError.invalidHTTPResponse
-        }
-        if !(200..<300).contains(http.statusCode) {
-            if let serverError = try? PreferansJSONCoder.decoder.decode(RoomServerError.self, from: data) {
-                throw CloudflareRoomTransportError.serverError(serverError.error)
-            }
-            throw CloudflareRoomTransportError.serverError("Room server returned HTTP \(http.statusCode).")
-        }
-        return try PreferansJSONCoder.decoder.decode(ResumeSnapshotPayload.self, from: data)
-    }
-
-    /// Fetch the durable state this device must adopt after the worker elects
-    /// it host. A playing room without a valid snapshot is not safe to restart:
-    /// fail closed instead of silently dealing a different game.
+    /// A Cloudflare client can become lobby manager, never engine host.
     public func hostRecoveryContext() async throws -> OnlineResumeContext? {
-        let payload = try await Self.fetchSnapshot(
-            baseURL: baseURL,
-            roomCode: roomCode,
-            playerID: localPeer.playerID,
-            seatToken: try requiredSeatToken(),
-            accountSessionToken: accountSessionToken,
-            session: session
-        )
-        return try payload.validatedResumeContext()
+        nil
     }
 
     /// Abandon an unfinished game from the lobby (a game the player isn't
@@ -631,18 +562,33 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             }
         case .wire:
             guard let sender = envelope.sender, let message = envelope.message else { return }
-            guard RoomInboundMessagePolicy.acceptsRelaySequence(
-                envelope.serverSequence,
-                after: lastRelaySequence
-            ), let serverSequence = envelope.serverSequence else { return }
-            lastRelaySequence = serverSequence
+            if envelope.authority == .server {
+                // Server projections carry their own engine sequence and are
+                // safe to replay on reconnect. Presence and the initial HTTP
+                // summary may legitimately have the same relay counter.
+                if let serverSequence = envelope.serverSequence {
+                    lastRelaySequence = max(lastRelaySequence, serverSequence)
+                }
+            } else {
+                guard RoomInboundMessagePolicy.acceptsRelaySequence(
+                    envelope.serverSequence,
+                    after: lastRelaySequence
+                ), let serverSequence = envelope.serverSequence else { return }
+                lastRelaySequence = serverSequence
+            }
             for continuation in continuations.values {
-                continuation.yield(ReceivedRoomMessage(message: message, sender: sender))
+                continuation.yield(ReceivedRoomMessage(
+                    message: message,
+                    sender: sender,
+                    authority: envelope.authority == .server ? .server : .peer
+                ))
             }
         case .error:
             lastError = envelope.error
             if envelope.code == "seat_credential_invalid" {
                 emitConnectionEvent(.seatTakenOver)
+            } else if let message = envelope.error {
+                emitConnectionEvent(.serverError(message))
             }
         case .pong:
             break
@@ -711,6 +657,9 @@ private struct CreateRoomRequest: Encodable {
     var localPlayerID: PlayerID
     var seats: [RoomSeatIntent]
     var maxPlayers: Int
+    var rules: PreferansRules
+    var match: MatchSettings
+    var variant: String?
 }
 
 private struct JoinRoomRequest: Encodable {
@@ -737,18 +686,6 @@ private struct RoomSeatIntent: Encodable {
             kind = .you
         }
     }
-}
-
-private struct StateReportRequest: Encodable {
-    var playerID: PlayerID
-    var seatToken: String
-    var status: PreferansGameStatus
-    var summary: OnlineStateSummary
-    /// The PreferansSnapshot pre-encoded to a JSON string. Sent as a string (not
-    /// a nested object) so the worker never re-parses it and can't lose integer
-    /// precision; it stores and returns the bytes verbatim.
-    var snapshot: String?
-    var snapshotSequence: Int
 }
 
 private struct HostMutationRequest: Encodable {
@@ -786,6 +723,7 @@ private struct ClientSocketEnvelope: Encodable {
 private struct ServerSocketEnvelope: Decodable {
     var type: SocketEnvelopeType
     var room: CloudflareRoomSummary?
+    var authority: ServerAuthority?
     var connectedPlayerIDs: [PlayerID]?
     var sender: OnlinePeer?
     var message: GameWireMessage?
@@ -793,6 +731,10 @@ private struct ServerSocketEnvelope: Decodable {
     var code: String?
     var serverSequence: Int?
     var sentAt: String?
+}
+
+private enum ServerAuthority: String, Decodable {
+    case server
 }
 
 private enum SocketEnvelopeType: String, Codable {

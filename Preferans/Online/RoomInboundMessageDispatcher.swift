@@ -1,4 +1,5 @@
 import Foundation
+import PreferansEngine
 
 /// Owns the wire-level dispatch table for one room attachment.
 ///

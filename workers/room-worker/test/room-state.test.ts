@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  applyStateReport,
+  abandonRoom,
   authorizeHostSeat,
   authorizeRelayMessage,
   authorizeSeat,
@@ -11,8 +11,6 @@ import {
   isHostAccount,
   isHumanAccount,
   joinRoom,
-  normalizeGameSummary,
-  normalizeGameStatus,
   normalizePeer,
   removeAccountFromRoom,
   type OnlinePeer,
@@ -207,19 +205,20 @@ test("deleting an account reopens its lobby seat without retaining identity or c
   assert.ok(!JSON.stringify(removed.room).includes(east.accountID));
 });
 
-test("deleting a player abandons an active room, drops its snapshot, and anonymizes history", () => {
+test("deleting a player abandons an active room, drops its engine state, and anonymizes history", () => {
   const lobby = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
   const playing = {
     ...lobby,
     status: "playing" as const,
-    latestSnapshot: { hiddenHands: true },
-    lastSnapshotSequence: 4
+    authoritativeState: "private-engine-state",
+    authoritativeProjections: { north: "redacted" }
   };
   const removed = removeAccountFromRoom(playing, north.accountID, "2026-07-31T00:02:00.000Z");
   const northSeat = removed.room.peers.find((peer) => peerID(peer) === "north");
 
   assert.equal(removed.room.status, "abandoned");
-  assert.equal(removed.room.latestSnapshot, undefined);
+  assert.equal(removed.room.authoritativeState, undefined);
+  assert.equal(removed.room.authoritativeProjections, undefined);
   assert.equal(northSeat?.accountID, "deleted:north");
   assert.equal(northSeat?.displayName, "Deleted player");
   assert.equal(northSeat?.seatToken, undefined);
@@ -463,22 +462,16 @@ test("host election is deterministic, monotonic, and limited to connected humans
   }));
   assert.equal(electLiveHost(withBot, ["east", "south"]), withBot);
 
-  // Terminal history is immutable and never elects a fresh runtime host.
-  const playing = applyStateReport(southHost, {
-    status: "playing",
-    summary: { lastSequence: 0, phase: "bidding" },
-    snapshot: { seq: 0 },
-    snapshotSequence: 0
-  }).room;
-  const finished = applyStateReport(playing, {
+  // Terminal history is immutable and never elects a fresh lobby manager.
+  const finished: RoomState = {
+    ...southHost,
     status: "finished",
     summary: {
       lastSequence: 1,
       phase: "finished",
       result: { winner: { rawValue: "south" }, finalBalances: { north: 0, east: 0, south: 0 } }
-    },
-    snapshotSequence: 1
-  }).room;
+    }
+  };
   assert.equal(electLiveHost(finished, ["north"]), finished);
 });
 
@@ -531,305 +524,36 @@ test("an oversized display name is truncated on the way in", () => {
   assert.equal(room.peers[0].displayName.length, 60);
 });
 
-test("a fresh room starts in the lobby and exposes status, never the snapshot", () => {
+test("a fresh room starts in the lobby and exposes no private engine state", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
   assert.equal(room.status, "lobby");
 
   const projected = publicRoom(room);
   assert.equal(projected.status, "lobby");
-  // The opaque resume blob stays server-side only.
-  assert.ok(!("latestSnapshot" in projected));
+  assert.ok(!("authoritativeState" in projected));
+  assert.ok(!("authoritativeProjections" in projected));
 });
 
-test("a state report records status, summary, and the resume snapshot", () => {
-  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const { room: updated, changed } = applyStateReport(
-    room,
-    {
-      status: "playing",
-      summary: { variant: "odesa", lastSequence: 4, phase: "bidding", dealNumber: 1 },
-      snapshot: { opaque: "deal-1-state" },
-      snapshotSequence: 4
-    },
-    "2026-05-04T00:00:05.000Z"
-  );
-
-  assert.equal(changed, true);                 // lobby → playing is material: fan out
-  assert.equal(updated.status, "playing");
-  assert.equal(updated.summary?.phase, "bidding");
-  assert.equal(updated.summary?.dealNumber, 1);
-  assert.deepEqual(updated.latestSnapshot, { opaque: "deal-1-state" });
-  assert.equal(updated.lastSnapshotSequence, 4);
-  assert.equal(updated.updatedAt, "2026-05-04T00:00:05.000Z");
-});
-
-test("a room cannot enter play while a seat is still pending", () => {
-  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, openEast, openSouth] });
-  assert.throws(
-    () => applyStateReport(room, {
-      status: "playing",
-      summary: { variant: "odesa", lastSequence: 1, phase: "bidding", dealNumber: 1 },
-      snapshot: { opaque: "deal-1-state" },
-      snapshotSequence: 1
-    }),
-    /cannot enter play while it still has open seats/
-  );
-});
-
-test("progress summaries reject fractional and unsafe counters", () => {
-  assert.deepEqual(
-    normalizeGameSummary({ lastSequence: 4, dealNumber: 2 }),
-    { lastSequence: 4, dealNumber: 2 }
-  );
-  assert.equal(normalizeGameSummary({ lastSequence: 1.5, dealNumber: 2 }), undefined);
-  assert.equal(normalizeGameSummary({ lastSequence: Number.MAX_SAFE_INTEGER + 1 }), undefined);
-  assert.equal(normalizeGameSummary({ lastSequence: 4, dealNumber: 2.25 }), undefined);
-  assert.equal(normalizeGameSummary({ lastSequence: 4, dealNumber: 0 }), undefined);
-});
-
-test("a nonterminal report cannot advance metadata without an exact matching snapshot", () => {
-  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-
-  assert.throws(
-    () => applyStateReport(room, {
-      status: "playing",
-      summary: { lastSequence: 4, phase: "bidding" },
-      snapshotSequence: 4
-    }),
-    /requires its recoverable snapshot/
-  );
-  assert.throws(
-    () => applyStateReport(room, {
-      status: "playing",
-      summary: { lastSequence: 4, phase: "bidding" },
-      snapshot: { seq: 3 },
-      snapshotSequence: 3
-    }),
-    /sequences must match/
-  );
-
-  assert.equal(room.summary, undefined);
-  assert.equal(room.latestSnapshot, undefined);
-});
-
-test("a state report rejects invalid lifecycle and sequence values", () => {
-  const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-
-  assert.throws(
-    () => applyStateReport(room, {
-      status: "paused",
-      summary: { lastSequence: 0 },
-      snapshot: { seq: 0 },
-      snapshotSequence: 0
-    }),
-    /invalid status/
-  );
-  assert.throws(
-    () => applyStateReport(room, {
-      status: "playing",
-      summary: { lastSequence: 1.5 },
-      snapshot: { seq: 1.5 },
-      snapshotSequence: 1.5
-    }),
-    /non-negative integer/
-  );
-  assert.throws(
-    () => applyStateReport(room, {
-      status: "finished",
-      summary: { lastSequence: 1, phase: "finished" },
-      snapshotSequence: 1
-    }),
-    /cannot move a room from lobby to finished/
-  );
-
-  const { room: playing } = applyStateReport(room, {
+test("abandonment drops server-private state and is terminal", () => {
+  const lobby = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
+  const playing: RoomState = {
+    ...lobby,
     status: "playing",
-    summary: { lastSequence: 1, phase: "bidding" },
-    snapshot: { seq: 1 },
-    snapshotSequence: 1
-  });
-  assert.throws(
-    () => applyStateReport(playing, {
-      status: "lobby",
-      summary: { lastSequence: 2, phase: "waiting" },
-      snapshot: { seq: 2 },
-      snapshotSequence: 2
-    }),
-    /cannot move a room from playing to lobby/
-  );
-});
-
-test("a stale (out-of-order) snapshot never clobbers a newer one", () => {
-  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const { room: ahead } = applyStateReport(base, {
-    status: "playing",
-    summary: { lastSequence: 10, phase: "playing", dealNumber: 2 },
-    snapshot: { seq: 10 },
-    snapshotSequence: 10
-  });
-
-  const { room: afterStale } = applyStateReport(ahead, {
-    status: "playing",
-    summary: { lastSequence: 7, phase: "playing", dealNumber: 2 },
-    snapshot: { seq: 7 },
-    snapshotSequence: 7
-  });
-
-  // The newer snapshot (seq 10) survives the late-arriving seq-7 report.
-  assert.deepEqual(afterStale.latestSnapshot, { seq: 10 });
-  assert.equal(afterStale.lastSnapshotSequence, 10);
-  assert.equal(afterStale.summary?.lastSequence, 10);
-  assert.equal(afterStale.summary?.dealNumber, 2);
-});
-
-test("a report cannot advance metadata behind an already newer recovery snapshot", () => {
-  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const roomWithDivergentState: RoomState = {
-    ...base,
-    status: "playing",
-    summary: { lastSequence: 5, phase: "playing", dealNumber: 1 },
-    latestSnapshot: { seq: 10 },
-    lastSnapshotSequence: 10
+    authoritativeState: "private-engine-state",
+    authoritativeProjections: { north: "redacted" }
   };
 
-  const { room: afterReport } = applyStateReport(roomWithDivergentState, {
-    status: "playing",
-    summary: { lastSequence: 6, phase: "playing", dealNumber: 1 },
-    snapshot: { seq: 6 },
-    snapshotSequence: 6
-  });
-
-  assert.equal(afterReport.summary?.lastSequence, 5);
-  assert.deepEqual(afterReport.latestSnapshot, { seq: 10 });
-  assert.equal(afterReport.lastSnapshotSequence, 10);
+  const abandoned = abandonRoom(playing, "2026-05-04T00:00:05.000Z");
+  assert.equal(abandoned.status, "abandoned");
+  assert.equal(abandoned.authoritativeState, undefined);
+  assert.equal(abandoned.authoritativeProjections, undefined);
+  assert.equal(abandonRoom(abandoned), abandoned);
 });
 
-test("terminal lifecycle cannot be resurrected by a delayed host report", () => {
-  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const { room: playing } = applyStateReport(base, {
-    status: "playing",
-    summary: { lastSequence: 10, phase: "playing", dealNumber: 2 },
-    snapshot: { seq: 10 },
-    snapshotSequence: 10
-  });
-  const { room: finished } = applyStateReport(playing, {
-    status: "finished",
-    summary: {
-      lastSequence: 11,
-      phase: "finished",
-      dealNumber: 2,
-      result: { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0, south: -1 } }
-    },
-    snapshotSequence: 11
-  });
-  const result = applyStateReport(finished, {
-    status: "playing",
-    summary: { lastSequence: 12, phase: "playing", dealNumber: 3 },
-    snapshot: { seq: 12 },
-    snapshotSequence: 12
-  });
-
-  assert.equal(result.room, finished);
-  assert.equal(result.changed, false);
-  assert.equal(result.room.status, "finished");
-  assert.equal(result.room.latestSnapshot, undefined);
-});
-
-test("a same-phase snapshot refresh updates the blob but is not a material change", () => {
-  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const { room: playing } = applyStateReport(base, {
-    status: "playing",
-    summary: { lastSequence: 10, phase: "playing", dealNumber: 2 },
-    snapshot: { seq: 10 },
-    snapshotSequence: 10
-  });
-
-  const { room: refreshed, changed } = applyStateReport(playing, {
-    status: "playing",
-    summary: { lastSequence: 11, phase: "playing", dealNumber: 2 },
-    snapshot: { seq: 11 },
-    snapshotSequence: 11
-  });
-
-  // Snapshot advances for an exact resume, but status/deal/phase are unchanged,
-  // so fan-out to player libraries is skipped (bounded chatter).
-  assert.deepEqual(refreshed.latestSnapshot, { seq: 11 });
-  assert.equal(changed, false);
-});
-
-test("finishing a game keeps the result summary but drops the snapshot", () => {
-  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const { room: playing } = applyStateReport(base, {
-    status: "playing",
-    summary: { lastSequence: 40, phase: "playing", dealNumber: 6 },
-    snapshot: { seq: 40 },
-    snapshotSequence: 40
-  });
-
-  const { room: finished, changed } = applyStateReport(playing, {
-    status: "finished",
-    summary: {
-      lastSequence: 42,
-      result: { winner: { rawValue: "north" }, finalBalances: { north: 18.5, east: -4, south: -14.5 } }
-    },
-    snapshotSequence: 42
-  });
-
-  assert.equal(changed, true);
-  assert.equal(finished.status, "finished");
-  assert.equal(finished.summary?.result?.winner?.rawValue, "north");
-  assert.deepEqual(finished.summary?.result?.finalBalances, { north: 18.5, east: -4, south: -14.5 });
-  // A finished game is never resumed, so the heavy blob is released.
-  assert.equal(finished.latestSnapshot, undefined);
-});
-
-test("finished reports fail closed on incomplete or foreign result standings", () => {
-  const base = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
-  const { room: playing } = applyStateReport(base, {
-    status: "playing",
-    summary: { lastSequence: 4, phase: "playing", dealNumber: 1 },
-    snapshot: { seq: 4 },
-    snapshotSequence: 4
-  });
-
-  for (const result of [
-    undefined,
-    { winner: { rawValue: "ghost" }, finalBalances: { north: 1, east: 0, south: -1 } },
-    { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0 } },
-    { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0, south: -1, ghost: 0 } },
-    { winner: { rawValue: "north" }, finalBalances: { north: 1, east: "not-a-number", south: -1 } }
-  ]) {
-    assert.throws(
-      () => applyStateReport(playing, {
-        status: "finished",
-        summary: { lastSequence: 5, phase: "finished", result },
-        snapshotSequence: 5
-      }),
-      /result|balances|winner|invalid/i
-    );
-  }
-
-  assert.throws(
-    () => applyStateReport(playing, {
-      status: "playing",
-      summary: {
-        lastSequence: 5,
-        phase: "playing",
-        result: { winner: { rawValue: "north" }, finalBalances: { north: 1, east: 0, south: -1 } }
-      },
-      snapshot: { seq: 5 },
-      snapshotSequence: 5
-    }),
-    /only valid when the room is finished/
-  );
-});
-
-test("an unknown status is rejected and isHumanAccount excludes pending/bot seats", () => {
-  assert.equal(normalizeGameStatus("playing"), "playing");
-  assert.equal(normalizeGameStatus("garbage"), undefined);
-
+test("isHumanAccount excludes reserved, bot, and deleted seats", () => {
   assert.equal(isHumanAccount("apple:abc"), true);
   assert.equal(isHumanAccount("anonymous:north:aaa"), true);
   assert.equal(isHumanAccount("pending:east"), false);
   assert.equal(isHumanAccount("bot:south"), false);
+  assert.equal(isHumanAccount("deleted:north"), false);
 });

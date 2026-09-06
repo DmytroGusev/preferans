@@ -1,5 +1,10 @@
 import Foundation
-import PreferansEngine
+
+public enum PreferansWireSchema {
+    /// Server-authoritative online protocol. Version 3 is a clean break from
+    /// the client-hosted v2 room model.
+    public static let current = 3
+}
 
 public enum GameWireMessage: Codable, Sendable, Equatable {
     case hello(HelloEnvelope)
@@ -12,7 +17,7 @@ public enum GameWireMessage: Codable, Sendable, Equatable {
 }
 
 public struct HelloEnvelope: Codable, Sendable, Equatable {
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID?
     public var player: PlayerIdentity
     public var lastSeenSequence: Int
@@ -25,7 +30,7 @@ public struct HelloEnvelope: Codable, Sendable, Equatable {
 }
 
 public struct SeatAssignmentEnvelope: Codable, Sendable, Equatable {
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID
     public var hostPlayerID: PlayerID
     public var seats: [PlayerIdentity]
@@ -68,7 +73,7 @@ public struct SeatAssignmentEnvelope: Codable, Sendable, Equatable {
 
 public struct ClientActionEnvelope: Codable, Sendable, Equatable, Identifiable {
     public var id: UUID { clientNonce }
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID
     public var actor: PlayerID
     public var action: PreferansAction
@@ -94,7 +99,7 @@ public struct ClientActionEnvelope: Codable, Sendable, Equatable, Identifiable {
 }
 
 public struct ProjectionEnvelope: Codable, Sendable, Equatable {
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID
     public var sequence: Int
     public var viewer: PlayerID
@@ -149,7 +154,7 @@ public struct ProjectionEnvelope: Codable, Sendable, Equatable {
 }
 
 public struct HostErrorEnvelope: Codable, Sendable, Equatable {
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID
     public var sequence: Int
     public var recipient: PlayerID?
@@ -166,7 +171,7 @@ public struct HostErrorEnvelope: Codable, Sendable, Equatable {
 }
 
 public struct ResyncRequestEnvelope: Codable, Sendable, Equatable {
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID
     public var requester: PlayerID
     public var lastSeenSequence: Int
@@ -179,7 +184,7 @@ public struct ResyncRequestEnvelope: Codable, Sendable, Equatable {
 }
 
 public struct PingEnvelope: Codable, Sendable, Equatable {
-    public var schemaVersion: Int = AppIdentifiers.gameWireSchemaVersion
+    public var schemaVersion: Int = PreferansWireSchema.current
     public var tableID: UUID?
     public var sentAt: Date
 

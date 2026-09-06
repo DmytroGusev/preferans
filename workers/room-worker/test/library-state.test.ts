@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  applyStateReport,
   createInitialRoom,
   fillOpenSeatsWithBots,
   type OnlinePeer
@@ -43,16 +42,12 @@ function playingRoom(now: string): ReturnType<typeof createInitialRoom> {
     seats: [north, openEast, south],
     now
   });
-  return applyStateReport(
-    fillOpenSeatsWithBots(base, now),
-    {
-      status: "playing",
-      summary: { variant: "odesa", lastSequence: 4, phase: "bidding", dealNumber: 1 },
-      snapshot: { opaque: true },
-      snapshotSequence: 4
-    },
-    now
-  ).room;
+  return {
+    ...fillOpenSeatsWithBots(base, now),
+    status: "playing",
+    summary: { variant: "odesa", lastSequence: 4, phase: "bidding", dealNumber: 1 },
+    updatedAt: now
+  };
 }
 
 test("buildSummaryEntry projects the room from a given seat's perspective", () => {

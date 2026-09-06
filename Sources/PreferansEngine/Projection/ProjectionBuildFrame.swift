@@ -1,5 +1,4 @@
 import Foundation
-import PreferansEngine
 
 struct ProjectionBuildFrame {
     var dealer: PlayerID?

@@ -98,7 +98,7 @@ final class OnlineTransportSecurityTests: XCTestCase {
     @MainActor
     func testRoomMutationRejectsAnInvalidRelaySequence() async throws {
         CapturingURLProtocol.handler = { _ in
-            (201, Data(#"{"schemaVersion":2,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Ada"}],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":-1,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
+            (201, Data(#"{"schemaVersion":3,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Ada"}],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":-1,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
         }
         let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Ada")
 
@@ -123,7 +123,7 @@ final class OnlineTransportSecurityTests: XCTestCase {
     @MainActor
     func testRoomMutationRejectsAResponseWithoutTheCallersSeat() async throws {
         CapturingURLProtocol.handler = { _ in
-            (201, Data(#"{"schemaVersion":2,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"status":"lobby","websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
+            (201, Data(#"{"schemaVersion":3,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"status":"lobby","websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
         }
         let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Ada")
 
@@ -192,7 +192,7 @@ final class OnlineTransportSecurityTests: XCTestCase {
         CapturingURLProtocol.handler = { request in
             captured = request
             capturedBody = Self.bodyData(request)
-            return (201, Data(#"{"schemaVersion":2,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Ada"},{"playerID":{"rawValue":"east"},"accountID":"bot:east","provider":"dev","displayName":"Bot 2"},{"playerID":{"rawValue":"south"},"accountID":"pending:south","provider":"dev","displayName":"Open seat"}],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
+            return (201, Data(#"{"schemaVersion":3,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Ada"},{"playerID":{"rawValue":"east"},"accountID":"bot:east","provider":"dev","displayName":"Bot 2"},{"playerID":{"rawValue":"south"},"accountID":"pending:south","provider":"dev","displayName":"Open seat"}],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8))
         }
         let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Ada")
         let bot = OnlinePeer(playerID: "east", accountID: "bot:east", provider: .dev, displayName: "Bot 2")
@@ -222,10 +222,10 @@ final class OnlineTransportSecurityTests: XCTestCase {
     }
 
     @MainActor
-    func testHostStateReportRequiresTheCurrentRotatingSeatCredential() async throws {
+    func testClientAuthoredStateReportsAreDisabled() async throws {
         var stateRequest: URLRequest?
         var stateBody: Data?
-        let roomJSON = Data(#"{"schemaVersion":2,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Ada"},{"playerID":{"rawValue":"east"},"accountID":"bot:east","provider":"dev","displayName":"Bot 2"},{"playerID":{"rawValue":"south"},"accountID":"bot:south","provider":"dev","displayName":"Bot 3"}],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=rotated-seat","seatToken":"rotated-seat"}"#.utf8)
+        let roomJSON = Data(#"{"schemaVersion":3,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Ada"},{"playerID":{"rawValue":"east"},"accountID":"bot:east","provider":"dev","displayName":"Bot 2"},{"playerID":{"rawValue":"south"},"accountID":"bot:south","provider":"dev","displayName":"Bot 3"}],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=rotated-seat","seatToken":"rotated-seat"}"#.utf8)
         CapturingURLProtocol.handler = { request in
             if request.url?.path.hasSuffix("/state") == true {
                 stateRequest = request
@@ -247,20 +247,22 @@ final class OnlineTransportSecurityTests: XCTestCase {
         )
         defer { transport.disconnect() }
 
-        try await transport.reportState(
-            status: .lobby,
-            summary: OnlineStateSummary(lastSequence: 0, phase: "waiting"),
-            snapshot: nil,
-            snapshotSequence: 0
-        )
-
-        XCTAssertEqual(stateRequest?.url?.path, "/v2/rooms/ABC123/state")
-        XCTAssertEqual(stateRequest?.value(forHTTPHeaderField: "authorization"), "Bearer pref2.account.secret")
-        let body = try XCTUnwrap(stateBody)
-        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
-        XCTAssertEqual((object["playerID"] as? [String: String])?["rawValue"], "north")
-        XCTAssertEqual(object["seatToken"] as? String, "rotated-seat")
-        XCTAssertNil(object["accountID"])
+        do {
+            try await transport.reportState(
+                status: .lobby,
+                summary: OnlineStateSummary(lastSequence: 0, phase: "waiting"),
+                snapshot: nil,
+                snapshotSequence: 0
+            )
+            XCTFail("A schema-v3 client must not upload game state.")
+        } catch {
+            XCTAssertEqual(
+                (error as? CloudflareRoomTransportError)?.errorDescription,
+                "Online game state is owned by the server."
+            )
+        }
+        XCTAssertNil(stateRequest)
+        XCTAssertNil(stateBody)
     }
 
     private static func bodyData(_ request: URLRequest) -> Data? {

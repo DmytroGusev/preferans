@@ -9,7 +9,7 @@ import {
 } from "./room-state.ts";
 
 /// One row in a player's game library — everything the lobby needs to render a
-/// "Your games" entry and to resume it, without ever decoding the snapshot blob.
+/// "Your games" entry and reconnect to it without decoding private engine state.
 /// Rooms fan these out (one per human seat) into each participant's
 /// `PlayerLibrary` Durable Object on every material transition.
 export interface GameSummaryEntry {

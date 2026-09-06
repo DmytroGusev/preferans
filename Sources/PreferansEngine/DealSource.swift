@@ -1,34 +1,46 @@
 import Foundation
-import GameplayKit
 
-/// Deterministic 64-bit pseudo-random number generator backed by
-/// `GameplayKit`'s Mersenne Twister source — the canonical Apple
-/// platform seeded RNG, with a longer period and better statistical
-/// distribution than a hand-rolled SplitMix64.
-///
-/// `GKMersenneTwisterRandomSource.nextInt()` returns 32 random bits
-/// per call (uniform across `Int32`'s full range), so each `next()`
-/// pulls two and concatenates to produce 64 bits the
-/// `RandomNumberGenerator` protocol asks for.
+/// Deterministic, cross-platform xoshiro256** generator. Keeping this in pure
+/// Swift lets the exact same engine run on Apple devices, Linux servers, and
+/// WebAssembly without depending on Apple-only GameplayKit.
 ///
 /// Reference type so that copies share state — multiple
 /// `shuffled(using:)` calls advance the same sequence, which makes
 /// scripted tests both deterministic and easy to reason about across
 /// deals.
 public final class SeededRandomNumberGenerator: RandomNumberGenerator {
-    private let source: GKMersenneTwisterRandomSource
+    private var state: (UInt64, UInt64, UInt64, UInt64)
 
     public init(seed: UInt64) {
-        // GKMersenneTwisterRandomSource accepts any UInt64 including 0;
-        // keep the legacy "0 → fixed sentinel" behavior so tests that
-        // pass seed 0 still get a deterministic non-trivial sequence.
-        self.source = GKMersenneTwisterRandomSource(seed: seed == 0 ? 0x9E37_79B9_7F4A_7C15 : seed)
+        var mixer = seed == 0 ? 0x9E37_79B9_7F4A_7C15 : seed
+        func splitMix64() -> UInt64 {
+            mixer &+= 0x9E37_79B9_7F4A_7C15
+            var value = mixer
+            value = (value ^ (value >> 30)) &* 0xBF58_476D_1CE4_E5B9
+            value = (value ^ (value >> 27)) &* 0x94D0_49BB_1331_11EB
+            return value ^ (value >> 31)
+        }
+        self.state = (splitMix64(), splitMix64(), splitMix64(), splitMix64())
     }
 
     public func next() -> UInt64 {
-        let lo = UInt32(bitPattern: Int32(truncatingIfNeeded: source.nextInt()))
-        let hi = UInt32(bitPattern: Int32(truncatingIfNeeded: source.nextInt()))
-        return (UInt64(hi) << 32) | UInt64(lo)
+        let result = (state.1 &* 5).rotatedLeft(by: 7) &* 9
+        let temporary = state.1 << 17
+
+        state.2 ^= state.0
+        state.3 ^= state.1
+        state.1 ^= state.2
+        state.0 ^= state.3
+        state.2 ^= temporary
+        state.3 = state.3.rotatedLeft(by: 45)
+
+        return result
+    }
+}
+
+private extension UInt64 {
+    func rotatedLeft(by distance: UInt64) -> UInt64 {
+        (self << distance) | (self >> (64 - distance))
     }
 }
 
@@ -63,7 +75,7 @@ public final class RandomDealSource: DealSource {
 
 public final class SeededDealSource: DealSource, @unchecked Sendable {
     private var rng: SeededRandomNumberGenerator
-    /// Protects the reference-backed GameplayKit RNG. The conformance remains
+    /// Protects the reference-backed deterministic RNG. The conformance remains
     /// unchecked because Swift cannot infer synchronization around `rng`.
     private let lock = NSLock()
 

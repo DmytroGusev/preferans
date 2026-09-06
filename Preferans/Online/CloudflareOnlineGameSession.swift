@@ -63,6 +63,9 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             localPeer: localPeer,
             seats: peers,
             accountSessionToken: accountSessionToken,
+            rules: rules,
+            match: match,
+            variantTag: variantTag,
             maxPlayers: min(max(peers.count, 3), 4)
         )
         logOnlineFlow("event=create roomCode=\(transport.roomCode) local=\(localPeer.playerID.rawValue)")
@@ -107,12 +110,9 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         )
     }
 
-    /// Resume an in-progress online game from the lobby's "Your games" list.
-    /// Rejoins the room (the worker rebinds the original seat by `accountID`),
-    /// fetches the durable engine snapshot for that seat, and — when one exists —
-    /// carries it as a resume context so the elected host rebuilds the engine
-    /// instead of dealing fresh. A missing snapshot (the room is still in its
-    /// pre-deal lobby) degrades to a plain rejoin.
+    /// Resume an online game from the lobby's "Your games" list. Rejoining
+    /// rotates the seat credential; the server then pushes this seat's latest
+    /// redacted projection over the new socket.
     public static func resumeRoom(
         roomCode: String,
         localPeer: OnlinePeer,
@@ -132,27 +132,15 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             accountSessionToken: accountSessionToken
         )
 
-        guard let seatToken = transport.seatToken ?? OnlineSeatCredentialStore.token(for: normalizedCode) else {
-            throw CloudflareRoomTransportError.serverError("This device no longer has the room credential.")
-        }
-        let payload = try await CloudflareRoomTransport.fetchSnapshot(
-            baseURL: baseURL,
-            roomCode: normalizedCode,
-            playerID: transport.localPeer.playerID,
-            seatToken: seatToken,
-            accountSessionToken: accountSessionToken
-        )
-        let resume = try payload.validatedResumeContext()
-
-        logOnlineFlow("event=resume roomCode=\(transport.roomCode) local=\(transport.localPeer.playerID.rawValue) hasSnapshot=\(resume != nil)")
+        logOnlineFlow("event=resume roomCode=\(transport.roomCode) local=\(transport.localPeer.playerID.rawValue) authority=server")
         return CloudflareOnlineGameSession(
             transport: transport,
             inviteURL: PreferansInviteLink.inviteURL(baseURL: inviteBaseURL, roomCode: transport.roomCode),
-            rules: resume?.snapshot.rules ?? .sochi,
-            match: resume?.snapshot.match ?? .unbounded,
+            rules: .sochi,
+            match: .unbounded,
             botMoveDelay: botMoveDelay,
             variantTag: variantTag,
-            resume: resume
+            resume: nil
         )
     }
 

@@ -65,7 +65,7 @@ public struct WaitingRoomSeat: Identifiable, Equatable, Sendable {
         case you(name: String)
         /// A different human who has joined.
         case human(name: String)
-        /// A host-driven bot, named so the waiting room matches the
+        /// A server-driven bot, named so the waiting room matches the
         /// "Bot 2"/"Bot 3" labels the live table will show.
         case bot(name: String)
         /// A reserved seat nobody has joined yet (`pending:`).
@@ -87,21 +87,29 @@ public struct WaitingRoomSeat: Identifiable, Equatable, Sendable {
     }
 }
 
+public enum RoomMessageAuthority: Sendable, Equatable {
+    case peer
+    case server
+}
+
 public struct ReceivedRoomMessage: Sendable {
     public var message: GameWireMessage
     public var sender: OnlinePeer
+    public var authority: RoomMessageAuthority
 
-    public init(message: GameWireMessage, sender: OnlinePeer) {
+    public init(
+        message: GameWireMessage,
+        sender: OnlinePeer,
+        authority: RoomMessageAuthority = .peer
+    ) {
         self.message = message
         self.sender = sender
+        self.authority = authority
     }
 }
 
-/// What a host needs to resume an in-progress online game from the
-/// Durable-Object-backed snapshot: the authoritative engine state and the host
-/// sequence to continue numbering from. The table identity is re-minted on
-/// resume and re-broadcast via seat assignment — the worker keys by room code,
-/// so the original UUID never needs to survive.
+/// Legacy peer-host recovery context retained for local/in-memory transports.
+/// Production Cloudflare rooms never send this full-information state to a client.
 public struct OnlineResumeContext: Sendable {
     public var snapshot: PreferansSnapshot
     public var sequence: Int
@@ -120,6 +128,10 @@ public protocol RoomRealtimeTransport: AnyObject {
     /// the host drives them in-process; local transports default to treating
     /// every modeled peer as connected.
     var connectedPlayerIDs: Set<PlayerID> { get }
+    /// True when the remote room, rather than an elected client, owns engine
+    /// state and accepts command-only wire traffic.
+    var isServerAuthoritative: Bool { get }
+    var authoritativeTableID: UUID? { get }
 
     func chooseHost() async -> OnlinePeer?
     func messages() -> AsyncStream<ReceivedRoomMessage>
@@ -134,16 +146,13 @@ public protocol RoomRealtimeTransport: AnyObject {
     func send(_ message: GameWireMessage, to peers: [OnlinePeer], reliably: Bool) async throws
     func sendToAll(_ message: GameWireMessage, reliably: Bool) async throws
     /// Ask the room's authority to convert every still-open (`pending:`) seat into
-    /// a host-driven bot. Returns the updated roster when the transport owns a
+    /// a server-driven bot. Returns the updated roster when the transport owns a
     /// server-side authority that performed the change (Cloudflare), or `nil` when
     /// the caller should fall back to converting seats locally (in-memory/GameKit).
     func fillPendingSeatsWithBots() async throws -> [OnlinePeer]?
-    /// Durable engine state to adopt if the room authority elects this device
-    /// as a replacement host. Local transports have no remote snapshot.
+    /// Legacy peer-host recovery hook. Cloudflare authority always returns nil.
     func hostRecoveryContext() async throws -> OnlineResumeContext?
-    /// Commit the host's authoritative snapshot before its projections are
-    /// exposed. Relay-backed transports persist it; local transports are an
-    /// intentional no-op.
+    /// Legacy peer-host persistence hook. Cloudflare authority rejects it.
     func reportState(
         status: PreferansGameStatus,
         summary: OnlineStateSummary,
@@ -154,6 +163,8 @@ public protocol RoomRealtimeTransport: AnyObject {
 }
 
 public extension RoomRealtimeTransport {
+    var isServerAuthoritative: Bool { false }
+    var authoritativeTableID: UUID? { nil }
     var connectedPlayerIDs: Set<PlayerID> {
         Set(participants.map(\.playerID))
     }
@@ -200,6 +211,8 @@ public enum RoomTransportEvent: Equatable, Sendable {
     case reconnecting
     /// The same account rejoined this seat and rotated its room credential.
     case seatTakenOver
+    /// The authoritative room rejected a command or another socket request.
+    case serverError(String)
 }
 
 public enum OnlineTransportStatus: Equatable, Sendable {

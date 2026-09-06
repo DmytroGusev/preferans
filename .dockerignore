@@ -1,0 +1,10 @@
+.build
+.git
+.swiftpm
+build
+bin/.screens
+DerivedData
+Preferans.xcodeproj
+PreferansUITests
+workers/room-worker/node_modules
+workers/room-worker/.wrangler

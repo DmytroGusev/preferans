@@ -1,5 +1,4 @@
 import Foundation
-import PreferansEngine
 
 public enum ProjectedCard: Codable, Sendable, Hashable, CustomStringConvertible {
     case known(Card)
@@ -199,6 +198,52 @@ public struct PlayerGameProjection: Codable, Sendable, Equatable, Identifiable {
     public var discard: [ProjectedCard]
     public var legal: LegalActionProjection
     public var status: ProjectedStatus
+
+    public init(
+        tableID: UUID,
+        sequence: Int,
+        viewer: PlayerID,
+        players: [PlayerID],
+        identities: [PlayerIdentity],
+        rules: PreferansRules,
+        match: MatchSettings,
+        consecutiveAllPassDeals: Int,
+        score: ScoreSheet,
+        phase: ProjectedPhase,
+        seats: [SeatProjection],
+        auction: [AuctionCall],
+        whistCalls: [WhistCallRecord],
+        currentTrick: [CardPlay],
+        lastCompletedTrick: Trick?,
+        completedTrickCount: Int,
+        trickCounts: [PlayerID: Int],
+        talon: [ProjectedCard],
+        discard: [ProjectedCard],
+        legal: LegalActionProjection,
+        status: ProjectedStatus
+    ) {
+        self.tableID = tableID
+        self.sequence = sequence
+        self.viewer = viewer
+        self.players = players
+        self.identities = identities
+        self.rules = rules
+        self.match = match
+        self.consecutiveAllPassDeals = consecutiveAllPassDeals
+        self.score = score
+        self.phase = phase
+        self.seats = seats
+        self.auction = auction
+        self.whistCalls = whistCalls
+        self.currentTrick = currentTrick
+        self.lastCompletedTrick = lastCompletedTrick
+        self.completedTrickCount = completedTrickCount
+        self.trickCounts = trickCounts
+        self.talon = talon
+        self.discard = discard
+        self.legal = legal
+        self.status = status
+    }
 }
 
 public extension PlayerGameProjection {

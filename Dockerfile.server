@@ -1,0 +1,15 @@
+FROM swift:6.3.2-jammy AS builder
+
+WORKDIR /workspace
+COPY Package.swift Package.resolved ./
+COPY Sources ./Sources
+
+RUN PREFERANS_SERVER_ONLY=1 swift build -c release --product PreferansServer
+
+FROM swift:6.3.2-jammy-slim
+WORKDIR /app
+COPY --from=builder /workspace/.build/release/PreferansServer /app/PreferansServer
+
+ENV PORT=8080
+EXPOSE 8080
+ENTRYPOINT ["/app/PreferansServer"]

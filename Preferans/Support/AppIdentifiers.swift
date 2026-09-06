@@ -1,4 +1,5 @@
 import Foundation
+import PreferansEngine
 
 public enum AppIdentifiers {
     /// Add this ID in a .gamekit bundle / App Store Connect if you use Game Center Activities.
@@ -10,7 +11,7 @@ public enum AppIdentifiers {
     /// Clean-break worker account protocol. V1 identities are intentionally
     /// rejected so every online player registers through the authenticated API.
     public static let onlineAccountSchemaVersion = 2
-    public static let gameWireSchemaVersion = 2
+    public static let gameWireSchemaVersion = PreferansWireSchema.current
 }
 
 /// UserDefaults keys for settings persisted across launches. Centralised

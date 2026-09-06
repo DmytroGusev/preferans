@@ -10,11 +10,20 @@ APPLE_CLIENT_ID = "com.mixandmatch.preferans"
 
 [[durable_objects.bindings]]
 name = "ROOMS"
-class_name = "PreferansRoomV2"
+class_name = "PreferansRoomV3"
 
 [[durable_objects.bindings]]
 name = "ACCOUNTS"
 class_name = "PlayerAccountV2"
+
+[[durable_objects.bindings]]
+name = "ENGINE"
+class_name = "PreferansEngineContainer"
+
+[[containers]]
+class_name = "PreferansEngineContainer"
+image = "../../Dockerfile.server"
+max_instances = 3
 
 [[migrations]]
 tag = "v1"
@@ -29,3 +38,9 @@ new_sqlite_classes = ["PlayerLibrary"]
 [[migrations]]
 tag = "v3-authenticated-v2"
 new_sqlite_classes = ["PreferansRoomV2", "PlayerAccountV2"]
+
+# Clean break from peer-hosted game state. Room V3 owns opaque Swift engine
+# state; the container class is a stateless transition pool.
+[[migrations]]
+tag = "v4-server-authoritative-v3"
+new_sqlite_classes = ["PreferansRoomV3", "PreferansEngineContainer"]

@@ -1,5 +1,4 @@
 import Foundation
-import PreferansEngine
 
 public struct PlayerIdentity: Codable, Sendable, Hashable, Identifiable {
     public var id: PlayerID { playerID }
