@@ -775,17 +775,7 @@ public struct PreferansEngine: Sendable {
     }
 
     func requiredSuit(for playing: PlayingState) -> Suit? {
-        guard case let .allPass(context) = playing.kind,
-              playing.completedTricks.count < 2,
-              playing.talon.indices.contains(playing.completedTricks.count) else {
-            return playing.currentTrick.first?.card.suit
-        }
-        switch context.talonPolicy {
-        case .classic, .leadSuitOnly:
-            return playing.talon[playing.completedTricks.count].suit
-        case .ignored:
-            return playing.currentTrick.first?.card.suit
-        }
+        playing.requiredSuit
     }
 
     /// Completes one fully played trick and advances to the correct leader.

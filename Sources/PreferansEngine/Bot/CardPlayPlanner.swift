@@ -43,13 +43,12 @@ public struct CardPlayPlanner: Sendable {
         // same position cannot drift because of prior bot decisions.
         var rng = SeededRandomNumberGenerator(seed: samplingSeed)
         let sampleSnapshots = sampler.samples(from: snapshot, viewer: viewer, count: samples, rng: &rng)
-        // If sampling fails entirely (rare; only on contradictory void
-        // inferences), fall back to the original snapshot — every hand is
-        // already visible to the planner there.
-        let pool = sampleSnapshots.isEmpty ? [snapshot] : sampleSnapshots
+        // A failed sample must never grant the bot knowledge of the real
+        // hidden hands. Choose only from its own legal cards in that case.
+        guard !sampleSnapshots.isEmpty else { return legal.min() }
 
         var outcomes = [[Double]](repeating: [], count: legal.count)
-        for sample in pool {
+        for sample in sampleSnapshots {
             for (i, candidate) in legal.enumerated() {
                 outcomes[i].append(
                     rollout(from: sample, viewer: viewer, actingFor: actingFor, firstMove: candidate)
@@ -139,9 +138,9 @@ public struct CardPlayPlanner: Sendable {
         let trump = playing.kind.trumpSuit
         let wantsTricks = wantsTricks(actor: actor, kind: playing.kind)
         let talonLead = playing.currentTalonLead
-        let leadSuit = talonLead?.card.suit ?? playing.currentTrick.first?.card.suit
+        let leadSuit = playing.requiredSuit
 
-        if leadSuit == nil {
+        if leadSuit == nil || (talonLead == nil && playing.currentTrick.isEmpty) {
             return leadCard(legal: legal, trump: trump, wantsTricks: wantsTricks)
         }
 

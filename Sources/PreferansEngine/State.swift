@@ -392,6 +392,16 @@ public struct PlayingState: Equatable, Codable, Sendable {
         }
     }
 
+    /// The suit every active hand must follow, including an opening talon
+    /// lead that is not an active player's card.
+    public var requiredSuit: Suit? {
+        if usesTalonLeads, completedTricks.count < 2,
+           talon.indices.contains(completedTricks.count) {
+            return talon[completedTricks.count].suit
+        }
+        return currentTrick.first?.card.suit
+    }
+
     /// Dealer-owned talon card currently leading a four-player raspasy trick.
     public var currentTalonLead: CardPlay? {
         guard isClassicFourPlayerAllPass,
