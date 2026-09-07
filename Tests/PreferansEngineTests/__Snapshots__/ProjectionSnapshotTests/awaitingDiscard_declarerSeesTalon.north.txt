@@ -79,7 +79,6 @@
   },
   "match" : {
     "poolClosure" : "individualWithAmericanAid",
-    "poolTarget" : 9223372036854775807,
     "raspasy" : {
       "progressive" : {
         "exit" : "strict",
