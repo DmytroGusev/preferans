@@ -20,6 +20,14 @@ From this directory:
 - `bun run smoke:live`: create 3/4-player tables, deal, reconnect, and clean up.
   Defaults to localhost. Set `PREFERANS_ROOM_WORKER_URL` for an explicitly selected
   deployed environment. It creates temporary guest accounts and deletes them.
+- `bun run test:network`: finish 3/4-seat matches through separate authenticated
+  clients. Plays all 30 cards in the first deal, drops/replays a pending move,
+  disconnects/rejoins the room manager, rejects an impersonated actor, and checks
+  private hands/discards at every revision. Later uncontested contracts close the
+  fixture's custom table-total pool of six; this is a bounded protocol check,
+  not a bot-quality or production-pacing benchmark. Each match has a 128-command /
+  30-second limit, reports phase progress, and removes its temporary accounts.
+  Uses the same localhost default and explicit environment override as the smoke.
 - `bun run deploy:check`: bundle/validate the production Worker without deploying.
 - `bun run deploy`: deploy the production Worker and container configuration.
 
