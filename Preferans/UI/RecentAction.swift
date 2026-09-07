@@ -307,8 +307,12 @@ public enum ActivityLogFeed {
         case let .dealScored(result):
             return (String(localized: "Deal scored"), dealResultSummary(result, displayName: displayName), .scoring)
         case let .matchEnded(summary):
-            if let winner = summary.standings.first?.player {
+            if let winner = summary.soleWinner {
                 return (String(localized: "Match over"), String(localized: "\(displayName(winner)) wins"), .scoring)
+            }
+            if summary.leadingPlayers.count > 1 {
+                let names = summary.leadingPlayers.map(displayName).joined(separator: ", ")
+                return (String(localized: "Match over"), String(localized: "Shared lead: \(names)"), .scoring)
             }
             return (String(localized: "Match over"), nil, .scoring)
         }

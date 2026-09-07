@@ -232,7 +232,7 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertFalse(barrier.recordFailure(for: ticket))
     }
 
-    func testStateReportBuilderPublishesAuthoritativeBalancesAndStableWinner() {
+    func testStateReportBuilderPublishesBalancesWithoutInventingATieWinner() {
         let players: [PlayerID] = ["north", "east", "south"]
         let lastDeal = DealResult(
             kind: .passedOut,
@@ -266,10 +266,10 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertEqual(
             summary.result,
             OnlineGameResult(
-                winner: "north",
+                winner: nil,
                 finalBalances: ["north": 18.5, "east": 18.5, "south": -37]
             ),
-            "The worker summary must use the engine's stable standing order and balances, not pool entries."
+            "Tied balances must not become a sole winner in the room summary."
         )
     }
 
@@ -1440,6 +1440,9 @@ final class RoomOnlineGameCoordinatorTests: AppTestCase {
         XCTAssertEqual(display.completedTrickCount, completedBefore)
         XCTAssertEqual(pending.phaseOverride, preClose.phase)
         XCTAssertEqual(display.phase, preClose.phase)
+        XCTAssertEqual(display.status, preClose.status)
+        XCTAssertEqual(display.talon, preClose.talon)
+        XCTAssertFalse(display.seats.contains(where: \.isCurrentActor))
         XCTAssertTrue(display.legal.playableCards.isEmpty)
         XCTAssertFalse(display.legal.canStartDeal)
 

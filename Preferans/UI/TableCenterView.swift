@@ -59,7 +59,7 @@ struct TableCenterView: View {
                                     isPadDevice: isPadDevice
                                 )
                             )
-                                .offset(y: -96)
+                                .offset(y: publicTalonOffset)
                         }
                     }
                 }
@@ -100,6 +100,19 @@ struct TableCenterView: View {
         default:
             return false
         }
+    }
+
+    /// Reserve a separate lane above the highest trick card, including its
+    /// player label and the talon's heading. A fixed offset overlaps on iPad.
+    private var publicTalonOffset: CGFloat {
+        let trick = TableCenterLayoutPolicy.trickCardSize(
+            for: horizontalSizeClass, isPadDevice: isPadDevice
+        ).dimensions
+        let talon = TableCenterLayoutPolicy.publicTalonCardSize(
+            for: horizontalSizeClass, isPadDevice: isPadDevice
+        ).dimensions
+        let topCardExtent = opponentSeats.count >= 3 ? 1.35 : 0.95
+        return -(trick.height * topCardExtent + talon.height / 2 + 40)
     }
 
     @ViewBuilder

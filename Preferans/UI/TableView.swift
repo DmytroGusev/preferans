@@ -217,10 +217,13 @@ public struct TableView: View {
                     .allowsHitTesting(onTap != nil)
                     .contentShape(Rectangle())
                     .onTapGesture { onTap?() }
-                trickResultHint(advance: advance, canTap: onTap != nil)
-                    .offset(y: advance.trickWinner == nil ? 0 : -74)
+                if onTap != nil {
+                    trickResultHint(advance: advance, canTap: true)
+                        .offset(y: advance.trickWinner == nil ? 0 : -74)
+                }
             }
             .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(advance.trickWinner.map { "\(projection.displayName(for: $0))" } ?? ""))
             .accessibilityIdentifier(onTap == nil ? UIIdentifiers.trickResultHold : UIIdentifiers.tapToAdvance)
             .transition(.opacity)
         }
@@ -410,9 +413,14 @@ public struct TableView: View {
     /// narrates the latest action: the auction panel (per-seat call pills)
     /// or the deal-summary / game-over cards.
     private var showsActionBanner: Bool {
+        guard pendingAdvance == nil else { return false }
         switch projection.phase {
-        case .bidding, .awaitingContract, .dealFinished, .gameOver:
+        case .bidding, .awaitingDiscard, .awaitingContract, .dealFinished, .gameOver:
             return false
+        case .playing(_, _, .allPass):
+            return false
+        case .playing:
+            return projection.currentTrick.isEmpty && projection.completedTrickCount == 0
         default:
             return true
         }
@@ -423,7 +431,7 @@ public struct TableView: View {
     /// instead of allowing a longer bot explanation to touch opponent cards.
     private var centerIsAvailableForBanner: Bool {
         switch projection.phase {
-        case .awaitingWhist, .awaitingDefenderMode:
+        case .awaitingWhist, .awaitingDefenderMode, .playing:
             return true
         default:
             return false

@@ -102,7 +102,13 @@ extension ProjectionGameScreen {
                 .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
-            if !shouldShowCenterDealCTA {
+            if let winner = pendingAdvance?.trickWinner {
+                Text("\(projection.displayName(for: winner)) took the trick")
+                    .font(.caption)
+                    .foregroundStyle(theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(UIIdentifiers.phaseMessage)
+            } else if !shouldShowCenterDealCTA {
                 Localized.statusText(projection)
                     .font(.caption)
                     .foregroundStyle(theme.textSecondary)

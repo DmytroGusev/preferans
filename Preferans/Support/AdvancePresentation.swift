@@ -23,8 +23,9 @@ enum AdvancePresentation {
             waitingOn: viewer,
             trickPlays: trick.tablePlays,
             trickWinner: trick.winner,
-            talonOverride: trick.talonLead == nil ? nil : visibleTalonBeforeAction,
+            talonOverride: visibleTalonBeforeAction,
             phaseOverride: preProjection.phase,
+            statusOverride: preProjection.status,
             completedTrickCountOverride: preProjection.completedTrickCount
         )
     }
@@ -58,6 +59,8 @@ extension PlayerGameProjection {
         if let phase = advance.phaseOverride {
             p.phase = phase
         }
+        if let status = advance.statusOverride { p.status = status }
+        for index in p.seats.indices { p.seats[index].isCurrentActor = false }
         // While the hold is up, suppress legal-action affordances so the next
         // actor cannot skip past the visible trick result.
         p.legal.playableCards = []
@@ -84,6 +87,7 @@ public struct PendingAdvance: Equatable, Sendable {
     public let talonOverride: [ProjectedCard]?
     /// Exact phase that preceded the authoritative transition.
     public let phaseOverride: ProjectedPhase?
+    public let statusOverride: ProjectedStatus?
     /// Completed-trick count to display while the beat is held.
     public let completedTrickCountOverride: Int?
 
@@ -93,6 +97,7 @@ public struct PendingAdvance: Equatable, Sendable {
         trickWinner: PlayerID?,
         talonOverride: [ProjectedCard]? = nil,
         phaseOverride: ProjectedPhase?,
+        statusOverride: ProjectedStatus? = nil,
         completedTrickCountOverride: Int?
     ) {
         self.waitingOn = waitingOn
@@ -100,6 +105,7 @@ public struct PendingAdvance: Equatable, Sendable {
         self.trickWinner = trickWinner
         self.talonOverride = talonOverride
         self.phaseOverride = phaseOverride
+        self.statusOverride = statusOverride
         self.completedTrickCountOverride = completedTrickCountOverride
     }
 }

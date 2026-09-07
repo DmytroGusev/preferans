@@ -3,6 +3,20 @@ import PreferansEngine
 import XCTest
 
 final class ActivityLogFeedTests: XCTestCase {
+    func testTiedMatchNamesEveryLeaderInTheActivityLog() {
+        let players: [PlayerID] = ["north", "east", "south"]
+        let result = DealResult(kind: .passedOut, activePlayers: players,
+                                trickCounts: players.dictionary(filledWith: 0), completedTricks: [],
+                                scoreDelta: ScoreDelta(players: players))
+        let summary = MatchSummary(finalScore: ScoreSheet(players: players), dealsPlayed: 3,
+                                   lastDeal: result, standings: players.map {
+            .init(player: $0, balance: 0, pool: 2, mountain: 0)
+        })
+        let names: [PlayerID: String] = ["north": "Alice", "east": "Bob", "south": "Cara"]
+        let entries = ActivityLogFeed.entries(from: [.matchEnded(summary)]) { names[$0]! }
+        XCTAssertEqual(entries.first?.detail, "Shared lead: Alice, Bob, Cara")
+    }
+
     func testActivityEntriesUseDisplayNamesAndRedactExchangeCards() {
         let events: [PreferansEvent] = [
             .dealStarted(dealer: "north", activePlayers: ["north", "east", "south"]),

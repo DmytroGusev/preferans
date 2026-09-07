@@ -36,16 +36,14 @@ struct RoomStateReportBuilder {
     }
 
     /// Persist the same winner and zero-sum balances shown by the in-app final
-    /// standings. `MatchSummary.standings` is already ordered by descending
-    /// balance with the engine's stable seat-order tiebreak, so its first entry
-    /// is the canonical winner even when balances tie.
+    /// standings. Stable seat order does not choose a winner when balances tie.
     static func finishedResult(from state: DealState) -> OnlineGameResult? {
         guard case let .gameOver(summary) = state else { return nil }
         let balances = Dictionary(uniqueKeysWithValues: summary.standings.map {
             ($0.player.rawValue, $0.balance)
         })
         return OnlineGameResult(
-            winner: summary.standings.first?.player,
+            winner: summary.soleWinner,
             finalBalances: balances
         )
     }

@@ -1313,6 +1313,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
         let duration = trickResultHoldDuration
         pendingAdvanceTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: duration)
+            guard !Task.isCancelled else { return }
             guard let self, self.pendingAdvance == pending else { return }
             self.pendingAdvance = nil
             self.pendingAdvanceTask = nil

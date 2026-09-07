@@ -481,6 +481,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// the screen's primary affordance: the deal-summary card (Next deal),
     /// the idle Deal CTA, or the inline game-over standings card.
     private var shouldShowActionBar: Bool {
+        if pendingAdvance != nil { return false }
         if isDealFinishedPhase { return false }
         if shouldShowCenterDealCTA { return false }
         if isTalonTakePending { return false }

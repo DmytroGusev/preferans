@@ -58,7 +58,16 @@ final class OnlineWaitingRoomUITests: XCTestCase {
                 continue
             }
         }
-        XCTAssertTrue(sawInsight, "Online bot rationale never reached the live table.")
+        // An all-pass auction can immediately enter play, where old auction
+        // messages must not cover the cards. The explanation remains readable.
+        if !sawInsight {
+            app.buttons[UIIdentifiers.overflowMenu].tap()
+            app.buttons[UIIdentifiers.buttonActivityLog].tap()
+            XCTAssertTrue(app.descendants(matching: .any)[UIIdentifiers.botInsightEntry(index: 0)]
+                .waitForExistence(timeout: 2), "Online bot rationale never reached the activity log")
+        }
+        MatchScreenshotRecorder(testCase: self, app: app)
+            .capture(name: "online-bot-explanation", force: true)
     }
 
     func testHostFillsOpenSeatsTransactionallyThenStarts() {
@@ -129,14 +138,30 @@ final class OnlineWaitingRoomUITests: XCTestCase {
         }
 
         XCTAssertTrue(sawHold, "Online play never exposed the completed-trick result hold.")
-        let gone = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
-            object: hold
+        XCTAssertFalse(app.descendants(matching: .any)[UIIdentifiers.actionBanner].exists)
+        XCTAssertTrue(app.staticTexts[UIIdentifiers.phaseMessage].label.contains("took the trick"))
+        XCTAssertFalse(app.staticTexts["Your turn"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)[UIIdentifiers.actionBarPassiveStatus].exists)
+        let talonCards = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'card.talon.'")
         )
-        XCTAssertEqual(
-            XCTWaiter().wait(for: [gone], timeout: 3),
-            .completed,
+        let trickCards = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH 'card.trick.'")
+        )
+        XCTAssertEqual(talonCards.count, 1, "The next talon card must remain hidden during the hold")
+        XCTAssertEqual(trickCards.count, 3)
+        for talon in talonCards.allElementsBoundByIndex {
+            for played in trickCards.allElementsBoundByIndex {
+                XCTAssertFalse(talon.frame.intersects(played.frame), "Talon and played cards must not overlap")
+            }
+        }
+        MatchScreenshotRecorder(testCase: self, app: app)
+            .capture(name: "online-completed-trick-hold", force: true)
+        XCTAssertTrue(
+            hold.waitForNonExistence(timeout: 3),
             "The online result hold should clear automatically without blocking the table."
         )
+        MatchScreenshotRecorder(testCase: self, app: app)
+            .capture(name: "online-after-trick-hold", force: true)
     }
 }
