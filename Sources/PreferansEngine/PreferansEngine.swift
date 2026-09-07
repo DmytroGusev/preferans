@@ -200,7 +200,7 @@ public struct PreferansEngine: Sendable {
             return []
         }
 
-        return candidateSettlements(in: playing)
+        return candidateSettlements(in: playing, knownTo: player)
     }
 
     /// Seats permitted to *offer* a settlement in the current position.
@@ -223,7 +223,7 @@ public struct PreferansEngine: Sendable {
     /// has to enumerate the continuum. A non-empty result here also gates
     /// whether a seat may settle at all. Duplicates are collapsed (e.g. with
     /// one trick left, or when the forced split matches a concession).
-    private func candidateSettlements(in playing: PlayingState) -> [TrickSettlement] {
+    private func candidateSettlements(in playing: PlayingState, knownTo viewer: PlayerID) -> [TrickSettlement] {
         let declarer: PlayerID
         switch playing.kind {
         case let .game(context):   declarer = context.declarer
@@ -238,7 +238,7 @@ public struct PreferansEngine: Sendable {
             settlementGivingDeclarer(0, declarer: declarer, defenders: defenders, in: playing),
             settlementGivingDeclarer(remaining, declarer: declarer, defenders: defenders, in: playing),
         ]
-        if let forced = forcedSettlement(in: playing) {
+        if let forced = forcedSettlement(in: playing, knownTo: viewer) {
             offers.append(forced)
         }
 
@@ -576,11 +576,55 @@ public struct PreferansEngine: Sendable {
         )
     }
 
-    /// The settlement that exactly reproduces the rest of the deal when every
-    /// remaining play is forced (one legal card at each step). `nil` when any
-    /// player still has a real choice. Shared by the suggestion menu and by
-    /// the bot's approval check, so both agree on what "the determined
-    /// outcome" is.
+    /// A forced result the viewer can establish from their own cards and
+    /// public information. At an empty trick before the last, the leader has
+    /// multiple legal cards, so this exact proof makes no earlier suggestion.
+    func forcedSettlement(in playing: PlayingState, knownTo viewer: PlayerID) -> TrickSettlement? {
+        guard playing.currentTrick.isEmpty,
+              playing.completedTricks.count == 9,
+              playing.settlementParties.contains(viewer) else { return nil }
+
+        let declarer: PlayerID
+        switch playing.kind {
+        case let .game(context):
+            if context.contract.tricks == 10 && context.whisters.isEmpty && context.whistCalls.isEmpty {
+                return forcedSettlement(in: playing)
+            }
+            declarer = context.declarer
+        case let .misere(context): declarer = context.declarer
+        case .allPass: return nil
+        }
+        // Settlement-eligible defenders have their cards exposed. The
+        // declarer therefore knows every remaining hand and their own discard.
+        if viewer == declarer { return forcedSettlement(in: playing) }
+
+        // A defender sees both defending hands but cannot distinguish the
+        // declarer's last card from the two discarded cards. Check every
+        // possible allocation, retaining only those consistent with the full
+        // public play history. Never consult which allocation really occurred.
+        var unknown = Set(Deck.standard32)
+        unknown.subtract(playing.completedTricks.flatMap(\.plays).map(\.card))
+        for defender in playing.activePlayers where defender != declarer {
+            unknown.subtract(playing.hands[defender] ?? [])
+        }
+        guard unknown.count == 3 else { return nil }
+
+        var sharedResult: TrickSettlement?
+        for card in unknown.sorted() {
+            var candidate = playing
+            candidate.hands[declarer] = [card]
+            candidate.discard = unknown.filter { $0 != card }.sorted()
+            do { try Self.validateInvariants(.playing(candidate)) }
+            catch { continue }
+            guard let result = forcedSettlement(in: candidate) else { return nil }
+            if let sharedResult, sharedResult != result { return nil }
+            sharedResult = result
+        }
+        return sharedResult
+    }
+
+    /// Exact outcome with access to every hand. Player-facing suggestions and
+    /// bot approvals must use the `knownTo:` overload instead.
     func forcedSettlement(in playing: PlayingState) -> TrickSettlement? {
         guard playing.currentTrick.isEmpty, !playing.isComplete else { return nil }
         var simulated = playing

@@ -46,12 +46,10 @@ public struct HeuristicStrategy: PlayerStrategy {
         case let .playing(s):
             if let proposal = s.pendingSettlement {
                 guard snapshot.state.currentActor == viewer else { return nil }
-                // Agree only to the determined outcome: accept a settlement
-                // that reproduces the forced remainder of the deal, and
-                // defend (reject) anything speculative the bot could still
-                // contest by playing on. Works at any trick, not just the
-                // last one.
-                let forced = (try? PreferansEngine(snapshot: snapshot))?.forcedSettlement(in: s)
+                // Agree only when the same forced outcome follows from every
+                // hidden deal consistent with this player's information.
+                let forced = (try? PreferansEngine(snapshot: snapshot))?
+                    .forcedSettlement(in: s, knownTo: viewer)
                 return forced == proposal.settlement
                     ? .acceptSettlement(player: viewer)
                     : .rejectSettlement(player: viewer)
