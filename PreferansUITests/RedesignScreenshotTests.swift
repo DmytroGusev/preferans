@@ -396,8 +396,8 @@ final class RedesignScreenshotTests: XCTestCase {
 
     // MARK: - Human-vs-bots playthrough
 
-    /// Drives the lobby's Quick-play CTA, then plays "You" through one full
-    /// deal against two bots (pass on bid/whist, play any legal card),
+    /// Starts a table and keeps the same human seat through a full deal
+    /// against two bots (pass on bids, whist on defense, play legal cards),
     /// screenshotting every phase. PNGs land in `$PREFERANS_SCREEN_DIR/screens`
     /// when set, otherwise under the temp directory.
     func testHumanVsBotsPlaythrough() {
@@ -414,14 +414,17 @@ final class RedesignScreenshotTests: XCTestCase {
         }
 
         let app = XCUIApplication()
+        app.pinTestLocaleEnglish()
         // Auto-advance trick results and run bots fast so the playthrough
         // actually progresses through tricks (and so the captured "Play"
         // frames show real, populated tricks rather than freezing on the
         // opening lead).
         app.launchArguments += [
-            UITestFlags.viewerFollowsActor,
             UITestFlags.skipTapToAdvance,
             UITestFlags.fastBotDelay,
+            UITestFlags.disableAnimations,
+            UITestFlags.dealSeed, "20260907",
+            UITestFlags.firstDealer, "Trinity",
         ]
         app.launch()
         let robot = MatchUIRobot(app: app)
@@ -443,11 +446,15 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "03-deal-started")
 
         var completedDeal = false
+        var humanCardsPlayed = 0
+        let human = robot.currentViewer()
+        XCTAssertEqual(human, "Neo")
         for i in 0..<60 {
             let phase = app.staticTexts[UIIdentifiers.phaseTitle].label
+            let trickMilestone = [0, 1, 5, 9, 10].last { $0 <= humanCardsPlayed } ?? 0
             recorder.capture(
                 name: String(format: "%02d-%@", i + 4, sanitize(phase)),
-                key: robot.screenshotDeduplicationKey(dealNumber: 1),
+                key: robot.screenshotDeduplicationKey(dealNumber: 1) + "|humanCards=\(trickMilestone)",
                 attach: false
             )
 
@@ -459,12 +466,16 @@ final class RedesignScreenshotTests: XCTestCase {
                 break
             }
 
+            XCTAssertEqual(robot.currentViewer(), human, "The human must never adopt a bot's hand")
+
             if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
-            if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            // Mandatory-whist table rules (for example a 10-trick game)
-            // omit pass, so take the forced call instead of idling out.
             if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
-            if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.4) { continue }
+            if robot.tapIfPresent(UIIdentifiers.defenderModeButton(.closed)) { continue }
+            if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.4) {
+                humanCardsPlayed += 1
+                print("[playthrough] human played card \(humanCardsPlayed)/10")
+                continue
+            }
             if robot.discardFirstTwoVisibleCards() { continue }
 
             // Nothing actionable — a bot is on the clock. Wait for the phase
@@ -482,6 +493,7 @@ final class RedesignScreenshotTests: XCTestCase {
         }
 
         XCTAssertTrue(completedDeal, "The one-deal playthrough exhausted its 60-iteration bound")
+        XCTAssertEqual(humanCardsPlayed, 10, "A human playthrough must play the human's entire hand")
         recorder.capture(name: "99-final")
     }
 

@@ -321,6 +321,7 @@ public enum UIIdentifiers {
     public static let dealResultTricks   = "dealResult.tricks"
     public static let dealInitialHandsToggle = "dealResult.initialHands.toggle"
     public static let dealScoreDelta = "dealResult.scoreDelta"
+    public static func dealBalanceDelta(_ player: PlayerID) -> String { "dealResult.balance.\(player)" }
     public static func dealInitialHand(_ player: PlayerID) -> String {
         "dealResult.initialHand.\(player.rawValue)"
     }

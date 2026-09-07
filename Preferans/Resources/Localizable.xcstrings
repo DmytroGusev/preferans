@@ -2,6 +2,52 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+  "Pool %@ · Mountain %@": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Pool %1$@ · Mountain %2$@"
+        }
+      },
+      "ru": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Пуля %1$@ · Гора %2$@"
+        }
+      },
+      "uk": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Куля %1$@ · Гора %2$@"
+        }
+      }
+    }
+  },
+  "Whists earned %@ · owed %@": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Whists earned %1$@ · owed %2$@"
+        }
+      },
+      "ru": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Висты получено %1$@ · к оплате %2$@"
+        }
+      },
+      "uk": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Вісти отримано %1$@ · до сплати %2$@"
+        }
+      }
+    }
+  },
   "Table options": {
     "extractionState": "manual",
     "localizations": {

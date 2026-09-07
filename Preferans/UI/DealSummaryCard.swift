@@ -89,6 +89,7 @@ struct DealSummaryCard: View {
                     .font(.headline)
                     .foregroundStyle(theme.textPrimary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier(UIIdentifiers.dealResultKind)
                 Text(UIIdentifiers.encode(result.kind))
                     .opacity(0)

@@ -140,8 +140,8 @@ final class MatchUIRobot {
         _ = takeTalonIfPresent()
         let predicate = NSPredicate(format: "identifier BEGINSWITH 'card.discardSelect.'")
         let cards = app.buttons.matching(predicate)
-        guard cards.element(boundBy: 0).waitForExistence(timeout: defaultTimeout),
-              cards.element(boundBy: 1).waitForExistence(timeout: defaultTimeout) else {
+        guard cards.element(boundBy: 0).exists,
+              cards.element(boundBy: 1).exists else {
             return false
         }
         cards.element(boundBy: 0).tap()
@@ -170,10 +170,10 @@ final class MatchUIRobot {
             guard let coordinate = cardTapCoordinate(card) else { continue }
             let id = card.identifier
             coordinate.doubleTap()
-            let gone = NSPredicate(format: "exists == false")
             let tappedCard = app.descendants(matching: .any).matching(identifier: id).firstMatch
-            let exp = XCTNSPredicateExpectation(predicate: gone, object: tappedCard)
-            if XCTWaiter().wait(for: [exp], timeout: acceptanceTimeout) == .completed {
+            // Predicate expectations poll at a cadence longer than this
+            // subsecond budget. Check immediately after the tap settles.
+            if !tappedCard.exists || tappedCard.waitForNonExistence(timeout: acceptanceTimeout) {
                 return true
             }
         }

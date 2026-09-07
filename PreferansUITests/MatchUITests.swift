@@ -12,6 +12,62 @@ final class MatchUITests: XCTestCase {
         continueAfterFailure = false
     }
 
+    func testDealSummaryBalancesAndNextDeal() {
+        checkPassedContractSummary(accessibilityText: false)
+    }
+
+    func testDealSummaryBalancesAtLargestTextSize() {
+        checkPassedContractSummary(accessibilityText: true)
+    }
+
+    private func checkPassedContractSummary(accessibilityText: Bool) {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launchArguments += [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.players, "north,east,south",
+            UITestFlags.firstDealer, "south",
+            UITestFlags.dealScenario, "sortedDeck",
+            UITestFlags.theme, "clubhouse",
+        ]
+        if accessibilityText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName",
+                                    "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        let recorder = MatchScreenshotRecorder(testCase: self, app: app)
+        let contract = GameContract(6, .suit(.spades))
+        robot.startLocalTable()
+        robot.startNextDeal()
+        robot.bid(.bid(.game(contract)))
+        robot.bid(.pass)
+        robot.bid(.pass)
+        robot.takeTalon()
+        robot.discard([Card(.spades, .king), Card(.spades, .ace)])
+        robot.declareContract(contract)
+        robot.whist(.pass)
+        robot.whist(.pass)
+        robot.waitForPhase("Deal complete")
+
+        // A passed six credits 2 pool points (20 whists) to north. The
+        // table mean is 20/3, so all three balances must change.
+        for (player, expected) in [("north", "+13.3"), ("east", "-6.7"), ("south", "-6.7")] {
+            let balance = app.staticTexts[UIIdentifiers.dealBalanceDelta(PlayerID(player))]
+            XCTAssertTrue(balance.exists)
+            XCTAssertEqual(balance.label, "Balance")
+            XCTAssertEqual(balance.value as? String, expected)
+        }
+        recorder.capture(name: accessibilityText ? "score-largest-text" : "score-fractional-balances", force: true)
+        let nextDeal = app.buttons[UIIdentifiers.buttonStartDeal]
+        for _ in 0..<4 where !nextDeal.isHittable { app.swipeUp() }
+        XCTAssertTrue(nextDeal.isHittable, "Next deal must remain reachable after reading the result")
+        nextDeal.tap()
+        robot.waitForPhase("Bidding")
+        XCTAssertEqual(robot.scoreSnapshot(for: ["north"])["north"]?.pool, 2)
+        recorder.capture(name: accessibilityText ? "next-deal-largest-text" : "next-deal", force: true)
+    }
+
     /// Launches with Game 1 (`firstDealer = north`, 4 players, classic Sochi,
     /// `asTenTrickGame(requireWhist: false)`, `poolTarget = 20`). Drives the
     /// first deal's auction (east opens 6♠, south and west pass) and asserts
