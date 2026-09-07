@@ -17,6 +17,9 @@ public enum AppIdentifiers {
 /// UserDefaults keys for settings persisted across launches. Centralised
 /// so a typo can't silently bind a toggle to a key nothing reads.
 public enum SettingsKeys {
+    /// App-wide appearance, applied immediately without changing game state.
+    public static let appTheme = "settings.appTheme"
+
     /// Admin/debug toggle — when on, every seat's hand is rendered face-up
     /// in the projection (handy for hot-seat review or screenshot recipes,
     /// not appropriate for online play).

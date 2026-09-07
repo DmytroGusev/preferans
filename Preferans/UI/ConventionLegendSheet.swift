@@ -15,6 +15,8 @@ import UIKit
 /// keeps convention navigation in a persistent sidebar and the reference in a
 /// wider detail column, matching the app's separate lobby compositions.
 struct ConventionLegendSheet: View {
+    @Environment(\.tableTheme) private var theme
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -91,11 +93,11 @@ struct ConventionLegendSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: { dismiss() }) {
-                        Text("Done").foregroundStyle(TableTheme.goldBright)
+                        Text("Done").foregroundStyle(theme.accentStrong)
                     }
                 }
             }
-            .rulesNavigationChrome()
+            .themeNavigationChrome()
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.conventionLegendSheet)
@@ -123,7 +125,7 @@ struct ConventionLegendSheet: View {
             tabletSidebar
                 .frame(width: 220)
             Rectangle()
-                .fill(TableTheme.gold.opacity(0.18))
+                .fill(theme.accent.opacity(0.18))
                 .frame(width: 1)
                 .ignoresSafeArea(edges: .bottom)
             ScrollView {
@@ -142,7 +144,7 @@ struct ConventionLegendSheet: View {
             Text("rules.convention")
                 .font(.caption.weight(.bold))
                 .tracking(1.2)
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
                 .textCase(.uppercase)
             Picker("rules.convention", selection: $selection) {
                 ForEach(PreferansVariant.allCases) { variant in
@@ -160,11 +162,11 @@ struct ConventionLegendSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Label("rules.reference.title", systemImage: "book.closed.fill")
                 .font(.title3.bold())
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
 
             Text("rules.reference.intro")
                 .font(.footnote)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(spacing: 8) {
@@ -179,12 +181,12 @@ struct ConventionLegendSheet: View {
 
             Label("rules.engineBacked", systemImage: "checkmark.seal.fill")
                 .font(.caption)
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(22)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(TableTheme.feltDeep.opacity(0.96))
+        .background(theme.backgroundBase.opacity(0.96))
     }
 
     private func sidebarButton(_ variant: PreferansVariant) -> some View {
@@ -197,14 +199,14 @@ struct ConventionLegendSheet: View {
                     .font(.headline)
                 Text(variant.standardName)
                     .font(.caption)
-                    .foregroundStyle(selected ? TableTheme.feltMid : TableTheme.inkCreamSoft)
+                    .foregroundStyle(selected ? theme.onAccent : theme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
-            .foregroundStyle(selected ? TableTheme.feltDeep : TableTheme.inkCream)
+            .foregroundStyle(selected ? theme.onAccent : theme.textPrimary)
             .background(
-                selected ? TableTheme.goldBright : Color.black.opacity(0.18),
+                selected ? theme.accentStrong : theme.shade.opacity(0.18),
                 in: RoundedRectangle(cornerRadius: 12)
             )
         }
@@ -226,7 +228,7 @@ struct ConventionLegendSheet: View {
             closingAndWhistSection
             Text("rules.houseVariationNote")
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamDim)
+                .foregroundStyle(theme.textMuted)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)
         }
@@ -237,18 +239,18 @@ struct ConventionLegendSheet: View {
             HStack(alignment: .firstTextBaseline, spacing: 9) {
                 Text(selection.title)
                     .font(.largeTitle.bold())
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                 Text(selection.standardName)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
             }
             Text(selection.summary)
                 .font(.body)
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("rules.reference.intro")
                 .font(.footnote)
-                .foregroundStyle(TableTheme.inkCreamDim)
+                .foregroundStyle(theme.textMuted)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -297,36 +299,36 @@ struct ConventionLegendSheet: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
             Text(value)
                 .font(.headline)
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
         .padding(12)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
     }
 
     private func metricCard(title: LocalizedStringKey, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
             Text(verbatim: value)
                 .font(.title3.bold().monospacedDigit())
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
         }
         .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
         .padding(12)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
     }
 
     private var contractTable: some View {
         ruleSection(title: "rules.contracts", icon: "suit.spade.fill") {
             Text("rules.contracts.caption")
                 .font(.footnote)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Grid(horizontalSpacing: 10, verticalSpacing: 9) {
@@ -349,7 +351,7 @@ struct ConventionLegendSheet: View {
                     }
                 }
             }
-            .foregroundStyle(TableTheme.inkCream)
+            .foregroundStyle(theme.textPrimary)
             .accessibilityIdentifier(UIIdentifiers.rulesContractTable)
         }
     }
@@ -362,7 +364,7 @@ struct ConventionLegendSheet: View {
     private func tableHeader(_ key: LocalizedStringKey) -> some View {
         Text(key)
             .font(.caption2.weight(.bold))
-            .foregroundStyle(TableTheme.gold)
+            .foregroundStyle(theme.accent)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
     }
@@ -398,25 +400,25 @@ struct ConventionLegendSheet: View {
         VStack(spacing: 3) {
             Text(title)
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
             HStack(spacing: 4) {
                 Text(verbatim: "\(value)")
                     .font(.title3.bold().monospacedDigit())
                 Text(suffix)
                     .font(.caption.weight(.semibold))
             }
-            .foregroundStyle(TableTheme.goldBright)
+            .foregroundStyle(theme.accentStrong)
         }
         .frame(maxWidth: .infinity)
         .padding(12)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 11))
     }
 
     private var raspasySection: some View {
         ruleSection(title: "rules.raspasy", icon: "arrow.triangle.2.circlepath") {
             Text("rules.raspasy.caption")
                 .font(.footnote)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             raspasyLayout {
@@ -427,7 +429,7 @@ struct ConventionLegendSheet: View {
 
             Label("rules.raspasy.reset", systemImage: "arrow.uturn.backward.circle")
                 .font(.footnote)
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityIdentifier(UIIdentifiers.rulesRaspasyProgression)
@@ -448,22 +450,22 @@ struct ConventionLegendSheet: View {
             HStack {
                 Text("rules.deal")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                 Text(verbatim: "\(example.stage)")
                     .font(.title3.bold().monospacedDigit())
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                     .accessibilityIdentifier(UIIdentifiers.rulesRaspasyStage(example.stage))
                 Spacer(minLength: 0)
                 Text(verbatim: "×\(example.trickPrice)")
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
             }
             valueRow("rules.exitMinimum", value: "\(example.minimumGameTricks)+")
             valueRow("rules.cleanExit", value: "+\(example.cleanExitPool)")
-            Divider().overlay(TableTheme.gold.opacity(0.18))
+            Divider().overlay(theme.accent.opacity(0.18))
             Text("rules.zeroFourSixTricks")
                 .font(.caption2)
-                .foregroundStyle(TableTheme.inkCreamDim)
+                .foregroundStyle(theme.textMuted)
             valueRow(
                 rules.allPassPenaltyPolicy.isDirectWhist ? "rules.directWhists" : "rules.mountain",
                 value: (rules.allPassPenaltyPolicy.isDirectWhist
@@ -475,18 +477,18 @@ struct ConventionLegendSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(13)
-        .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
+        .background(theme.shade.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private func valueRow(_ key: LocalizedStringKey, value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(key)
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
             Spacer(minLength: 4)
             Text(verbatim: value)
                 .font(.subheadline.bold().monospacedDigit())
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
         }
     }
 
@@ -536,10 +538,10 @@ struct ConventionLegendSheet: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title)
                 .font(.subheadline.bold())
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
             Text(text)
                 .font(.footnote)
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -553,7 +555,7 @@ struct ConventionLegendSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             Label(title, systemImage: icon)
                 .font(.headline)
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -562,31 +564,22 @@ struct ConventionLegendSheet: View {
     }
 }
 
+private struct RuleCardModifier: ViewModifier {
+    @Environment(\.tableTheme) private var theme
+    let emphasized: Bool
+    func body(content: Content) -> some View {
+        content
+            .background(theme.panel, in: RoundedRectangle(cornerRadius: 16))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(theme.accent.opacity(emphasized ? 0.50 : 0.22), lineWidth: emphasized ? 1 : 0.5)
+            }
+    }
+}
+
 private extension View {
     func ruleCardBackground(emphasized: Bool = false) -> some View {
-        background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.black.opacity(emphasized ? 0.32 : 0.24))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(
-                            TableTheme.gold.opacity(emphasized ? 0.36 : 0.20),
-                            lineWidth: emphasized ? 1 : 0.5
-                        )
-                )
-        )
-    }
-
-    @ViewBuilder
-    func rulesNavigationChrome() -> some View {
-        #if os(iOS)
-        self
-            .toolbarBackground(TableTheme.feltDeep, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-        #else
-        self
-        #endif
+        modifier(RuleCardModifier(emphasized: emphasized))
     }
 }
 

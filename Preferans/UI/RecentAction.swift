@@ -393,63 +393,74 @@ extension RecentAction.Label {
     /// The render hint used by both the center banner and the seat badge.
     /// Returns a small view that already encodes suit color so callers don't
     /// have to reason about strain → color themselves.
-    @MainActor @ViewBuilder
+    @MainActor
     func glyph(emphasis: Emphasis = .seat) -> some View {
-        switch self {
-        case let .bid(bid):
-            BidGlyph(bid: bid, emphasis: emphasis)
-        case .pass:
-            Text("Pass")
-                .foregroundStyle(emphasis.dimColor)
-        case .whist:
-            Text("Whist")
-                .foregroundStyle(emphasis.accentColor)
-        case .halfWhist:
-            Text("Half-whist")
-                .foregroundStyle(emphasis.accentColor)
-        case .whistPass:
-            Text("Pass")
-                .foregroundStyle(emphasis.dimColor)
-        case let .declared(contract):
-            BidGlyph(bid: .game(contract), emphasis: emphasis, prefix: "Declared")
-        case .withoutThree:
-            Text("Without 3")
-                .foregroundStyle(emphasis.dimColor)
-        case .discarded:
-            Text("Discarded")
-                .foregroundStyle(emphasis.bodyColor)
-        case let .defenderMode(mode):
-            Text(Localized.defenderMode(mode))
-                .foregroundStyle(emphasis.accentColor)
-        }
+        RecentActionGlyph(label: self, emphasis: emphasis)
     }
 
     enum Emphasis {
         case banner
         case seat
 
-        var bodyColor: Color {
+        func bodyColor(in theme: TableTheme) -> Color {
             switch self {
-            case .banner: return TableTheme.inkCream
-            case .seat:   return TableTheme.inkCream
+            case .banner: return theme.textPrimary
+            case .seat:   return theme.textPrimary
             }
         }
-        var accentColor: Color {
+        func accentColor(in theme: TableTheme) -> Color {
             switch self {
-            case .banner: return TableTheme.goldBright
-            case .seat:   return TableTheme.goldBright
+            case .banner: return theme.accentStrong
+            case .seat:   return theme.accentStrong
             }
         }
-        var dimColor: Color {
+        func dimColor(in theme: TableTheme) -> Color {
             switch self {
-            case .banner: return TableTheme.inkCreamSoft
-            case .seat:   return TableTheme.inkCreamDim
+            case .banner: return theme.textSecondary
+            case .seat:   return theme.textMuted
             }
         }
     }
 }
 
+private struct RecentActionGlyph: View {
+    @Environment(\.tableTheme) private var theme
+    let label: RecentAction.Label
+    let emphasis: RecentAction.Label.Emphasis
+    var body: some View {
+        switch label {
+        case let .bid(bid):
+            BidGlyph(bid: bid, emphasis: emphasis)
+        case .pass:
+            Text("Pass")
+                .foregroundStyle(emphasis.dimColor(in: theme))
+        case .whist:
+            Text("Whist")
+                .foregroundStyle(emphasis.accentColor(in: theme))
+        case .halfWhist:
+            Text("Half-whist")
+                .foregroundStyle(emphasis.accentColor(in: theme))
+        case .whistPass:
+            Text("Pass")
+                .foregroundStyle(emphasis.dimColor(in: theme))
+        case let .declared(contract):
+            BidGlyph(bid: .game(contract), emphasis: emphasis, prefix: "Declared")
+        case .withoutThree:
+            Text("Without 3")
+                .foregroundStyle(emphasis.dimColor(in: theme))
+        case .discarded:
+            Text("Discarded")
+                .foregroundStyle(emphasis.bodyColor(in: theme))
+        case let .defenderMode(mode):
+            Text(Localized.defenderMode(mode))
+                .foregroundStyle(emphasis.accentColor(in: theme))
+        }
+    }
+}
+
 private struct BidGlyph: View {
+    @Environment(\.tableTheme) private var theme
+
     let bid: ContractBid
     let emphasis: RecentAction.Label.Emphasis
     var prefix: LocalizedStringKey? = nil
@@ -458,27 +469,27 @@ private struct BidGlyph: View {
         HStack(spacing: 3) {
             if let prefix {
                 Text(prefix)
-                    .foregroundStyle(emphasis.bodyColor)
+                    .foregroundStyle(emphasis.bodyColor(in: theme))
             }
             switch bid {
             case let .game(contract):
                 HStack(spacing: 1) {
                     Text("\(contract.tricks)")
-                        .foregroundStyle(emphasis.bodyColor)
+                        .foregroundStyle(emphasis.bodyColor(in: theme))
                     if let suit = contract.strain.suit {
                         Text(suit.symbol)
-                            .foregroundStyle(suit.color(on: .felt))
+                            .foregroundStyle(suit.color(on: .felt, theme: theme))
                     } else {
                         Text("NT")
-                            .foregroundStyle(emphasis.bodyColor)
+                            .foregroundStyle(emphasis.bodyColor(in: theme))
                     }
                 }
             case .misere:
                 Text("Misère")
-                    .foregroundStyle(emphasis.accentColor)
+                    .foregroundStyle(emphasis.accentColor(in: theme))
             case .totus:
                 Text("Totus")
-                    .foregroundStyle(emphasis.accentColor)
+                    .foregroundStyle(emphasis.accentColor(in: theme))
             }
         }
     }

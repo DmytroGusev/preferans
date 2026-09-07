@@ -5,6 +5,8 @@ import PreferansEngine
 /// in `ProjectionGameScreen`; this component receives an explicit presentation
 /// snapshot so compact and regular layouts can choose their own card scale.
 struct ViewerHandRail: View {
+    @Environment(\.tableTheme) private var theme
+
     let seat: SeatProjection
     let viewer: PlayerID
     let viewerDisplayName: String
@@ -38,7 +40,7 @@ struct ViewerHandRail: View {
                     onDragEnded: onDragEnded
                 )
                 .shadow(
-                    color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.35) : .clear,
+                    color: seat.isCurrentActor ? theme.accentStrong.opacity(0.35) : .clear,
                     radius: seat.isCurrentActor ? 12 : 0
                 )
                 .accessibilityElement(children: .contain)
@@ -82,7 +84,7 @@ struct ViewerHandRail: View {
             }
             Text(seat.displayName)
                 .font(.caption.bold())
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
                 .accessibilityLabel("Viewing as \(viewerDisplayName)")
                 .accessibilityValue("you")
@@ -98,7 +100,7 @@ struct ViewerHandRail: View {
             if showsTrickCount {
                 Text("\(seat.trickCount)")
                     .font(.caption2.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .accessibilityLabel("\(seat.trickCount) tricks")
                     .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
             }
@@ -111,14 +113,14 @@ struct ViewerHandRail: View {
         Text(badge.label)
             .font(.caption2.weight(.bold))
             .tracking(0.3)
-            .foregroundStyle(badge.isAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
+            .foregroundStyle(badge.isAccent ? theme.onAccent : theme.textSecondary)
             .padding(.horizontal, 6)
             .padding(.vertical, 1)
             .background(
                 Capsule().fill(
                     badge.isAccent
-                        ? TableTheme.gold
-                        : Color.black.opacity(0.30)
+                        ? theme.accent
+                        : theme.shade.opacity(0.30)
                 )
             )
             .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(seat.player))
@@ -131,9 +133,9 @@ struct ViewerHandRail: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 1)
-        .background(Capsule().fill(TableTheme.gold.opacity(0.20)))
+        .background(Capsule().fill(theme.accent.opacity(0.20)))
         .overlay(
-            Capsule().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.5)
+            Capsule().strokeBorder(theme.accent.opacity(0.45), lineWidth: 0.5)
         )
         .accessibilityIdentifier(UIIdentifiers.seatLastAction(action.player))
     }
@@ -145,24 +147,24 @@ struct ViewerHandRail: View {
                 .font(.caption2.bold())
                 .padding(.horizontal, 6)
                 .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.feltDeep)
-                .background(TableTheme.goldBright, in: Capsule())
+                .foregroundStyle(theme.onAccent)
+                .background(theme.accentStrong, in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatCurrentActor(seat.player))
         } else if seat.role == .sittingOut {
             Text("Sitting out")
                 .font(.caption2)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .background(Color.black.opacity(0.30), in: Capsule())
+                .foregroundStyle(theme.textSecondary)
+                .background(theme.shade.opacity(0.30), in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
         } else if seat.isDealer {
             Text("Dealer")
                 .font(.caption2)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 1)
-                .foregroundStyle(TableTheme.inkCreamSoft)
-                .background(Color.black.opacity(0.30), in: Capsule())
+                .foregroundStyle(theme.textSecondary)
+                .background(theme.shade.opacity(0.30), in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatDealer(seat.player))
         }
     }

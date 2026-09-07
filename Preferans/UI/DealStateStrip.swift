@@ -5,6 +5,8 @@ import PreferansEngine
 /// sentence form instead of a row of competing pills: primary contract or
 /// phase on the first line, then one readable trick-count line below.
 public struct DealStateStrip: View {
+    @Environment(\.tableTheme) private var theme
+
     public var projection: PlayerGameProjection
 
     public init(projection: PlayerGameProjection) {
@@ -49,7 +51,7 @@ public struct DealStateStrip: View {
             HStack(spacing: 6) {
                 Text(projection.displayName(for: summary.declarer))
                     .font(.subheadline.weight(.heavy))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.74)
                 bidGlyph(bid: summary.bid)
@@ -61,7 +63,7 @@ public struct DealStateStrip: View {
                 phaseLabel("Auction")
                 Text(projection.displayName(for: player))
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.74)
                 bidGlyph(bid: bid)
@@ -92,12 +94,12 @@ public struct DealStateStrip: View {
                     .monospacedDigit()
             }
             .font(.caption.weight(.bold))
-            .foregroundStyle(TableTheme.inkCreamSoft)
+            .foregroundStyle(theme.textSecondary)
             .lineLimit(1)
         } else {
             Localized.statusText(projection)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
         }
@@ -108,7 +110,7 @@ public struct DealStateStrip: View {
             .font(.caption.weight(.bold))
             .tracking(0.8)
             .textCase(.uppercase)
-            .foregroundStyle(TableTheme.inkCream)
+            .foregroundStyle(theme.textPrimary)
             .lineLimit(1)
     }
 
@@ -118,21 +120,21 @@ public struct DealStateStrip: View {
         case let .game(contract):
             HStack(spacing: 1) {
                 Text("\(contract.tricks)")
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                 if let suit = contract.strain.suit {
                     Text(suit.symbol)
-                        .foregroundStyle(suit.color(on: .felt))
+                        .foregroundStyle(suit.color(on: .felt, theme: theme))
                 } else {
                     Text("NT")
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                 }
             }
         case .misere:
             Text("Misère")
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
         case .totus:
             Text("Totus")
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
         }
     }
 
@@ -178,9 +180,9 @@ public struct DealStateStrip: View {
         switch state {
         // "Met" is good news but it isn't an action — keep it cream so bright
         // gold stays reserved for whose-turn / the viewer's controls.
-        case .met:    return TableTheme.inkCream
-        case .live:   return TableTheme.inkCream
-        case .behind: return Color(red: 1.0, green: 0.55, blue: 0.50)
+        case .met:    return theme.textPrimary
+        case .live:   return theme.textPrimary
+        case .behind: return theme.error
         }
     }
 

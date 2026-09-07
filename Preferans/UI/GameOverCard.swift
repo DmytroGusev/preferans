@@ -21,6 +21,8 @@ struct GameOverLayoutPolicy: Equatable {
 /// felt) stays accessible — the user can review the standings and still
 /// hop into the scoresheet without dismissing anything first.
 public struct GameOverCard: View {
+    @Environment(\.tableTheme) private var theme
+
     public var summary: MatchSummary
     /// Resolves a seat's `PlayerID` to the name the player sees, so the
     /// winner line and standings show real names instead of the raw compass
@@ -55,11 +57,11 @@ public struct GameOverCard: View {
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                .fill(TableTheme.surfaceFill(.card))
+                .fill(theme.surfaceFill(.card))
         )
         .overlay(
             RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                .strokeBorder(TableTheme.surfaceBorder(.card), lineWidth: 1)
+                .strokeBorder(theme.surfaceBorder(.card), lineWidth: 1)
         )
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -99,7 +101,7 @@ public struct GameOverCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Match complete")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                     ctaRow
                 }
                 .frame(width: 168, alignment: .leading)
@@ -111,21 +113,21 @@ public struct GameOverCard: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Game over")
                 .font(.headline.bold())
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
                 .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
             if let winner = summary.standings.first {
                 Text("\(displayName(winner.player)) takes the pulka")
                     .font(.subheadline.bold())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .accessibilityLabel(Text("\(displayName(winner.player)) takes the pulka"))
                     .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
                 Text("Match won")
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
             }
             Text("\(summary.dealsPlayed) completed deals")
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
         }
     }
@@ -192,31 +194,31 @@ public struct GameOverCard: View {
                     .frame(width: 50, alignment: .trailing)
             }
             .font(.caption2.weight(.semibold))
-            .foregroundStyle(TableTheme.inkCreamSoft)
+            .foregroundStyle(theme.textSecondary)
             ForEach(Array(summary.standings.enumerated()), id: \.offset) { index, standing in
                 HStack(spacing: 10) {
                     Text("\(index + 1)")
                         .font(.caption.bold())
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                         .frame(width: 18, alignment: .leading)
                     Text(displayName(standing.player))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier(UIIdentifiers.gameOverStandingPlayer(rank: index + 1))
                     Text("\(standing.pool)")
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                         .frame(width: 40, alignment: .trailing)
                         .accessibilityIdentifier(UIIdentifiers.gameOverStandingPool(rank: index + 1))
                     Text("\(standing.mountain)")
                         .font(.caption.monospacedDigit())
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                         .frame(width: 40, alignment: .trailing)
                         .accessibilityIdentifier(UIIdentifiers.gameOverStandingMountain(rank: index + 1))
                     Text(ScoreFormatting.balance(standing.balance))
                         .font(.caption.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                         .frame(width: 50, alignment: .trailing)
                         .accessibilityIdentifier(UIIdentifiers.gameOverStandingBalance(rank: index + 1))
                 }

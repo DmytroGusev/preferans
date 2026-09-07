@@ -6,6 +6,8 @@ import PreferansEngine
 /// layout makes the table's spatial composition explicit: the parent places
 /// this view, while this view decides what the center should communicate.
 struct TableCenterView: View {
+    @Environment(\.tableTheme) private var theme
+
     let projection: PlayerGameProjection
     let animationNamespace: Namespace.ID
     let opponentSeats: [PlayerID]
@@ -115,7 +117,7 @@ struct TableCenterView: View {
                 .font(.caption.weight(.bold))
                 .tracking(1.2)
                 .textCase(.uppercase)
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
             HStack(spacing: 6) {
                 ForEach(Array(projection.talon.enumerated()), id: \.offset) { _, card in
                     CardView(card: card, size: cardSize, region: .talon)
@@ -124,10 +126,10 @@ struct TableCenterView: View {
             if action != nil {
                 Label("Take prikup", systemImage: "hand.tap.fill")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(TableTheme.feltDeep)
+                    .foregroundStyle(theme.onAccent)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(TableTheme.goldBright, in: Capsule())
+                    .background(theme.accentStrong, in: Capsule())
             }
         }
         .multilineTextAlignment(.center)
@@ -141,11 +143,11 @@ struct TableCenterView: View {
                     .padding(.vertical, 12)
                     .background(
                         RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                            .fill(Color.black.opacity(0.20))
+                            .fill(theme.shade.opacity(0.20))
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                            .strokeBorder(TableTheme.goldBright.opacity(0.65), lineWidth: 1)
+                            .strokeBorder(theme.accentStrong.opacity(0.65), lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
@@ -213,20 +215,20 @@ struct TableCenterView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 9)
                     .strokeBorder(
-                        isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
+                        isWinner ? theme.accentStrong.opacity(0.95) : .clear,
                         lineWidth: isWinner ? 2 : 0
                     )
             )
             .shadow(
-                color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
+                color: isWinner ? theme.accentStrong.opacity(0.45) : .clear,
                 radius: isWinner ? 12 : 0
             )
             Text(projection.displayName(for: play.player))
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(isWinner ? TableTheme.feltDeep : TableTheme.inkCream)
+                .foregroundStyle(isWinner ? theme.onAccent : theme.textPrimary)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
-                .background(isWinner ? TableTheme.goldBright : Color.black.opacity(0.55), in: Capsule())
+                .background(isWinner ? theme.accentStrong : theme.shade.opacity(0.55), in: Capsule())
                 .lineLimit(1)
         }
     }

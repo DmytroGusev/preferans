@@ -15,6 +15,8 @@ enum GameSheetDestination: String, Identifiable {
 /// navigation stacks and dismissal chrome outside `ProjectionGameScreen`
 /// leaves the main screen responsible for table layout and interaction state.
 struct GameDetailSheet: View {
+    @Environment(\.tableTheme) private var theme
+
     let destination: GameSheetDestination
     let projection: PlayerGameProjection
     let activityEntries: [ActivityLogEntry]
@@ -52,7 +54,9 @@ struct GameDetailSheet: View {
                 )
                     .padding()
             }
+            .feltBackground()
             .navigationTitle("Scoresheet")
+            .themeNavigationChrome()
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -74,13 +78,14 @@ struct GameDetailSheet: View {
                 } else {
                     Text("Last trick")
                         .font(.headline)
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                         .padding()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .feltBackground()
             .navigationTitle("Last trick")
+            .themeNavigationChrome()
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif

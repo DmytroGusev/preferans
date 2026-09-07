@@ -5,6 +5,8 @@ import UIKit
 #endif
 
 public struct ProjectionGameScreen<Menu: View>: View {
+    @Environment(\.tableTheme) var theme
+
     public var projection: PlayerGameProjection
     public var eventLog: [String]
     /// Typed mirror of `eventLog`. Drives the centered action banner and

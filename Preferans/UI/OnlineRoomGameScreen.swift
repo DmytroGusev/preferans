@@ -5,6 +5,8 @@ import UIKit
 #endif
 
 public struct OnlineRoomGameScreen<Coordinator: OnlineGamePresenting>: View {
+    @Environment(\.tableTheme) private var theme
+
     @ObservedObject public var coordinator: Coordinator
     public var roomCode: String
     public var inviteURL: URL?
@@ -125,12 +127,12 @@ public struct OnlineRoomGameScreen<Coordinator: OnlineGamePresenting>: View {
             connectionBanner(
                 "Opened on another device — this table is read-only here.",
                 systemImage: "iphone.gen2.radiowaves.left.and.right",
-                color: .orange
+                color: theme.warning
             )
         } else if coordinator.transportStatus == .reconnecting {
-            connectionBanner("Reconnecting…", systemImage: "wifi.exclamationmark", color: .orange)
+            connectionBanner("Reconnecting…", systemImage: "wifi.exclamationmark", color: theme.warning)
         } else if !coordinator.isHost, coordinator.liveness == .hostUnreachable {
-            connectionBanner("Recovering host…", systemImage: "arrow.triangle.2.circlepath", color: .orange)
+            connectionBanner("Recovering host…", systemImage: "arrow.triangle.2.circlepath", color: theme.warning)
         }
     }
 

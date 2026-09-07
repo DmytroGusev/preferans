@@ -142,6 +142,9 @@ public enum UIIdentifiers {
     public static let lobbySettingsButton      = "lobby.settings"
     public static let screenSettings           = "screen.settings"
     public static let settingsLanguagePicker   = "settings.language"
+    public static let settingsThemePicker      = "settings.theme"
+    public static let screenThemeGallery       = "screen.themes"
+    public static func themeOption(_ theme: String) -> String { "theme.\(theme)" }
     public static let lobbyHouseConventions    = "lobby.houseConventions"
     public static let conventionLegendSheet    = "lobby.conventionLegend"
     public static let rulesVariantPicker       = "rules.variantPicker"
@@ -381,6 +384,9 @@ public extension UIIdentifiers {
 /// by the UI test target. Single source of truth so the producer (UI tests)
 /// and the consumer (running app) can't drift on a flag string.
 public enum UITestFlags {
+    /// Select a reproducible appearance before the app creates its view tree.
+    public static let theme = "-uiTestTheme"
+
     /// Show the first-run tour regardless of persisted completion. UI tests
     /// otherwise bypass onboarding so a clean simulator and a reused one
     /// always launch into the same lobby state.

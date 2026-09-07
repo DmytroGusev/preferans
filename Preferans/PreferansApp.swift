@@ -22,6 +22,11 @@ struct PreferansApp: App {
         // picks the right language for this process. Explicit UI-test flags
         // pin a catalog without depending on simulator or persisted state.
         let args = ProcessInfo.processInfo.arguments
+        #if DEBUG
+        if let index = args.firstIndex(of: UITestFlags.theme), index + 1 < args.count {
+            UserDefaults.standard.set(AppTheme.resolve(args[index + 1]).rawValue, forKey: SettingsKeys.appTheme)
+        }
+        #endif
         if let pinnedLanguage = TestHarness.pinnedLanguage(in: args) {
             AppLanguage.apply(pinnedLanguage)
         } else {
@@ -57,10 +62,7 @@ struct PreferansApp: App {
     var body: some Scene {
         WindowGroup {
             rootContent
-                // Every app surface uses the dark felt palette. Keep native
-                // controls in the same appearance so light-mode segmented
-                // labels do not become black-on-dark, especially on iPad.
-                .preferredColorScheme(.dark)
+                .appAppearance()
                 .environment(\.locale, Locale(identifier: AppLanguage.current.rawValue))
                 .transaction { transaction in
                     if animationsDisabled { transaction.animation = nil }

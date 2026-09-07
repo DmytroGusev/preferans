@@ -43,6 +43,8 @@ enum LobbyFormat {
 /// Read-only summary for a finished online game: winner + each seat's final
 /// zero-sum balance. "Summaries only" per the lobby spec — no deal replay.
 struct OnlineGameSummarySheet: View {
+    @Environment(\.tableTheme) private var theme
+
     let game: OnlineGameSummary
     @Environment(\.dismiss) private var dismiss
 
@@ -73,10 +75,10 @@ struct OnlineGameSummarySheet: View {
                     if let winner = game.winnerName {
                         HStack(spacing: 10) {
                             Image(systemName: "crown.fill")
-                                .foregroundStyle(TableTheme.goldBright)
+                                .foregroundStyle(theme.accentStrong)
                             Text("Won by \(winner)")
                                 .font(.headline)
-                                .foregroundStyle(TableTheme.inkCream)
+                                .foregroundStyle(theme.textPrimary)
                         }
                     }
 
@@ -84,28 +86,28 @@ struct OnlineGameSummarySheet: View {
                         .font(.caption2.weight(.semibold))
                         .tracking(1.2)
                         .textCase(.uppercase)
-                        .foregroundStyle(TableTheme.gold)
+                        .foregroundStyle(theme.accent)
 
                     VStack(spacing: 8) {
                         ForEach(rows) { row in
                             HStack(spacing: 10) {
                                 Image(systemName: row.isWinner ? "crown.fill" : (row.isBot ? "cpu" : "person.crop.circle.fill"))
-                                    .foregroundStyle(row.isWinner ? TableTheme.goldBright : TableTheme.gold)
+                                    .foregroundStyle(row.isWinner ? theme.accentStrong : theme.accent)
                                 Text(verbatim: row.name)
-                                    .foregroundStyle(TableTheme.inkCream)
+                                    .foregroundStyle(theme.textPrimary)
                                 Spacer()
                                 if let balance = row.balance {
                                     Text(ScoreFormatting.balance(balance))
                                         .font(.headline.monospacedDigit())
                                         .foregroundStyle(
                                             balance > 0.05
-                                                ? Color.green
-                                                : (balance < -0.05 ? Color.red : TableTheme.inkCreamSoft)
+                                                ? theme.success
+                                                : (balance < -0.05 ? theme.error : theme.textSecondary)
                                         )
                                 }
                             }
                             .padding(10)
-                            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                            .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
                         }
                     }
                 }
@@ -122,7 +124,7 @@ struct OnlineGameSummarySheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: { dismiss() }) {
-                        Text("Done").foregroundStyle(TableTheme.goldBright)
+                        Text("Done").foregroundStyle(theme.accentStrong)
                     }
                 }
             }

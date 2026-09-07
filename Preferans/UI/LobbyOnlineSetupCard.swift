@@ -54,15 +54,15 @@ extension LobbyView {
             VStack(alignment: .leading, spacing: 4) {
                 Text(viewModel.onlineVariant.standardName)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                 Text(viewModel.onlineVariant.summary)
                     .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+            .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
         }
     }
 
@@ -84,9 +84,9 @@ extension LobbyView {
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                         .frame(maxWidth: .infinity, minHeight: 38)
-                        .foregroundStyle(selected ? TableTheme.feltDeep : TableTheme.inkCream)
+                        .foregroundStyle(selected ? theme.onAccent : theme.textPrimary)
                         .background(
-                            selected ? TableTheme.goldBright : Color.black.opacity(0.22),
+                            selected ? theme.accentStrong : theme.shade.opacity(0.22),
                             in: RoundedRectangle(cornerRadius: 9)
                         )
                 }
@@ -115,10 +115,10 @@ extension LobbyView {
             Label {
                 Text("Players")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
             } icon: {
                 Image(systemName: "person.3.fill")
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
             }
             Spacer()
             Picker("Players", selection: onlineTableSizeBinding) {
@@ -130,31 +130,31 @@ extension LobbyView {
             .accessibilityIdentifier(UIIdentifiers.onlineTableSizePicker)
         }
         .padding(10)
-        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func onlineSeatRow(index: Int, slot: OnlineSeatSlot) -> some View {
         HStack(spacing: 10) {
             Image(systemName: seatIcon(for: slot.kind))
-                .foregroundStyle(slot.kind == .you ? TableTheme.goldBright : TableTheme.gold)
+                .foregroundStyle(slot.kind == .you ? theme.accentStrong : theme.accent)
                 .font(.title3)
                 .frame(width: 24)
             if slot.kind == .you {
                 Text(verbatim: viewModel.currentOnlineDisplayName.isEmpty ? String(localized: "You") : viewModel.currentOnlineDisplayName)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("badge.you")
                     .font(.caption2.weight(.bold))
                     .tracking(0.6)
-                    .foregroundStyle(TableTheme.feltDeep)
+                    .foregroundStyle(theme.onAccent)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(TableTheme.goldBright, in: Capsule())
+                    .background(theme.accentStrong, in: Capsule())
             } else {
                 Text("Seat \(index + 1)")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Picker("Seat \(index + 1)", selection: onlineSeatKindBinding(index)) {
                     Text("Friend").tag(OnlineSeatSlot.Kind.invite)
@@ -166,7 +166,7 @@ extension LobbyView {
             }
         }
         .padding(10)
-        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
         .accessibilityIdentifier(UIIdentifiers.onlineSeatRow(index: index))
     }
 
@@ -205,14 +205,14 @@ extension LobbyView {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "ticket.fill")
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Join table \(code)")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                     Text("Tap to take a seat")
                         .font(.caption2)
-                        .foregroundStyle(TableTheme.inkCreamDim)
+                        .foregroundStyle(theme.textMuted)
                 }
                 Spacer(minLength: 0)
                 if viewModel.isOnlineRoomLoading {
@@ -220,14 +220,14 @@ extension LobbyView {
                 } else {
                     Image(systemName: "arrow.right.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(TableTheme.goldBright)
+                        .foregroundStyle(theme.accentStrong)
                 }
             }
             .padding(12)
-            .background(TableTheme.gold.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
+            .background(theme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(TableTheme.gold.opacity(0.40), lineWidth: 0.75)
+                    .strokeBorder(theme.accent.opacity(0.40), lineWidth: 0.75)
             )
         }
         .buttonStyle(.plain)
@@ -253,7 +253,7 @@ extension LobbyView {
                                 .font(.title3)
                         }
                         .buttonStyle(.plain)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .accessibilityLabel("Sign out")
                     }
                 )
@@ -269,7 +269,7 @@ extension LobbyView {
                         .frame(height: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(TableTheme.gold)
+                .tint(theme.accent)
                 .disabled(
                     viewModel.isOnlineRoomLoading ||
                     viewModel.onlineDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -294,7 +294,7 @@ extension LobbyView {
             if let validation = viewModel.onlineIdentityValidationError {
                 Text(validation)
                     .font(.caption)
-                    .foregroundStyle(TableTheme.warningInk)
+                    .foregroundStyle(theme.warning)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -320,7 +320,7 @@ extension LobbyView {
                 "Paste link or code",
                 text: $viewModel.onlineJoinRoomCode,
                 prompt: Text("Paste link or code")
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
             )
             .textFieldStyle(.plain)
             .autocorrectionDisabled()
@@ -331,9 +331,9 @@ extension LobbyView {
             .onSubmit {
                 if viewModel.pendingJoinRoomCode != nil { viewModel.joinCloudflareOnlineRoom() }
             }
-            .foregroundStyle(TableTheme.inkCream)
+            .foregroundStyle(theme.textPrimary)
             .padding(10)
-            .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+            .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
             .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
         }
     }
@@ -374,7 +374,7 @@ extension LobbyView {
                         : String(localized: "Finish registration above to create a table.")
                 )
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
             }
@@ -385,19 +385,19 @@ extension LobbyView {
         HStack(spacing: 10) {
             Image(systemName: "person.crop.circle.fill")
                 .font(.title3)
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
             TextField(
                 "Your name",
                 text: onlineNameBinding,
-                prompt: Text("Your name").foregroundStyle(TableTheme.inkCreamDim)
+                prompt: Text("Your name").foregroundStyle(theme.textMuted)
             )
             .textFieldStyle(.plain)
             .autocorrectionDisabled()
-            .foregroundStyle(TableTheme.inkCream)
+            .foregroundStyle(theme.textPrimary)
             .accessibilityIdentifier(UIIdentifiers.onlineDisplayNameField)
         }
         .padding(10)
-        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var onlineNameBinding: Binding<String> {
@@ -428,17 +428,17 @@ extension LobbyView {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
             Text(title)
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lineLimit(1)
                 .minimumScaleFactor(0.78)
             trailingAction()
         }
         .padding(10)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private func identityStatusRow(icon: String, title: String) -> some View {

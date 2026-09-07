@@ -29,6 +29,8 @@ struct LobbyLayoutPolicy: Equatable {
 }
 
 public struct LobbyView: View {
+    @Environment(\.tableTheme) var theme
+
     private enum Sheet: Identifiable {
         case settings
         case conventionLegend
@@ -140,7 +142,7 @@ public struct LobbyView: View {
                     ToolbarItem(placement: .automatic) {
                         Button { activeSheet = .settings } label: {
                             Image(systemName: "gearshape.fill")
-                                .foregroundStyle(TableTheme.goldBright)
+                                .foregroundStyle(theme.accentStrong)
                                 .accessibilityLabel("Settings")
                         }
                         .accessibilityIdentifier(UIIdentifiers.lobbySettingsButton)
@@ -231,7 +233,7 @@ public struct LobbyView: View {
         // Keep scrolled form controls from becoming visual noise behind the
         // status bar and settings button. The lobby is always dark felt, so
         // the navigation chrome also owns a dark, opaque contrast surface.
-        .lobbyNavigationChrome()
+        .themeNavigationChrome()
         .task(id: onlineGamesRefreshKey) {
             guard viewModel.lobbyMode == .online else { return }
             await gameLibrary.refresh(sessionToken: viewModel.onlineAccountSessionToken)
@@ -249,25 +251,25 @@ public struct LobbyView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Label("A complete table at a glance", systemImage: "rectangle.split.2x1")
                         .font(.headline)
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                     Text("Choose how to play here, then set up the table alongside it. Your current game always takes over the full screen.")
                         .font(.subheadline)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 14))
+                .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 14))
             }
         }
         .padding(usesTabletLobby ? 24 : 0)
         .background {
             if usesTabletLobby {
                 RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.black.opacity(0.20))
+                    .fill(theme.shade.opacity(0.20))
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .strokeBorder(TableTheme.gold.opacity(0.18), lineWidth: 0.5)
+                            .strokeBorder(theme.accent.opacity(0.18), lineWidth: 0.5)
                     )
             }
         }
@@ -292,7 +294,7 @@ public struct LobbyView: View {
             if let infoText = viewModel.infoText {
                 Label(infoText, systemImage: "checkmark.seal.fill")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier(UIIdentifiers.lobbyInfo)
@@ -300,7 +302,7 @@ public struct LobbyView: View {
             if let errorText = viewModel.errorText {
                 Text(errorText)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(TableTheme.errorInk)
+                    .foregroundStyle(theme.error)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(UIIdentifiers.lobbyError)
             }
@@ -317,18 +319,18 @@ public struct LobbyView: View {
         VStack(spacing: 4) {
             ZStack {
                 Circle()
-                    .fill(TableTheme.gold.opacity(0.16))
+                    .fill(theme.accent.opacity(0.16))
                     .frame(width: 78, height: 78)
                     .overlay(
-                        Circle().strokeBorder(TableTheme.gold.opacity(0.45), lineWidth: 0.75)
+                        Circle().strokeBorder(theme.accent.opacity(0.45), lineWidth: 0.75)
                     )
                 Image(systemName: "suit.spade.fill")
                     .font(.system(size: 36))
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
             }
             Text("Preferans")
-                .font(.largeTitle.bold())
-                .foregroundStyle(TableTheme.inkCream)
+                .font(.system(.largeTitle, design: theme.style.titleDesign, weight: .bold))
+                .foregroundStyle(theme.textPrimary)
                 .accessibilityIdentifier(UIIdentifiers.lobbyTitle)
         }
         .padding(.top, 12)
@@ -363,9 +365,9 @@ public struct LobbyView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .foregroundStyle(isSelected ? TableTheme.feltDeep : TableTheme.inkCream)
+            .foregroundStyle(isSelected ? theme.onAccent : theme.textPrimary)
             .background(
-                isSelected ? TableTheme.goldBright : Color.black.opacity(0.22),
+                isSelected ? theme.accentStrong : theme.shade.opacity(0.22),
                 in: RoundedRectangle(cornerRadius: 10)
             )
         }
@@ -386,7 +388,7 @@ public struct LobbyView: View {
                 Text("rules.reference.title")
             }
             .font(.footnote.weight(.semibold))
-            .foregroundStyle(TableTheme.gold)
+            .foregroundStyle(theme.accent)
         }
         .buttonStyle(.plain)
         .help("convention.tagline.help")
@@ -464,7 +466,7 @@ public struct LobbyView: View {
                 if let validation = viewModel.seats.validationError {
                     Text(validation)
                         .font(.caption)
-                        .foregroundStyle(TableTheme.warningInk)
+                        .foregroundStyle(theme.warning)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
                 }
@@ -507,18 +509,18 @@ public struct LobbyView: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "eye.fill")
-                            .foregroundStyle(TableTheme.goldBright)
+                            .foregroundStyle(theme.accentStrong)
                         Text("Watch bots play")
                             .fontWeight(.semibold)
-                            .foregroundStyle(TableTheme.inkCream)
+                            .foregroundStyle(theme.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.footnote)
-                            .foregroundStyle(TableTheme.inkCreamSoft)
+                            .foregroundStyle(theme.textSecondary)
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 12)
-                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                    .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(UIIdentifiers.lobbyWatchBots)
@@ -531,10 +533,10 @@ public struct LobbyView: View {
             Label {
                 Text("\(viewModel.botCount) bots")
                     .font(.headline)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
             } icon: {
                 Image(systemName: "cpu")
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -546,7 +548,7 @@ public struct LobbyView: View {
                     .frame(width: 34, height: 34)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(viewModel.canRemoveBot ? TableTheme.goldBright : TableTheme.inkCreamDim)
+            .foregroundStyle(viewModel.canRemoveBot ? theme.accentStrong : theme.textMuted)
             .disabled(!viewModel.canRemoveBot)
             .accessibilityLabel("Remove bot")
             .accessibilityIdentifier(UIIdentifiers.lobbyRemoveBot)
@@ -559,13 +561,13 @@ public struct LobbyView: View {
                     .frame(width: 34, height: 34)
             }
             .buttonStyle(.plain)
-            .foregroundStyle(viewModel.canAddBot ? TableTheme.goldBright : TableTheme.inkCreamDim)
+            .foregroundStyle(viewModel.canAddBot ? theme.accentStrong : theme.textMuted)
             .disabled(!viewModel.canAddBot)
             .accessibilityLabel("Add bot")
             .accessibilityIdentifier(UIIdentifiers.lobbyAddBot)
         }
         .padding(10)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var legacySeatCountAccessibilityButtons: some View {
@@ -586,13 +588,13 @@ public struct LobbyView: View {
         let isViewer = index == 0 && !isBot
         return HStack(spacing: 10) {
             Image(systemName: isBot ? "cpu" : "person.crop.circle.fill")
-                .foregroundStyle(isBot ? TableTheme.gold : TableTheme.goldBright)
+                .foregroundStyle(isBot ? theme.accent : theme.accentStrong)
                 .font(.title3)
             VStack(alignment: .leading, spacing: 4) {
                 TextField("Seat \(index + 1)", text: nameBinding(for: index))
                     .textFieldStyle(.plain)
                     .submitLabel(.done)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: index))
 
@@ -617,7 +619,7 @@ public struct LobbyView: View {
                                 .font(.system(size: 8, weight: .bold))
                         }
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(TableTheme.gold.opacity(0.9))
+                        .foregroundStyle(theme.accent.opacity(0.9))
                     }
                     .accessibilityLabel("Bot profile")
                     .accessibilityValue("\(profile.temperament.rawValue), \(profile.difficulty.rawValue)")
@@ -629,22 +631,22 @@ public struct LobbyView: View {
                 Text("badge.you")
                     .font(.caption2.weight(.bold))
                     .tracking(0.6)
-                    .foregroundStyle(TableTheme.feltDeep)
+                    .foregroundStyle(theme.onAccent)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(TableTheme.goldBright, in: Capsule())
+                    .background(theme.accentStrong, in: Capsule())
             } else {
                 Text("badge.bot")
                     .font(.caption2.weight(.bold))
                     .tracking(0.6)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.black.opacity(0.30), in: Capsule())
+                    .background(theme.shade.opacity(0.30), in: Capsule())
             }
         }
         .padding(10)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
     }
 
     private var botSpeedPicker: some View {
@@ -653,7 +655,7 @@ public struct LobbyView: View {
                 .font(.caption.weight(.semibold))
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
             Picker("Bot speed", selection: $viewModel.botSpeed) {
                 ForEach(BotMoveSpeed.allCases) { speed in
                     Text(speed.label).tag(speed)
@@ -692,7 +694,7 @@ public struct LobbyView: View {
                 .font(.caption.weight(.semibold))
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
             Picker(title, selection: $viewModel.pulkaLimit) {
                 ForEach(PulkaLimit.allCases) { limit in
                     if usesTableTotal, limit != .custom {
@@ -709,23 +711,23 @@ public struct LobbyView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "number")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.goldBright)
+                        .foregroundStyle(theme.accentStrong)
                     TextField(
                         customPrompt,
                         value: customTarget,
                         format: .number,
-                        prompt: Text(customPrompt).foregroundStyle(TableTheme.inkCreamDim)
+                        prompt: Text(customPrompt).foregroundStyle(theme.textMuted)
                     )
                     .textFieldStyle(.plain)
                     #if canImport(UIKit)
                     .keyboardType(.numberPad)
                     #endif
                     .submitLabel(.done)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .accessibilityIdentifier(UIIdentifiers.matchCustomPulkaPerPlayer)
                 }
                 .padding(10)
-                .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+                .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -772,7 +774,7 @@ public struct LobbyView: View {
                 .font(.caption.weight(.semibold))
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
             Picker(title, selection: selection) {
                 ForEach(Array(choices.enumerated()), id: \.offset) { _, choice in
                     Text(verbatim: choice.1).tag(choice.0)
@@ -788,21 +790,21 @@ public struct LobbyView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                 Text(title)
                     .font(.headline)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
             }
             content()
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16)
-                .fill(Color.black.opacity(0.30))
+                .fill(theme.shade.opacity(0.30))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(TableTheme.gold.opacity(0.22), lineWidth: 0.5)
+                .strokeBorder(theme.accent.opacity(0.22), lineWidth: 0.5)
         )
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -844,19 +846,5 @@ public struct LobbyView: View {
                 viewModel.setBotProfile(profile, at: index)
             }
         )
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func lobbyNavigationChrome() -> some View {
-        #if os(iOS)
-        self
-            .toolbarBackground(TableTheme.feltDeep, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-        #else
-        self
-        #endif
     }
 }

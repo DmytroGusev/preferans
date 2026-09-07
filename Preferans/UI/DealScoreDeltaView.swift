@@ -49,6 +49,8 @@ enum DealScoreDeltaPresentation {
 /// per player in a grid; compact iPhone surfaces keep the same information in
 /// a single readable column so the summary does not become a tiny table.
 struct DealScoreDeltaView: View {
+    @Environment(\.tableTheme) private var theme
+
     let scoreDelta: ScoreDelta
     let players: [PlayerID]
     let rules: PreferansRules
@@ -64,7 +66,7 @@ struct DealScoreDeltaView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Score recorded")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
                 .textCase(.uppercase)
                 .tracking(1.1)
 
@@ -93,14 +95,14 @@ struct DealScoreDeltaView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(displayName(row.player))
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
             metricRow(row)
             whistDetail(row)
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous))
+        .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous))
     }
 
     private func playerDeltaRow(_ row: DealScoreDeltaRow) -> some View {
@@ -108,11 +110,11 @@ struct DealScoreDeltaView: View {
             HStack(spacing: 8) {
                 Text(displayName(row.player))
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                metricValue("Pool", row.pool, tint: TableTheme.goldBright)
-                metricValue("Mtn", row.mountain, tint: row.mountain == 0 ? TableTheme.inkCreamSoft : .red)
+                metricValue("Pool", row.pool, tint: theme.accentStrong)
+                metricValue("Mtn", row.mountain, tint: row.mountain == 0 ? theme.textSecondary : theme.error)
                 metricValue(
                     "Bal",
                     DealScoreDeltaPresentation.balanceDelta(for: row, rules: rules),
@@ -123,13 +125,13 @@ struct DealScoreDeltaView: View {
         }
         .padding(.vertical, 5)
         .padding(.horizontal, 8)
-        .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous))
+        .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous))
     }
 
     private func metricRow(_ row: DealScoreDeltaRow) -> some View {
         HStack(spacing: 6) {
-            metricValue("Pool", row.pool, tint: TableTheme.goldBright)
-            metricValue("Mtn", row.mountain, tint: row.mountain == 0 ? TableTheme.inkCreamSoft : .red)
+            metricValue("Pool", row.pool, tint: theme.accentStrong)
+            metricValue("Mtn", row.mountain, tint: row.mountain == 0 ? theme.textSecondary : theme.error)
             metricValue(
                 "Bal",
                 DealScoreDeltaPresentation.balanceDelta(for: row, rules: rules),
@@ -142,7 +144,7 @@ struct DealScoreDeltaView: View {
         VStack(alignment: .leading, spacing: 1) {
             Text(title)
                 .font(.caption2)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
             Text(signed(value))
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(tint)
@@ -155,7 +157,7 @@ struct DealScoreDeltaView: View {
         if row.whistsIn != 0 || row.whistsOut != 0 {
             Text("Whists in \(signed(row.whistsIn)) · out \(signed(row.whistsOut))")
                 .font(.caption2)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
@@ -163,9 +165,9 @@ struct DealScoreDeltaView: View {
 
     private func balanceColor(for row: DealScoreDeltaRow) -> Color {
         let delta = DealScoreDeltaPresentation.balanceDelta(for: row, rules: rules)
-        if delta > 0 { return TableTheme.goldBright }
-        if delta < 0 { return .red }
-        return TableTheme.inkCreamSoft
+        if delta > 0 { return theme.accentStrong }
+        if delta < 0 { return theme.error }
+        return theme.textSecondary
     }
 
     private func signed(_ value: Int) -> String {

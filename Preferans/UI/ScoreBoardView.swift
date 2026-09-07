@@ -9,24 +9,24 @@ public enum ScoreBoardPresentation: Sendable {
     case sheet
     case feltSidebar
 
-    var unbackedPrimary: Color {
+    func unbackedPrimary(in theme: TableTheme) -> Color {
         switch self {
         case .sheet: .primary
-        case .feltSidebar: TableTheme.inkCream
+        case .feltSidebar: theme.textPrimary
         }
     }
 
-    var unbackedSecondary: Color {
+    func unbackedSecondary(in theme: TableTheme) -> Color {
         switch self {
         case .sheet: .secondary
-        case .feltSidebar: TableTheme.inkCreamSoft
+        case .feltSidebar: theme.textSecondary
         }
     }
 
-    var diagramLine: Color {
+    func diagramLine(in theme: TableTheme) -> Color {
         switch self {
         case .sheet: .secondary
-        case .feltSidebar: TableTheme.inkCream
+        case .feltSidebar: theme.textPrimary
         }
     }
 }
@@ -41,6 +41,8 @@ public enum ScoreBoardPresentation: Sendable {
 /// per player, stacked as a list of cards so the form scales to 3 or 4
 /// players without rewrapping a tabular layout.
 public struct ScoreBoardView: View {
+    @Environment(\.tableTheme) private var theme
+
     public var score: ScoreSheet
     public var rules: PreferansRules
     public var presentation: ScoreBoardPresentation
@@ -103,7 +105,8 @@ public struct ScoreBoardView: View {
             }
         }
         .padding(14)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .foregroundStyle(theme.textPrimary)
+        .background(theme.panel, in: RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(.separator.opacity(0.6), lineWidth: 0.5)
@@ -126,7 +129,7 @@ public struct ScoreBoardView: View {
             metricHeading("Mountain")
             Text("\(value)")
                 .font(.title.bold().monospacedDigit())
-                .foregroundStyle(value > 0 ? .red : .primary)
+                .foregroundStyle(value > 0 ? theme.error : theme.textPrimary)
                 .accessibilityIdentifier(UIIdentifiers.scoreMountain(player))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -146,12 +149,12 @@ public struct ScoreBoardView: View {
                     HStack(spacing: 4) {
                         Text("vs \(displayName(target))")
                             .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.textSecondary)
                             .lineLimit(1)
                         Spacer(minLength: 4)
                         Text("\(value)")
                             .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(value > 0 ? .primary : .tertiary)
+                            .foregroundStyle(value > 0 ? theme.textPrimary : theme.textMuted)
                             .accessibilityIdentifier(UIIdentifiers.scoreWhists(writer: player, on: target))
                     }
                 }
@@ -163,7 +166,7 @@ public struct ScoreBoardView: View {
     private func metricHeading(_ title: LocalizedStringKey) -> some View {
         Text(title)
             .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(theme.textSecondary)
             .textCase(.uppercase)
             .tracking(0.6)
             .lineLimit(1)
@@ -172,7 +175,7 @@ public struct ScoreBoardView: View {
 
     private func balanceBadge(balance: Double, id: String) -> some View {
         let formatted = ScoreFormatting.balance(balance)
-        let color: Color = balance > 0.05 ? .green : (balance < -0.05 ? .red : .secondary)
+        let color: Color = balance > 0.05 ? theme.success : (balance < -0.05 ? theme.error : theme.textSecondary)
         return Text(formatted)
             .font(.subheadline.bold().monospacedDigit())
             .foregroundStyle(color)
@@ -192,7 +195,7 @@ public struct ScoreBoardView: View {
             legendRow(title: "Баланс (balance)", description: "Standings — zero-sum across the table.")
         }
         .font(.caption)
-        .foregroundStyle(presentation.unbackedSecondary)
+        .foregroundStyle(presentation.unbackedSecondary(in: theme))
         .padding(.horizontal, 4)
     }
 
@@ -200,7 +203,7 @@ public struct ScoreBoardView: View {
         HStack(alignment: .top, spacing: 6) {
             Text(title)
                 .fontWeight(.semibold)
-                .foregroundStyle(presentation.unbackedPrimary)
+                .foregroundStyle(presentation.unbackedPrimary(in: theme))
             Text(description)
         }
     }

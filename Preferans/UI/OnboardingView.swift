@@ -16,6 +16,8 @@ struct RootLaunchView: View {
 }
 
 struct OnboardingView: View {
+    @Environment(\.tableTheme) private var theme
+
     private let slides = OnboardingSlide.sampleSlides
 
     @State private var selectedIndex = 0
@@ -24,22 +26,13 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.02, green: 0.12, blue: 0.10),
-                    Color(red: 0.01, green: 0.22, blue: 0.17),
-                    Color(red: 0.52, green: 0.39, blue: 0.16)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            ThemeBackdrop().ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {
                     Text("Preferans")
-                        .font(.system(.title2, design: .serif, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.system(.title2, design: theme.style.titleDesign, weight: .semibold))
+                        .foregroundStyle(theme.textPrimary)
 
                     Spacer()
 
@@ -47,7 +40,7 @@ struct OnboardingView: View {
                         completeOnboarding()
                     }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.74))
+                    .foregroundStyle(theme.textSecondary)
                     .accessibilityIdentifier(UIIdentifiers.onboardingSkip)
                 }
                 .padding(.horizontal, 24)
@@ -67,7 +60,7 @@ struct OnboardingView: View {
                     HStack(spacing: 8) {
                         ForEach(slides.indices, id: \.self) { index in
                             Capsule()
-                                .fill(index == selectedIndex ? Color.white : Color.white.opacity(0.28))
+                                .fill(index == selectedIndex ? theme.accent : theme.textMuted.opacity(0.28))
                                 .frame(width: index == selectedIndex ? 28 : 8, height: 8)
                                 .animation(.spring(response: 0.32, dampingFraction: 0.82), value: selectedIndex)
                         }
@@ -84,12 +77,12 @@ struct OnboardingView: View {
                     } label: {
                         Text(selectedIndex == slides.count - 1 ? "Start playing" : "Continue")
                             .font(.headline.weight(.bold))
-                            .foregroundStyle(Color(red: 0.02, green: 0.13, blue: 0.10))
+                            .foregroundStyle(theme.onAccent)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 17)
                             .background(
                                 Capsule()
-                                    .fill(Color(red: 0.96, green: 0.80, blue: 0.38))
+                                    .fill(theme.accent)
                                     .shadow(color: .black.opacity(0.18), radius: 18, y: 10)
                             )
                     }
@@ -99,7 +92,7 @@ struct OnboardingView: View {
                     Text("The iOS tracking permission may appear during first launch. You can continue even if you decline.")
                         .font(.caption.weight(.medium))
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.white.opacity(0.62))
+                        .foregroundStyle(theme.textMuted)
                         .padding(.horizontal, 28)
                         .padding(.bottom, 14)
                 }
@@ -164,6 +157,8 @@ private struct OnboardingSlide: Equatable {
 }
 
 private struct OnboardingSlideView: View {
+    @Environment(\.tableTheme) private var theme
+
     let slide: OnboardingSlide
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -185,15 +180,15 @@ private struct OnboardingSlideView: View {
 
                     VStack(spacing: 14) {
                         Text(slide.title)
-                            .font(.system(.largeTitle, design: .serif, weight: .bold))
+                            .font(.system(.largeTitle, design: theme.style.titleDesign, weight: .bold))
                             .multilineTextAlignment(.center)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(theme.textPrimary)
 
                         Text(slide.subtitle)
                             .font(.body.weight(.medium))
                             .lineSpacing(4)
                             .multilineTextAlignment(.center)
-                            .foregroundStyle(.white.opacity(0.74))
+                            .foregroundStyle(theme.textSecondary)
                             .padding(.horizontal, 8)
                     }
                     .padding(.horizontal, 26)
@@ -209,15 +204,17 @@ private struct OnboardingSlideView: View {
 }
 
 private struct OnboardingIllustration: View {
+    @Environment(\.tableTheme) private var theme
+
     let kind: OnboardingSlide.Illustration
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 38, style: .continuous)
-                .fill(.white.opacity(0.08))
+                .fill(theme.panel.opacity(0.6))
                 .overlay(
                     RoundedRectangle(cornerRadius: 38, style: .continuous)
-                        .stroke(.white.opacity(0.16), lineWidth: 1)
+                        .stroke(theme.accent.opacity(0.18), lineWidth: 1)
                 )
                 .shadow(color: .black.opacity(0.28), radius: 28, y: 20)
 
@@ -249,22 +246,24 @@ private struct CardsIllustration: View {
 }
 
 private struct TableIllustration: View {
+    @Environment(\.tableTheme) private var theme
+
     var body: some View {
         ZStack {
             Ellipse()
-                .fill(Color(red: 0.02, green: 0.26, blue: 0.20))
+                .fill(theme.backgroundMid)
                 .frame(width: 260, height: 172)
-                .overlay(Ellipse().stroke(Color(red: 0.91, green: 0.69, blue: 0.30).opacity(0.48), lineWidth: 2))
+                .overlay(Ellipse().stroke(theme.accent.opacity(0.48), lineWidth: 2))
 
             Image(systemName: "suit.spade.fill")
                 .font(.system(size: 48, weight: .black))
-                .foregroundStyle(Color(red: 0.96, green: 0.78, blue: 0.35))
+                .foregroundStyle(theme.accent)
 
             ForEach(0..<3, id: \.self) { index in
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(.white.opacity(0.13))
+                    .fill(theme.panel)
                     .frame(width: 76, height: 34)
-                    .overlay(Text(["You", "Mila", "Leo"][index]).font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
+                    .overlay(Text(["You", "Mila", "Leo"][index]).font(.system(size: 12, weight: .bold)).foregroundStyle(theme.textPrimary))
                     .offset(x: [0, -96, 96][index], y: [92, -68, -68][index])
             }
         }
@@ -272,28 +271,30 @@ private struct TableIllustration: View {
 }
 
 private struct InviteIllustration: View {
+    @Environment(\.tableTheme) private var theme
+
     var body: some View {
         VStack(spacing: 22) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.white)
+                .fill(theme.panel)
                 .frame(width: 230, height: 86)
                 .overlay(
                     VStack(spacing: 6) {
                         Text("ROOM CODE")
                             .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(.black.opacity(0.42))
+                            .foregroundStyle(theme.textSecondary)
                         Text("5E5B83")
                             .font(.system(size: 33, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color(red: 0.02, green: 0.16, blue: 0.12))
+                            .foregroundStyle(theme.textPrimary)
                     }
                 )
 
             HStack(spacing: 16) {
                 ForEach(["person.fill", "link", "person.2.fill"], id: \.self) { icon in
                     Circle()
-                        .fill(Color(red: 0.96, green: 0.80, blue: 0.38))
+                        .fill(theme.accent)
                         .frame(width: 58, height: 58)
-                        .overlay(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(Color(red: 0.02, green: 0.16, blue: 0.12)))
+                        .overlay(Image(systemName: icon).font(.system(size: 22, weight: .bold)).foregroundStyle(theme.textPrimary))
                 }
             }
         }
@@ -301,36 +302,38 @@ private struct InviteIllustration: View {
 }
 
 private struct ScoringIllustration: View {
+    @Environment(\.tableTheme) private var theme
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(.white)
+                .fill(theme.panel)
                 .frame(width: 238, height: 182)
 
             VStack(spacing: 16) {
                 Text("PULKA")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(.black.opacity(0.38))
+                    .foregroundStyle(theme.textSecondary)
 
                 HStack(spacing: 18) {
                     ForEach([("You", "10"), ("Mila", "6"), ("Leo", "8")], id: \.0) { player, score in
                         VStack(spacing: 8) {
                             Text(score)
                                 .font(.system(size: 30, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Color(red: 0.03, green: 0.18, blue: 0.13))
+                                .foregroundStyle(theme.textPrimary)
                             Text(player)
                                 .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(.black.opacity(0.48))
+                                .foregroundStyle(theme.textSecondary)
                         }
                     }
                 }
 
                 Capsule()
-                    .fill(Color(red: 0.77, green: 0.18, blue: 0.15))
+                    .fill(theme.error)
                     .frame(width: 156, height: 10)
                     .overlay(alignment: .leading) {
                         Capsule()
-                            .fill(Color(red: 0.96, green: 0.80, blue: 0.38))
+                            .fill(theme.accent)
                             .frame(width: 98, height: 10)
                     }
             }
@@ -339,6 +342,8 @@ private struct ScoringIllustration: View {
 }
 
 private struct PremiumCard: View {
+    @Environment(\.tableTheme) private var theme
+
     let rank: String
     let suit: String
 
@@ -358,7 +363,7 @@ private struct PremiumCard: View {
                     Text(rank)
                     Text(suit)
                 }
-                .font(.system(size: 15, weight: .heavy, design: .serif))
+                .font(.system(size: 15, weight: .heavy, design: theme.style.titleDesign))
                 .foregroundStyle(isRed ? Color(red: 0.72, green: 0.10, blue: 0.09) : Color(red: 0.05, green: 0.07, blue: 0.07))
                 .padding(9)
             }

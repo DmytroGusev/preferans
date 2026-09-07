@@ -28,6 +28,8 @@ struct OnlineWaitingRoomLayoutPolicy: Equatable {
 /// "waiting for the host" caption. Once the host starts (sequence ≥ 1) the
 /// parent swaps this for the live table.
 public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
+    @Environment(\.tableTheme) private var theme
+
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .title3) private var seatIconWidth: CGFloat = 24
@@ -136,7 +138,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             if let error = coordinator.errorText {
                 Text(error)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(TableTheme.errorInk)
+                    .foregroundStyle(theme.error)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(UIIdentifiers.errorBanner)
             }
@@ -152,7 +154,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Waiting room")
                     .font(.title3.bold())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                 // Two separate Text literals: a ternary inside Text() types as
                 // String, not LocalizedStringKey, and silently opts the copy
                 // out of localization.
@@ -164,7 +166,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                     }
                 }
                 .font(.caption)
-                .foregroundStyle(TableTheme.inkCreamDim)
+                .foregroundStyle(theme.textMuted)
             }
             Spacer(minLength: 0)
             Button {
@@ -172,7 +174,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                    .foregroundStyle(theme.textPrimary, theme.shade.opacity(0.30))
                     .font(.title2)
             }
             .buttonStyle(.plain)
@@ -221,23 +223,23 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
 
                 Text("Share this link so friends can join — or read them the code.")
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
                     .multilineTextAlignment(.center)
             } else {
                 Text("Tap the code to copy it, or read it to your friends.")
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
                     .multilineTextAlignment(.center)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(0.30))
+            RoundedRectangle(cornerRadius: 16).fill(theme.shade.opacity(0.30))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(TableTheme.gold.opacity(0.22), lineWidth: 0.5)
+                .strokeBorder(theme.accent.opacity(0.22), lineWidth: 0.5)
         )
     }
 
@@ -247,45 +249,45 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             VStack(spacing: 8) {
                 Text(verbatim: roomCode)
                     .font(.title2.bold().monospaced())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .accessibilityLabel("Room code")
                     .accessibilityValue(roomCode)
                     .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
                 if didCopyCode {
                     Label("Copied", systemImage: "checkmark")
-                        .foregroundStyle(TableTheme.feltDeep)
+                        .foregroundStyle(theme.onAccent)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(TableTheme.goldBright, in: Capsule())
+                        .background(theme.accentStrong, in: Capsule())
                         .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 } else {
                     Label("Copy code", systemImage: "doc.on.doc")
-                        .foregroundStyle(TableTheme.goldBright)
+                        .foregroundStyle(theme.accentStrong)
                 }
             }
             .font(.headline.weight(.semibold))
         } else {
             HStack(spacing: 8) {
                 Image(systemName: "number")
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                 Text(verbatim: roomCode)
                     .font(.title2.bold().monospaced())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .accessibilityLabel("Room code")
                     .accessibilityValue(roomCode)
                     .accessibilityIdentifier(UIIdentifiers.onlineRoomCode)
                 if didCopyCode {
                     Label("Copied", systemImage: "checkmark")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(TableTheme.feltDeep)
+                        .foregroundStyle(theme.onAccent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(TableTheme.goldBright, in: Capsule())
+                        .background(theme.accentStrong, in: Capsule())
                         .transition(.opacity.combined(with: .scale(scale: 0.85)))
                 } else {
                     Image(systemName: "doc.on.doc")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                 }
             }
         }
@@ -311,12 +313,12 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 .frame(width: seatIconWidth)
             info.title
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(info.isOpen ? TableTheme.inkCreamSoft : TableTheme.inkCream)
+                .foregroundStyle(info.isOpen ? theme.textSecondary : theme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             occupancyPill(info)
         }
         .padding(10)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
         // One combined element per seat: its identifier locates the row and its
         // accessibility value is a stable occupancy token ("you" / "human" /
         // "bot" / "open") tests can read without parsing visible copy.
@@ -330,11 +332,11 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             .font(.caption2.weight(.bold))
             .tracking(0.6)
             .textCase(.uppercase)
-            .foregroundStyle(info.pillAccent ? TableTheme.feltDeep : TableTheme.inkCreamSoft)
+            .foregroundStyle(info.pillAccent ? theme.onAccent : theme.textSecondary)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
-                info.pillAccent ? TableTheme.goldBright : Color.black.opacity(0.30),
+                info.pillAccent ? theme.accentStrong : theme.shade.opacity(0.30),
                 in: Capsule()
             )
     }
@@ -370,18 +372,18 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "cpu")
-                            .foregroundStyle(TableTheme.goldBright)
+                            .foregroundStyle(theme.accentStrong)
                         Text("Fill empty seats with bots & start")
                             .fontWeight(.semibold)
-                            .foregroundStyle(TableTheme.inkCream)
+                            .foregroundStyle(theme.textPrimary)
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
                             .font(.footnote)
-                            .foregroundStyle(TableTheme.inkCreamSoft)
+                            .foregroundStyle(theme.textSecondary)
                     }
                     .padding(.vertical, 10)
                     .padding(.horizontal, 12)
-                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+                    .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
                 .disabled(isStarting)
@@ -397,7 +399,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                     }
                 }
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
                     .multilineTextAlignment(.center)
             }
         }
@@ -408,7 +410,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             ProgressView().controlSize(.small)
             Text("Waiting for the host to start…")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
@@ -430,7 +432,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             .font(.caption2.weight(.semibold))
             .tracking(1.2)
             .textCase(.uppercase)
-            .foregroundStyle(TableTheme.gold)
+            .foregroundStyle(theme.accent)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -452,7 +454,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
         case let .you(name):
             return OccupancyInfo(
                 icon: "person.crop.circle.fill",
-                iconColor: TableTheme.goldBright,
+                iconColor: theme.accentStrong,
                 title: Text(verbatim: name),
                 pill: "You",
                 pillAccent: true,
@@ -462,7 +464,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
         case let .human(name):
             return OccupancyInfo(
                 icon: "person.crop.circle.fill",
-                iconColor: TableTheme.goldBright,
+                iconColor: theme.accentStrong,
                 title: Text(verbatim: name),
                 pill: "Ready",
                 pillAccent: false,
@@ -472,7 +474,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
         case let .bot(name):
             return OccupancyInfo(
                 icon: "cpu",
-                iconColor: TableTheme.gold,
+                iconColor: theme.accent,
                 title: name.isEmpty ? Text("Bot") : Text(verbatim: name),
                 pill: "Bot",
                 pillAccent: false,
@@ -482,7 +484,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
         case .openWaiting:
             return OccupancyInfo(
                 icon: "hourglass",
-                iconColor: TableTheme.inkCreamSoft,
+                iconColor: theme.textSecondary,
                 title: Text("Waiting for a friend…"),
                 pill: "Open",
                 pillAccent: false,

@@ -60,6 +60,8 @@ public struct TableDisplayState {
 /// their owner's slot. During talon exchange the talon sits in the
 /// middle of the felt for the declarer to pick from.
 public struct TableView: View {
+    @Environment(\.tableTheme) private var theme
+
     public var projection: PlayerGameProjection
     public var animationNamespace: Namespace.ID
     /// Tap handler for the deal-summary card's "Next deal" button.
@@ -211,7 +213,7 @@ public struct TableView: View {
         if let advance = pendingAdvance {
             let onTap = onTapToAdvance
             ZStack {
-                Color.black.opacity(onTap == nil ? 0.03 : (idleHintActive ? 0.18 : 0.05))
+                theme.shade.opacity(onTap == nil ? 0.03 : (idleHintActive ? 0.18 : 0.05))
                     .allowsHitTesting(onTap != nil)
                     .contentShape(Rectangle())
                     .onTapGesture { onTap?() }
@@ -230,34 +232,34 @@ public struct TableView: View {
             if let winner = advance.trickWinner {
                 Text("\(projection.displayName(for: winner)) took the trick")
                     .font(.headline.bold())
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                     .accessibilityIdentifier(UIIdentifiers.trickResultHold)
             } else if idleHintActive {
                 Text("Waiting for \(waitingName)")
                     .font(.headline.bold())
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                     .accessibilityIdentifier(UIIdentifiers.waitingForViewer)
             }
             if canTap {
                 Image(systemName: "hand.tap.fill")
                     .font(.caption)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .accessibilityLabel(Text("Tap to continue"))
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, idleHintActive ? 10 : 8)
         .background(
-            Capsule().fill(Color.black.opacity(idleHintActive ? 0.75 : 0.62))
+            Capsule().fill(theme.shade.opacity(idleHintActive ? 0.75 : 0.62))
         )
         .overlay(
             Capsule().strokeBorder(
-                advance.trickWinner != nil || idleHintActive ? TableTheme.goldBright.opacity(0.7) : TableTheme.inkCream.opacity(0.15),
+                advance.trickWinner != nil || idleHintActive ? theme.accentStrong.opacity(0.7) : theme.textPrimary.opacity(0.15),
                 lineWidth: advance.trickWinner != nil || idleHintActive ? 1.2 : 0.5
             )
         )
         .scaleEffect(idleHintActive ? 1.06 : 1.0)
-        .shadow(color: advance.trickWinner != nil || idleHintActive ? TableTheme.goldBright.opacity(0.45) : .black.opacity(0.25),
+        .shadow(color: advance.trickWinner != nil || idleHintActive ? theme.accentStrong.opacity(0.45) : .black.opacity(0.25),
                 radius: advance.trickWinner != nil || idleHintActive ? 14 : 4)
         .animation(.easeInOut(duration: 0.35), value: idleHintActive)
     }

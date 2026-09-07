@@ -8,6 +8,8 @@ import UIKit
 /// roster, bot speed) live in the lobby because they're per-table; this
 /// screen only collects things that persist across launches.
 public struct SettingsScreen: View {
+    @Environment(\.tableTheme) private var theme
+    @AppStorage(SettingsKeys.appTheme) private var appThemeRaw = AppTheme.default.rawValue
     @AppStorage(SettingsKeys.revealAllHands) private var revealAllHands = false
     @AppStorage(SettingsKeys.appLanguage) private var appLanguageRaw: String = AppLanguage.default.rawValue
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
@@ -34,31 +36,47 @@ public struct SettingsScreen: View {
     public var body: some View {
         NavigationStack {
             Form {
+                appearanceSection
+                tableSection
+                languageSection
                 accountSection
                 privacySection
-                languageSection
-                tableSection
                 #if DEBUG
                 Section {
                     Toggle("Reveal all hands", isOn: $revealAllHands)
                 } header: {
                     Text("Admin")
+                        .foregroundStyle(theme.textSecondary)
                 } footer: {
                     Text("Renders every seat's cards face-up. For hot-seat review and screenshot recipes — leave off for normal play.")
                         .font(.footnote)
+                        .foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.panel)
                 #endif
-                Section("About") {
-                    LabeledContent("Version", value: appVersion)
+                Section {
+                    LabeledContent {
+                        Text(appVersion).foregroundStyle(theme.textSecondary)
+                    } label: {
+                        Text("Version")
+                    }
+                } header: {
+                    Text("About").foregroundStyle(theme.textSecondary)
                 }
+                .listRowBackground(theme.panel)
             }
+            .foregroundStyle(theme.textPrimary)
+            .scrollContentBackground(.hidden)
+            .feltBackground()
             .navigationTitle("Settings")
+            .themeNavigationChrome()
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
                 }
             }
             .alert("Restart required", isPresented: $showRelaunchPrompt) {
@@ -90,9 +108,45 @@ public struct SettingsScreen: View {
         }
     }
 
+    private var appearanceSection: some View {
+        Section {
+            NavigationLink {
+                ThemeGallery()
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: theme.style.motif)
+                        .font(.title2)
+                        .foregroundStyle(theme.cardBackInk)
+                        .frame(width: 46, height: 54)
+                        .background(theme.cardBack, in: RoundedRectangle(cornerRadius: 8))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(theme.cardBackInk.opacity(0.6), lineWidth: 1)
+                        }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Table theme")
+                            .foregroundStyle(theme.textPrimary)
+                        Text(AppTheme.resolve(appThemeRaw).name)
+                            .font(.subheadline)
+                            .foregroundStyle(theme.textSecondary)
+                    }
+                }
+                .padding(.vertical, 6)
+            }
+            .accessibilityIdentifier(UIIdentifiers.settingsThemePicker)
+        } header: {
+            Text("Appearance").foregroundStyle(theme.textSecondary)
+        }
+        .listRowBackground(theme.panel)
+    }
+
     private var accountSection: some View {
         Section {
-            LabeledContent("Online account", value: accountStatusText)
+            LabeledContent {
+                Text(accountStatusText).foregroundStyle(theme.textSecondary)
+            } label: {
+                Text("Online account")
+            }
             Button(role: .destructive) {
                 showDeleteAccountConfirm = true
             } label: {
@@ -105,30 +159,38 @@ public struct SettingsScreen: View {
                     Label("Delete online account", systemImage: "trash")
                 }
             }
+            .tint(theme.error)
             .disabled(onDeleteOnlineAccount == nil || isDeletingAccount)
             .accessibilityIdentifier(UIIdentifiers.onlineDeleteAccount)
 
             if usesCollapsibleExplanations {
                 DisclosureGroup {
                     Text(accountExplanation)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                 } label: {
                     Label("What account deletion removes", systemImage: "info.circle")
                 }
             }
         } header: {
             Text("Account")
+                .foregroundStyle(theme.textSecondary)
         } footer: {
             if !usesCollapsibleExplanations {
                 Text(accountExplanation)
-                .font(.footnote)
+                    .font(.footnote)
+                .foregroundStyle(theme.textSecondary)
             }
         }
+        .listRowBackground(theme.panel)
     }
 
     private var privacySection: some View {
         Section {
-            LabeledContent("Tracking permission", value: trackingStatusText)
+            LabeledContent {
+                Text(trackingStatusText).foregroundStyle(theme.textSecondary)
+            } label: {
+                Text("Tracking permission")
+            }
             Button {
                 Task { await requestTrackingPermission() }
             } label: {
@@ -150,19 +212,22 @@ public struct SettingsScreen: View {
             if usesCollapsibleExplanations {
                 DisclosureGroup {
                     Text(privacyExplanation)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                 } label: {
                     Label("Why this permission is needed", systemImage: "info.circle")
                 }
             }
         } header: {
             Text("Privacy")
+                .foregroundStyle(theme.textSecondary)
         } footer: {
             if !usesCollapsibleExplanations {
                 Text(privacyExplanation)
                     .font(.footnote)
+                .foregroundStyle(theme.textSecondary)
             }
         }
+        .listRowBackground(theme.panel)
     }
 
     /// Large-content users should encounter the controls first rather than
@@ -193,10 +258,13 @@ public struct SettingsScreen: View {
             }
         } header: {
             Text("Table")
+                .foregroundStyle(theme.textSecondary)
         } footer: {
             Text("Controls the visual order of face-up cards in hands.")
                 .font(.footnote)
+                .foregroundStyle(theme.textSecondary)
         }
+        .listRowBackground(theme.panel)
     }
 
     private var languageSection: some View {
@@ -214,10 +282,13 @@ public struct SettingsScreen: View {
             .accessibilityIdentifier(UIIdentifiers.settingsLanguagePicker)
         } header: {
             Text("Language")
+                .foregroundStyle(theme.textSecondary)
         } footer: {
             Text("Applies after restarting the app.")
                 .font(.footnote)
+                .foregroundStyle(theme.textSecondary)
         }
+        .listRowBackground(theme.panel)
     }
 
     private var appVersion: String {

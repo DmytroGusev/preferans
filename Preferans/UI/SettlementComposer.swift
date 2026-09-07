@@ -8,6 +8,8 @@ import PreferansEngine
 /// "Declarer: N tricks" rows — the choice is one number, so it reads as one
 /// gesture.
 struct SettlementComposer: View {
+    @Environment(\.tableTheme) private var theme
+
     /// What "the declarer succeeds" means for the live verdict.
     enum Goal: Equatable {
         /// A positive contract: the declarer needs `needs` total tricks in a
@@ -63,7 +65,7 @@ struct SettlementComposer: View {
     }
 
     private var verdictColor: Color {
-        declarerSucceeds ? TableTheme.goldBright : Self.danger
+        declarerSucceeds ? theme.accentStrong : theme.error
     }
 
     var body: some View {
@@ -108,7 +110,7 @@ struct SettlementComposer: View {
             .frame(maxWidth: 620)
 
             Rectangle()
-                .fill(TableTheme.inkCream.opacity(0.14))
+                .fill(theme.textPrimary.opacity(0.14))
                 .frame(width: 0.5, height: 104)
 
             VStack(spacing: 10) {
@@ -124,20 +126,20 @@ struct SettlementComposer: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Rectangle().fill(TableTheme.gold.opacity(0.30)).frame(height: 0.5)
+            Rectangle().fill(theme.accent.opacity(0.30)).frame(height: 0.5)
             (Text("Split") + Text(" ") + Text("\(remaining) tricks"))
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
                 .fixedSize()
-            Rectangle().fill(TableTheme.gold.opacity(0.30)).frame(height: 0.5)
+            Rectangle().fill(theme.accent.opacity(0.30)).frame(height: 0.5)
         }
     }
 
     private var endpointLabels: some View {
         HStack(alignment: .firstTextBaseline) {
-            sideLabel(declarerName, count: declarerTotal, tint: TableTheme.goldBright, alignment: .leading)
+            sideLabel(declarerName, count: declarerTotal, tint: theme.accentStrong, alignment: .leading)
             Spacer(minLength: 12)
-            sideLabel(defenseName, count: defenseTotal, tint: TableTheme.inkCream, alignment: .trailing)
+            sideLabel(defenseName, count: defenseTotal, tint: theme.textPrimary, alignment: .trailing)
         }
     }
 
@@ -145,7 +147,7 @@ struct SettlementComposer: View {
         VStack(alignment: alignment, spacing: 1) {
             Text(name)
                 .font(.caption2)
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
             Text("\(count)")
                 .font(.title3.weight(.bold).monospacedDigit())
@@ -171,14 +173,14 @@ struct SettlementComposer: View {
                 // defending side — clipped to the track so only the divider
                 // edge is square.
                 ZStack(alignment: .leading) {
-                    Rectangle().fill(TableTheme.inkCream.opacity(0.12))
+                    Rectangle().fill(theme.textPrimary.opacity(0.12))
                     Rectangle()
-                        .fill(TableTheme.gold.opacity(declarerSucceeds ? 0.90 : 0.50))
+                        .fill(theme.accent.opacity(declarerSucceeds ? 0.90 : 0.50))
                         .frame(width: declarerWidth)
                 }
                 .frame(height: 26)
                 .clipShape(track)
-                .overlay(track.strokeBorder(TableTheme.inkCream.opacity(0.14), lineWidth: 0.5))
+                .overlay(track.strokeBorder(theme.textPrimary.opacity(0.14), lineWidth: 0.5))
 
                 // Range markers: everything outside them is already won, locked.
                 floorMarker.offset(x: lowFloor - 1)
@@ -186,9 +188,9 @@ struct SettlementComposer: View {
 
                 // Divider handle.
                 Capsule()
-                    .fill(TableTheme.inkCream)
+                    .fill(theme.textPrimary)
                     .frame(width: 5, height: 32)
-                    .overlay(Capsule().strokeBorder(TableTheme.feltEdge.opacity(0.5), lineWidth: 0.5))
+                    .overlay(Capsule().strokeBorder(theme.edge.opacity(0.5), lineWidth: 0.5))
                     .shadow(color: .black.opacity(0.40), radius: 2.5, y: 1)
                     .offset(x: knobX - 2.5)
             }
@@ -222,7 +224,7 @@ struct SettlementComposer: View {
 
     private var floorMarker: some View {
         RoundedRectangle(cornerRadius: 1)
-            .fill(TableTheme.inkCream.opacity(0.55))
+            .fill(theme.textPrimary.opacity(0.55))
             .frame(width: 2, height: 30)
     }
 
@@ -259,7 +261,7 @@ struct SettlementComposer: View {
     private func contractGlyph(tricks: Int, strain: Suit?) -> Text {
         let lead = Text("\(tricks)")
         if let strain {
-            return lead + Text(strain.symbol).foregroundColor(strain.color(on: .felt))
+            return lead + Text(strain.symbol).foregroundColor(strain.color(on: .felt, theme: theme))
         }
         return lead + Text("NT")
     }
@@ -296,7 +298,6 @@ struct SettlementComposer: View {
 
     /// Muted terracotta that reads as "failure" against the felt without the
     /// alarm of system red — matched to the felt suit-red palette.
-    private static let danger = Color(red: 0.92, green: 0.46, blue: 0.40)
 }
 
 #if DEBUG
@@ -304,9 +305,11 @@ struct SettlementComposer: View {
 /// `UITestFlags.previewSettlement` launch flag (see `PreferansApp`) so the real
 /// view can be screenshotted without driving a game to a settle-able position.
 struct SettlementPreviewGallery: View {
+    @Environment(\.tableTheme) private var theme
+
     var body: some View {
         ZStack {
-            TableTheme.feltMid.ignoresSafeArea()
+            theme.backgroundMid.ignoresSafeArea()
             ScrollView {
                 VStack(spacing: 16) {
                     state("Open game — makes", remaining: 3, won: 5,
@@ -330,7 +333,7 @@ struct SettlementPreviewGallery: View {
         VStack(spacing: 6) {
             Text(title)
                 .font(.caption.weight(.bold))
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
             SettlementComposer(
                 declarerName: "Olga", defenseName: "Defense",
                 remaining: remaining, currentDeclarerTricks: won,
@@ -357,7 +360,7 @@ struct SettlementPreviewGallery: View {
         onCancel: {}
     )
     .padding()
-    .background(TableTheme.feltMid)
+    .feltBackground()
 }
 
 #Preview("Settle — misère") {
@@ -372,5 +375,5 @@ struct SettlementPreviewGallery: View {
         onCancel: {}
     )
     .padding()
-    .background(TableTheme.feltMid)
+    .feltBackground()
 }

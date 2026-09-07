@@ -95,6 +95,8 @@
 		C0DE00000000000000000002 /* OnlineCommandOutbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000001 /* OnlineCommandOutbox.swift */; };
 		C0DE00000000000000000102 /* OnlineGamePresenting.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000101 /* OnlineGamePresenting.swift */; };
 		C0DE00000000000000000202 /* ServerGameCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000201 /* ServerGameCoordinator.swift */; };
+		C0DE00000000000000000302 /* ThemeGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000301 /* ThemeGallery.swift */; };
+		C0DE00000000000000000402 /* ThemeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000401 /* ThemeUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -210,6 +212,8 @@
 		C0DE00000000000000000001 /* OnlineCommandOutbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/OnlineCommandOutbox.swift; sourceTree = "<group>"; };
 		C0DE00000000000000000101 /* OnlineGamePresenting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/OnlineGamePresenting.swift; sourceTree = "<group>"; };
 		C0DE00000000000000000201 /* ServerGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/ServerGameCoordinator.swift; sourceTree = "<group>"; };
+		C0DE00000000000000000301 /* ThemeGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ThemeGallery.swift; sourceTree = "<group>"; };
+		C0DE00000000000000000401 /* ThemeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -314,6 +318,7 @@
 				B00000000000000000000074 /* ActionBarView.swift */,
 				B00000000000000000000C01 /* SettlementComposer.swift */,
 				B00000000000000000000075 /* TableTheme.swift */,
+				C0DE00000000000000000301 /* ThemeGallery.swift */,
 				B00000000000000000000076 /* SettingsScreen.swift */,
 				B00000000000000000000077 /* ScoreFormatting.swift */,
 				B00000000000000000000078 /* GameOverCard.swift */,
@@ -353,6 +358,7 @@
 				E0000000000000000000A042 /* MatchUITests.swift */,
 				E0000000000000000000A046 /* FullGameUITests.swift */,
 				E0000000000000000000A048 /* RedesignScreenshotTests.swift */,
+				C0DE00000000000000000401 /* ThemeUITests.swift */,
 				E0000000000000000000A04A /* AccessibilityContractTests.swift */,
 				E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */,
 				E0000000000000000000AFB1 /* OnlineScreensScreenshotTests.swift */,
@@ -530,6 +536,7 @@
 				B00000000000000000000064 /* ActionBarView.swift in Sources */,
 				B00000000000000000000C00 /* SettlementComposer.swift in Sources */,
 				B00000000000000000000065 /* TableTheme.swift in Sources */,
+				C0DE00000000000000000302 /* ThemeGallery.swift in Sources */,
 				B00000000000000000000066 /* SettingsScreen.swift in Sources */,
 				B00000000000000000000067 /* ScoreFormatting.swift in Sources */,
 				B00000000000000000000068 /* GameOverCard.swift in Sources */,
@@ -552,6 +559,7 @@
 				E0000000000000000000A043 /* MatchUITests.swift in Sources */,
 				E0000000000000000000A047 /* FullGameUITests.swift in Sources */,
 				E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */,
+				C0DE00000000000000000402 /* ThemeUITests.swift in Sources */,
 				E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */,
 				E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */,
 				E0000000000000000000AFB0 /* OnlineScreensScreenshotTests.swift in Sources */,

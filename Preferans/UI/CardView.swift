@@ -70,6 +70,8 @@ extension Array where Element == ProjectedCard {
 }
 
 public struct CardView: View {
+    @Environment(\.tableTheme) private var theme
+
     public enum Size: Equatable {
         case standard
         case compact
@@ -115,6 +117,8 @@ public struct CardView: View {
             }
         }
     }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public var card: ProjectedCard
     public var isPlayable: Bool
@@ -168,10 +172,10 @@ public struct CardView: View {
             if isTalon {
                 Text("badge.prikup")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.onAccent)
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
-                    .background(Color.orange, in: Capsule())
+                    .background(theme.accent, in: Capsule())
                     .padding(2)
                     .accessibilityLabel("From the prikup")
             }
@@ -183,7 +187,7 @@ public struct CardView: View {
         .accessibilityLabel(card.description)
         .accessibilityIdentifier(identifier)
         .accessibilityAddTraits(.isButton)
-        .animation(.spring(response: 0.28, dampingFraction: 0.78), value: isSelected)
+        .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.78), value: isSelected)
     }
 
     private func cardFace(known: Card) -> some View {
@@ -226,25 +230,21 @@ public struct CardView: View {
     private var cardBack: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size.cornerRadius)
-                .fill(LinearGradient(
-                    colors: [
-                        Color(red: 0.32, green: 0.06, blue: 0.08),
-                        Color(red: 0.18, green: 0.03, blue: 0.04)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
+                .fill(theme.cardBack.gradient)
             RoundedRectangle(cornerRadius: size.cornerRadius - 2)
-                .strokeBorder(Color(red: 0.83, green: 0.67, blue: 0.34).opacity(0.55), lineWidth: 0.8)
+                .strokeBorder(theme.cardBackInk.opacity(0.65), lineWidth: 0.8)
                 .padding(3)
-            Image(systemName: "suit.club.fill")
+            RoundedRectangle(cornerRadius: size.cornerRadius - 2)
+                .strokeBorder(theme.cardBackInk.opacity(0.20), lineWidth: 0.5)
+                .padding(6)
+            Image(systemName: theme.style.motif)
                 .font(size.pipFont)
-                .foregroundStyle(Color(red: 0.83, green: 0.67, blue: 0.34).opacity(0.65))
+                .foregroundStyle(theme.cardBackInk)
         }
     }
 
     private var borderColor: Color {
-        if isSelected { return .accentColor }
+        if isSelected { return theme.accent }
         return .black.opacity(0.18)
     }
 

@@ -8,6 +8,8 @@ import PreferansEngine
 /// entirely until there's something to show (or an account to show nothing
 /// for), so a brand-new player isn't greeted by an empty shelf.
 struct LobbyYourGamesSection: View {
+    @Environment(\.tableTheme) private var theme
+
     @ObservedObject var viewModel: LobbyViewModel
     @ObservedObject var gameLibrary: OnlineGameLibrary
     let onSelectFinishedGame: (OnlineGameSummary) -> Void
@@ -32,7 +34,7 @@ struct LobbyYourGamesSection: View {
                 if let error = gameLibrary.loadError {
                     Text(error)
                         .font(.caption)
-                        .foregroundStyle(TableTheme.warningInk)
+                        .foregroundStyle(theme.warning)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -43,7 +45,7 @@ struct LobbyYourGamesSection: View {
                     ProgressView().controlSize(.small)
                     Text("Loading your games…")
                         .font(.caption)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -51,7 +53,7 @@ struct LobbyYourGamesSection: View {
         } else if gameLibrary.hasLoaded, viewModel.currentOnlineAccountID != nil {
             Text("Games you start or join show up here, so you can pick up where you left off.")
                 .font(.footnote)
-                .foregroundStyle(TableTheme.inkCreamDim)
+                .foregroundStyle(theme.textMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier(UIIdentifiers.onlineGamesEmpty)
         }
@@ -70,7 +72,7 @@ struct LobbyYourGamesSection: View {
                 }
             }
             .buttonStyle(.plain)
-            .foregroundStyle(TableTheme.gold)
+            .foregroundStyle(theme.accent)
             .disabled(gameLibrary.isLoading)
             .accessibilityLabel("Refresh your games")
             .accessibilityIdentifier(UIIdentifiers.onlineGamesRefresh)
@@ -82,7 +84,7 @@ struct LobbyYourGamesSection: View {
             .font(.caption2.weight(.semibold))
             .tracking(1.0)
             .textCase(.uppercase)
-            .foregroundStyle(TableTheme.gold)
+            .foregroundStyle(theme.accent)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -93,14 +95,14 @@ struct LobbyYourGamesSection: View {
             HStack(spacing: 10) {
                 Image(systemName: "play.circle.fill")
                     .font(.title3)
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(continueTitle(game))
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                     Text(continueSubtitle(game))
                         .font(.caption2)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -109,11 +111,11 @@ struct LobbyYourGamesSection: View {
                 } else {
                     Image(systemName: "chevron.right")
                         .font(.footnote)
-                        .foregroundStyle(TableTheme.inkCreamDim)
+                        .foregroundStyle(theme.textMuted)
                 }
             }
             .padding(10)
-            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+            .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .disabled(viewModel.isOnlineRoomLoading)
@@ -137,23 +139,23 @@ struct LobbyYourGamesSection: View {
             HStack(spacing: 10) {
                 Image(systemName: "flag.checkered")
                     .font(.title3)
-                    .foregroundStyle(TableTheme.gold)
+                    .foregroundStyle(theme.accent)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(historyTitle(game))
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                     Text(historySubtitle(game))
                         .font(.caption2)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right")
                     .font(.footnote)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
             }
             .padding(10)
-            .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
+            .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier(UIIdentifiers.onlineGameHistory(roomCode: game.roomCode))
@@ -205,19 +207,28 @@ func onlinePanel<Content: View>(
     icon: String,
     @ViewBuilder content: () -> Content
 ) -> some View {
-    VStack(alignment: .leading, spacing: 10) {
-        Label {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .tracking(1.0)
-                .textCase(.uppercase)
-                .foregroundStyle(TableTheme.gold)
-        } icon: {
-            Image(systemName: icon)
-                .foregroundStyle(TableTheme.goldBright)
+    OnlinePanel(title: title, icon: icon, content: content())
+}
+
+private struct OnlinePanel<Content: View>: View {
+    @Environment(\.tableTheme) private var theme
+    let title: LocalizedStringKey
+    let icon: String
+    let content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .tracking(1)
+                    .textCase(.uppercase)
+            } icon: {
+                Image(systemName: icon)
+            }
+            .foregroundStyle(theme.accent)
+            content
         }
-        content()
+        .padding(14)
+        .feltSurface(.card, radius: TableTheme.Radius.sm)
     }
-    .padding(14)
-    .feltSurface(.card, radius: TableTheme.Radius.sm)
 }

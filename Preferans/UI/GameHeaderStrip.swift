@@ -59,7 +59,7 @@ extension ProjectionGameScreen {
             headerIconTarget(
                 Image(systemName: "arrow.counterclockwise.circle.fill")
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.goldBright, Color.black.opacity(0.30))
+                    .foregroundStyle(theme.accentStrong, theme.shade.opacity(0.30))
                     .font(.title3)
             )
         }
@@ -77,7 +77,7 @@ extension ProjectionGameScreen {
             headerIconTarget(
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                    .foregroundStyle(theme.textPrimary, theme.shade.opacity(0.30))
                     .font(.title3)
             )
         }
@@ -93,10 +93,10 @@ extension ProjectionGameScreen {
         } label: {
             headerIconTarget(
                 Image(systemName: "tablecells.fill")
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .font(.subheadline.weight(.semibold))
                     .padding(6)
-                    .background(Color.black.opacity(0.30), in: Capsule())
+                    .background(theme.shade.opacity(0.30), in: Capsule())
             )
         }
         .accessibilityLabel("Scoresheet")
@@ -108,16 +108,16 @@ extension ProjectionGameScreen {
             Text(Localized.phaseTitle(projection.phase))
                 .font(.caption.weight(.bold))
                 // Phase name is orientation, not an action — cream, not gold.
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
                 .lineLimit(1)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
             if !shouldShowCenterDealCTA {
                 Text("·")
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
                 Localized.statusText(projection)
                     .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
                     .accessibilityIdentifier(UIIdentifiers.phaseMessage)
@@ -173,7 +173,7 @@ extension ProjectionGameScreen {
             headerIconTarget(
                 Image(systemName: "ellipsis.circle.fill")
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(TableTheme.inkCream, Color.black.opacity(0.30))
+                    .foregroundStyle(theme.textPrimary, theme.shade.opacity(0.30))
                     .font(.title3)
             )
             .accessibilityLabel("Menu")

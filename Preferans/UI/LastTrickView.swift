@@ -2,6 +2,8 @@ import SwiftUI
 import PreferansEngine
 
 struct LastTrickView: View {
+    @Environment(\.tableTheme) private var theme
+
     var projection: PlayerGameProjection
     var trick: Trick
 
@@ -10,13 +12,13 @@ struct LastTrickView: View {
             VStack(spacing: 6) {
                 Text("\(projection.displayName(for: trick.winner)) won")
                     .font(.headline.weight(.heavy))
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                     .multilineTextAlignment(.center)
                 Text("Last trick")
                     .font(.caption.weight(.bold))
                     .tracking(1.1)
                     .textCase(.uppercase)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
             }
             HStack(alignment: .bottom, spacing: 12) {
                 ForEach(Array(trick.tablePlays.enumerated()), id: \.offset) { _, play in
@@ -40,14 +42,14 @@ struct LastTrickView: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(isWinner ? TableTheme.goldBright.opacity(0.95) : .clear,
+                    .strokeBorder(isWinner ? theme.accentStrong.opacity(0.95) : .clear,
                                   lineWidth: isWinner ? 2 : 0)
             )
-            .shadow(color: isWinner ? TableTheme.goldBright.opacity(0.45) : .clear,
+            .shadow(color: isWinner ? theme.accentStrong.opacity(0.45) : .clear,
                     radius: isWinner ? 12 : 0)
             Text(projection.displayName(for: play.player))
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(isWinner ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                .foregroundStyle(isWinner ? theme.accentStrong : theme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.62)
         }

@@ -8,6 +8,8 @@ import PreferansEngine
 /// second row so the seat footprint stays compact and readable from the
 /// viewer's perspective regardless of where the seat sits at the table.
 public struct OpponentSeatView: View {
+    @Environment(\.tableTheme) private var theme
+
     public var seat: SeatProjection
     /// Position relative to the viewer. Drives a tiny visual offset (no
     /// rotation any more — every opponent's hand reads horizontally from
@@ -135,17 +137,17 @@ public struct OpponentSeatView: View {
             }
             Text(seat.displayName)
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCreamSoft)
+                .foregroundStyle(theme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
             Text("OUT")
                 .font(.caption2.weight(.bold))
                 .tracking(0.5)
-                .foregroundStyle(TableTheme.feltDeep)
+                .foregroundStyle(theme.onAccent)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
-                .background(TableTheme.inkCreamSoft, in: Capsule())
+                .background(theme.textSecondary, in: Capsule())
                 .accessibilityIdentifier(UIIdentifiers.seatRole(seat.player))
         }
         .padding(.horizontal, 6)
@@ -178,7 +180,7 @@ public struct OpponentSeatView: View {
                 }
                 Text(seat.displayName)
                     .font((isDeemphasized ? Font.caption : Font.subheadline).weight(.semibold))
-                    .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright : TableTheme.inkCream)
+                    .foregroundStyle(seat.isCurrentActor ? theme.accentStrong : theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.64)
                     .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
@@ -186,7 +188,7 @@ public struct OpponentSeatView: View {
             if let subtitle = seatSubtitle {
                 Text(subtitle)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(seat.isCurrentActor ? TableTheme.goldBright.opacity(0.90) : TableTheme.inkCreamSoft)
+                    .foregroundStyle(seat.isCurrentActor ? theme.accentStrong.opacity(0.90) : theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
                     .accessibilityIdentifier(UIIdentifiers.seatRoleBadge(seat.player))
@@ -196,7 +198,7 @@ public struct OpponentSeatView: View {
         .padding(.horizontal, isDeemphasized ? 8 : 10)
         .padding(.vertical, isDeemphasized ? 5 : 7)
         .feltSurface(seat.isCurrentActor ? .seatActive : .seat, radius: TableTheme.Radius.sm)
-        .shadow(color: seat.isCurrentActor ? TableTheme.goldBright.opacity(0.25) : .clear,
+        .shadow(color: seat.isCurrentActor ? theme.accentStrong.opacity(0.25) : .clear,
                 radius: seat.isCurrentActor ? 8 : 0)
     }
 
@@ -273,12 +275,12 @@ public struct OpponentSeatView: View {
     private var trickCounter: some View {
         Text("\(seat.trickCount) tricks")
             .font(.caption.weight(.medium).monospacedDigit())
-            .foregroundStyle(TableTheme.inkCreamSoft)
+            .foregroundStyle(theme.textSecondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
-            .background(Color.black.opacity(0.20), in: Capsule())
+            .background(theme.shade.opacity(0.20), in: Capsule())
             .overlay(
-                Capsule().strokeBorder(TableTheme.inkCream.opacity(0.08), lineWidth: 0.5)
+                Capsule().strokeBorder(theme.textPrimary.opacity(0.08), lineWidth: 0.5)
             )
             .accessibilityLabel("\(seat.trickCount) tricks")
             .accessibilityIdentifier(UIIdentifiers.seatTrickCount(seat.player))
@@ -412,6 +414,8 @@ struct SeatOrderBadgeLayoutPolicy: Equatable {
 }
 
 struct SeatOrderBadge: View {
+    @Environment(\.tableTheme) private var theme
+
     var number: Int
     var player: PlayerID
     var isCurrentActor: Bool
@@ -440,20 +444,20 @@ struct SeatOrderBadge: View {
             // Only the seat whose turn it is gets gold; every other seat
             // number is quiet cream so bright gold reads as "act now", not
             // "here is a number".
-            .foregroundStyle(isCurrentActor ? TableTheme.feltDeep : TableTheme.inkCream)
+            .foregroundStyle(isCurrentActor ? theme.onAccent : theme.textPrimary)
             .frame(width: diameter, height: diameter)
             .background(
-                Circle().fill(isCurrentActor ? TableTheme.goldBright : Color.black.opacity(0.34))
+                Circle().fill(isCurrentActor ? theme.accentStrong : theme.shade.opacity(0.34))
             )
             .overlay(
                 Circle().strokeBorder(
                     isCurrentActor
-                        ? TableTheme.goldBright.opacity(0.95)
-                        : TableTheme.inkCream.opacity(0.22),
+                        ? theme.accentStrong.opacity(0.95)
+                        : theme.textPrimary.opacity(0.22),
                     lineWidth: isCurrentActor ? 1.2 : 0.8
                 )
             )
-            .shadow(color: isCurrentActor ? TableTheme.goldBright.opacity(0.35) : .clear,
+            .shadow(color: isCurrentActor ? theme.accentStrong.opacity(0.35) : .clear,
                     radius: isCurrentActor ? 6 : 0)
             .accessibilityLabel(Text("Seat \(number)"))
             .accessibilityIdentifier(UIIdentifiers.seatOrder(player))

@@ -8,6 +8,8 @@ import PreferansEngine
 /// (`OpponentSeatView` / viewer name plate) handles "what did X do?"
 /// look-up; this view handles "something just happened — look here".
 public struct CenterActionBanner: View {
+    @Environment(\.tableTheme) private var theme
+
     public var action: RecentAction?
     public var insight: BotDecisionExplanation?
     public var displayName: (PlayerID) -> String
@@ -62,24 +64,24 @@ public struct CenterActionBanner: View {
             HStack(spacing: 8) {
                 Text(displayName(action.player))
                     .font(.headline.weight(.bold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                 Text("·")
                     .font(.headline)
-                    .foregroundStyle(TableTheme.inkCreamDim)
+                    .foregroundStyle(theme.textMuted)
                 action.label.glyph(emphasis: .banner)
                     .font(.title3.weight(.bold))
             }
 
             if let insight = matchingInsight(for: action) {
-                Divider().overlay(TableTheme.gold.opacity(0.28))
+                Divider().overlay(theme.accent.opacity(0.28))
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Image(systemName: "sparkles")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(TableTheme.goldBright)
+                        .foregroundStyle(theme.accentStrong)
                     Text(insight.rationale.label)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityIdentifier(UIIdentifiers.botInsightBanner)
@@ -89,11 +91,11 @@ public struct CenterActionBanner: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.black.opacity(0.68))
+                .fill(theme.panel)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(TableTheme.gold.opacity(0.55), lineWidth: 1)
+                .strokeBorder(theme.accent.opacity(0.55), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.45), radius: 12, y: 4)
         .frame(maxWidth: 340)

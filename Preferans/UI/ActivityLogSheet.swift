@@ -2,6 +2,8 @@ import SwiftUI
 import PreferansEngine
 
 struct ActivityLogSheet: View {
+    @Environment(\.tableTheme) private var theme
+
     var entries: [ActivityLogEntry]
     var botInsights: [BotDecisionExplanation]
     var displayName: (PlayerID) -> String
@@ -49,7 +51,7 @@ struct ActivityLogSheet: View {
                             } header: {
                                 Text("bot.insight.section")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(TableTheme.gold)
+                                    .foregroundStyle(theme.accent)
                                     .textCase(.uppercase)
                             }
                         }
@@ -66,7 +68,7 @@ struct ActivityLogSheet: View {
                             } header: {
                                 Text("Latest activity")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(TableTheme.inkCreamSoft)
+                                    .foregroundStyle(theme.textSecondary)
                                     .textCase(.uppercase)
                             }
                         }
@@ -77,10 +79,11 @@ struct ActivityLogSheet: View {
                 }
             }
             .background {
-                TableTheme.feltGradient
+                theme.gradient
                     .ignoresSafeArea()
             }
             .navigationTitle("Activity log")
+            .themeNavigationChrome()
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -97,16 +100,18 @@ struct ActivityLogSheet: View {
 }
 
 private struct BotInsightRow: View {
+    @Environment(\.tableTheme) private var theme
+
     var insight: BotDecisionExplanation
     var displayName: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
-                Circle().fill(TableTheme.gold.opacity(0.18))
+                Circle().fill(theme.accent.opacity(0.18))
                 Image(systemName: "sparkles")
                     .font(.footnote.weight(.bold))
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
             }
             .frame(width: 34, height: 34)
 
@@ -114,19 +119,19 @@ private struct BotInsightRow: View {
                 HStack(spacing: 5) {
                     Text(verbatim: displayName)
                         .font(.callout.weight(.semibold))
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                     Text("·")
-                        .foregroundStyle(TableTheme.inkCreamDim)
+                        .foregroundStyle(theme.textMuted)
                     Text(insight.profile.temperament.label)
                     Text(insight.profile.difficulty.label)
                 }
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(TableTheme.gold)
+                .foregroundStyle(theme.accent)
                 .lineLimit(1)
 
                 Text(insight.rationale.label)
                     .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -139,28 +144,30 @@ private struct BotInsightRow: View {
 }
 
 private struct ActivityLogRow: View {
+    @Environment(\.tableTheme) private var theme
+
     var entry: ActivityLogEntry
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(entry.kind.tint.opacity(0.18))
+                    .fill(entry.kind.tint(in: theme).opacity(0.18))
                 Image(systemName: entry.kind.iconName)
                     .font(.footnote.weight(.bold))
-                    .foregroundStyle(entry.kind.tint)
+                    .foregroundStyle(entry.kind.tint(in: theme))
             }
             .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: entry.title)
                     .font(.callout.weight(.semibold))
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                 if let detail = entry.detail {
                     Text(verbatim: detail)
                         .font(.caption)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -168,11 +175,11 @@ private struct ActivityLogRow: View {
 
             Text(verbatim: entry.kind.label)
                 .font(.caption2.weight(.bold))
-                .foregroundStyle(entry.kind.tint)
+                .foregroundStyle(entry.kind.tint(in: theme))
                 .lineLimit(1)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(entry.kind.tint.opacity(0.13), in: Capsule())
+                .background(entry.kind.tint(in: theme).opacity(0.13), in: Capsule())
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
@@ -182,16 +189,18 @@ private struct ActivityLogRow: View {
 }
 
 private struct ActivityLogEmptyState: View {
+    @Environment(\.tableTheme) private var theme
+
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: "scroll")
                 .font(.title2.weight(.semibold))
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
                 .frame(width: 48, height: 48)
-                .background(TableTheme.gold.opacity(0.14), in: Circle())
+                .background(theme.accent.opacity(0.14), in: Circle())
             Text("No activity yet")
                 .font(.headline.weight(.semibold))
-                .foregroundStyle(TableTheme.inkCream)
+                .foregroundStyle(theme.textPrimary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -210,15 +219,15 @@ private extension ActivityLogEntry.Kind {
         }
     }
 
-    var tint: Color {
+    func tint(in theme: TableTheme) -> Color {
         switch self {
-        case .deal:       return TableTheme.inkCreamSoft
-        case .auction:    return TableTheme.goldBright
-        case .contract:   return Color(red: 0.58, green: 0.82, blue: 0.96)
-        case .defense:    return Color(red: 0.72, green: 0.86, blue: 0.62)
-        case .play:       return Color(red: 0.96, green: 0.78, blue: 0.54)
-        case .settlement: return Color(red: 0.84, green: 0.72, blue: 0.96)
-        case .scoring:    return TableTheme.gold
+        case .deal:       return theme.textSecondary
+        case .auction:    return theme.accentStrong
+        case .contract:   return theme.accent
+        case .defense:    return theme.success
+        case .play:       return theme.warning
+        case .settlement: return theme.accent
+        case .scoring:    return theme.accent
         }
     }
 }

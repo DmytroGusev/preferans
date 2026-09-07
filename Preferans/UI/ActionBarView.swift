@@ -31,6 +31,8 @@ struct ActionChoiceLayoutPolicy: Equatable {
 /// hand. Renders only the action that is currently legal for the
 /// viewer; opponents-turn renders an unobtrusive status row instead.
 public struct ActionBarView: View {
+    @Environment(\.tableTheme) private var theme
+
     public var projection: PlayerGameProjection
     public var selectedDiscard: Set<Card>
     public var selectedPlayCard: Card?
@@ -124,14 +126,14 @@ public struct ActionBarView: View {
     private func actionSectionTitle(_ title: LocalizedStringKey) -> some View {
         HStack(spacing: 10) {
             Rectangle()
-                .fill(TableTheme.gold.opacity(0.30))
+                .fill(theme.accent.opacity(0.30))
                 .frame(height: 0.5)
             Text(title)
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(TableTheme.goldBright)
+                .foregroundStyle(theme.accentStrong)
                 .fixedSize()
             Rectangle()
-                .fill(TableTheme.gold.opacity(0.30))
+                .fill(theme.accent.opacity(0.30))
                 .frame(height: 0.5)
         }
     }
@@ -152,7 +154,7 @@ public struct ActionBarView: View {
                 // the contract strip, and standard bid notation.
                 if let suit = label.suit {
                     Text(suit.symbol)
-                        .foregroundStyle(suit.color(on: .felt))
+                        .foregroundStyle(suit.color(on: .felt, theme: theme))
                 }
             }
             .frame(
@@ -161,7 +163,7 @@ public struct ActionBarView: View {
                 minHeight: 24
             )
         }
-        .buttonStyle(label.style)
+        .buttonStyle(label.style(in: theme))
         .accessibilityIdentifier(UIIdentifiers.bidButton(call))
     }
 
@@ -300,7 +302,7 @@ public struct ActionBarView: View {
             if let explanation = mandatoryWhistExplanation {
                 Text(explanation)
                     .font(.caption)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
             }
             HStack(spacing: 8) {
                 ForEach(calls, id: \.self) { call in
@@ -368,10 +370,10 @@ public struct ActionBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Discard two cards")
                     .font(.subheadline.bold())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                 Text("\(selectedDiscard.count) of 2")
                     .font(.caption2)
-                    .foregroundStyle(selectedDiscard.count == 2 ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                    .foregroundStyle(selectedDiscard.count == 2 ? theme.accentStrong : theme.textSecondary)
             }
             Spacer()
             Button {
@@ -411,38 +413,38 @@ public struct ActionBarView: View {
                 if let selectedPlayCard {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.caption)
-                        .foregroundStyle(TableTheme.goldBright)
+                        .foregroundStyle(theme.accentStrong)
                     HStack(spacing: 2) {
                         Text("Selected")
                         Text(selectedPlayCard.rank.symbol)
                             .fontWeight(.bold)
                         Text(selectedPlayCard.suit.symbol)
                             .fontWeight(.bold)
-                            .foregroundStyle(selectedPlayCard.suit.color(on: .felt))
+                            .foregroundStyle(selectedPlayCard.suit.color(on: .felt, theme: theme))
                     }
                     .font(.subheadline)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                 } else if !projection.legal.playableCards.isEmpty {
                     // The viewer is on lead: say what to do instead of
                     // repeating the header's "Trick N: <name>" line.
                     Image(systemName: "hand.tap.fill")
                         .font(.caption)
-                        .foregroundStyle(TableTheme.goldBright)
+                        .foregroundStyle(theme.accentStrong)
                     Text("Your turn — play a card")
                         .font(.subheadline)
-                        .foregroundStyle(TableTheme.inkCream)
+                        .foregroundStyle(theme.textPrimary)
                 } else if let actor = currentActorName {
                     Image(systemName: "hourglass")
                         .font(.caption)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                     Text("\(actor)'s turn")
                         .font(.subheadline)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                 } else {
                     Localized.statusText(projection)
                         .font(.subheadline)
-                        .foregroundStyle(TableTheme.inkCreamSoft)
+                        .foregroundStyle(theme.textSecondary)
                         .lineLimit(2)
                 }
                 Spacer()
@@ -477,12 +479,12 @@ public struct ActionBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(settlementHeadline(proposal.settlement, proposer: proposal.proposer))
                     .font(.subheadline.bold())
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Text(settlementCountsSummary(proposal.settlement))
                     .font(.caption2)
-                    .foregroundStyle(TableTheme.inkCreamSoft)
+                    .foregroundStyle(theme.textSecondary)
                     .lineLimit(1)
             }
             Spacer()
@@ -607,12 +609,12 @@ public struct ActionBarView: View {
         var icon: String?
         var kind: Kind
 
-        var style: FeltButtonStyle {
+        func style(in theme: TableTheme) -> FeltButtonStyle {
             switch kind {
             case .pass:   return FeltButtonStyle(emphasis: .dim)
             case .game:   return FeltButtonStyle(emphasis: .secondary)
-            case .misere: return FeltButtonStyle(emphasis: .secondary, tint: TableTheme.goldBright)
-            case .totus:  return FeltButtonStyle(emphasis: .primary, tint: TableTheme.goldBright)
+            case .misere: return FeltButtonStyle(emphasis: .secondary, tint: theme.accentStrong)
+            case .totus:  return FeltButtonStyle(emphasis: .primary, tint: theme.accentStrong)
             }
         }
 
@@ -638,7 +640,7 @@ public struct ActionBarView: View {
     /// suit strains delegate to ``Suit.color(on:)`` so the same pip color
     /// is used everywhere on the dark pill.
     private func strainColor(_ strain: Strain) -> Color {
-        strain.suit?.color(on: .felt) ?? TableTheme.inkCream
+        strain.suit?.color(on: .felt, theme: theme) ?? theme.textPrimary
     }
 
     private var isTotusDeclaration: Bool {

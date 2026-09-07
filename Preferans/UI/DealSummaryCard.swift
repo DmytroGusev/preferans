@@ -17,6 +17,8 @@ struct DealSummaryLayoutPolicy: Equatable {
 /// state belongs to this deal-scoped surface, so leaving the phase destroys
 /// the state instead of leaking "show opening hands" into a later deal.
 struct DealSummaryCard: View {
+    @Environment(\.tableTheme) private var theme
+
     let result: DealResult
     let projection: PlayerGameProjection
     let cardSuitOrder: CardSuitDisplayOrder
@@ -80,12 +82,12 @@ struct DealSummaryCard: View {
             VStack(spacing: 6) {
                 Text("Deal complete")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(TableTheme.goldBright)
+                    .foregroundStyle(theme.accentStrong)
                     .tracking(1.4)
                     .textCase(.uppercase)
                 Localized.dealResultHeadline(result, in: projection)
                     .font(.headline)
-                    .foregroundStyle(TableTheme.inkCream)
+                    .foregroundStyle(theme.textPrimary)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(UIIdentifiers.dealResultKind)
                 Text(UIIdentifiers.encode(result.kind))
@@ -169,7 +171,7 @@ struct DealSummaryCard: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(projection.displayName(for: player))
                 .font(.caption2.weight(.bold))
-                .foregroundStyle(player == projection.viewer ? TableTheme.goldBright : TableTheme.inkCreamSoft)
+                .foregroundStyle(player == projection.viewer ? theme.accentStrong : theme.textSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             VStack(alignment: .leading, spacing: 4) {
@@ -196,10 +198,10 @@ struct DealSummaryCard: View {
 
     private var dealSummaryBackground: some View {
         RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-            .fill(TableTheme.surfaceFill(.card))
+            .fill(theme.surfaceFill(.card))
             .overlay(
                 RoundedRectangle(cornerRadius: TableTheme.Radius.md, style: .continuous)
-                    .strokeBorder(TableTheme.surfaceBorder(.card), lineWidth: 1)
+                    .strokeBorder(theme.surfaceBorder(.card), lineWidth: 1)
             )
     }
 
@@ -220,24 +222,24 @@ struct DealSummaryCard: View {
                 VStack(spacing: 3) {
                     Text(projection.displayName(for: player))
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        .foregroundStyle(isDeclarer ? theme.accentStrong : theme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Text("\(result.trickCounts[player] ?? 0)")
                         .font(.title3.bold().monospacedDigit())
-                        .foregroundStyle(isDeclarer ? TableTheme.goldBright : TableTheme.inkCream)
+                        .foregroundStyle(isDeclarer ? theme.accentStrong : theme.textPrimary)
                         .accessibilityIdentifier(UIIdentifiers.seatTrickCount(player))
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
-                        .fill(Color.black.opacity(isDeclarer ? 0.32 : 0.18))
+                        .fill(theme.shade.opacity(isDeclarer ? 0.32 : 0.18))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: TableTheme.Radius.xs, style: .continuous)
                         .strokeBorder(
-                            isDeclarer ? TableTheme.goldBright.opacity(0.55) : TableTheme.inkCream.opacity(0.06),
+                            isDeclarer ? theme.accentStrong.opacity(0.55) : theme.textPrimary.opacity(0.06),
                             lineWidth: isDeclarer ? 1 : 0.5
                         )
                 )

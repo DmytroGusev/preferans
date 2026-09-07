@@ -11,6 +11,8 @@ import PreferansEngine
 /// experienced players "read" the table from the corners faster than from
 /// a list.
 public struct PulkaDiagramView: View {
+    @Environment(\.tableTheme) private var theme
+
     public var score: ScoreSheet
     public var rules: PreferansRules
     public var presentation: ScoreBoardPresentation
@@ -111,7 +113,7 @@ public struct PulkaDiagramView: View {
                 for point in corners.dropFirst() { path.addLine(to: point) }
                 path.closeSubpath()
             }
-            .stroke(presentation.diagramLine.opacity(0.35), lineWidth: 1)
+            .stroke(presentation.diagramLine(in: theme).opacity(0.35), lineWidth: 1)
 
             // The interior dividers: diagonals for the square, cevians to the
             // centre for the triangle. Faint and dashed so they read as the
@@ -125,7 +127,7 @@ public struct PulkaDiagramView: View {
                 }
             }
             .stroke(
-                presentation.diagramLine.opacity(0.2),
+                presentation.diagramLine(in: theme).opacity(0.2),
                 style: StrokeStyle(lineWidth: 0.8, dash: [3, 3])
             )
         }
@@ -134,7 +136,7 @@ public struct PulkaDiagramView: View {
     private func pulyaHub() -> some View {
         Text("Пуля")
             .font(.caption2.weight(.bold))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(theme.textSecondary)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(.regularMaterial, in: Capsule())
@@ -147,7 +149,7 @@ public struct PulkaDiagramView: View {
         if total > 0 {
             Text("\(total)")
                 .font(.caption2.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.textSecondary)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 1)
                 .background(.regularMaterial, in: Capsule())
@@ -159,7 +161,7 @@ public struct PulkaDiagramView: View {
 
     private func cornerCard(player: PlayerID) -> some View {
         let balance = score.balance(for: player, rules: rules)
-        let balanceColor: Color = balance > 0.05 ? .green : (balance < -0.05 ? .red : .secondary)
+        let balanceColor: Color = balance > 0.05 ? theme.success : (balance < -0.05 ? theme.error : theme.textSecondary)
         return VStack(spacing: 3) {
             Text(displayName(player))
                 .font(.subheadline.bold())
@@ -167,7 +169,7 @@ public struct PulkaDiagramView: View {
             HStack(spacing: 8) {
                 statCell(label: "П", value: "\(score.pool(for: player))", tint: .primary)
                 statCell(label: "Г", value: "\(score.mountain(for: player))",
-                         tint: score.mountain(for: player) > 0 ? .red : .primary)
+                         tint: score.mountain(for: player) > 0 ? theme.error : theme.textPrimary)
             }
             Text(ScoreFormatting.balance(balance))
                 .font(.caption.bold().monospacedDigit())
@@ -190,7 +192,7 @@ public struct PulkaDiagramView: View {
         HStack(spacing: 3) {
             Text(label)
                 .font(.caption2.weight(.bold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.textSecondary)
             Text(value)
                 .font(.callout.weight(.bold).monospacedDigit())
                 .foregroundStyle(tint)
