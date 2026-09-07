@@ -133,8 +133,8 @@ public enum BotMoveSpeed: String, CaseIterable, Identifiable, Equatable {
     public var delay: Duration {
         switch self {
         case .instant: return BotPacing.instant
-        case .normal:  return .milliseconds(1200)
-        case .slow:    return .milliseconds(2200)
+        case .normal:  return BotPacing.normal
+        case .slow:    return BotPacing.slow
         }
     }
 }

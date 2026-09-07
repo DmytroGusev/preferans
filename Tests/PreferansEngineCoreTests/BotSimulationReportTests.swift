@@ -3,8 +3,8 @@ import XCTest
 @testable import PreferansEngineTestSupport
 
 /// Plays many full matches end-to-end with bots in every seat and reports
-/// statistics + anomalies. This is a "manual playthrough" stand-in: it
-/// exercises the same paths a human-vs-bot session would hit, but in bulk.
+/// statistics and anomalies. This checks engine completion and legality;
+/// simulator interaction, pacing, and human judgments need separate evidence.
 ///
 /// Findings are printed to stdout (visible with `swift test --filter
 /// BotSimulationReportTests`); flagged-as-failure conditions are limited to
@@ -13,8 +13,7 @@ import XCTest
 final class BotSimulationReportTests: XCTestCase {
     private let players: [PlayerID] = ["N", "E", "S"]
 
-    /// The bulk sim (50 + 20 matches) costs ~55 s — the bulk of the whole
-    /// suite's runtime. Every `swift test` still plays a small smoke batch so
+    /// Every `swift test` plays a small smoke batch so
     /// the path can't rot; export `PREF_SIM_FULL=1` for the full statistical
     /// run (nightly / pre-release / after strategy changes).
     private var fullSim: Bool {
@@ -30,10 +29,11 @@ final class BotSimulationReportTests: XCTestCase {
         for matchIndex in 0..<matchCount {
             let match = MatchSettings(poolTarget: 6, raspasy: .singleShot)
             var engine = try PreferansEngine(players: players, match: match)
-            try await playMatch(engine: &engine, strategy: strategy, report: &report, matchIndex: matchIndex, rng: &rng)
-            report.matchesCompleted += 1
+            if try await playMatch(engine: &engine, strategy: strategy, report: &report, matchIndex: matchIndex, rng: &rng) {
+                report.matchesCompleted += 1
+            }
         }
-        report.print(label: "3-player x \(matchCount) matches, pool=6")
+        report.print(label: "3-player x \(matchCount) matches, table pool=6")
 
         // Hard assertions — failure here means a real bug surfaced during the
         // sim, not a statistical anomaly.
@@ -42,6 +42,7 @@ final class BotSimulationReportTests: XCTestCase {
         XCTAssertEqual(report.stalledDeals, 0)
         XCTAssertEqual(report.scoringInconsistencies, 0)
         XCTAssertEqual(report.dealCapHits, 0)
+        XCTAssertEqual(report.timeLimitHits, 0)
     }
 
     func testTwentyFourPlayerMatchesAgainstBots() async throws {
@@ -51,17 +52,19 @@ final class BotSimulationReportTests: XCTestCase {
         let matchCount = fullSim ? 20 : 3
         let four: [PlayerID] = ["N", "E", "S", "W"]
         for matchIndex in 0..<matchCount {
-            let match = MatchSettings(poolTarget: 8, raspasy: .singleShot)
+            let match = MatchSettings(poolTarget: 6 * four.count, raspasy: .singleShot)
             var engine = try PreferansEngine(players: four, match: match)
-            try await playMatch(engine: &engine, strategy: strategy, report: &report, matchIndex: matchIndex, rng: &rng)
-            report.matchesCompleted += 1
+            if try await playMatch(engine: &engine, strategy: strategy, report: &report, matchIndex: matchIndex, rng: &rng) {
+                report.matchesCompleted += 1
+            }
         }
-        report.print(label: "4-player x \(matchCount) matches, pool=8")
+        report.print(label: "4-player x \(matchCount) matches, pool=6 per player")
         XCTAssertEqual(report.matchesCompleted, matchCount)
         XCTAssertEqual(report.illegalActionAttempts, 0)
         XCTAssertEqual(report.stalledDeals, 0)
         XCTAssertEqual(report.scoringInconsistencies, 0)
         XCTAssertEqual(report.dealCapHits, 0)
+        XCTAssertEqual(report.timeLimitHits, 0)
     }
 
     // MARK: - Driver
@@ -72,18 +75,19 @@ final class BotSimulationReportTests: XCTestCase {
         report: inout SimReport,
         matchIndex: Int,
         rng: inout SeededRandomNumberGenerator
-    ) async throws {
-        let dealCap = 200
-        var dealsThisMatch = 0
-        while case .gameOver = engine.state { return }
-        outer: while dealsThisMatch < dealCap {
+    ) async throws -> Bool {
+        let started = Date()
+        for deal in 1...200 {
+            guard Date().timeIntervalSince(started) < 30 else {
+                report.timeLimitHits += 1
+                return false
+            }
             switch engine.state {
             case .gameOver:
-                break outer
+                return true
             case .waitingForDeal, .dealFinished:
                 let deck = Deck.standard32.shuffled(using: &rng)
                 _ = try engine.startDeal(deck: deck)
-                dealsThisMatch += 1
             default:
                 break
             }
@@ -91,15 +95,32 @@ final class BotSimulationReportTests: XCTestCase {
             report.illegalActionAttempts += drive.illegalActionAttempts
             if drive.stalled {
                 report.stalledDeals += 1
-                return
+                return false
             }
-            if case let .dealFinished(result) = engine.state {
+            switch engine.state {
+            case let .dealFinished(result):
                 report.observe(result: result, players: engine.players)
+                print("[bot-match] seats=\(engine.players.count) match=\(matchIndex + 1) deal=\(deal) phase=scored")
+            case let .gameOver(summary):
+                // The closing deal never enters dealFinished. Include it in
+                // the report and require a real, coherent terminal state.
+                report.observe(result: summary.lastDeal, players: engine.players)
+                if !engine.match.isPoolClosed(summary.finalScore)
+                    || abs(summary.standings.map(\.balance).reduce(0, +)) > 1e-8 {
+                    report.scoringInconsistencies += 1
+                }
+                let elapsed = Date().timeIntervalSince(started)
+                report.longestMatchSeconds = max(report.longestMatchSeconds, elapsed)
+                if elapsed >= 30 { report.timeLimitHits += 1 }
+                print("[bot-match] seats=\(engine.players.count) match=\(matchIndex + 1) deal=\(deal) phase=finished seconds=\(String(format: "%.2f", elapsed))")
+                return true
+            default:
+                report.stalledDeals += 1
+                return false
             }
         }
-        if dealsThisMatch >= dealCap {
-            report.dealCapHits += 1
-        }
+        report.dealCapHits += 1
+        return false
     }
 
 }
@@ -107,6 +128,8 @@ final class BotSimulationReportTests: XCTestCase {
 private struct SimReport {
     var matchesCompleted = 0
     var dealCapHits = 0
+    var timeLimitHits = 0
+    var longestMatchSeconds = 0.0
     var stalledDeals = 0
     var illegalActionAttempts = 0
     var scoringInconsistencies = 0
@@ -164,6 +187,8 @@ private struct SimReport {
         Swift.print("illegal action attempts:   \(illegalActionAttempts)")
         Swift.print("scoring inconsistencies:   \(scoringInconsistencies)")
         Swift.print("deal cap hits:             \(dealCapHits)")
+        Swift.print("time limit hits:           \(timeLimitHits)")
+        Swift.print(String(format: "longest match (seconds):   %.2f", longestMatchSeconds))
         Swift.print("declarer win/loss (game):  \(declarerWinCount) / \(declarerLossCount)")
         if !trickCountSamples.isEmpty {
             let avg = Double(trickCountSamples.reduce(0, +)) / Double(trickCountSamples.count)

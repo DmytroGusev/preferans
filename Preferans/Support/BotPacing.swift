@@ -1,7 +1,7 @@
 import Foundation
 
 /// Single source of truth for the bot-move pacing constants used by
-/// `GameViewModel.botMoveDelay`. Three named values, one place to look:
+/// `GameViewModel.botMoveDelay` and the lobby's speed picker:
 ///
 /// - ``interactive``: the production default applied when no UI test
 ///   flag is set. Slow enough that an observer can read each move on
@@ -25,6 +25,10 @@ import Foundation
 public enum BotPacing {
     /// Production default — applied when no test flag forces an override.
     public static let interactive: Duration = .milliseconds(500)
+
+    /// The lobby's normal and slow reading speeds.
+    public static let normal: Duration = .milliseconds(1200)
+    public static let slow: Duration = .milliseconds(2200)
 
     /// Applied **only** when the `-uiTestFastBotDelay` launch flag is
     /// present. Not used by manual sim runs.
