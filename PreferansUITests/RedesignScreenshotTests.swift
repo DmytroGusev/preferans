@@ -139,9 +139,8 @@ final class RedesignScreenshotTests: XCTestCase {
         XCTAssertTrue(settingsButton.waitForExistence(timeout: 2))
         settingsButton.tap()
         robot.waitForElement(UIIdentifiers.screenSettings)
-        XCTAssertTrue(app.staticTexts["Аккаунт"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts["Онлайн-аккаунт"].exists)
-        XCTAssertTrue(app.buttons["Удалить онлайн-аккаунт"].exists)
+        XCTAssertTrue(app.staticTexts["Внешний вид"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons[UIIdentifiers.settingsThemePicker].exists)
         MatchScreenshotRecorder(
             testCase: self,
             app: app,
@@ -149,6 +148,12 @@ final class RedesignScreenshotTests: XCTestCase {
             filePrefix: "settings"
         )
         .capture(name: "russian-accessibility-xxxl", force: true, attach: false)
+        let deleteAccount = app.buttons[UIIdentifiers.onlineDeleteAccount]
+        for _ in 0..<8 where !deleteAccount.isHittable { app.swipeUp() }
+        XCTAssertTrue(deleteAccount.isHittable)
+        XCTAssertEqual(deleteAccount.label, "Удалить онлайн-аккаунт")
+        MatchScreenshotRecorder(testCase: self, app: app, outputDirectory: output, filePrefix: "settings")
+            .capture(name: "russian-account-accessibility-xxxl", force: true, attach: false)
     }
 
     /// Normal iPad keeps the dedicated navigation/setup columns, while

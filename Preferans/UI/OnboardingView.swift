@@ -3,11 +3,13 @@ import PreferansEngine
 
 struct RootLaunchView: View {
     @AppStorage(SettingsKeys.firstLaunchOnboardingCompleted) private var onboardingCompleted = false
+    @State private var completedThisLaunch = false
 
     var body: some View {
-        if TestHarness.shouldShowOnboarding(completed: onboardingCompleted) {
+        if !completedThisLaunch && TestHarness.shouldShowOnboarding(completed: onboardingCompleted) {
             OnboardingView {
                 onboardingCompleted = true
+                completedThisLaunch = true
             }
         } else {
             LobbyView()
@@ -43,12 +45,13 @@ struct OnboardingView: View {
                     .foregroundStyle(theme.textSecondary)
                     .accessibilityIdentifier(UIIdentifiers.onboardingSkip)
                 }
+                .dynamicTypeSize(.small ... .xxxLarge)
                 .padding(.horizontal, 24)
                 .padding(.top, 18)
 
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(slides.enumerated()), id: \.offset) { index, slide in
-                        OnboardingSlideView(slide: slide)
+                        OnboardingSlideView(slide: slide, index: index, showsTrackingNote: index == slides.count - 1)
                             .tag(index)
                     }
                 }
@@ -88,16 +91,11 @@ struct OnboardingView: View {
                     }
                     .padding(.horizontal, 24)
                     .accessibilityIdentifier(UIIdentifiers.onboardingContinue)
-
-                    Text("The iOS tracking permission may appear during first launch. You can continue even if you decline.")
-                        .font(.caption.weight(.medium))
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(theme.textMuted)
-                        .padding(.horizontal, 28)
-                        .padding(.bottom, 14)
                 }
+                .padding(.bottom, 18)
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenOnboarding)
         .task {
             await requestTrackingAfterLaunchSettles()
@@ -160,45 +158,62 @@ private struct OnboardingSlideView: View {
     @Environment(\.tableTheme) private var theme
 
     let slide: OnboardingSlide
+    let index: Int
+    let showsTrackingNote: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var illustrationHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 210 : 330
+        dynamicTypeSize.isAccessibilitySize ? 100 : 330
     }
 
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                VStack(spacing: 28) {
+                VStack(spacing: dynamicTypeSize.isAccessibilitySize ? 16 : 28) {
                     Spacer(minLength: 8)
 
                     OnboardingIllustration(kind: slide.illustration)
                         .frame(maxWidth: 360)
                         .frame(height: illustrationHeight)
+                        .scaleEffect(dynamicTypeSize.isAccessibilitySize ? 0.5 : 1)
                         .padding(.horizontal, 24)
                         .accessibilityHidden(true)
 
                     VStack(spacing: 14) {
-                        Text(slide.title)
-                            .font(.system(.largeTitle, design: theme.style.titleDesign, weight: .bold))
+                        Text(LocalizedStringKey(slide.title))
+                            .font(.system(dynamicTypeSize.isAccessibilitySize ? .title2 : .largeTitle,
+                                          design: theme.style.titleDesign, weight: .bold))
                             .multilineTextAlignment(.center)
                             .foregroundStyle(theme.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier(UIIdentifiers.onboardingSlideTitle(index))
 
-                        Text(slide.subtitle)
+                        Text(LocalizedStringKey(slide.subtitle))
                             .font(.body.weight(.medium))
                             .lineSpacing(4)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(theme.textSecondary)
                             .padding(.horizontal, 8)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier(UIIdentifiers.onboardingSlideDescription(index))
                     }
                     .padding(.horizontal, 26)
+
+                    if showsTrackingNote {
+                        Text("The iOS tracking permission may appear during first launch. You can continue even if you decline.")
+                            .font(.caption.weight(.medium))
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(theme.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, 28)
+                    }
 
                     Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: geometry.size.height)
             }
-            .scrollIndicators(.hidden)
+            .accessibilityIdentifier(UIIdentifiers.onboardingSlide(index))
         }
     }
 }

@@ -2,6 +2,282 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "Skip": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пропустити"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продолжить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Продовжити"
+          }
+        }
+      }
+    },
+    "Start playing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start playing"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начать игру"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Почати гру"
+          }
+        }
+      }
+    },
+    "Classic Preferans, made readable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classic Preferans, made readable"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Классический преферанс — удобно и понятно"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Класичний преферанс — зручно та зрозуміло"
+          }
+        }
+      }
+    },
+    "Large cards, clean bids, and a table layout tuned for phones and iPad.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Large cards, clean bids, and a table layout tuned for phones and iPad."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крупные карты, понятная торговля и удобный стол на телефоне и iPad."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Великі карти, зрозуміла торгівля та зручний стіл на телефоні й iPad."
+          }
+        }
+      }
+    },
+    "Play a full hand": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play a full hand"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сыграйте полную раздачу"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зіграйте повну роздачу"
+          }
+        }
+      }
+    },
+    "Bid, take the talon, discard manually, choose whists, and finish with score calculation.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bid, take the talon, discard manually, choose whists, and finish with score calculation."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Торгуйтесь, берите прикуп, выбирайте снос и вист. После розыгрыша очки подсчитаются автоматически."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Торгуйтеся, беріть прикуп, вибирайте знесення та віст. Після розіграшу очки підрахуються автоматично."
+          }
+        }
+      }
+    },
+    "Invite friends by room code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invite friends by room code"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приглашайте друзей по коду комнаты"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запрошуйте друзів за кодом кімнати"
+          }
+        }
+      }
+    },
+    "Create an online room, share the code, and let friends join the same table.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an online room, share the code, and let friends join the same table."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создайте комнату для игры по сети и отправьте друзьям код, чтобы сесть за один стол."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Створіть кімнату для гри в мережі та надішліть друзям код, щоб сісти за один стіл."
+          }
+        }
+      }
+    },
+    "Track the pulka": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Track the pulka"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Следите за пулей"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Стежте за кулею"
+          }
+        }
+      }
+    },
+    "Sochi, Leningrad, and Rostov variants are prepared with automatic settlement support.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sochi, Leningrad, and Rostov variants are prepared with automatic settlement support."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Играйте по правилам Сочи, Ленинграда или Ростова с автоматическим подсчётом очков."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Грайте за правилами Сочі, Ленінграда чи Ростова з автоматичним підрахунком очок."
+          }
+        }
+      }
+    },
+    "The iOS tracking permission may appear during first launch. You can continue even if you decline.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The iOS tracking permission may appear during first launch. You can continue even if you decline."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При первом запуске iOS может запросить разрешение на отслеживание. Отказ не помешает игре."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Під час першого запуску iOS може запитати дозвіл на відстеження. Відмова не завадить грі."
+          }
+        }
+      }
+    },
   "Standings": {
     "extractionState": "manual",
     "localizations": {

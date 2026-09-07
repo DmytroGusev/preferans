@@ -120,6 +120,9 @@ public enum UIIdentifiers {
 
     public static let onboardingSkip           = "onboarding.skip"
     public static let onboardingContinue       = "onboarding.continue"
+    public static func onboardingSlide(_ index: Int) -> String { "onboarding.slide.\(index)" }
+    public static func onboardingSlideTitle(_ index: Int) -> String { "onboarding.title.\(index)" }
+    public static func onboardingSlideDescription(_ index: Int) -> String { "onboarding.description.\(index)" }
 
     // MARK: - Lobby
 

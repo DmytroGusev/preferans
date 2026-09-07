@@ -47,15 +47,23 @@ final class PreferansUITests: XCTestCase {
         let robot = MatchUIRobot(app: app)
         robot.waitForElement(UIIdentifiers.screenOnboarding)
 
-        for _ in 0..<3 {
+        let recorder = MatchScreenshotRecorder(testCase: self, app: app)
+        for index in 0..<4 {
             let continueButton = app.descendants(matching: .any)[UIIdentifiers.onboardingContinue]
+            let description = app.staticTexts[UIIdentifiers.onboardingSlideDescription(index)]
+            let page = app.scrollViews[UIIdentifiers.onboardingSlide(index)]
+            XCTAssertTrue(description.waitForExistence(timeout: 2))
+            recorder.capture(name: "onboarding-large-page-\(index + 1)", force: true)
+            for _ in 0..<5 where description.frame.maxY > continueButton.frame.minY - 12 {
+                page.swipeUp()
+            }
+            XCTAssertLessThan(description.frame.maxY, continueButton.frame.minY,
+                              "The complete explanation must be readable above the action")
+            XCTAssertTrue(description.isHittable)
+            recorder.capture(name: "onboarding-large-reading-\(index + 1)", force: true)
             XCTAssertTrue(continueButton.isHittable)
             continueButton.tap()
         }
-
-        let startButton = app.descendants(matching: .any)[UIIdentifiers.onboardingContinue]
-        XCTAssertTrue(startButton.isHittable)
-        startButton.tap()
         robot.waitForElement(UIIdentifiers.lobbyTitle)
     }
 
