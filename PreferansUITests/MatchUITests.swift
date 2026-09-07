@@ -32,6 +32,133 @@ final class MatchUITests: XCTestCase {
         checkMatchEnd(accessibilityText: false, tied: true)
     }
 
+    func testOpenDefenseSettlementCancelRejectAcceptAndNextDeal() {
+        checkSettlementFlow(misere: false, accessibilityText: false)
+    }
+
+    func testMisereSettlementCancelRejectAcceptAndNextDeal() {
+        checkSettlementFlow(misere: true, accessibilityText: false)
+    }
+
+    func testMisereSettlementAtLargestTextSize() {
+        checkSettlementFlow(misere: true, accessibilityText: true)
+    }
+
+    private func checkSettlementFlow(misere: Bool, accessibilityText: Bool) {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launchArguments += [
+            UITestFlags.viewerFollowsActor, UITestFlags.players, "north,east,south",
+            UITestFlags.firstDealer, "south", UITestFlags.dealScenario, "sortedDeck",
+            UITestFlags.theme, misere ? "midnight" : "parchment",
+        ]
+        if accessibilityText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName",
+                                    "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        let recorder = MatchScreenshotRecorder(testCase: self, app: app)
+        print("[settlement] auction and exchange")
+        robot.startLocalTable()
+        robot.startNextDeal()
+        let contract = GameContract(6, .suit(.spades))
+        robot.bid(.bid(misere ? .misere : .game(contract)))
+        robot.bid(.pass)
+        robot.bid(.pass)
+        robot.takeTalon()
+        XCTAssertTrue(robot.discardFirstTwoVisibleCards())
+        if !misere {
+            robot.declareContract(contract)
+            robot.whist(.whist)
+            robot.whist(.pass)
+            recorder.capture(name: "choose-open-defense", force: true)
+            robot.defenderMode(.open)
+        }
+        robot.waitForPhase("Play")
+        for seat in ["east", "south"] {
+            let visibleCards = app.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier BEGINSWITH %@", "card.hand.\(seat).")
+            )
+            XCTAssertEqual(visibleCards.count, 10, "Both defender hands must be exposed")
+        }
+        recorder.capture(name: misere ? "misere-open-hands" : "open-defense-hands", force: true)
+        let offer = app.buttons[UIIdentifiers.buttonOfferSettlement]
+        XCTAssertTrue(offer.isHittable)
+        offer.tap()
+        let split = app.descendants(matching: .any)[UIIdentifiers.settlementSplitControl]
+        XCTAssertTrue(split.waitForExistence(timeout: 2))
+        split.coordinate(withNormalizedOffset: CGVector(dx: 0.4, dy: 0.5)).tap()
+        XCTAssertEqual(split.value as? String, "4 of 10")
+        recorder.capture(name: "settlement-adjusted", force: true)
+        let cancel = app.buttons[UIIdentifiers.buttonCancelSettlement]
+        revealSettlementAction(cancel, in: app)
+        cancel.tap()
+        XCTAssertFalse(split.exists)
+
+        print("[settlement] reject an offer, then agree")
+        for rejected in [true, false] {
+            offer.tap()
+            XCTAssertTrue(split.waitForExistence(timeout: 2))
+            XCTAssertEqual(split.value as? String, misere ? "0 of 10" : "6 of 10")
+            recorder.capture(name: "settlement-composer", force: true)
+            let submit = app.buttons[UIIdentifiers.buttonSubmitSettlement]
+            revealSettlementAction(submit, in: app)
+            submit.tap()
+            let accept = app.buttons[UIIdentifiers.buttonAcceptSettlement]
+            let reject = app.buttons[UIIdentifiers.buttonRejectSettlement]
+            XCTAssertTrue(accept.waitForExistence(timeout: 2))
+            recorder.capture(name: "settlement-response", force: true)
+            if rejected {
+                app.buttons[UIIdentifiers.buttonDismissSheet].tap()
+                let review = app.buttons[UIIdentifiers.buttonReviewSettlement]
+                XCTAssertTrue(review.waitForExistence(timeout: 2))
+                recorder.capture(name: "settlement-review-cards", force: true)
+                review.tap()
+                XCTAssertTrue(accept.waitForExistence(timeout: 2))
+            }
+            revealSettlementAction(rejected ? reject : accept, in: app)
+            recorder.capture(name: "settlement-response-actions", force: true)
+            XCTAssertTrue(accept.isHittable)
+            XCTAssertTrue(reject.isHittable)
+            if rejected {
+                reject.tap()
+                robot.waitForPhase("Play")
+                XCTAssertFalse(accept.exists)
+            } else {
+                accept.tap()
+                if misere {
+                    let responder = app.staticTexts[UIIdentifiers.settlementResponder]
+                    XCTAssertTrue(responder.waitForExistence(timeout: 2))
+                    XCTAssertEqual(responder.value as? String, "south")
+                    XCTAssertTrue(accept.waitForExistence(timeout: 2))
+                    revealSettlementAction(accept, in: app)
+                    recorder.capture(name: "settlement-final-response", force: true)
+                    accept.tap()
+                }
+            }
+        }
+        robot.waitForPhase("Deal complete")
+        XCTAssertEqual(app.staticTexts[UIIdentifiers.dealResultStatus].label.lowercased(), "agreed result")
+        recorder.capture(name: "settlement-score", force: true)
+        let next = app.buttons[UIIdentifiers.buttonStartDeal]
+        for _ in 0..<5 where !next.isHittable { app.swipeUp() }
+        XCTAssertTrue(next.isHittable)
+        recorder.capture(name: "settlement-score-actions", force: true)
+        next.tap()
+        robot.waitForPhase("Bidding")
+    }
+
+    private func revealSettlementAction(_ action: XCUIElement, in app: XCUIApplication) {
+        let scroll = app.scrollViews[UIIdentifiers.settlementScroll]
+        for _ in 0..<4 {
+            if action.isHittable && scroll.frame.insetBy(dx: 0, dy: 4).contains(action.frame) { return }
+            scroll.swipeUp()
+        }
+        XCTAssertTrue(action.isHittable && scroll.frame.contains(action.frame),
+                      "Settlement action must be fully visible before tapping")
+    }
+
     private func checkMatchEnd(accessibilityText: Bool, tied: Bool) {
         let app = XCUIApplication()
         app.disableUITestAnimations()

@@ -308,7 +308,7 @@ final class RedesignScreenshotTests: XCTestCase {
         let split = app.descendants(matching: .any)
             .matching(identifier: UIIdentifiers.settlementSplitControl)
             .firstMatch
-        let offer = app.buttons[UIIdentifiers.buttonOfferSettlement].firstMatch
+        let offer = app.buttons[UIIdentifiers.buttonSubmitSettlement].firstMatch
         XCTAssertTrue(split.waitForExistence(timeout: 2))
         XCTAssertTrue(offer.waitForExistence(timeout: 2))
 

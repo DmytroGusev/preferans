@@ -385,23 +385,25 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
                      "the declarer is about to discard interactively — no extra acknowledgement tap")
     }
 
-    func testLocalAgreementSettlementScoresDealWithoutSeatSwitching() throws {
+    func testLocalSettlementWaitsForEachHumanBeforeScoring() throws {
         let model = try makeModel()
         driveToMiserePlay(model)
 
         let settlement = try XCTUnwrap(model.engine.legalSettlements(for: "north").first)
 
-        model.settleByLocalAgreement(proposer: "north", settlement: settlement)
+        model.send(.proposeSettlement(player: "north", settlement: settlement))
 
         XCTAssertNil(model.lastError)
-        XCTAssertEqual(model.selectedViewer, "north",
-                       "local board settlement should not require rotating the visible seat")
-        XCTAssertTrue(model.recentEvents.contains(.settlementProposed(
-            TrickSettlementProposal(proposer: "north", settlement: settlement, acceptedBy: ["north"])
-        )))
-        XCTAssertTrue(model.recentEvents.contains(.settlementAccepted(player: "east")))
-        XCTAssertTrue(model.recentEvents.contains(.settlementAccepted(player: "south")))
-        XCTAssertTrue(model.recentEvents.contains(.playSettled(settlement)))
+        guard case let .playing(pending) = model.engine.state else {
+            return XCTFail("an offer must not imply another human's acceptance")
+        }
+        XCTAssertEqual(pending.pendingSettlement?.acceptedBy, ["north"])
+        model.send(.acceptSettlement(player: "east"))
+        guard case let .playing(oneAccepted) = model.engine.state else {
+            return XCTFail("south must still have a chance to respond")
+        }
+        XCTAssertEqual(oneAccepted.pendingSettlement?.acceptedBy, ["north", "east"])
+        model.send(.acceptSettlement(player: "south"))
         guard case let .dealFinished(result) = model.engine.state else {
             return XCTFail("expected the local agreement to score the deal")
         }
@@ -419,14 +421,14 @@ final class GameViewModelTapAdvanceTests: AppTestCase {
         model.botStrategies["east"] = HeuristicStrategy()
 
         let settlement = try XCTUnwrap(model.engine.legalSettlements(for: "north").first)
-        model.settleByLocalAgreement(proposer: "north", settlement: settlement)
+        model.send(.proposeSettlement(player: "north", settlement: settlement))
 
         guard case let .playing(playing) = model.engine.state else {
             return XCTFail("a bot party hasn't agreed, so the deal must not settle")
         }
         let proposal = try XCTUnwrap(playing.pendingSettlement)
-        XCTAssertEqual(proposal.acceptedBy, ["north", "south"],
-                       "human seats auto-agree; the bot party keeps its own say")
+        XCTAssertEqual(proposal.acceptedBy, ["north"],
+                       "both the bot and the other human must respond for themselves")
         XCTAssertFalse(proposal.acceptedBy.contains("east"),
                        "a human must not be able to force a settlement past a bot party")
     }

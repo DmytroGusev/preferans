@@ -32,7 +32,7 @@ public struct LocalGameScreen: View {
             botInsights: model.botInsights,
             pendingAdvance: model.pendingAdvance,
             idleHintActive: model.idleHintActive,
-            onSend: sendLocalAction,
+            onSend: model.send,
             onTapToAdvance: model.advance,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch
@@ -67,12 +67,4 @@ public struct LocalGameScreen: View {
         }
     }
 
-    private func sendLocalAction(_ action: PreferansAction) {
-        switch action {
-        case let .proposeSettlement(player, settlement):
-            model.settleByLocalAgreement(proposer: player, settlement: settlement)
-        default:
-            model.send(action)
-        }
-    }
 }

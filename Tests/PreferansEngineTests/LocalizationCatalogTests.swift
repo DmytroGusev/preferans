@@ -61,6 +61,21 @@ final class LocalizationCatalogTests: XCTestCase {
         }
     }
 
+    func testSettlementFlowHasCatalogEntries() throws {
+        let strings = try catalogStrings()
+        let keys = [
+            "Settle the deal", "The deal ends only after every participant accepts.",
+            "Review offer", "Settlement offer", "View cards", "Responding as %@",
+            "Agreed result", "Offer", "Accept", "Reject", "Settle",
+            "%@ offers: %@ takes %lld", "makes ", "%lld short of ",
+            "%@'s share of the remaining tricks", "%lld of %lld",
+            "clean misère", "misère set — takes %lld"
+        ]
+        for key in keys {
+            XCTAssertNotNil(strings[key], "Settlement copy must have a translated catalog entry: \(key)")
+        }
+    }
+
     func testApplyingLanguagePersistsAppAndBundlePreferences() {
         let defaults = UserDefaults.standard
         let previousAppLanguage = defaults.string(forKey: SettingsKeys.appLanguage)

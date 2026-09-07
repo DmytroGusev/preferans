@@ -43,11 +43,13 @@ public struct ActionBarView: View {
     /// gameplay column once the persistent scoresheet is allocated.
     public var availableChoiceWidth: CGFloat?
 
-    /// True while the proposer has the tug-of-war settlement composer open.
-    /// Local view state — opening it doesn't touch the engine until an offer
-    /// is sent. Only honored while the viewer may actually settle, so a stale
-    /// `true` between deals stays dormant.
-    @State private var isComposingSettlement = false
+    private enum SettlementSheet: String, Identifiable {
+        case draft, response
+        var id: String { rawValue }
+    }
+
+    /// Drafting is local until an offer is sent to the table.
+    @State private var settlementSheet: SettlementSheet?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -98,6 +100,68 @@ public struct ActionBarView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .feltBand()
+        .sheet(item: $settlementSheet) { destination in
+            settlementSheetContent(destination)
+        }
+        .onChange(of: projection.legal.pendingSettlement) { old, proposal in
+            if proposal != nil && old == nil {
+                settlementSheet = .response
+            } else if proposal == nil && settlementSheet == .response {
+                settlementSheet = nil
+            }
+        }
+        .onChange(of: canOfferSettlement) { _, mayOffer in
+            if !mayOffer && settlementSheet == .draft { settlementSheet = nil }
+        }
+    }
+
+    private func settlementSheetContent(_ destination: SettlementSheet) -> some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    switch destination {
+                    case .draft:
+                        if let context = settlementContext {
+                            Text("The deal ends only after every participant accepts.")
+                                .font(.body)
+                                .foregroundStyle(theme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            SettlementComposer(
+                                declarerName: projection.displayName(for: context.declarer),
+                                defenseName: defenseName(for: context.defenders),
+                                remaining: context.remaining,
+                                currentDeclarerTricks: context.currentDeclarerTricks,
+                                goal: context.goal,
+                                initialShare: context.defaultShare,
+                                onOffer: { share in send(settlement: share, in: context) },
+                                onCancel: { settlementSheet = nil }
+                            )
+                        }
+                    case .response:
+                        if let proposal = projection.legal.pendingSettlement {
+                            settlementResponse(proposal)
+                        }
+                    }
+                }
+                .padding(24)
+            }
+            .accessibilityIdentifier(UIIdentifiers.settlementScroll)
+            .feltBackground()
+            .navigationTitle(LocalizedStringKey(destination == .draft ? "Settle the deal" : "Settlement offer"))
+            .themeNavigationChrome()
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                if destination == .response {
+                    ToolbarItem(placement: .automatic) {
+                        Button("View cards") { settlementSheet = nil }
+                            .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
+                    }
+                }
+            }
+        }
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
     }
 
     /// Bidding row: one clear title plus every legal bid. Taller layouts use
@@ -390,70 +454,29 @@ public struct ActionBarView: View {
 
     @ViewBuilder
     private var statusRow: some View {
-        if let proposal = projection.legal.pendingSettlement {
-            settlementResponseRow(proposal)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
-        } else if isComposingSettlement, canOfferSettlement, let context = settlementContext {
-            SettlementComposer(
-                declarerName: projection.displayName(for: context.declarer),
-                defenseName: defenseName(for: context.defenders),
-                remaining: context.remaining,
-                currentDeclarerTricks: context.currentDeclarerTricks,
-                goal: context.goal,
-                initialShare: context.defaultShare,
-                onOffer: { share in send(settlement: share, in: context) },
-                onCancel: { isComposingSettlement = false }
-            )
-            .transition(.opacity)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier(UIIdentifiers.Panel.settlement.rawValue)
+        if projection.legal.pendingSettlement != nil {
+            Button { settlementSheet = .response } label: {
+                Label("Review offer", systemImage: "checkmark.seal")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.feltPrimary)
+            .accessibilityIdentifier(UIIdentifiers.buttonReviewSettlement)
         } else {
-            HStack(spacing: 8) {
-                if let selectedPlayCard {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(theme.accentStrong)
-                    HStack(spacing: 2) {
-                        Text("Selected")
-                        Text(selectedPlayCard.rank.symbol)
-                            .fontWeight(.bold)
-                        Text(selectedPlayCard.suit.symbol)
-                            .fontWeight(.bold)
-                            .foregroundStyle(selectedPlayCard.suit.color(on: .felt, theme: theme))
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(theme.textPrimary)
-                    .lineLimit(1)
-                } else if !projection.legal.playableCards.isEmpty {
-                    // The viewer is on lead: say what to do instead of
-                    // repeating the header's "Trick N: <name>" line.
-                    Image(systemName: "hand.tap.fill")
-                        .font(.caption)
-                        .foregroundStyle(theme.accentStrong)
-                    Text("Your turn — play a card")
-                        .font(.subheadline)
-                        .foregroundStyle(theme.textPrimary)
-                } else if let actor = currentActorName {
-                    Image(systemName: "hourglass")
-                        .font(.caption)
-                        .foregroundStyle(theme.textSecondary)
-                    Text("\(actor)'s turn")
-                        .font(.subheadline)
-                        .foregroundStyle(theme.textSecondary)
-                } else {
-                    Localized.statusText(projection)
-                        .font(.subheadline)
-                        .foregroundStyle(theme.textSecondary)
-                        .lineLimit(2)
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(spacing: 8))
+            layout {
+                if !dynamicTypeSize.isAccessibilitySize || !canOfferSettlement || selectedPlayCard != nil {
+                    statusMessage
                 }
-                Spacer()
+                if !dynamicTypeSize.isAccessibilitySize { Spacer() }
                 if canOfferSettlement {
                     Button {
-                        isComposingSettlement = true
+                        settlementSheet = .draft
                     } label: {
                         Label("Settle", systemImage: "checkmark.seal")
                             .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
                     }
                     .buttonStyle(.feltSecondary)
                     .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
@@ -464,6 +487,7 @@ public struct ActionBarView: View {
                     } label: {
                         Label("Play card", systemImage: "arrow.up.circle.fill")
                             .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : nil)
                     }
                     .buttonStyle(.feltPrimary)
                     .accessibilityIdentifier(UIIdentifiers.buttonPlaySelectedCard)
@@ -474,39 +498,100 @@ public struct ActionBarView: View {
         }
     }
 
-    private func settlementResponseRow(_ proposal: TrickSettlementProposal) -> some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(settlementHeadline(proposal.settlement, proposer: proposal.proposer))
-                    .font(.subheadline.bold())
+    private var statusMessage: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            if let selectedPlayCard {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(theme.accentStrong)
+                HStack(spacing: 2) {
+                    Text("Selected")
+                    Text(selectedPlayCard.rank.symbol)
+                        .fontWeight(.bold)
+                    Text(selectedPlayCard.suit.symbol)
+                        .fontWeight(.bold)
+                        .foregroundStyle(selectedPlayCard.suit.color(on: .felt, theme: theme))
+                }
+                .font(.subheadline)
+                .foregroundStyle(theme.textPrimary)
+                .lineLimit(1)
+            } else if !projection.legal.playableCards.isEmpty {
+                // The viewer is on lead: say what to do instead of
+                // repeating the header's "Trick N: <name>" line.
+                Image(systemName: "hand.tap.fill")
+                    .font(.caption)
+                    .foregroundStyle(theme.accentStrong)
+                Text("Your turn — play a card")
+                    .font(.subheadline)
                     .foregroundStyle(theme.textPrimary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(settlementCountsSummary(proposal.settlement))
-                    .font(.caption2)
+            } else if let actor = currentActorName {
+                Image(systemName: "hourglass")
+                    .font(.caption)
                     .foregroundStyle(theme.textSecondary)
-                    .lineLimit(1)
+                Text("\(actor)'s turn")
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+            } else {
+                Localized.statusText(projection)
+                    .font(.subheadline)
+                    .foregroundStyle(theme.textSecondary)
+                    .lineLimit(2)
             }
-            Spacer()
-            if projection.legal.canRejectSettlement {
-                Button {
-                    onSend(.rejectSettlement(player: projection.viewer))
-                } label: {
-                    Text("Reject")
-                        .fontWeight(.semibold)
+        }
+    }
+
+    private func settlementResponse(_ proposal: TrickSettlementProposal) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Responding as \(projection.displayName(for: projection.viewer))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(theme.accentStrong)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(UIIdentifiers.settlementResponder)
+                .accessibilityValue(projection.viewer.rawValue)
+            Text(settlementHeadline(proposal.settlement, proposer: proposal.proposer))
+                .font(.title3.bold())
+                .foregroundStyle(theme.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 12) {
+                ForEach(projection.players, id: \.self) { player in
+                    if let count = proposal.settlement.finalTrickCounts[player] {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(projection.displayName(for: player))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 12)
+                            Text("\(count) tricks").monospacedDigit()
+                        }
+                        .font(.body)
+                        .foregroundStyle(theme.textPrimary)
+                    }
                 }
-                .buttonStyle(.feltDim)
-                .accessibilityIdentifier(UIIdentifiers.buttonRejectSettlement)
             }
-            if projection.legal.canAcceptSettlement {
-                Button {
-                    onSend(.acceptSettlement(player: projection.viewer))
-                } label: {
-                    Text("Accept")
-                        .fontWeight(.semibold)
+            let actions = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 12))
+            actions {
+                if projection.legal.canRejectSettlement {
+                    Button {
+                        onSend(.rejectSettlement(player: projection.viewer))
+                    } label: {
+                        Text("Reject")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.feltDim)
+                    .accessibilityIdentifier(UIIdentifiers.buttonRejectSettlement)
                 }
-                .buttonStyle(.feltPrimary)
-                .accessibilityIdentifier(UIIdentifiers.buttonAcceptSettlement)
+                if projection.legal.canAcceptSettlement {
+                    Button {
+                        onSend(.acceptSettlement(player: projection.viewer))
+                    } label: {
+                        Text("Accept")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.feltPrimary)
+                    .accessibilityIdentifier(UIIdentifiers.buttonAcceptSettlement)
+                }
             }
         }
     }
@@ -595,8 +680,8 @@ public struct ActionBarView: View {
             targetTricks: counts[context.declarer] ?? 0,
             finalTrickCounts: counts
         )
+        settlementSheet = nil
         onSend(.proposeSettlement(player: projection.viewer, settlement: settlement))
-        isComposingSettlement = false
     }
 
     // MARK: - Helpers
@@ -672,12 +757,4 @@ public struct ActionBarView: View {
         return String(localized: "\(proposerName) offers: \(targetName) takes \(settlement.targetTricks)")
     }
 
-    private func settlementCountsSummary(_ settlement: TrickSettlement) -> String {
-        projection.players
-            .filter { settlement.finalTrickCounts[$0] != nil }
-            .map { player in
-                "\(projection.displayName(for: player)) \(settlement.finalTrickCounts[player] ?? 0)"
-            }
-            .joined(separator: " · ")
-    }
 }

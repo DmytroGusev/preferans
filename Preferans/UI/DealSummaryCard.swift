@@ -80,11 +80,12 @@ struct DealSummaryCard: View {
     private var resultColumn: some View {
         VStack(spacing: 14) {
             VStack(spacing: 6) {
-                Text("Deal complete")
+                Text(LocalizedStringKey(result.settlement == nil ? "Deal complete" : "Agreed result"))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(theme.accentStrong)
                     .tracking(1.4)
                     .textCase(.uppercase)
+                    .accessibilityIdentifier(UIIdentifiers.dealResultStatus)
                 Localized.dealResultHeadline(result, in: projection)
                     .font(.headline)
                     .foregroundStyle(theme.textPrimary)
@@ -122,7 +123,7 @@ struct DealSummaryCard: View {
                         Text("Next deal")
                             .fontWeight(.semibold)
                     }
-                    .frame(maxWidth: 220)
+                    .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 220)
                 }
                 .buttonStyle(.feltPrimary)
                 .accessibilityIdentifier(UIIdentifiers.buttonStartDeal)
@@ -150,7 +151,7 @@ struct DealSummaryCard: View {
                     }
                 }
                 .font(.caption.weight(.semibold))
-                .frame(maxWidth: 220)
+                .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? .infinity : 220)
             }
             .buttonStyle(.feltSecondary)
             .accessibilityIdentifier(UIIdentifiers.dealInitialHandsToggle)

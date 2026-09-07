@@ -269,6 +269,9 @@ public enum UIIdentifiers {
     public static let buttonOfferSettlement    = "button.offerSettlement"
     public static let buttonCancelSettlement   = "button.cancelSettlement"
     public static let buttonAcceptSettlement   = "button.acceptSettlement"
+    public static let buttonSubmitSettlement   = "button.submitSettlement"
+    public static let buttonReviewSettlement   = "button.reviewSettlement"
+    public static let dealResultStatus         = "dealResult.status"
     public static let buttonRejectSettlement   = "button.rejectSettlement"
     public static let buttonConcedeWithoutThree = "button.concedeWithoutThree"
     public static let buttonTakeTalon          = "button.takeTalon"
@@ -353,6 +356,8 @@ public enum UIIdentifiers {
     public static let matchRaspasyPrice = "match.raspasyPrice"
     public static let matchRaspasyExit = "match.raspasyExit"
     public static let settlementSplitControl = "settlement.splitControl"
+    public static let settlementScroll = "settlement.scroll"
+    public static let settlementResponder = "settlement.responder"
     public static let actionChoiceGridRegular = "action.choiceGrid.regular"
     public static let actionChoiceRailCompact = "action.choiceRail.compact"
 }

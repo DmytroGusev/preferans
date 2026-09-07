@@ -130,7 +130,9 @@ struct SettlementComposer: View {
             (Text("Split") + Text(" ") + Text("\(remaining) tricks"))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(theme.accentStrong)
-                .fixedSize()
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.center)
+                .layoutPriority(1)
             Rectangle().fill(theme.accent.opacity(0.30)).frame(height: 0.5)
         }
     }
@@ -148,7 +150,7 @@ struct SettlementComposer: View {
             Text(name)
                 .font(.caption2)
                 .foregroundStyle(theme.textSecondary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
             Text("\(count)")
                 .font(.title3.weight(.bold).monospacedDigit())
                 .foregroundStyle(tint)
@@ -208,7 +210,7 @@ struct SettlementComposer: View {
                     }
             )
         }
-        .frame(height: 36)
+        .frame(height: 44)
         .accessibilityElement()
         .accessibilityIdentifier(UIIdentifiers.settlementSplitControl)
         .accessibilityLabel("\(declarerName)'s share of the remaining tricks")
@@ -252,8 +254,13 @@ struct SettlementComposer: View {
                     .font(.caption.weight(.semibold))
             }
         case .misere:
-            Text(declarerTotal == 0 ? "clean misère" : "misère set — takes \(declarerTotal)")
-                .font(.caption.weight(.semibold))
+            if declarerTotal == 0 {
+                Text("clean misère")
+                    .font(.caption.weight(.semibold))
+            } else {
+                Text("misère set — takes \(declarerTotal)")
+                    .font(.caption.weight(.semibold))
+            }
         }
     }
 
@@ -267,12 +274,19 @@ struct SettlementComposer: View {
     }
 
     private var compactButtons: some View {
-        HStack(spacing: 10) {
-            cancelButton(fillWidth: false)
-
-            Spacer(minLength: 8)
-
-            offerButton(fillWidth: false)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 10) {
+                    offerButton(fillWidth: true)
+                    cancelButton(fillWidth: true)
+                }
+            } else {
+                HStack(spacing: 10) {
+                    cancelButton(fillWidth: false)
+                    Spacer(minLength: 8)
+                    offerButton(fillWidth: false)
+                }
+            }
         }
     }
 
@@ -293,7 +307,7 @@ struct SettlementComposer: View {
                 .frame(maxWidth: fillWidth ? .infinity : nil)
         }
         .buttonStyle(.feltPrimary)
-        .accessibilityIdentifier(UIIdentifiers.buttonOfferSettlement)
+        .accessibilityIdentifier(UIIdentifiers.buttonSubmitSettlement)
     }
 
     /// Muted terracotta that reads as "failure" against the felt without the
