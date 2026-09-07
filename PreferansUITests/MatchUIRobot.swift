@@ -15,14 +15,11 @@ import PreferansEngine
 final class MatchUIRobot {
     let app: XCUIApplication
 
-    /// Default wait for any element existence check. SwiftUI re-renders
-    /// take ~100ms in steady state but bidding/play transitions can hit
-    /// 500ms on cold-start frames. 5 seconds keeps the test responsive
-    /// without flaking on a busy CI runner.
+    /// Keep a missing control failure local to the action that needs it.
     let defaultTimeout: TimeInterval
     private let optionalReadTimeout: TimeInterval = 0.25
 
-    init(app: XCUIApplication, defaultTimeout: TimeInterval = 5.0) {
+    init(app: XCUIApplication, defaultTimeout: TimeInterval = 2.0) {
         self.app = app
         self.defaultTimeout = defaultTimeout
     }
@@ -32,14 +29,50 @@ final class MatchUIRobot {
     func startLocalTable() {
         let button = app.buttons[UIIdentifiers.lobbyStartLocalTable]
         assertExists(button, "Lobby's Start Local Table button never appeared.")
+        XCTAssertTrue(button.isHittable, "Start must be visible without scrolling through setup.")
         button.tap()
     }
 
     func selectPlayerCount(_ count: Int) {
-        let id = count == 4 ? UIIdentifiers.lobbyPlayerCountFour : UIIdentifiers.lobbyPlayerCountThree
+        precondition(count == 3 || count == 4)
+        let fourthSeat = app.textFields[UIIdentifiers.lobbyPlayerNameField(index: 3)]
+        if fourthSeat.exists == (count == 4) { return }
+        let id = count == 4 ? UIIdentifiers.lobbyAddBot : UIIdentifiers.lobbyRemoveBot
         let button = app.buttons[id]
-        assertExists(button, "Lobby's player-count(\(count)) button never appeared.")
+        revealLobbyControl(button)
+        XCTAssertTrue(button.isEnabled)
         button.tap()
+        XCTAssertEqual(fourthSeat.exists, count == 4)
+    }
+
+    func openTableOptions() {
+        let options = app.descendants(matching: .any)
+            .matching(identifier: UIIdentifiers.lobbyTableOptions).firstMatch
+        revealLobbyControl(options)
+        options.tap()
+    }
+
+    func revealLobbyControl(_ control: XCUIElement) {
+        // SwiftUI can report a scrolled-out control as hittable even when the
+        // pinned start bar covers its tap point. Check the actual viewport too.
+        let window = app.windows.firstMatch
+        let start = app.buttons[UIIdentifiers.lobbyStartLocalTable]
+        let summary = app.staticTexts[UIIdentifiers.lobbyStartSummary]
+        func isVisible() -> Bool {
+            guard control.exists, control.isHittable else { return false }
+            let bottom = summary.exists ? summary.frame.minY - 12
+                : (start.exists ? start.frame.minY - 12 : window.frame.maxY - 30)
+            return control.frame.minY >= window.frame.minY + 80
+                && control.frame.maxY <= bottom
+        }
+        for _ in 0..<8 {
+            if isVisible() { return }
+            let scroll = app.scrollViews.firstMatch
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+                .press(forDuration: 0.01, thenDragTo:
+                    scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)))
+        }
+        XCTAssertTrue(isVisible(), "Lobby control must be visible above the start bar")
     }
 
     // MARK: - In-game actions

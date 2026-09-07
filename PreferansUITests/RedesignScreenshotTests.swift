@@ -215,6 +215,21 @@ final class RedesignScreenshotTests: XCTestCase {
             filePrefix: "lobby"
         )
         .capture(name: "accessibility-xxxl", force: true, attach: false)
+
+        let robot = MatchUIRobot(app: accessibilityApp)
+        robot.openTableOptions()
+        let price = accessibilityApp.descendants(matching: .any)[UIIdentifiers.matchRaspasyPrice]
+        robot.revealLobbyControl(price)
+        price.tap()
+        let progression = accessibilityApp.buttons["1–2–4"]
+        XCTAssertTrue(progression.waitForExistence(timeout: 2) && progression.isHittable,
+                      "Every progression must be fully readable and selectable at large text")
+        progression.tap()
+        robot.revealLobbyControl(price)
+        XCTAssertTrue(accessibilityApp.buttons[UIIdentifiers.lobbyStartLocalTable].isHittable)
+        MatchScreenshotRecorder(testCase: self, app: accessibilityApp,
+                                outputDirectory: output, filePrefix: "lobby")
+            .capture(name: "options-accessibility-xxxl", force: true, attach: false)
     }
 
     /// Accessibility text deliberately replaces the wide iPad auction grid
@@ -555,9 +570,7 @@ final class RedesignScreenshotTests: XCTestCase {
             filePrefix: "pulka"
         )
 
-        let fourPlayers = app.buttons[UIIdentifiers.lobbyPlayerCountFour]
-        XCTAssertTrue(fourPlayers.waitForExistence(timeout: 5))
-        fourPlayers.tap()
+        MatchUIRobot(app: app).selectPlayerCount(4)
         recorder.capture(name: "01-lobby-4p", force: true, attach: false)
 
         let startTable = app.buttons[UIIdentifiers.lobbyStartLocalTable]
@@ -601,9 +614,7 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "01-lobby", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
 
         // Switch lobby to 4 players, then start.
-        let fourPlayers = app.buttons[UIIdentifiers.lobbyPlayerCountFour]
-        XCTAssertTrue(fourPlayers.waitForExistence(timeout: 5))
-        fourPlayers.tap()
+        robot.selectPlayerCount(4)
         recorder.capture(name: "02-lobby-4p", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
         let startTable = app.buttons[UIIdentifiers.lobbyStartLocalTable]
         XCTAssertTrue(startTable.waitForExistence(timeout: 3))

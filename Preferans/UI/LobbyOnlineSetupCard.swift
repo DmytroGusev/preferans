@@ -19,7 +19,6 @@ extension LobbyView {
             onlineVariantSection
             onlineCompositionSection
             onlineRoomActionsSection
-            hiddenLocalTestRoomButton
         }
     }
 
@@ -47,7 +46,7 @@ extension LobbyView {
                         Text(variant.title).tag(variant)
                     }
                 }
-                .pickerStyle(.segmented)
+                .modifier(LobbyChoiceControlStyle())
                 .accessibilityIdentifier(UIIdentifiers.onlineVariantPicker)
             }
 
@@ -307,14 +306,6 @@ extension LobbyView {
         onlinePanel(title: "Join a table", icon: "ticket.fill") {
             if let pendingCode = viewModel.pendingJoinRoomCode {
                 readyToJoinRow(code: pendingCode)
-            } else if isUIAutomation {
-                // Keep the join automation root alive while no code is
-                // pending — same 1×1 idiom as the other hidden affordances.
-                Button { viewModel.joinCloudflareOnlineRoom() } label: { Color.clear }
-                    .frame(width: 1, height: 1)
-                    .opacity(0.001)
-                    .allowsHitTesting(true)
-                    .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
             }
             TextField(
                 "Paste link or code",
@@ -405,19 +396,6 @@ extension LobbyView {
             get: { viewModel.onlineDisplayName },
             set: { viewModel.setOnlineDisplayName($0) }
         )
-    }
-
-    @ViewBuilder
-    private var hiddenLocalTestRoomButton: some View {
-        #if DEBUG
-        if isUIAutomation {
-            Button { viewModel.startInMemoryOnlineRoom() } label: { Color.clear }
-                .frame(width: 1, height: 1)
-                .opacity(0.001)
-                .allowsHitTesting(true)
-                .accessibilityIdentifier(UIIdentifiers.onlineCreateTestRoom)
-        }
-        #endif
     }
 
     private func identityStatusRow<Trailing: View>(

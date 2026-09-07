@@ -19,15 +19,19 @@ final class PreferansUITests: XCTestCase {
         let robot = MatchUIRobot(app: app)
 
         robot.waitForElement(UIIdentifiers.lobbyTitle)
-        robot.waitForElement(UIIdentifiers.lobbyQuickPlayVsBots)
         robot.waitForElement(UIIdentifiers.lobbyWatchBots)
-        robot.waitForElement(UIIdentifiers.lobbyPlayerCountThree)
-        robot.waitForElement(UIIdentifiers.lobbyPlayerCountFour)
         robot.waitForElement(UIIdentifiers.lobbyAddBot)
         robot.waitForElement(UIIdentifiers.lobbyRemoveBot)
         robot.waitForElement(UIIdentifiers.lobbyPlayerNameField(index: 0))
-        robot.waitForElement(UIIdentifiers.lobbyBotSpeedPicker)
         robot.waitForElement(UIIdentifiers.lobbyStartLocalTable)
+        XCTAssertTrue(app.buttons[UIIdentifiers.lobbyStartLocalTable].isHittable)
+        XCTAssertFalse(app.buttons[UIIdentifiers.onlineCreateRoom].exists)
+        robot.openTableOptions()
+        robot.waitForElement(UIIdentifiers.lobbyBotSpeedPicker)
+        robot.revealLobbyControl(app.descendants(matching: .any)[UIIdentifiers.lobbyBotSpeedPicker])
+        XCTAssertTrue(app.buttons[UIIdentifiers.lobbyStartLocalTable].isHittable)
+        MatchScreenshotRecorder(testCase: self, app: app)
+            .capture(name: "lobby-table-options-expanded", force: true)
     }
 
     func testOnboardingRemainsNavigableAtAccessibilityTextSize() {

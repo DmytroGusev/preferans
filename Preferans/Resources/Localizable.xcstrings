@@ -2,6 +2,29 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+  "Table options": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Table options"
+        }
+      },
+      "ru": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Настройки стола"
+        }
+      },
+      "uk": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Налаштування столу"
+        }
+      }
+    }
+  },
     "Appearance" : {
       "extractionState": "manual",
       "localizations": {

@@ -127,17 +127,16 @@ public enum UIIdentifiers {
     public static let lobbyNavigationRegion    = "lobby.region.navigation"
     public static let lobbyModeRegion          = "lobby.region.mode"
     public static let lobbyStartLocalTable     = "button.startLocalTable"
-    public static let lobbyPlayerCountThree    = "button.playerCount.3"
-    public static let lobbyPlayerCountFour     = "button.playerCount.4"
     public static let lobbyAddBot              = "button.addBot"
     public static let lobbyRemoveBot           = "button.removeBot"
     public static func lobbyPlayerNameField(index: Int) -> String { "lobby.playerName.\(index)" }
     public static func lobbyBotProfile(index: Int) -> String { "lobby.botProfile.\(index)" }
+    public static let lobbyTableOptions       = "lobby.tableOptions"
+    public static let lobbyStartSummary       = "lobby.startSummary"
     public static let lobbyBotSpeedPicker     = "lobby.botSpeed"
     public static let lobbyError               = "lobby.error"
     public static let lobbyInfo                = "lobby.info"
     public static let lobbyValidationError     = "lobby.validationError"
-    public static let lobbyQuickPlayVsBots     = "button.quickPlayVsBots"
     public static let lobbyWatchBots           = "button.watchBots"
     public static let lobbySettingsButton      = "lobby.settings"
     public static let screenSettings           = "screen.settings"
@@ -164,7 +163,6 @@ public enum UIIdentifiers {
     public static let onlineCreateRoom         = "online.createRoom"
     public static let onlineJoinRoomCode       = "online.joinRoomCode"
     public static let onlineJoinRoom           = "online.joinRoom"
-    public static let onlineCreateTestRoom     = "online.createTestRoom"
     public static let onlineRoomCode           = "online.roomCode"
     public static let onlineShareInvite        = "online.shareInvite"
     // Lobby mode segment (local vs online) — see LobbyView.modeSegment.

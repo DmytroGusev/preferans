@@ -58,7 +58,6 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertTrue(policy.usesTabletChrome)
         XCTAssertTrue(policy.usesTwoRegionComposition)
         XCTAssertTrue(policy.stacksModeChoices)
-        XCTAssertTrue(policy.placesRaspasyControlsSideBySide)
     }
 
     func testLobbyLayoutStacksIPadRegionsForAccessibilityText() {
@@ -70,7 +69,6 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertTrue(policy.usesTabletChrome)
         XCTAssertFalse(policy.usesTwoRegionComposition)
         XCTAssertTrue(policy.stacksModeChoices)
-        XCTAssertFalse(policy.placesRaspasyControlsSideBySide)
     }
 
     func testLobbyLayoutKeepsIPhoneSingleColumn() {
@@ -83,7 +81,6 @@ final class LobbyViewModelTests: AppTestCase {
             XCTAssertFalse(policy.usesTabletChrome)
             XCTAssertFalse(policy.usesTwoRegionComposition)
             XCTAssertEqual(policy.stacksModeChoices, usesAccessibilityText)
-            XCTAssertFalse(policy.placesRaspasyControlsSideBySide)
         }
     }
 
@@ -97,7 +94,6 @@ final class LobbyViewModelTests: AppTestCase {
         XCTAssertTrue(policy.usesTabletChrome)
         XCTAssertFalse(policy.usesTwoRegionComposition)
         XCTAssertTrue(policy.stacksModeChoices)
-        XCTAssertFalse(policy.placesRaspasyControlsSideBySide)
     }
 
     func testBotStepperAddsAndRemovesFourthBot() {

@@ -23,9 +23,6 @@ struct LobbyLayoutPolicy: Equatable {
     var stacksModeChoices: Bool {
         usesTabletChrome || usesAccessibilityText
     }
-    var placesRaspasyControlsSideBySide: Bool {
-        isRegularWidth && !usesAccessibilityText
-    }
 }
 
 public struct LobbyView: View {
@@ -48,15 +45,11 @@ public struct LobbyView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    /// The invisible 1×1 automation affordances exist only under XCUITest —
-    /// in a shipping build they were VoiceOver-reachable unlabeled buttons
-    /// that could start a real table or online room.
-    let isUIAutomation = TestHarness.isUIAutomation()
-
     @StateObject var viewModel = LobbyViewModel()
     @StateObject private var gameLibrary = OnlineGameLibrary()
     @State private var activeSheet: Sheet?
     @State private var showingWatchBotsConfirm = false
+    @State private var showingTableOptions = false
     @State private var didRunOnlineHarness = false
     @State var appleSignInNonce: String?
 
@@ -231,9 +224,11 @@ public struct LobbyView: View {
         .scrollDismissesKeyboard(.interactively)
         .feltBackground()
         // Keep scrolled form controls from becoming visual noise behind the
-        // status bar and settings button. The lobby is always dark felt, so
-        // the navigation chrome also owns a dark, opaque contrast surface.
+        // status bar and settings button. Navigation chrome follows the theme.
         .themeNavigationChrome()
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if viewModel.lobbyMode == .local { localStartBar }
+        }
         .task(id: onlineGamesRefreshKey) {
             guard viewModel.lobbyMode == .online else { return }
             await gameLibrary.refresh(sessionToken: viewModel.onlineAccountSessionToken)
@@ -247,20 +242,7 @@ public struct LobbyView: View {
             hero
             modeSegment
 
-            if usesTabletLobby {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("A complete table at a glance", systemImage: "rectangle.split.2x1")
-                        .font(.headline)
-                        .foregroundStyle(theme.textPrimary)
-                    Text("Choose how to play here, then set up the table alongside it. Your current game always takes over the full screen.")
-                        .font(.subheadline)
-                        .foregroundStyle(theme.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 14))
-            }
+
         }
         .padding(usesTabletLobby ? 24 : 0)
         .background {
@@ -281,7 +263,6 @@ public struct LobbyView: View {
         VStack(spacing: 18) {
             if viewModel.lobbyMode == .local {
                 localTableCard
-                if isUIAutomation { onlineHiddenAffordances }
             } else {
                 LobbyYourGamesSection(
                     viewModel: viewModel,
@@ -289,7 +270,6 @@ public struct LobbyView: View {
                     onSelectFinishedGame: { activeSheet = .gameSummary($0) }
                 )
                 onlineSetupCard
-                if isUIAutomation { localHiddenAffordances }
             }
             if let infoText = viewModel.infoText {
                 Label(infoText, systemImage: "checkmark.seal.fill")
@@ -396,54 +376,37 @@ public struct LobbyView: View {
         .accessibilityIdentifier(UIIdentifiers.lobbyHouseConventions)
     }
 
-    /// Test-only mirror keeping the online Create/Join identifiers in the
-    /// accessibility tree while the lobby is showing the *local* card. Uses the
-    /// same 1×1 / near-zero-opacity idiom as the other hidden affordances so the
-    /// "all automation roots reachable at launch" contract holds in either mode.
-    private var onlineHiddenAffordances: some View {
-        VStack(spacing: 0) {
-            Button { viewModel.startCloudflareOnlineRoom() } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
-            TextField("", text: $viewModel.onlineJoinRoomCode)
-                .accessibilityIdentifier(UIIdentifiers.onlineJoinRoomCode)
-            Button { viewModel.joinCloudflareOnlineRoom() } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.onlineJoinRoom)
-        }
-        .frame(width: 1, height: 1)
-        .opacity(0.001)
-        .allowsHitTesting(true)
-    }
-
-    /// Mirror of the local automation roots, kept alive while the *online* card
-    /// is showing. Symmetric counterpart to `onlineHiddenAffordances`.
-    private var localHiddenAffordances: some View {
-        VStack(spacing: 0) {
-            Button { viewModel.startLocalTable() } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
-            Button { viewModel.quickPlayVsBots() } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
-            Button { showingWatchBotsConfirm = true } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyWatchBots)
-            Button { viewModel.addBot() } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyAddBot)
-            Button { viewModel.removeBot() } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyRemoveBot)
-            Button { viewModel.setSeatCount(3) } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountThree)
-            Button { viewModel.setSeatCount(4) } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountFour)
-            TextField("", text: nameBinding(for: 0))
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerNameField(index: 0))
-            Picker("", selection: $viewModel.botSpeed) {
-                ForEach(BotMoveSpeed.allCases) { speed in
-                    Text(speed.label).tag(speed)
-                }
+    private var localStartBar: some View {
+        VStack(spacing: 8) {
+            if let validation = viewModel.seats.validationError {
+                Text(validation)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(theme.warning)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
+            } else {
+                (Text("\(viewModel.seats.count) players")
+                 + Text(verbatim: " · ")
+                 + Text(viewModel.onlineVariant.standardName))
+                    .font(.footnote)
+                    .foregroundStyle(theme.textSecondary)
+                    .accessibilityIdentifier(UIIdentifiers.lobbyStartSummary)
             }
-            .accessibilityIdentifier(UIIdentifiers.lobbyBotSpeedPicker)
+            Button { viewModel.startLocalTable() } label: {
+                Label("Sit down", systemImage: "play.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 28)
+            }
+            .buttonStyle(.feltPrimary)
+            .disabled(viewModel.seats.validationError != nil)
+            .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
         }
-        .frame(width: 1, height: 1)
-        .opacity(0.001)
-        .allowsHitTesting(true)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: 540)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .feltBand()
     }
 
     private var localTableCard: some View {
@@ -456,50 +419,22 @@ public struct LobbyView: View {
                         seatRow(index: index)
                     }
                 }
-                if isUIAutomation { legacySeatCountAccessibilityButtons }
-
-                variantControls
-                botSpeedPicker
-                pulkaLimitPicker
-                raspasyControls
-
-                if let validation = viewModel.seats.validationError {
-                    Text(validation)
-                        .font(.caption)
-                        .foregroundStyle(theme.warning)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier(UIIdentifiers.lobbyValidationError)
-                }
-
-                Button {
-                    viewModel.startLocalTable()
-                } label: {
-                    HStack {
-                        Image(systemName: "play.fill")
-                        Text("Sit down")
-                            .fontWeight(.semibold)
+                DisclosureGroup(isExpanded: $showingTableOptions) {
+                    VStack(spacing: 16) {
+                        variantControls
+                        botSpeedPicker
+                        pulkaLimitPicker
+                        raspasyControls
                     }
-                    .frame(maxWidth: .infinity)
+                    .padding(.top, 12)
+                } label: {
+                    Label("Table options", systemImage: "slider.horizontal.3")
+                        .font(.headline)
+                        .foregroundStyle(theme.textPrimary)
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier(UIIdentifiers.lobbyTableOptions)
                 }
-                .buttonStyle(.feltPrimary)
-                .controlSize(.large)
-                .disabled(viewModel.seats.validationError != nil)
-                .accessibilityIdentifier(UIIdentifiers.lobbyStartLocalTable)
-
-                // Hidden test-only affordance. The visible quick-play CTA was
-                // folded into "Sit down" (which already starts a table with
-                // the current roster), but UI tests still tap this identifier
-                // to land on a 1-human + 2-bot table from a clean lobby.
-                // SwiftUI elides zero-frame / fully-transparent views from the
-                // accessibility tree, which is why this uses a 1×1 frame and
-                // a near-zero (but non-zero) opacity.
-                if isUIAutomation {
-                    Button { viewModel.quickPlayVsBots() } label: { Color.clear }
-                        .frame(width: 1, height: 1)
-                        .opacity(0.001)
-                        .allowsHitTesting(true)
-                        .accessibilityIdentifier(UIIdentifiers.lobbyQuickPlayVsBots)
-                }
+                .tint(theme.accent)
 
                 // Spectator-only "watch bots" lives below the roster as a
                 // secondary affordance. The main "Sit down" CTA starts from
@@ -545,7 +480,8 @@ public struct LobbyView: View {
             } label: {
                 Image(systemName: "minus.circle.fill")
                     .font(.title3)
-                    .frame(width: 34, height: 34)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(viewModel.canRemoveBot ? theme.accentStrong : theme.textMuted)
@@ -558,7 +494,8 @@ public struct LobbyView: View {
             } label: {
                 Image(systemName: "plus.circle.fill")
                     .font(.title3)
-                    .frame(width: 34, height: 34)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(viewModel.canAddBot ? theme.accentStrong : theme.textMuted)
@@ -568,18 +505,6 @@ public struct LobbyView: View {
         }
         .padding(10)
         .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private var legacySeatCountAccessibilityButtons: some View {
-        HStack(spacing: 0) {
-            Button { viewModel.setSeatCount(3) } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountThree)
-            Button { viewModel.setSeatCount(4) } label: { Color.clear }
-                .accessibilityIdentifier(UIIdentifiers.lobbyPlayerCountFour)
-        }
-        .frame(width: 1, height: 1)
-        .opacity(0.001)
-        .allowsHitTesting(true)
     }
 
     private func seatRow(index: Int) -> some View {
@@ -661,7 +586,7 @@ public struct LobbyView: View {
                     Text(speed.label).tag(speed)
                 }
             }
-            .pickerStyle(.segmented)
+            .modifier(LobbyChoiceControlStyle())
             .accessibilityIdentifier(UIIdentifiers.lobbyBotSpeedPicker)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -704,7 +629,7 @@ public struct LobbyView: View {
                     }
                 }
             }
-            .pickerStyle(.segmented)
+            .modifier(LobbyChoiceControlStyle())
             .accessibilityIdentifier(UIIdentifiers.matchPoolTarget)
 
             if viewModel.pulkaLimit == .custom {
@@ -734,11 +659,9 @@ public struct LobbyView: View {
     }
 
     var raspasyControls: some View {
-        let layout = layoutPolicy.placesRaspasyControlsSideBySide
-            ? AnyLayout(HStackLayout(alignment: .top, spacing: 12))
-            : AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-
-        return layout {
+        // The setup pane can be narrow even on a full-width iPad. Each
+        // progression needs the pane's whole width to show distinct values.
+        VStack(alignment: .leading, spacing: 12) {
             raspasySetting(
                 title: "rules.raspasyPrice",
                 selection: $viewModel.raspasyPenaltyProgression,
@@ -780,7 +703,7 @@ public struct LobbyView: View {
                     Text(verbatim: choice.1).tag(choice.0)
                 }
             }
-            .pickerStyle(.segmented)
+            .modifier(LobbyChoiceControlStyle())
             .accessibilityIdentifier(identifier)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -846,5 +769,23 @@ public struct LobbyView: View {
                 viewModel.setBotProfile(profile, at: index)
             }
         )
+    }
+}
+
+/// Long segmented choices stop fitting at accessibility text sizes. Native
+/// menus preserve the full option labels and the same selection binding.
+struct LobbyChoiceControlStyle: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            content
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        } else {
+            content.pickerStyle(.segmented)
+        }
     }
 }
