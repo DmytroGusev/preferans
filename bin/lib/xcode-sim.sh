@@ -30,7 +30,11 @@ EOF
 
 preferans_destination() {
   local dest_name="$1"
-  printf 'platform=iOS Simulator,name=%s' "$dest_name"
+  if [[ -n "${DEST_ID:-}" ]]; then
+    printf 'platform=iOS Simulator,id=%s' "$DEST_ID"
+  else
+    printf 'platform=iOS Simulator,name=%s' "$dest_name"
+  fi
 }
 
 preferans_sim_udid_for_name() {
@@ -54,12 +58,18 @@ preferans_build_for_testing() {
   local dest="$2"
   local derived="$3"
   preferans_require_xcode
+  # Record exact inputs so reusable products cannot silently predate the source.
+  mkdir -p "$derived"
+  rm -f "$derived/.preferans-test-build.json"
+  python3 bin/lib/screen-provenance.py stamp "$derived/.preferans-test-build.pending.json"
   xcodebuild build-for-testing \
     -project Preferans.xcodeproj \
     -scheme "$scheme" \
     -destination "$dest" \
     -derivedDataPath "$derived" \
     -quiet
+  python3 bin/lib/screen-provenance.py check "$derived/.preferans-test-build.pending.json" || return $?
+  mv "$derived/.preferans-test-build.pending.json" "$derived/.preferans-test-build.json"
 }
 
 preferans_test_without_building() {
@@ -68,11 +78,17 @@ preferans_test_without_building() {
   local derived="$3"
   shift 3
   preferans_require_xcode
+  python3 bin/lib/screen-provenance.py check "$derived/.preferans-test-build.json" || return $?
   xcodebuild test-without-building \
     -project Preferans.xcodeproj \
     -scheme "$scheme" \
     -destination "$dest" \
     -derivedDataPath "$derived" \
+    -parallel-testing-enabled NO \
+    -test-timeouts-enabled YES \
+    -default-test-execution-time-allowance 60 \
+    -maximum-test-execution-time-allowance 90 \
+    -collect-test-diagnostics "${PREFERANS_TEST_DIAGNOSTICS:-never}" \
     "$@"
 }
 

@@ -70,7 +70,11 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   preferans_build_for_testing "$SCHEME" "$DEST" "$DERIVED"
 fi
 
-echo "[screens] running RedesignScreenshotTests on $DEST_NAME"
+# --no-build requires reusable products that match every source input.
+python3 bin/lib/screen-provenance.py check "$DERIVED/.preferans-test-build.json"
+cp "$DERIVED/.preferans-test-build.json" "$OUT_DIR/build-source.json"
+
+echo "[screens] running selected screenshot tests on $DEST_NAME"
 # Tell the playthrough tests where to dump their secondary PNG bucket.
 # Without this they fall back to NSTemporaryDirectory, which works but
 # isn't where you'd look. xcodebuild only forwards env vars that carry
@@ -90,8 +94,7 @@ done
 set +e
 preferans_test_without_building "$SCHEME" "$DEST" "$DERIVED" \
   "${TEST_SELECTORS[@]}" \
-  -resultBundlePath "$RESULT_BUNDLE" \
-  -quiet
+  -resultBundlePath "$RESULT_BUNDLE"
 TEST_STATUS=$?
 set -e
 
@@ -123,6 +126,8 @@ done < <(find build -mindepth 1 -maxdepth 1 -type d -name 'screens*' -print)
 
 # Surface a flat, human-readable PNG list.
 COUNT="$(find "$OUT_DIR" -name '*.png' | wc -l | tr -d ' ')"
+python3 bin/lib/screen-provenance.py capture "$OUT_DIR/build-source.json" \
+  "$OUT_DIR/capture.json" "$TEST_STATUS" "$DEST" "${ONLY_TESTS[@]}"
 echo "[screens] captured $COUNT PNG(s) in $OUT_DIR"
 if [[ "$COUNT" -gt 0 && "$OPEN_OUTPUT" -eq 1 ]]; then
   open "$OUT_DIR"

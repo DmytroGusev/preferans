@@ -1,66 +1,29 @@
 #!/usr/bin/env bash
-# Resolve the freshest screenshot run — and REFUSE if it is stale.
-#
-# "Stale" means any Swift source under Preferans/ is newer than the newest
-# rendered frame. This is the guard against critiquing month-old pixels: a
-# design review or screen iteration must look at frames rendered from the
-# code as it stands now, not whatever happens to be left in bin/.screens.
-#
-# On success: prints the absolute path to the freshest run dir to stdout.
-# Exit codes:
-#   0  a fresh run exists; its path was printed
-#   2  no runs exist yet            -> run `bin/screens`
-#   3  newest run is older than src -> run `bin/screens` to re-render
-#
-# Usage:
-#   dir="$(bin/screens-latest)" || bin/screens   # render if missing/stale
-#   bin/screens-latest --quiet                   # path only, no diagnostics
+# Return the newest completed capture only when it matches current source.
+# Exit 2: no captures. Exit 3: missing provenance or stale source.
 set -euo pipefail
-
 source "$(dirname "$0")/lib/xcode-sim.sh"
 preferans_cd_repo_root
 
-QUIET=0
-[[ "${1:-}" == "--quiet" ]] && QUIET=1
-warn() { [[ "$QUIET" -eq 1 ]] || echo "$@" >&2; }
+python3 - "${1:-}" <<'PY'
+import importlib.util
+from pathlib import Path
+import sys
 
-OUT_ROOT="bin/.screens"
+sys.dont_write_bytecode = True
 
-# Newest mtime among rendered PNGs in a directory (0 if none).
-newest_png_mtime() {
-  find "$1" -name '*.png' -print0 2>/dev/null \
-    | xargs -0 stat -f '%m' 2>/dev/null | sort -rn | head -1
-}
-
-# Freshest run dir = the run directory holding the most recently written PNG.
-LATEST_DIR=""
-LATEST_MTIME=0
-if [[ -d "$OUT_ROOT" ]]; then
-  while IFS= read -r d; do
-    [[ -d "$d" ]] || continue
-    m="$(newest_png_mtime "$d")"
-    [[ -z "$m" ]] && continue
-    if [[ "$m" -gt "$LATEST_MTIME" ]]; then LATEST_MTIME="$m"; LATEST_DIR="$d"; fi
-  done < <(find "$OUT_ROOT" -mindepth 1 -maxdepth 1 -type d)
-fi
-
-if [[ -z "$LATEST_DIR" ]]; then
-  warn "[screens-latest] no rendered screenshots found under $OUT_ROOT"
-  warn "[screens-latest] run: bin/screens"
-  exit 2
-fi
-
-# Newest Swift source under Preferans/ (the app target the frames depict).
-SRC_MTIME="$(find Preferans -name '*.swift' -print0 \
-  | xargs -0 stat -f '%m' | sort -rn | head -1)"
-
-if [[ "$SRC_MTIME" -gt "$LATEST_MTIME" ]]; then
-  warn "[screens-latest] STALE: source is newer than the latest screenshots."
-  warn "[screens-latest]   latest run : $LATEST_DIR"
-  warn "[screens-latest]   newest src : $(find Preferans -name '*.swift' -print0 \
-        | xargs -0 stat -f '%m %N' | sort -rn | head -1 | cut -d' ' -f2-)"
-  warn "[screens-latest] re-render with: bin/screens"
-  exit 3
-fi
-
-echo "$(pwd)/$LATEST_DIR"
+spec = importlib.util.spec_from_file_location("provenance", "bin/lib/screen-provenance.py")
+provenance = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(provenance)
+root = Path("bin/.screens")
+runs = sorted((p for p in root.glob("*") if p.is_dir() and any(p.rglob("*.png"))), reverse=True)
+if not runs:
+    print("[screens-latest] No rendered screenshots. Run bin/screens.", file=sys.stderr)
+    sys.exit(2)
+latest = runs[0]
+# Exporting an old xcresult gives its PNGs a fresh modification time; that
+# cannot establish which source produced the pixels. Legacy runs fail closed.
+if not provenance.check(latest / "capture.json"):
+    sys.exit(3)
+print(latest.resolve())
+PY

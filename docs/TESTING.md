@@ -73,6 +73,21 @@ UDIDs for the 4-player rotation/sitting-out shape.
 
 ## Simulator tooling notes
 
+`bin/screens` and `bin/test-ui` use one runner on the requested simulator.
+Set `DEST_ID` to select an exact runtime when several devices share a name.
+Individual tests have a 60-second default and a 90-second maximum allowance;
+shrink or fix a slow scenario instead of increasing those limits. Screenshot
+runs retain phase output and attachments. System-wide failure diagnostics are
+off by default because their collection can outlast the test by minutes; set
+`PREFERANS_TEST_DIAGNOSTICS=on-failure` for a specific infrastructure diagnosis.
+
+Screenshot provenance hashes app sources/resources, shared engine sources,
+UI fixtures, package resolution, and project/scheme settings. `--no-build`
+rejects mismatched products. Each completed run records the source digest,
+destination, selected tests, and result in `capture.json`. `bin/screens-latest`
+compares that digest with the current source, including uncommitted changes;
+new PNG modification times cannot make an old build pass the freshness check.
+
 If `mcp__xcodebuildmcp__.snapshot_ui` returns an empty zero-size app tree but
 XCUITest can still find `UIIdentifiers` elements, treat the MCP snapshot as
 unavailable for that process. Continue through XCUITest, `.xcresult` bundles,
