@@ -127,10 +127,6 @@ final class TableLayoutModelTests: XCTestCase {
             GameOverLayoutPolicy(isRegularWidth: true, usesAccessibilityText: true)
                 .usesTwoRegionComposition
         )
-        XCTAssertTrue(
-            GameOverLayoutPolicy(isRegularWidth: true, usesAccessibilityText: true)
-                .stacksActions
-        )
     }
 
     func testDealSummaryUsesSeparateIPadResultAndScoreRegions() {

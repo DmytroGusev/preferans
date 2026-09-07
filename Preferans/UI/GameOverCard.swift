@@ -13,7 +13,6 @@ struct GameOverLayoutPolicy: Equatable {
         isRegularWidth && !usesAccessibilityText
     }
 
-    var stacksActions: Bool { !usesTwoRegionComposition }
 }
 
 /// Inline game-over panel rendered on the felt at match end. Replaces the
@@ -115,34 +114,28 @@ public struct GameOverCard: View {
                 .font(.headline.bold())
                 .foregroundStyle(theme.accentStrong)
                 .accessibilityIdentifier(UIIdentifiers.gameOverTitle)
-            if let winner = summary.standings.first {
-                Text("\(displayName(winner.player)) takes the pulka")
+            if let winner = summary.soleWinner {
+                Text("\(displayName(winner)) takes the pulka")
                     .font(.subheadline.bold())
                     .foregroundStyle(theme.textPrimary)
-                    .accessibilityLabel(Text("\(displayName(winner.player)) takes the pulka"))
                     .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
-                Text("Match won")
-                    .font(.caption2)
-                    .foregroundStyle(theme.textSecondary)
+            } else if summary.leadingPlayers.count > 1 {
+                Text("Shared lead: \(summary.leadingPlayers.map(displayName).joined(separator: ", "))")
+                    .font(.subheadline.bold())
+                    .foregroundStyle(theme.textPrimary)
+                    .accessibilityIdentifier(UIIdentifiers.gameOverWinner)
             }
             Text("\(summary.dealsPlayed) completed deals")
                 .font(.caption)
                 .foregroundStyle(theme.textSecondary)
                 .accessibilityIdentifier(UIIdentifiers.gameOverDealsPlayed)
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var ctaRow: some View {
-        Group {
-            if layoutPolicy.stacksActions {
-                VStack(spacing: 8) {
-                    ctaButtons
-                }
-            } else {
-                HStack(spacing: 8) {
-                    ctaButtons
-                }
-            }
+        VStack(spacing: 8) {
+            ctaButtons
         }
         .padding(.top, 4)
     }
@@ -180,49 +173,61 @@ public struct GameOverCard: View {
     }
 
     private var standingsTable: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             HStack(spacing: 10) {
-                Text("")
-                    .frame(width: 18, alignment: .leading)
-                Text("")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Text("Pool")
-                    .frame(width: 40, alignment: .trailing)
-                Text("Mtn")
-                    .frame(width: 40, alignment: .trailing)
-                Text("Bal")
-                    .frame(width: 50, alignment: .trailing)
+                Text("Standings")
+                Spacer(minLength: 8)
+                Text("Balance")
             }
-            .font(.caption2.weight(.semibold))
+            .font(.caption.weight(.semibold))
             .foregroundStyle(theme.textSecondary)
+            .fixedSize(horizontal: false, vertical: true)
             ForEach(Array(summary.standings.enumerated()), id: \.offset) { index, standing in
-                HStack(spacing: 10) {
-                    Text("\(index + 1)")
-                        .font(.caption.bold())
-                        .foregroundStyle(theme.textPrimary)
-                        .frame(width: 18, alignment: .leading)
-                    Text(displayName(standing.player))
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(theme.textPrimary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingPlayer(rank: index + 1))
-                    Text("\(standing.pool)")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(theme.textPrimary)
-                        .frame(width: 40, alignment: .trailing)
-                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingPool(rank: index + 1))
-                    Text("\(standing.mountain)")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(theme.textPrimary)
-                        .frame(width: 40, alignment: .trailing)
-                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingMountain(rank: index + 1))
-                    Text(ScoreFormatting.balance(standing.balance))
-                        .font(.caption.monospacedDigit().weight(.semibold))
-                        .foregroundStyle(theme.textPrimary)
-                        .frame(width: 50, alignment: .trailing)
-                        .accessibilityIdentifier(UIIdentifiers.gameOverStandingBalance(rank: index + 1))
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("\(summary.rank(of: standing.player) ?? index + 1)")
+                            .foregroundStyle(theme.accentStrong)
+                        Text(displayName(standing.player))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier(UIIdentifiers.gameOverStandingPlayer(rank: index + 1))
+                        Text(ScoreFormatting.balance(standing.balance))
+                            .monospacedDigit()
+                            .fixedSize()
+                            .accessibilityLabel("Balance")
+                            .accessibilityValue(ScoreFormatting.balance(standing.balance))
+                            .accessibilityIdentifier(UIIdentifiers.gameOverStandingBalance(rank: index + 1))
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(theme.textPrimary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 16) { recordedPoints(standing, index: index) }
+                        VStack(alignment: .leading, spacing: 3) { recordedPoints(standing, index: index) }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(theme.textSecondary)
                 }
+                .padding(10)
+                .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: TableTheme.Radius.xs))
             }
         }
+    }
+
+    @ViewBuilder
+    private func recordedPoints(_ standing: MatchSummary.Standing, index: Int) -> some View {
+        HStack(spacing: 4) {
+            Text("Pool")
+            Text("\(standing.pool)")
+                .monospacedDigit()
+                .accessibilityIdentifier(UIIdentifiers.gameOverStandingPool(rank: index + 1))
+        }
+        .fixedSize()
+        HStack(spacing: 4) {
+            Text("Mountain")
+            Text("\(standing.mountain)")
+                .monospacedDigit()
+                .accessibilityIdentifier(UIIdentifiers.gameOverStandingMountain(rank: index + 1))
+        }
+        .fixedSize()
     }
 }

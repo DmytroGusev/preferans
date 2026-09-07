@@ -124,7 +124,7 @@ public enum ProjectedStatus: Codable, Sendable, Equatable {
     case settling(proposer: PlayerID, target: PlayerID, targetTricks: Int, currentPlayer: PlayerID?)
     /// Deal scored; the result sheet is presenting outcomes.
     case dealScored
-    /// Match over. `winner` is the standings leader (nil if no standings).
+    /// Match over. `winner` is the sole leader (nil for a tie or no standings).
     case matchOver(winner: PlayerID?)
 }
 

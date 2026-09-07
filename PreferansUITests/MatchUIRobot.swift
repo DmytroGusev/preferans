@@ -125,7 +125,7 @@ final class MatchUIRobot {
     @discardableResult
     func tapIfPresent(_ identifier: String) -> Bool {
         let button = app.buttons[identifier]
-        guard button.exists, button.isHittable else { return false }
+        guard button.exists, button.isEnabled, button.isHittable else { return false }
         button.tap()
         return true
     }
@@ -144,8 +144,10 @@ final class MatchUIRobot {
               cards.element(boundBy: 1).exists else {
             return false
         }
-        cards.element(boundBy: 0).tap()
-        cards.element(boundBy: 1).tap()
+        let identifiers = (0..<2).map { cards.element(boundBy: $0).identifier }
+        for identifier in identifiers {
+            tapCard(id: identifier, descriptor: "discard pick")
+        }
         return tapIfPresent(UIIdentifiers.buttonDiscardSelected)
     }
 

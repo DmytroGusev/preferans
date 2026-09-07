@@ -2,6 +2,52 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+  "Standings": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Standings"
+        }
+      },
+      "ru": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Итоговые места"
+        }
+      },
+      "uk": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Підсумкові місця"
+        }
+      }
+    }
+  },
+  "Shared lead: %@": {
+    "extractionState": "manual",
+    "localizations": {
+      "en": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Shared lead: %@"
+        }
+      },
+      "ru": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Разделили первое место: %@"
+        }
+      },
+      "uk": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Поділили перше місце: %@"
+        }
+      }
+    }
+  },
   "Pool %@ · Mountain %@": {
     "extractionState": "manual",
     "localizations": {
@@ -6294,6 +6340,14 @@
             "value": "Залишити стіл?"
           }
         }
+      }
+    },
+    "You will disconnect from this table.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "You will disconnect from this table." } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Вы отключитесь от этого стола." } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Ви від’єднаєтеся від цього столу." } }
       }
     },
     "Your current match will be discarded.": {

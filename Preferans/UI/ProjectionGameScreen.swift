@@ -32,6 +32,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// and a "Back to lobby" CTA on the game-over card so the user always
     /// has a one-tap exit.
     public var onLeaveTable: (() -> Void)?
+    public var leaveTableMessage: LocalizedStringKey
     /// When non-nil, the game-over card shows a "Rematch" CTA that triggers
     /// this closure (resets the engine and starts a new match with the same
     /// roster).
@@ -61,6 +62,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         onSend: @escaping (PreferansAction) -> Void,
         onTapToAdvance: (() -> Void)? = nil,
         onLeaveTable: (() -> Void)? = nil,
+        leaveTableMessage: LocalizedStringKey = "Your current match will be discarded.",
         onRematch: (() -> Void)? = nil,
         @ViewBuilder extraMenu: () -> Menu = { EmptyView() }
     ) {
@@ -73,6 +75,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         self.onSend = onSend
         self.onTapToAdvance = onTapToAdvance
         self.onLeaveTable = onLeaveTable
+        self.leaveTableMessage = leaveTableMessage
         self.onRematch = onRematch
         self.extraMenu = extraMenu()
         // Stored, not computed: both derive by scanning the recent-event ring
@@ -94,13 +97,17 @@ public struct ProjectionGameScreen<Menu: View>: View {
 
     public var body: some View {
         Group {
-            switch layoutPolicy {
-            case .phoneLandscape:
-                landscapeBody
-            case .phonePortrait:
-                compactBody
-            case .iPad:
-                regularBody
+            if isResultPhase {
+                resultBody
+            } else {
+                switch layoutPolicy {
+                case .phoneLandscape:
+                    landscapeBody
+                case .phonePortrait:
+                    compactBody
+                case .iPad:
+                    regularBody
+                }
             }
         }
         .accessibilityElement(children: .contain)
@@ -146,6 +153,49 @@ public struct ProjectionGameScreen<Menu: View>: View {
     }
 
     // MARK: - Compact (iPhone)
+
+    /// Results are reading surfaces. They need natural height and the full
+    /// requested text size, independently of the live table's card geometry.
+    private var resultBody: some View {
+        VStack(spacing: 0) {
+            headerStrip
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .dynamicTypeSize(denseTableTypeRange)
+            ScrollView {
+                Group {
+                    if case let .dealFinished(result) = projection.phase {
+                        DealSummaryCard(
+                            result: result,
+                            projection: projection,
+                            cardSuitOrder: cardSuitDisplayOrder,
+                            onAdvance: { advanceToNextDeal() }
+                        )
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier(UIIdentifiers.Panel.dealFinished.rawValue)
+                    } else if case let .gameOver(summary) = projection.phase {
+                        GameOverCard(
+                            summary: summary,
+                            displayName: projection.displayName(for:),
+                            onRematch: onRematch,
+                            onLeaveTable: onLeaveTable
+                        )
+                    }
+                }
+                .frame(maxWidth: 960)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+            }
+        }
+        .feltBackground()
+    }
+
+    private var isResultPhase: Bool {
+        switch projection.phase {
+        case .dealFinished, .gameOver: true
+        default: false
+        }
+    }
 
     private var compactBody: some View {
         VStack(spacing: 0) {
@@ -364,13 +414,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
         .padding(.trailing, split.trailingInset)
     }
 
-    /// Narrow regular-width iPad windows (for example, a 1/3 Split View)
-    /// keep the table and scoresheet readable by stacking the scoresheet below
-    /// the gameplay surface instead of squeezing both into one row.
+    /// Narrow iPad windows give the full viewport to play. The header opens
+    /// the scoresheet on demand, keeping the hand and decisions in place.
     private func narrowRegularBody(width: CGFloat) -> some View {
-        let contentWidth = max(320, width - 32)
-        let tableHeight = min(max(360, contentWidth * 0.74), 520)
-        return ScrollView {
+        let contentWidth = max(0, width - 32)
+        return Group {
             VStack(spacing: 0) {
                 headerStrip
                     .padding(.horizontal, 12)
@@ -378,20 +426,17 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     .padding(.bottom, 8)
                     .dynamicTypeSize(denseTableTypeRange)
                 tableView()
-                    .frame(height: tableHeight)
+                    .frame(maxHeight: .infinity)
                     .dynamicTypeSize(denseTableTypeRange)
                 if shouldShowHandRail {
                     viewerHandFan
                         .padding(.horizontal, 8)
                         .padding(.top, 4)
+                        .layoutPriority(1)
                         .dynamicTypeSize(denseTableTypeRange)
                 }
                 if shouldShowActionBar {
-                    // Keep the compact two-row auction rail in a narrow
-                    // regular window too. The stacked layout gives the table
-                    // room to breathe, but the full seven-column grid would
-                    // still make the decision surface too dense in Split
-                    // View and would diverge from the phone contract.
+                    // Keep the readable auction rail at narrower widths.
                     actionBar(
                         availableChoiceWidth: min(
                             contentWidth - 24,
@@ -399,19 +444,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
                         )
                     )
                 }
-                ScoreBoardView(
-                    score: projection.score,
-                    rules: projection.rules,
-                    presentation: .feltSidebar,
-                    displayName: projection.displayName(for:)
-                )
-                .padding(.top, 16)
-                .dynamicTypeSize(denseTableTypeRange)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// A card table is a dense spatial interface: allowing every passive seat

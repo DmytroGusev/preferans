@@ -124,7 +124,7 @@ extension PlayerProjectionBuilder {
         case let .gameOver(summary):
             var frame = ProjectionBuildFrame(
                 phase: .gameOver(summary: summary),
-                status: .matchOver(winner: summary.standings.first?.player)
+                status: .matchOver(winner: summary.soleWinner)
             )
             frame.activePlayers = summary.lastDeal.activePlayers
             frame.lastCompletedTrick = summary.lastDeal.completedTricks.last

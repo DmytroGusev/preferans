@@ -3,19 +3,15 @@ import PreferansEngine
 
 // MARK: - Header strip
 //
-// Replaces both the old phaseStatusBar and the toolbar pill. One row:
-// a small phase chip on the left, a single overflow menu on the right.
-// Score / event log / settings / View-as all live behind that one
-// ellipsis button instead of competing for top-of-screen real estate.
+// Phase and turn information share a flexible column. Frequently used table
+// controls stay directly available with full-size touch targets.
 
 extension ProjectionGameScreen {
     var headerStrip: some View {
         HStack(alignment: .center, spacing: 8) {
             phaseChip
             Spacer(minLength: 8)
-            // The icons own their spacing via 40 pt hit frames; extra
-            // HStack spacing here would push the phase chip into
-            // truncation on compact widths.
+            // Each icon owns its touch target; labels can wrap alongside it.
             HStack(spacing: 0) {
                 if projection.lastCompletedTrick != nil {
                     lastTrickButton
@@ -27,28 +23,23 @@ extension ProjectionGameScreen {
                 overflowMenu
             }
         }
-        .confirmationDialog(
+        .alert(
             "Leave this table?",
-            isPresented: $showLeaveConfirm,
-            titleVisibility: .visible
+            isPresented: $showLeaveConfirm
         ) {
             Button("Leave table", role: .destructive) {
                 onLeaveTable?()
             }
             Button("Stay", role: .cancel) {}
         } message: {
-            Text("Your current match will be discarded.")
+            Text(leaveTableMessage)
         }
     }
 
-    /// Shared hit-target treatment for the header's icon buttons. The
-    /// glyphs render at ~22 pt; without this the tappable area is the
-    /// glyph itself (~31 pt), well under the 44 pt HIG minimum. 40 pt is
-    /// the compromise that still fits four buttons plus the phase chip on
-    /// a compact phone.
+    /// Keep the target independent of the symbol's visual size.
     private func headerIconTarget<Glyph: View>(_ glyph: Glyph) -> some View {
         glyph
-            .frame(width: 40, height: 40)
+            .frame(minWidth: 44, minHeight: 44)
             .contentShape(Rectangle())
     }
 
@@ -104,22 +95,18 @@ extension ProjectionGameScreen {
     }
 
     private var phaseChip: some View {
-        HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(Localized.phaseTitle(projection.phase))
                 .font(.caption.weight(.bold))
                 // Phase name is orientation, not an action — cream, not gold.
                 .foregroundStyle(theme.textPrimary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier(UIIdentifiers.phaseTitle)
             if !shouldShowCenterDealCTA {
-                Text("·")
-                    .font(.caption2)
-                    .foregroundStyle(theme.textMuted)
                 Localized.statusText(projection)
                     .font(.caption)
                     .foregroundStyle(theme.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier(UIIdentifiers.phaseMessage)
             } else {
                 // Idle state: the centered Deal CTA already says everything

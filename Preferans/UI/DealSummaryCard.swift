@@ -96,7 +96,9 @@ struct DealSummaryCard: View {
                     .frame(width: 0, height: 0)
                     .accessibilityHidden(true)
             }
-            trickTallyGrid(result: result)
+            if result.trickCounts.values.contains(where: { $0 > 0 }) {
+                trickTallyGrid(result: result)
+            }
         }
     }
 

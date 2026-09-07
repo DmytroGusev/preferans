@@ -267,6 +267,23 @@ public struct MatchSummary: Equatable, Codable, Sendable {
     public let lastDeal: DealResult
     public let standings: [Standing]
 
+    /// Equal balances share the lead; seat order only makes the list stable.
+    public var leadingPlayers: [PlayerID] {
+        guard let highest = standings.first?.balance else { return [] }
+        return standings.prefix { $0.balance == highest }.map(\.player)
+    }
+
+    public var soleWinner: PlayerID? {
+        let leaders = leadingPlayers
+        return leaders.count == 1 ? leaders.first : nil
+    }
+
+    public func rank(of player: PlayerID) -> Int? {
+        guard let balance = standings.first(where: { $0.player == player })?.balance,
+              let firstEqual = standings.firstIndex(where: { $0.balance == balance }) else { return nil }
+        return firstEqual + 1
+    }
+
     public struct Standing: Equatable, Codable, Sendable {
         public let player: PlayerID
         public let balance: Double

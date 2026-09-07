@@ -20,6 +20,78 @@ final class MatchUITests: XCTestCase {
         checkPassedContractSummary(accessibilityText: true)
     }
 
+    func testMatchCompletionRematchAndLeave() {
+        checkMatchEnd(accessibilityText: false, tied: false)
+    }
+
+    func testMatchCompletionAtLargestTextSize() {
+        checkMatchEnd(accessibilityText: true, tied: false)
+    }
+
+    func testEqualPoolsFinishWithASharedLead() {
+        checkMatchEnd(accessibilityText: false, tied: true)
+    }
+
+    private func checkMatchEnd(accessibilityText: Bool, tied: Bool) {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launchArguments += [
+            UITestFlags.viewerFollowsActor,
+            UITestFlags.players, "north,east,south",
+            UITestFlags.firstDealer, "south",
+            UITestFlags.dealScenario, "sortedDeck",
+            UITestFlags.poolTarget, "6",
+            UITestFlags.totusPolicy, "asTenTrickGame:true",
+            UITestFlags.theme, "nordic",
+        ]
+        if accessibilityText {
+            app.launchArguments += ["-UIPreferredContentSizeCategoryName",
+                                    "UICTContentSizeCategoryAccessibilityXXXL"]
+        }
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        let recorder = MatchScreenshotRecorder(testCase: self, app: app)
+        robot.startLocalTable()
+        for deal in 1...(tied ? 3 : 1) {
+            print("[match-end] playing deal \(deal)")
+            robot.startNextDeal()
+            let contract = GameContract(tied ? 6 : 10, .suit(.spades))
+            robot.bid(.bid(.game(contract)))
+            robot.bid(.pass)
+            robot.bid(.pass)
+            robot.takeTalon()
+            if deal == 1 { recorder.capture(name: "match-prikup-before-discard", force: true) }
+            XCTAssertTrue(robot.discardFirstTwoVisibleCards())
+            robot.waitForPhase("Contract")
+            robot.declareContract(contract)
+            robot.whist(.pass)
+            robot.whist(.pass)
+        }
+        robot.waitForPhase("Game over")
+        let winner = app.staticTexts[UIIdentifiers.gameOverWinner]
+        XCTAssertEqual(winner.label, tied ? "Shared lead: north, east, south" : "north takes the pulka")
+        XCTAssertEqual(robot.gameOverDealsPlayed(), tied ? 3 : 1)
+        recorder.capture(name: tied ? "match-shared-lead" : "match-winner", force: true)
+        let rematch = app.buttons[UIIdentifiers.buttonRematch]
+        for _ in 0..<5 where !rematch.isHittable { app.swipeUp() }
+        XCTAssertTrue(rematch.isHittable)
+        recorder.capture(name: "match-end-actions", force: true)
+        rematch.tap()
+        robot.waitForPhase("Ready")
+        let scores = robot.scoreSnapshot(for: ["north", "east", "south"])
+        XCTAssertTrue(scores.values.allSatisfy { $0.pool == 0 && $0.mountain == 0 })
+        recorder.capture(name: "rematch-ready", force: true)
+        app.buttons[UIIdentifiers.buttonLeaveTable].tap()
+        recorder.capture(name: "leave-confirmation", force: true)
+        app.buttons["Stay"].tap()
+        robot.waitForPhase("Ready")
+        app.buttons[UIIdentifiers.buttonLeaveTable].tap()
+        app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@",
+                                         "Leave table", UIIdentifiers.buttonLeaveTable)).firstMatch.tap()
+        robot.waitForElement(UIIdentifiers.screenLobby)
+        XCTAssertTrue(app.buttons[UIIdentifiers.lobbyStartLocalTable].isHittable)
+    }
+
     private func checkPassedContractSummary(accessibilityText: Bool) {
         let app = XCUIApplication()
         app.disableUITestAnimations()
@@ -57,11 +129,17 @@ final class MatchUITests: XCTestCase {
             XCTAssertTrue(balance.exists)
             XCTAssertEqual(balance.label, "Balance")
             XCTAssertEqual(balance.value as? String, expected)
+            if accessibilityText {
+                XCTAssertGreaterThan(balance.frame.height, 30, "Result text must honor accessibility sizes")
+            }
         }
         recorder.capture(name: accessibilityText ? "score-largest-text" : "score-fractional-balances", force: true)
         let nextDeal = app.buttons[UIIdentifiers.buttonStartDeal]
         for _ in 0..<4 where !nextDeal.isHittable { app.swipeUp() }
         XCTAssertTrue(nextDeal.isHittable, "Next deal must remain reachable after reading the result")
+        if accessibilityText {
+            recorder.capture(name: "score-largest-text-actions", force: true)
+        }
         nextDeal.tap()
         robot.waitForPhase("Bidding")
         XCTAssertEqual(robot.scoreSnapshot(for: ["north"])["north"]?.pool, 2)
