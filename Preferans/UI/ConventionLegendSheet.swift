@@ -95,6 +95,7 @@ struct ConventionLegendSheet: View {
                     Button(action: { dismiss() }) {
                         Text("Done").foregroundStyle(theme.accentStrong)
                     }
+                    .accessibilityIdentifier(UIIdentifiers.buttonDismissSheet)
                 }
             }
             .themeNavigationChrome()

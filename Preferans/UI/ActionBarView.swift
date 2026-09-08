@@ -219,6 +219,8 @@ public struct ActionBarView: View {
                 if let suit = label.suit {
                     Text(suit.symbol)
                         .foregroundStyle(suit.color(on: .felt, theme: theme))
+                } else if case .game = label.kind {
+                    Text("NT")
                 }
             }
             .frame(

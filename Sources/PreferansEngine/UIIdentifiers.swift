@@ -236,6 +236,7 @@ public enum UIIdentifiers {
     /// XCUITests open this menu before tapping any nested item.
     public static let overflowMenu             = "menu.overflow"
     public static let buttonActivityLog        = "menu.activityLog"
+    public static let buttonRulesReference     = "menu.rulesReference"
 
     public enum Panel: String {
         case bidding         = "panel.bidding"

@@ -148,6 +148,7 @@ extension ProjectionGameScreen {
             } label: {
                 Label("rules.reference.title", systemImage: "book.closed")
             }
+            .accessibilityIdentifier(UIIdentifiers.buttonRulesReference)
             Divider()
             Button {
                 activeSheet = .settings
