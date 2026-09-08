@@ -5,7 +5,8 @@ Preferans is a SwiftUI iOS card game for local play and online rooms with friend
 ## What is included
 
 - Xcode project: `Preferans.xcodeproj`
-- SwiftUI app flow for lobby and table
+- SwiftUI app flow for lobby and table, with six persistent appearance themes
+- Three- or four-seat bot spectator tables, read-only hands, and instant rematches
 - Preferans bidding, talon exchange, whist/pass decisions, trick play, claims, and scoring
 - Rule variants such as Sochi, Leningrad, Rostov, and classic-style scoring modes (the lobby surfaces these under our house names — Одеса, Wien, Θεσσαλονίκη, Крути — with hover/tap hints back to the standard names)
 - Server-authoritative online tables on Cloudflare, with durable command receipts and automatic reconnect
