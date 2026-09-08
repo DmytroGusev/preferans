@@ -20,7 +20,9 @@ Changes included in this release:
 Verification:
 
 - `swift test`: 499 tests passed, 3 environment-dependent integration tests skipped.
-- iOS simulator build and signed App Store archive pending upload verification.
+- iOS simulator build: completed successfully.
+- Signed App Store archive: completed successfully.
+- App Store Connect upload: package accepted successfully; build `26` is processing.
 
 ## 1.0.1 (25) - App Store Connect
 
