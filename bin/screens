@@ -45,7 +45,7 @@ OUT_ROOT="bin/.screens"
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="$OUT_ROOT/$RUN_ID"
 RESULT_BUNDLE="$OUT_ROOT/$RUN_ID.xcresult"
-mkdir -p "$OUT_DIR"
+mkdir -p "$OUT_DIR" build
 
 # File-based buckets are scratch output from the test runner. Clear them before
 # launching the suite so an early test-process failure cannot make this run
