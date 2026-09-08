@@ -106,7 +106,7 @@ public struct CardPlayPlanner: Sendable {
     ) -> Double {
         guard var engine = try? PreferansEngine(snapshot: snapshot) else { return 0 }
         do {
-            _ = try engine.apply(.playCard(player: actingFor, card: firstMove))
+            try engine.applyRolloutCard(player: actingFor, card: firstMove)
         } catch {
             return -1_000 // illegal in this sample — heavily penalize
         }
@@ -117,7 +117,7 @@ public struct CardPlayPlanner: Sendable {
             guard !legal.isEmpty else { break }
             let move = greedyChoice(legal: legal, playing: p, actor: actor)
             do {
-                _ = try engine.apply(.playCard(player: actor, card: move))
+                try engine.applyRolloutCard(player: actor, card: move)
             } catch {
                 break
             }

@@ -97,6 +97,13 @@ public struct PreferansEngine: Sendable {
         return events
     }
 
+    /// Private simulations start from a validated snapshot and use the same
+    /// legal-move reducer. Replaying the complete history after every simulated
+    /// card makes Debug bot matches spend most of their time in assertions.
+    mutating func applyRolloutCard(player: PlayerID, card: Card) throws {
+        _ = try dispatch(.playCard(player: player, card: card))
+    }
+
     private mutating func dispatch(_ action: PreferansAction) throws -> [PreferansEvent] {
         let transition = try reduce(action)
         state = transition.state

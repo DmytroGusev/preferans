@@ -4,6 +4,29 @@ import XCTest
 final class BotInformationTests: XCTestCase {
     private let active: [PlayerID] = ["north", "east", "south"]
 
+    func testRolloutCardsMatchValidatedPlayThroughCompleteDeals() throws {
+        for kind in [game(), PlayKind.allPass(.init(talonPolicy: .ignored))] {
+            var checked = try PreferansEngine(snapshot: makeSnapshot(kind: kind))
+            var rollout = checked
+            var count = 0
+            while case let .playing(state) = checked.state {
+                let actor = state.currentPlayer
+                let controller = checked.controllingActor(of: actor)
+                let card = try XCTUnwrap(checked.legalCards(for: controller).first)
+                if count == 0 {
+                    let wrongActor = try XCTUnwrap(active.first { $0 != actor })
+                    XCTAssertThrowsError(try rollout.applyRolloutCard(player: wrongActor, card: card))
+                    XCTAssertEqual(rollout.snapshot, checked.snapshot)
+                }
+                _ = try checked.apply(.playCard(player: actor, card: card))
+                try rollout.applyRolloutCard(player: actor, card: card)
+                XCTAssertEqual(rollout.snapshot, checked.snapshot)
+                count += 1
+            }
+            XCTAssertEqual(count, 30)
+        }
+    }
+
     func testClosedGameSamplesRespectThePublicExchangeAndRehydrate() throws {
         let snapshot = makeSnapshot(kind: game())
         let worlds = sampled(snapshot, viewer: "north", count: 64)
