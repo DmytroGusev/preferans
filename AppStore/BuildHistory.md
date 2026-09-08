@@ -22,7 +22,7 @@ Verification:
 - `swift test`: 499 tests passed, 3 environment-dependent integration tests skipped.
 - iOS simulator build: completed successfully.
 - Signed App Store archive: completed successfully.
-- App Store Connect upload: package accepted successfully; build `26` is processing.
+- App Store Connect upload: build `1.0.1 (26)` processed successfully with status `VALID`.
 
 ## 1.0.1 (25) - App Store Connect
 
