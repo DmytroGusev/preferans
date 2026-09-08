@@ -35,6 +35,27 @@ The fixture in `fixtures/create-game.json` is verified by the Swift server test
 suite. Regenerate intentionally with `PREFERANS_UPDATE_WIRE_FIXTURE=1 swift test
 --filter testCheckedInWireFixtureMatchesSwiftCodec` from the repository root.
 
+## Native client QA
+
+With the local services running, use the repository's simulator capture runner:
+
+```sh
+bin/screens --no-open --only-testing PreferansUITests/NativeOnlineUITests
+```
+
+These tests register a guest through the app, create or join a real room, connect
+independent authenticated peers, leave and resume a waiting room, and recover the
+same hand after relaunch. The guest test confirms its native bid and first card
+through another peer's server projection. Each flow deletes the native account
+through Settings and cleans up its peer accounts. Missing local services are an
+explicit skip; they do not count as online evidence.
+
+The test sets `PREFERANS_ROOM_WORKER_URL=http://127.0.0.1:8787` only for the launched
+app. Debug UI automation accepts only a loopback HTTP root URL and uses separate
+account, display-name, Keychain, and seat-cache keys. Release builds always use the
+production endpoint and credential namespace. Connection errors in these tests
+omit authenticated URLs. Every HTTP/socket wait is bounded at three seconds.
+
 ## Wire contract
 
 HTTP account and room routes are under `/v2`; payload `schemaVersion` is 4. Register

@@ -2,6 +2,29 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "You can return to this game from Your games in the lobby.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can return to this game from Your games in the lobby."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вы сможете вернуться к игре через раздел «Ваши игры» в лобби."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ви зможете повернутися до гри через розділ «Ваші ігри» в лобі."
+          }
+        }
+      }
+    },
     "Settle the deal": {
       "extractionState": "manual",
       "localizations": {

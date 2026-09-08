@@ -166,6 +166,7 @@ extension LobbyView {
         }
         .padding(10)
         .background(theme.shade.opacity(0.16), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.onlineSeatRow(index: index))
     }
 

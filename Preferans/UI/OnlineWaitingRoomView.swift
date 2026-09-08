@@ -72,15 +72,14 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
         .feltBackground()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenWaitingRoom)
-        .confirmationDialog(
+        .alert(
             "Leave this table?",
-            isPresented: $showLeaveConfirm,
-            titleVisibility: .visible
+            isPresented: $showLeaveConfirm
         ) {
             Button("Leave table", role: .destructive) { onLeaveTable() }
             Button("Stay", role: .cancel) {}
         } message: {
-            Text("The table will be closed for everyone if you're the host.")
+            Text("You can return to this game from Your games in the lobby.")
         }
         .onChange(of: coordinator.errorText) { _, newValue in
             // A failed start shouldn't leave the host stuck behind a disabled

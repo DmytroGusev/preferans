@@ -6,7 +6,7 @@ import Security
 /// account names are versioned: old trust-based identities can never be loaded
 /// accidentally after the clean break.
 public enum OnlineAccountSessionStore {
-    private static let service = "com.mixandmatch.preferans.online-account.v2"
+    private static let service = "com.mixandmatch.preferans.online-account.v2" + AppIdentifiers.onlineStorageSuffix
     private static let account = "active-session"
 
     public static func token() -> String? {
@@ -86,7 +86,7 @@ public struct KeychainOnlineAccountSessionStore: OnlineAccountSessionStoring {
 /// A seat token is scoped to one short-lived room, unlike the account bearer
 /// token above, so UserDefaults remains an appropriate recoverable cache.
 public enum OnlineSeatCredentialStore {
-    private static let storageKey = "online.seatCredentials"
+    private static let storageKey = "online.seatCredentials" + AppIdentifiers.onlineStorageSuffix
     /// Entries older than this are pruned on every write. Preferans matches
     /// last hours or days; anything this stale is a finished or abandoned room.
     private static let maxAge: TimeInterval = 90 * 24 * 3600

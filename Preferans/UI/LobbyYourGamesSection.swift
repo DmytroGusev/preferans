@@ -38,6 +38,7 @@ struct LobbyYourGamesSection: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.onlineGamesSection)
         } else if gameLibrary.isLoading && !gameLibrary.hasLoaded {
             onlinePanel(title: "Your games", icon: "clock.arrow.circlepath") {
@@ -49,6 +50,7 @@ struct LobbyYourGamesSection: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier(UIIdentifiers.onlineGamesSection)
         } else if gameLibrary.hasLoaded, viewModel.currentOnlineAccountID != nil {
             Text("Games you start or join show up here, so you can pick up where you left off.")
@@ -65,11 +67,15 @@ struct LobbyYourGamesSection: View {
             Button {
                 Task { await gameLibrary.refresh(sessionToken: viewModel.onlineAccountSessionToken) }
             } label: {
-                if gameLibrary.isLoading {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: "arrow.clockwise").font(.caption.weight(.semibold))
+                Group {
+                    if gameLibrary.isLoading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise").font(.body.weight(.semibold))
+                    }
                 }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(theme.accent)

@@ -90,7 +90,7 @@ public struct OnlineRoomGameScreen<Coordinator: OnlineGamePresenting>: View {
                 pendingAdvance: coordinator.pendingAdvance,
                 onSend: coordinator.send,
                 onLeaveTable: onLeaveTable,
-                leaveTableMessage: "You will disconnect from this table.",
+                leaveTableMessage: "You can return to this game from Your games in the lobby.",
                 extraMenu: {
                     Section("Room") {
                         // A bare Text renders as an inert, mislabeled menu

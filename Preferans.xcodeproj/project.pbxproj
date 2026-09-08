@@ -98,6 +98,7 @@
 		C0DE00000000000000000302 /* ThemeGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000301 /* ThemeGallery.swift */; };
 		C0DE00000000000000000402 /* ThemeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000401 /* ThemeUITests.swift */; };
 		C0DE00000000000000000502 /* OnboardingLocalizationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000501 /* OnboardingLocalizationUITests.swift */; };
+		C0DE00000000000000000602 /* NativeOnlineUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000601 /* NativeOnlineUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -216,6 +217,7 @@
 		C0DE00000000000000000301 /* ThemeGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ThemeGallery.swift; sourceTree = "<group>"; };
 		C0DE00000000000000000401 /* ThemeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeUITests.swift; sourceTree = "<group>"; };
 		C0DE00000000000000000501 /* OnboardingLocalizationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingLocalizationUITests.swift; sourceTree = "<group>"; };
+		C0DE00000000000000000601 /* NativeOnlineUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeOnlineUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -362,6 +364,7 @@
 				E0000000000000000000A048 /* RedesignScreenshotTests.swift */,
 				C0DE00000000000000000401 /* ThemeUITests.swift */,
 				C0DE00000000000000000501 /* OnboardingLocalizationUITests.swift */,
+				C0DE00000000000000000601 /* NativeOnlineUITests.swift */,
 				E0000000000000000000A04A /* AccessibilityContractTests.swift */,
 				E0000000000000000000AFA1 /* OnlineWaitingRoomUITests.swift */,
 				E0000000000000000000AFB1 /* OnlineScreensScreenshotTests.swift */,
@@ -564,6 +567,7 @@
 				E0000000000000000000A049 /* RedesignScreenshotTests.swift in Sources */,
 				C0DE00000000000000000402 /* ThemeUITests.swift in Sources */,
 				C0DE00000000000000000502 /* OnboardingLocalizationUITests.swift in Sources */,
+				C0DE00000000000000000602 /* NativeOnlineUITests.swift in Sources */,
 				E0000000000000000000A04B /* AccessibilityContractTests.swift in Sources */,
 				E0000000000000000000AFA0 /* OnlineWaitingRoomUITests.swift in Sources */,
 				E0000000000000000000AFB0 /* OnlineScreensScreenshotTests.swift in Sources */,

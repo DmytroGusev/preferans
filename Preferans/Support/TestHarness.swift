@@ -32,6 +32,23 @@ public enum TestHarness {
         arguments.contains { $0.hasPrefix("-uiTest") }
     }
 
+    /// Native integration tests may use a loopback worker. Reject all remote
+    /// hosts, credentials, and non-root URLs; shipping builds never consult it.
+    public static func localRoomWorkerURL(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> URL? {
+        guard isUIAutomation(in: arguments),
+              let raw = environment["PREFERANS_ROOM_WORKER_URL"],
+              let url = URL(string: raw),
+              url.scheme == "http",
+              ["localhost", "127.0.0.1"].contains(url.host ?? ""),
+              url.user == nil, url.password == nil,
+              url.query == nil, url.fragment == nil,
+              url.path.isEmpty || url.path == "/" else { return nil }
+        return url
+    }
+
     /// First-run routing must not depend on whatever UserDefaults happen to
     /// remain on a reused simulator. Automation enters the lobby by default;
     /// the dedicated onboarding test opts back into the tour explicitly.

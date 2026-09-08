@@ -5,8 +5,25 @@ public enum AppIdentifiers {
     /// Add this ID in a .gamekit bundle / App Store Connect if you use Game Center Activities.
     public static let gameCenterActivityID = "com.mixandmatch.preferans.activity.table"
 
-    public static let roomWorkerBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
-    public static let inviteBaseURL = URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
+    public static let roomWorkerBaseURL = localTestRoomWorkerURL
+        ?? URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
+    public static let inviteBaseURL = roomWorkerBaseURL
+
+    private static var localTestRoomWorkerURL: URL? {
+        #if DEBUG
+        TestHarness.localRoomWorkerURL()
+        #else
+        nil
+        #endif
+    }
+
+    /// A local worker must never receive a production identity or replace its
+    /// saved credentials. Relaunches retain the isolated QA identity so the
+    /// native resume and account-deletion paths can be exercised.
+    static var onlineStorageSuffix: String {
+        guard let url = localTestRoomWorkerURL else { return "" }
+        return ".uiTestLocal.\(url.host ?? "localhost").\(url.port ?? 80)"
+    }
 
     /// Clean-break worker account protocol. V1 identities are intentionally
     /// rejected so every online player registers through the authenticated API.
@@ -36,15 +53,15 @@ public enum SettingsKeys {
     public static let cardSuitDisplayOrder = "settings.cardSuitDisplayOrder"
 
     /// Persisted Sign in with Apple identity used for worker-backed rooms.
-    public static let onlineRegisteredAccount = "settings.onlineRegisteredAccount"
+    public static let onlineRegisteredAccount = "settings.onlineRegisteredAccount" + AppIdentifiers.onlineStorageSuffix
 
     /// Legacy v1 key retained only so Settings can erase old local identity
     /// debris. V2 guest IDs are server-issued and live in RegisteredOnlineAccount.
-    public static let onlineAnonymousAccountID = "settings.onlineAnonymousAccountID"
+    public static let onlineAnonymousAccountID = "settings.onlineAnonymousAccountID" + AppIdentifiers.onlineStorageSuffix
 
     /// Display name the player chose for online rooms when not signed in.
     /// Kept separate from the local bot roster so the two never bleed together.
-    public static let onlineDisplayName = "settings.onlineDisplayName"
+    public static let onlineDisplayName = "settings.onlineDisplayName" + AppIdentifiers.onlineStorageSuffix
 
     /// House-rule variant selected for both bot and online rooms.
     public static let onlineVariant = "settings.onlineVariant"
