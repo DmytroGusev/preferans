@@ -2,6 +2,26 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0.1 (26) - App Store Connect
+
+- Date: 2026-09-08
+- Git commit: `ea4ae2f fix(spectator): complete four-seat bot matches and preserve rematch pace`
+- Source update authored by: `ontofractal <v@ontofractal.com>`
+- Source base: build `1.0.1 (25)`, commit `7e96414`
+
+Changes included in this release:
+
+- Improved authoritative online play, durable actions, reconnect recovery, and seat/account validation.
+- Improved game flow around settlements, completed-trick visibility, no-trump bid labels, and score summaries.
+- Added persistent table themes and simplified the table setup flow.
+- Completed and bounded three- and four-player bot match coverage, including rematch pacing.
+- Bumped `CURRENT_PROJECT_VERSION` from `25` to `26`.
+
+Verification:
+
+- `swift test`: 499 tests passed, 3 environment-dependent integration tests skipped.
+- iOS simulator build and signed App Store archive pending upload verification.
+
 ## 1.0.1 (25) - App Store Connect
 
 - Date: 2026-07-27
