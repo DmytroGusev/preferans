@@ -140,6 +140,77 @@ final class LobbyViewModelTests: AppTestCase {
         )
     }
 
+    func testWatchBotsPreservesThreeOrFourSeatTableAndPacingPreference() throws {
+        for count in [3, 4] {
+            let model = LobbyViewModel()
+            model.setSeatCount(count)
+            model.onlineVariant = .odesa
+            model.pulkaLimit = .custom
+            model.customPulkaPerPlayer = 6
+            model.botSpeed = .slow
+
+            model.watchBots()
+
+            let game = try XCTUnwrap(model.localModel)
+            XCTAssertNil(model.errorText)
+            XCTAssertEqual(model.seats.count, count)
+            XCTAssertTrue(model.seats.allSatisfy(\.isBot))
+            XCTAssertEqual(game.engine.players.count, count)
+            XCTAssertEqual(Set(game.botStrategies.keys), Set(game.engine.players))
+            XCTAssertEqual(game.engine.match.poolTarget, 6 * count)
+            XCTAssertEqual(game.engine.match.poolClosure, .individualWithAmericanAid)
+            XCTAssertEqual(game.botMoveDelay, BotPacing.instant)
+            XCTAssertFalse(game.tapToAdvanceEnabled)
+            XCTAssertEqual(model.botSpeed, .slow, "Watching must preserve the next table's chosen pace")
+
+            model.rematchLocalTable()
+            let rematch = try XCTUnwrap(model.localModel)
+            XCTAssertNotEqual(rematch.tableID, game.tableID)
+            XCTAssertEqual(rematch.engine.players, game.engine.players)
+            XCTAssertEqual(rematch.botMoveDelay, BotPacing.instant)
+            XCTAssertFalse(rematch.tapToAdvanceEnabled)
+
+            model.startLocalTable()
+            XCTAssertEqual(model.localModel?.botMoveDelay, BotPacing.slow)
+        }
+    }
+
+    func testNormalLocalTableUsesTheSelectedProductionPace() throws {
+        let model = LobbyViewModel()
+        model.startLocalTable()
+        let game = try XCTUnwrap(model.localModel)
+        XCTAssertEqual(model.botSpeed, .normal)
+        XCTAssertEqual(game.botMoveDelay, BotPacing.normal)
+        XCTAssertTrue(game.tapToAdvanceEnabled)
+    }
+
+    func testWatchBotsCompletesFourSeatMatchAtSixPointsEach() async throws {
+        let lobby = LobbyViewModel()
+        lobby.setSeatCount(4)
+        lobby.onlineVariant = .odesa
+        lobby.pulkaLimit = .custom
+        lobby.customPulkaPerPlayer = 6
+        lobby.watchBots()
+        let game = try XCTUnwrap(lobby.localModel)
+        game.dealSource = SeededDealSource(seed: 20260907)
+        let deadline = Date().addingTimeInterval(30)
+        for deal in 1...60 where Date() < deadline {
+            game.startDeal()
+            while !game.engine.canStartDeal, Date() < deadline {
+                if case .gameOver = game.engine.state { break }
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            XCTAssertNil(game.lastError)
+            print("[watch-model] deal=\(deal) elapsed=\(30 - deadline.timeIntervalSinceNow)")
+            if case let .gameOver(summary) = game.engine.state {
+                XCTAssertTrue(summary.standings.allSatisfy { $0.pool >= 6 })
+                XCTAssertEqual(summary.dealsPlayed, deal)
+                return
+            }
+        }
+        XCTFail("The actual four-seat bot roster must finish within 30 seconds / 60 deals")
+    }
+
     func testBotProfileUpdatePreservesSeatKindInvariant() {
         let model = LobbyViewModel()
         let selected = BotProfile(difficulty: .casual, temperament: .adaptive)

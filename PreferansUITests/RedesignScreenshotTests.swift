@@ -504,7 +504,8 @@ final class RedesignScreenshotTests: XCTestCase {
 
     /// A strategic bot action should explain itself briefly on the felt and
     /// remain available in the activity log after the toast fades. The test
-    /// always passes as the human so one of the two bots must own the auction.
+    /// uses a deal where Trinity declares. It acknowledges the public talon
+    /// hold before waiting for the declaration explanation at production pace.
     func testBotDecisionInsightAndActivityLog() {
         let screenDir = screenDir("screens-bot-insights")
         try? FileManager.default.removeItem(at: screenDir)
@@ -512,9 +513,8 @@ final class RedesignScreenshotTests: XCTestCase {
         let app = XCUIApplication()
         app.pinTestLocaleEnglish()
         app.launchArguments += [
-            UITestFlags.disableAnimations,
-            UITestFlags.fastBotDelay,
-            UITestFlags.skipTapToAdvance,
+            UITestFlags.dealSeed, "20260907",
+            UITestFlags.firstDealer, "Trinity",
         ]
         app.launch()
         let robot = MatchUIRobot(app: app)
@@ -531,15 +531,18 @@ final class RedesignScreenshotTests: XCTestCase {
         XCTAssertTrue(app.buttons[UIIdentifiers.buttonStartDeal].waitForExistence(timeout: 3))
         app.buttons[UIIdentifiers.buttonStartDeal].tap()
 
+        robot.bid(.pass)
+        let talonHold = app.descendants(matching: .any)[UIIdentifiers.tapToAdvance]
+        XCTAssertTrue(talonHold.waitForExistence(timeout: 6))
+        recorder.capture(name: "00-talon-hold-production-pace", force: true, attach: false)
+        talonHold.tap()
+
         var sawInsight = false
         for _ in 0..<8 {
             if app.descendants(matching: .any)[UIIdentifiers.botInsightBanner]
                 .waitForExistence(timeout: 0.6) {
                 sawInsight = true
                 break
-            }
-            if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) {
-                continue
             }
         }
         XCTAssertTrue(sawInsight, "No bot decision explanation appeared after the human passed")
@@ -607,92 +610,74 @@ final class RedesignScreenshotTests: XCTestCase {
         recorder.capture(name: "04-after-dismiss", force: true, attach: false)
     }
 
-    /// Plays a full 4-player match to pool target = 6 against three bots.
-    /// Screenshots only on phase transitions + every deal-finished panel,
-    /// so the artifact is one page per phase, not one per tick.
-    func testHumanVsBotsFullMatchFourPlayersPoolSix() {
-        let screenDir = screenDir("screens-match")
-        try? FileManager.default.removeItem(at: screenDir)
-
+    /// Starts the actual spectator flow. Every seat is played by its configured
+    /// bot; the test only deals and reads results, with a per-deal and total bound.
+    func testWatchBotsFullMatchFourPlayersPoolSix() {
         let app = XCUIApplication()
-        // Pool target = 6, viewer follows actor, animations off so the
-        // simulator burns less time on transitions.
         app.pinTestLocaleEnglish()
         app.launchArguments += [
-            UITestFlags.viewerFollowsActor,
             UITestFlags.disableAnimations,
-            UITestFlags.fastBotDelay,
-            UITestFlags.skipTapToAdvance,
-            UITestFlags.poolTarget, "6",
+            UITestFlags.poolTarget, "24",
+            UITestFlags.dealSeed, "20260907",
+            "-settings.onlineVariant", "odesa",
         ]
         app.launch()
         let robot = MatchUIRobot(app: app)
-        let recorder = MatchScreenshotRecorder(testCase: self, app: app, outputDirectory: screenDir, filePrefix: "match")
-        recorder.capture(name: "01-lobby", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
-
-        // Switch lobby to 4 players, then start.
+        let recorder = MatchScreenshotRecorder(testCase: self, app: app)
         robot.selectPlayerCount(4)
-        recorder.capture(name: "02-lobby-4p", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
-        let startTable = app.buttons[UIIdentifiers.lobbyStartLocalTable]
-        XCTAssertTrue(startTable.waitForExistence(timeout: 3))
-        startTable.tap()
-        recorder.capture(name: "03-table-ready", key: robot.screenshotDeduplicationKey(dealNumber: 0), force: true, attach: false)
+        let watch = app.buttons[UIIdentifiers.lobbyWatchBots]
+        robot.revealLobbyControl(watch)
+        watch.tap()
+        XCTAssertTrue(app.staticTexts["All 4 seats will be filled with bots and you'll spectate the match. Your roster will be replaced."].exists)
+        recorder.capture(name: "watch-four-confirmation", force: true)
+        app.buttons["Watch"].tap()
+        robot.waitForPhase("Ready")
+        recorder.capture(name: "watch-four-ready", force: true)
 
-        // Drive the match: each loop iteration takes one human-side action
-        // (or briefly waits for bots), and snapshots phase transitions.
-        let stepLimit = 320
-        var dealStartCount = 0
-        var sawGameOver = false
-        var lastProgress = ""
-        for step in 0..<stepLimit {
-            let progress = [
-                "step=\(step)",
-                "deal=\(dealStartCount)",
-                "phase=\(robot.labelIfExists(UIIdentifiers.phaseTitle))",
-                "viewer=\(robot.labelIfExists(UIIdentifiers.viewerLabel))",
-                "message=\(robot.labelIfExists(UIIdentifiers.phaseMessage))"
-            ].joined(separator: " ")
-            if progress != lastProgress {
-                print("[match-ui] \(progress)")
-                lastProgress = progress
+        // Watch uses the actual instant demo pace. One combined accessibility
+        // query avoids three separate screen snapshots on every result poll.
+        let nextStep = app.buttons.matching(NSPredicate(
+            format: "identifier IN %@",
+            [UIIdentifiers.buttonStartDeal, UIIdentifiers.buttonBackToLobby]
+        )).firstMatch
+        let deadline = Date().addingTimeInterval(50)
+        var completedDeals = 0
+        for deal in 1...40 where Date() < deadline {
+            robot.startNextDeal()
+            let result = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                nextStep.exists
+            }, object: nil)
+            let budget = min(8, max(0.1, deadline.timeIntervalSinceNow))
+            guard XCTWaiter().wait(for: [result], timeout: budget) == .completed else {
+                XCTFail("Bot deal \(deal) did not return a result within the remaining \(budget)s: \(robot.labelIfExists(UIIdentifiers.phaseTitle))")
+                return
             }
-            recorder.capture(name: "tick", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), attach: false)
-
-            if app.otherElements[UIIdentifiers.Panel.gameOver.rawValue].exists ||
-               app.staticTexts[UIIdentifiers.gameOverTitle].exists {
-                sawGameOver = true
-                recorder.capture(name: "match-over", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), force: true, attach: false)
-                break
+            completedDeals = deal
+            print("[watch-match] four seats, deal \(deal) scored; \(robot.labelIfExists(UIIdentifiers.phaseTitle))")
+            XCTAssertNil(robot.errorBanner())
+            if robot.isMatchOver() { break }
+            if deal == 1 || deal.isMultiple(of: 5) {
+                recorder.capture(name: "watch-four-deal-\(deal)-result", force: true)
             }
-
-            // The deal-finished sheet and the action bar both expose the
-            // same "advance the match" affordance under one shared
-            // identifier — one tap drives the engine forward regardless of
-            // which surface is currently presenting it.
-            if robot.tapIfPresent(UIIdentifiers.buttonStartDeal) {
-                dealStartCount += 1
-                recorder.capture(name: "deal-\(dealStartCount)-started", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), force: true, attach: false)
-                continue
-            }
-            if robot.tapIfPresent(UIIdentifiers.bidButton(.pass)) { continue }
-            if robot.tapIfPresent(UIIdentifiers.whistButton(.pass)) { continue }
-            // Mandatory-whist table rules (for example a 10-trick game)
-            // omit pass, so take the forced call instead of idling out.
-            if robot.tapIfPresent(UIIdentifiers.whistButton(.whist)) { continue }
-            // Seat-agnostic: with viewerFollowsActor the interactive hand
-            // changes owner every trick, and a hard-coded display name
-            // ("Anya") silently never matches the current roster — the
-            // match then stalls forever on the first real trick.
-            if robot.playFirstPlayableHandCard(acceptanceTimeout: 0.12) { continue }
-            if robot.discardFirstTwoVisibleCards() { continue }
-
-            // Bot turn — with bot delay = 0 (animations off) the next
-            // human-actionable state lands fast; keep the idle short so
-            // a stalled match fails loudly within ~30 s.
-            usleep(40_000)
         }
-
-        recorder.capture(name: "99-final", key: robot.screenshotDeduplicationKey(dealNumber: dealStartCount), force: true, attach: false)
-        XCTAssertTrue(sawGameOver, "Match never reached gameOver in \(stepLimit) ticks. Last progress: \(lastProgress)")
+        guard robot.isMatchOver() else {
+            XCTFail("Four-seat bot match did not close pool=6 per player within 50 seconds / 40 deals; completed \(completedDeals)")
+            return
+        }
+        XCTAssertEqual(robot.gameOverDealsPlayed(), completedDeals)
+        let standings = Set((1...4).map {
+            app.staticTexts[UIIdentifiers.gameOverStandingPlayer(rank: $0)].label
+        })
+        XCTAssertEqual(standings, ["Neo", "Morpheus", "Trinity", "Agent Smith"])
+        for rank in 1...4 {
+            XCTAssertGreaterThanOrEqual(Int(app.staticTexts[UIIdentifiers.gameOverStandingPool(rank: rank)].label) ?? -1, 6)
+        }
+        recorder.capture(name: "watch-four-match-complete", force: true)
+        app.buttons[UIIdentifiers.buttonRematch].tap()
+        robot.waitForPhase("Ready")
+        recorder.capture(name: "watch-four-rematch", force: true)
+        app.buttons[UIIdentifiers.buttonLeaveTable].tap()
+        app.alerts.buttons["Leave table"].tap()
+        robot.waitForElement(UIIdentifiers.screenLobby)
     }
 }

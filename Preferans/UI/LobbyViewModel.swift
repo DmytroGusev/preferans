@@ -85,6 +85,7 @@ public final class LobbyViewModel: ObservableObject {
         }
     }
     private var onlineNamePersistenceTask: Task<Void, Never>?
+    private var localTableSpeedOverride: BotMoveSpeed?
     private let accountClient: any OnlineAccountServing
     private let accountSessionStore: any OnlineAccountSessionStoring
     static let onlineNamePersistenceDelay: Duration = .milliseconds(300)
@@ -159,8 +160,12 @@ public final class LobbyViewModel: ObservableObject {
     }
 
     public func watchBots() {
-        seats = LobbySeat.demoBots(count: 3)
+        seats = LobbySeat.demoBots(count: seats.count)
         startLocalTable(speedOverride: .instant)
+    }
+
+    public func rematchLocalTable() {
+        startLocalTable(speedOverride: localTableSpeedOverride)
     }
 
     public func startCloudflareOnlineRoom() {
@@ -626,6 +631,7 @@ public final class LobbyViewModel: ObservableObject {
                 model.tapToAdvanceEnabled = false
             }
 
+            localTableSpeedOverride = speedOverride
             localModel = model
             errorText = nil
         } catch {

@@ -244,10 +244,9 @@ public struct TableView: View {
                     .accessibilityIdentifier(UIIdentifiers.waitingForViewer)
             }
             if canTap {
-                Image(systemName: "hand.tap.fill")
+                Label("Tap to continue", systemImage: "hand.tap.fill")
                     .font(.caption)
                     .foregroundStyle(theme.textPrimary)
-                    .accessibilityLabel(Text("Tap to continue"))
             }
         }
         .padding(.horizontal, 14)

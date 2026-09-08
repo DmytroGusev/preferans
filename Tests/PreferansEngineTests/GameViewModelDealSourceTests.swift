@@ -89,4 +89,27 @@ final class GameViewModelDealSourceTests: AppTestCase {
         XCTAssertEqual(BotMoveSpeed.slow.delay, .milliseconds(2200))
     }
 
+    func testViewingBotIsReadOnlyWhileInternalBotActionsStillAdvance() throws {
+        let model = try makeModel(dealSource: ScriptedDealSource(decks: [Deck.standard32]))
+        model.botStrategies["north"] = HeuristicStrategy(profile: .standard)
+        model.botMoveDelay = BotPacing.slow
+
+        XCTAssertTrue(model.displayProjection().legal.canStartDeal)
+        model.sendUserAction(.startDeal(dealer: nil, deck: nil))
+        XCTAssertTrue(model.isViewingBot)
+        XCTAssertFalse(model.projection().legal.bidCalls.isEmpty)
+        XCTAssertTrue(model.displayProjection().legal.bidCalls.isEmpty)
+        let before = model.engine.snapshot
+        model.sendUserAction(.bid(player: "north", call: .pass))
+        XCTAssertEqual(model.engine.snapshot, before, "A spectator must not take over a bot")
+
+        model.send(.bid(player: "north", call: .pass))
+        XCTAssertNotEqual(model.engine.snapshot, before)
+        XCTAssertEqual(model.selectedViewer, "east")
+        XCTAssertFalse(model.isViewingBot)
+        XCTAssertFalse(model.displayProjection().legal.bidCalls.isEmpty)
+        model.sendUserAction(.bid(player: "east", call: .pass))
+        XCTAssertEqual(model.engine.state.currentActor, "south")
+    }
+
 }

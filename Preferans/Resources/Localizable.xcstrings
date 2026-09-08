@@ -2,6 +2,29 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+      "Watching": {
+        "extractionState": "manual",
+        "localizations": {
+          "en": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Watching"
+            }
+          },
+          "ru": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Наблюдение"
+            }
+          },
+          "uk": {
+            "stringUnit": {
+              "state": "translated",
+              "value": "Спостереження"
+            }
+          }
+        }
+      },
     "You can return to this game from Your games in the lobby.": {
       "extractionState": "manual",
       "localizations": {
@@ -6940,25 +6963,25 @@
         }
       }
     },
-    "All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced.": {
+    "All %lld seats will be filled with bots and you'll spectate the match. Your roster will be replaced.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced."
+            "value": "All %lld seats will be filled with bots and you'll spectate the match. Your roster will be replaced."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Все три места займут боты, а вы будете наблюдать. Текущий состав будет заменён."
+            "value": "Все %lld места займут боты, а вы будете наблюдать. Текущий состав будет заменён."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Усі три місця займуть боти, а ви спостерігатимете. Поточний склад буде замінено."
+            "value": "Усі %lld місця займуть боти, а ви спостерігатимете. Поточний склад буде замінено."
           }
         }
       }

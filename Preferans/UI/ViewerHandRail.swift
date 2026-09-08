@@ -10,6 +10,7 @@ struct ViewerHandRail: View {
     let seat: SeatProjection
     let viewer: PlayerID
     let viewerDisplayName: String
+    let isSpectating: Bool
     let seatOrder: Int?
     let roleBadge: SeatRoleBadge?
     let lastAction: RecentAction?
@@ -87,7 +88,7 @@ struct ViewerHandRail: View {
                 .foregroundStyle(theme.textPrimary)
                 .accessibilityIdentifier(UIIdentifiers.scorePlayer(seat.player))
                 .accessibilityLabel("Viewing as \(viewerDisplayName)")
-                .accessibilityValue("you")
+                .accessibilityValue(isSpectating ? Text("Watching") : Text("you"))
             viewerAccessibilityLabel
             statusPill
             if let roleBadge {
@@ -143,7 +144,7 @@ struct ViewerHandRail: View {
     @ViewBuilder
     private var statusPill: some View {
         if seat.isCurrentActor {
-            Text("Your turn")
+            Text(isSpectating ? LocalizedStringKey("Watching") : LocalizedStringKey("Your turn"))
                 .font(.caption2.bold())
                 .padding(.horizontal, 6)
                 .padding(.vertical, 1)

@@ -213,11 +213,30 @@ public final class GameViewModel: ObservableObject {
         botStrategies[player] != nil
     }
 
+    public var isViewingBot: Bool { isBotSeat(selectedViewer) }
+
+    /// Human input must not take over an autonomous seat, including when
+    /// "View as" shows a bot's hand. Spectators can still deal the next hand.
+    public func sendUserAction(_ action: PreferansAction) {
+        if case .startDeal = action {
+            send(action)
+        } else if !isViewingBot {
+            send(action)
+        }
+    }
+
     /// Variant of ``projection(revealAll:)`` that applies the active
     /// tap-to-advance freeze. Views render this so the user sees the
     /// just-played beat before the engine's follow-up state.
     public func displayProjection(revealAll: Bool = true) -> PlayerGameProjection {
-        projection(revealAll: revealAll).applyingAdvanceFreeze(pendingAdvance)
+        var display = projection(revealAll: revealAll).applyingAdvanceFreeze(pendingAdvance)
+        if isViewingBot {
+            display.legal = LegalActionProjection(
+                canStartDeal: display.legal.canStartDeal,
+                pendingSettlement: display.legal.pendingSettlement
+            )
+        }
+        return display
     }
 
     /// The error message that should be surfaced to the user as a banner,

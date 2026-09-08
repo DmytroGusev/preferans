@@ -24,6 +24,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
     /// should escalate the hint into a more prominent "Waiting for you"
     /// pulse. The felt overlay reads this flag to switch styling.
     public var idleHintActive: Bool
+    public var isSpectating: Bool
     public var onSend: (PreferansAction) -> Void
     /// Invoked when the user taps the felt during a tap-to-advance pause.
     /// `nil` outside of local play (online tables don't gate per-tap).
@@ -59,6 +60,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         botInsights: [BotDecisionExplanation] = [],
         pendingAdvance: PendingAdvance? = nil,
         idleHintActive: Bool = false,
+        isSpectating: Bool = false,
         onSend: @escaping (PreferansAction) -> Void,
         onTapToAdvance: (() -> Void)? = nil,
         onLeaveTable: (() -> Void)? = nil,
@@ -72,6 +74,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
         self.botInsights = botInsights
         self.pendingAdvance = pendingAdvance
         self.idleHintActive = idleHintActive
+        self.isSpectating = isSpectating
         self.onSend = onSend
         self.onTapToAdvance = onTapToAdvance
         self.onLeaveTable = onLeaveTable
@@ -548,6 +551,7 @@ public struct ProjectionGameScreen<Menu: View>: View {
                 seat: seat,
                 viewer: projection.viewer,
                 viewerDisplayName: projection.displayName(for: projection.viewer),
+                isSpectating: isSpectating,
                 seatOrder: seatOrderNumber(for: seat.player),
                 roleBadge: seatRoleBadges[seat.player],
                 lastAction: seatActions[seat.player],
@@ -561,11 +565,11 @@ public struct ProjectionGameScreen<Menu: View>: View {
                     horizontalSizeClass: horizontalSizeClass
                 ),
                 animationNamespace: cardNamespace,
-                onTap: onCardTap,
-                onDoubleTap: isDiscardPhase ? nil : { card in
+                onTap: isSpectating ? nil : onCardTap,
+                onDoubleTap: isDiscardPhase || isSpectating ? nil : { card in
                     playCard(card, from: seat.player)
                 },
-                onDragEnded: isDiscardPhase ? nil : { card in
+                onDragEnded: isDiscardPhase || isSpectating ? nil : { card in
                     playCard(card, from: seat.player)
                 }
             )

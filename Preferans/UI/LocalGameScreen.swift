@@ -32,7 +32,8 @@ public struct LocalGameScreen: View {
             botInsights: model.botInsights,
             pendingAdvance: model.pendingAdvance,
             idleHintActive: model.idleHintActive,
-            onSend: model.send,
+            isSpectating: model.isViewingBot,
+            onSend: model.sendUserAction,
             onTapToAdvance: model.advance,
             onLeaveTable: onLeaveTable,
             onRematch: onRematch

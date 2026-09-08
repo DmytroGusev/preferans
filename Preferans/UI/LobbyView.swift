@@ -111,7 +111,7 @@ public struct LobbyView: View {
                     LocalGameScreen(
                         model: localModel,
                         onLeaveTable: { viewModel.localModel = nil },
-                        onRematch: { viewModel.startLocalTable() }
+                        onRematch: { viewModel.rematchLocalTable() }
                     )
                 } else if let onlineSession = viewModel.onlineSession {
                     OnlineRoomGameScreen(
@@ -162,7 +162,7 @@ public struct LobbyView: View {
                 Button("Watch") { viewModel.watchBots() }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("All three seats will be filled with bots and you'll spectate the match. Your roster will be replaced.")
+                Text("All \(viewModel.seats.count) seats will be filled with bots and you'll spectate the match. Your roster will be replaced.")
             }
         }
         .accessibilityElement(children: .contain)
