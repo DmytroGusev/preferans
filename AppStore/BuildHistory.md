@@ -2,6 +2,17 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0.1 (27) - Navy App Icon
+
+- Date: 2026-09-12
+- Source base: tested build `1.0.1 (26)`, commit `cf541f5`.
+- Operational change made by: Codex at Dmytro Gusev's request.
+- Replaced all app icon sizes with the user-selected navy two-ace `Pref` design.
+- Bumped `CURRENT_PROJECT_VERSION` from `26` to `27`.
+- No gameplay, networking, privacy, or account-flow changes.
+- Preserves the refreshed iPhone/iPad screenshots for version `1.0.1` in App Store Connect.
+- Verification and upload: pending.
+
 ## 1.0.1 (26) - App Store Connect
 
 - Date: 2026-09-08
