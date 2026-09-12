@@ -14,7 +14,11 @@ This file records App Store/TestFlight build provenance and review-facing change
 - Build source commit: `e63765c` (Git author: `DmytroGusev <dmytro.gusev@gmail.com>`).
 - All 18 icon slots verified for expected dimensions and no alpha channel.
 - Signed iOS archive and strict code-signature verification passed.
-- App Store Connect upload succeeded; Apple processing pending.
+- App Store Connect upload processed successfully with status `VALID`.
+- App Store Connect build ID: `201bf07c-dc05-412e-bfa0-d0154dd6b2ac`.
+- Selected for version `1.0.1` (`PREPARE_FOR_SUBMISSION`); not submitted for review.
+- All ten refreshed screenshots preserved; review notes and What's New updated for the icon.
+- Git tag: `appstore/1.0.1-build-27` points to exact build source `e63765c`.
 
 ## 1.0.1 (26) - App Store Connect
 
