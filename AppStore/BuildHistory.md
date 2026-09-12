@@ -11,7 +11,10 @@ This file records App Store/TestFlight build provenance and review-facing change
 - Bumped `CURRENT_PROJECT_VERSION` from `26` to `27`.
 - No gameplay, networking, privacy, or account-flow changes.
 - Preserves the refreshed iPhone/iPad screenshots for version `1.0.1` in App Store Connect.
-- Verification and upload: pending.
+- Build source commit: `e63765c` (Git author: `DmytroGusev <dmytro.gusev@gmail.com>`).
+- All 18 icon slots verified for expected dimensions and no alpha channel.
+- Signed iOS archive and strict code-signature verification passed.
+- App Store Connect upload succeeded; Apple processing pending.
 
 ## 1.0.1 (26) - App Store Connect
 
