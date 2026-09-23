@@ -352,6 +352,12 @@ public struct TrickSettlementProposal: Equatable, Codable, Sendable {
 }
 
 public struct PlayingState: Equatable, Codable, Sendable {
+    /// On misere, a declarer who leads must choose the opening card blind.
+    public var misereDefendersAreOpen: Bool {
+        guard case let .misere(context) = kind else { return false }
+        return leader != context.declarer || !currentTrick.isEmpty || !completedTricks.isEmpty
+    }
+
     public let dealer: PlayerID
     public let activePlayers: [PlayerID]
     public var hands: [PlayerID: [Card]]

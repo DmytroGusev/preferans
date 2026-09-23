@@ -1,0 +1,14 @@
+{
+  "version": "1.0.2",
+  "locale": "en-US",
+  "status": "draft-not-uploaded",
+  "keywords": "preference,russian,multiplayer,trick,taking,whist,misere,sochi,rostov,leningrad,pulka,offline",
+  "promotionalText": "Your Preferans table, wherever your friends are. Play online with a room code or invite link, or practice offline before your next game.",
+  "description": "Play Preferans, also known as Russian Preference, the classic trick-taking card game for three or four players. Gather friends on iPhone and iPad using an invite link or room code, or practice locally against bots.\n\nChoose Sochi, Leningrad, or Rostov rules. Bid for a suit or no-trump contract, play misere, or navigate an all-pass deal. Take the talon, choose your two discards, and decide how to defend. Automatic scoring keeps track of each deal and the final results.\n\nAT YOUR TABLE\n- Multiplayer rooms with invite links and room codes\n- Local practice against bots\n- Three players or four players with a rotating dealer\n- Suit contracts, no trump, misere, and all-pass play\n- Manual discards and open or closed defense\n- Deal score breakdowns and final match results\n- Six table themes with a saved appearance preference\n- Readable cards and layouts for iPhone and iPad\n\nPreferans is a game of skill. There is no real-money betting.",
+  "whatsNew": "Improved misere play: defenders' hands now open at the correct time around the opening lead. Bot decisions also respect which cards are visible at that moment.",
+  "confirmedMisereConvention": "Only the talon is shown publicly before discard. The declarer's hand and discard remain private. Defenders open after the declarer's opening card, or before the opening lead if a defender leads.",
+  "releasePrerequisites": [
+    "Deploy and verify the matching authoritative game server before claiming the online misere fix.",
+    "Build and test the iOS release candidate; these notes do not confirm an uploaded build."
+  ]
+}

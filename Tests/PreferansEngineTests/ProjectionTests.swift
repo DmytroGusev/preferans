@@ -210,15 +210,14 @@ final class ProjectionTests: AppTestCase {
                 "Closed misère must hide the declarer's hand from \(viewer)."
             )
 
-            // The defenders play open: their hands are visible to everyone,
-            // including the declarer.
+            // The declarer leads, so defenders have not opened yet.
             for defender in defenders {
                 let seat = try XCTUnwrap(projection.seats.first { $0.player == defender })
                 XCTAssertEqual(seat.hand.count, 10)
                 XCTAssertEqual(
                     seat.hand.compactMap(\.knownCard).count,
-                    10,
-                    "Closed misère should reveal defender \(defender)'s hand to \(viewer)."
+                    viewer == defender ? 10 : 0,
+                    "Misere must hide defenders until the declarer's opening lead."
                 )
                 XCTAssertEqual(seat.role, .whister)
             }
@@ -357,11 +356,10 @@ final class ProjectionTests: AppTestCase {
             recipe: .cleanMisere(declarer: "north"),
             kind: .misere(MiserePlayContext(declarer: "north"))
         )
-        // Closed misère: defenders open, declarer concealed (the declarer
-        // still sees their own hand via the viewer == seat rule).
+        // Before the declarer's first lead, each viewer sees only their hand.
         assertPlayingHandVisibility(
             in: misere,
-            openedPlayers: Set(misere.players.filter { $0 != "north" }),
+            openedPlayers: [],
             label: "misere"
         )
 

@@ -172,7 +172,7 @@ extension PlayerProjectionBuilder {
         frame.legal.pendingSettlement = state.pendingSettlement
         frame.legal.canAcceptSettlement = engine.canAcceptSettlement(player: viewer)
         frame.legal.canRejectSettlement = engine.canRejectSettlement(player: viewer)
-        applyPlayRolesAndVisibility(state.kind, activePlayers: frame.activePlayers, policy: policy, to: &frame)
+        applyPlayRolesAndVisibility(state, activePlayers: frame.activePlayers, policy: policy, to: &frame)
         markActiveRoles(frame.activePlayers, into: &frame.roleMap)
         return frame
     }
@@ -211,12 +211,12 @@ extension PlayerProjectionBuilder {
     }
 
     private static func applyPlayRolesAndVisibility(
-        _ kind: PlayKind,
+        _ state: PlayingState,
         activePlayers: [PlayerID],
         policy: ProjectionPolicy,
         to frame: inout ProjectionBuildFrame
     ) {
-        switch kind {
+        switch state.kind {
         case let .game(context):
             frame.roleMap[context.declarer] = .declarer
             for defender in context.defenders {
@@ -237,11 +237,9 @@ extension PlayerProjectionBuilder {
             frame.roleMap[context.declarer] = .declarer
             let defenders = activePlayers.filter { $0 != context.declarer }
             for defender in defenders { frame.roleMap[defender] = .whister }
-            // Closed misère: the declarer's hand stays concealed (only the
-            // declarer sees their own cards). The defenders play open so
-            // everyone — including the declarer — can see them and try to
-            // force a trick onto the declarer.
-            frame.revealHandOwners.formUnion(defenders)
+            if state.misereDefendersAreOpen && policy.revealOpenDefenderHandsToAll {
+                frame.revealHandOwners.formUnion(defenders)
+            }
 
         case .allPass:
             break
