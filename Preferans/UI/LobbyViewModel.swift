@@ -29,6 +29,8 @@ public final class LobbyViewModel: ObservableObject {
     @Published public private(set) var onlineAccountSessionToken: String?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
+    @Published public var onlineTableVisibility: OnlineTableVisibility = .publicTable
+    @Published public var onlineIntent: OnlineLobbyIntent = .findTable
     @Published public private(set) var isDeletingOnlineAccount = false
     /// Online display name, kept entirely separate from the local bot roster.
     /// Signing in overwrites this — never `seats`.
@@ -178,6 +180,11 @@ public final class LobbyViewModel: ObservableObject {
         guard let accountSessionToken = onlineAccountSessionToken else { return }
         let delay = onlineBotMoveDelay
         let variantTag = onlineVariant.rawValue
+        let visibility = onlineTableVisibility
+        if visibility == .publicTable && (!PreferansVariant.publicCases.contains(onlineVariant) || onlineComposition.botCount > 0) {
+            rejectOnlineOperation(String(localized: "Choose Vienna, Prague, or Berlin and leave seats open for players."))
+            return
+        }
         launchCloudRoom {
             try await CloudflareOnlineGameSession.createRoom(
                 peers: setup.peers,
@@ -186,6 +193,7 @@ public final class LobbyViewModel: ObservableObject {
                 rules: setup.rules,
                 match: setup.match,
                 variantTag: variantTag,
+                visibility: visibility,
                 botMoveDelay: delay
             )
         }
@@ -219,6 +227,20 @@ public final class LobbyViewModel: ObservableObject {
                 botMoveDelay: delay
             )
         }
+    }
+
+    public func prepareOnlineTableCreation() {
+        onlineIntent = .createTable
+        pulkaLimit = .short
+        if !PreferansVariant.publicCases.contains(onlineVariant) { onlineVariant = .odesa }
+        if onlineTableVisibility == .publicTable {
+            onlineComposition = OnlineSeatSlot.defaultComposition(count: onlineComposition.count)
+        }
+    }
+
+    public func joinPublicTable(_ table: PublicOnlineTable) {
+        onlineJoinRoomCode = table.roomCode
+        joinCloudflareOnlineRoom()
     }
 
     /// DEBUG/test affordance: an all-bot online room backed by the in-memory

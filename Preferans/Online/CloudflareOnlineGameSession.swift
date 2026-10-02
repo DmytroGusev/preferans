@@ -48,6 +48,7 @@ public final class CloudflareOnlineGameSession: ObservableObject {
         rules: PreferansRules = .sochi,
         match: MatchSettings = .unbounded,
         variantTag: String? = nil,
+        visibility: OnlineTableVisibility = .privateTable,
         botMoveDelay: Duration = BotPacing.interactive
     ) async throws -> CloudflareOnlineGameSession {
         guard let localPeer = peers.first(where: { $0.playerID == localPlayerID }) else {
@@ -61,7 +62,8 @@ public final class CloudflareOnlineGameSession: ObservableObject {
             rules: rules,
             match: match,
             variantTag: variantTag,
-            maxPlayers: min(max(peers.count, 3), 4)
+            maxPlayers: min(max(peers.count, 3), 4),
+            visibility: visibility
         )
         logOnlineFlow("event=create roomCode=\(transport.roomCode) local=\(localPeer.playerID.rawValue)")
         return CloudflareOnlineGameSession(

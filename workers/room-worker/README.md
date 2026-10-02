@@ -28,6 +28,8 @@ From this directory:
   not a bot-quality or production-pacing benchmark. Each match has a 128-command /
   30-second limit, reports phase progress, and removes its temporary accounts.
   Uses the same localhost default and explicit environment override as the smoke.
+- `bun run test:public-network`: verify public discovery, seats, readiness and
+  first deals for three/four players against loopback services, then delete QA accounts.
 - `bun run deploy:check`: bundle/validate the production Worker without deploying.
 - `bun run deploy`: deploy the production Worker and container configuration.
 
@@ -101,3 +103,6 @@ The pool currently permits three engine containers. Local tests do not establish
 production capacity: measure cold/warm latency and simultaneous rooms on Cloudflare
 before increasing traffic. Observability is enabled; private state and credentials
 must stay out of logs. See `docs/MULTIPLAYER.md` in the repository for invariants.
+
+Public tables use the additive `PublicTableDirectory` namespace. See
+`docs/PUBLIC_LOBBY.md` for readiness, naming, privacy and rollout behavior.

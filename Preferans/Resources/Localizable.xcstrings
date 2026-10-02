@@ -2,6 +2,54 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "Vienna": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Vienna"}},"ru":{"stringUnit":{"state":"translated","value":"Вена"}},"uk":{"stringUnit":{"state":"translated","value":"Відень"}}}},
+    "Prague": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Prague"}},"ru":{"stringUnit":{"state":"translated","value":"Прага"}},"uk":{"stringUnit":{"state":"translated","value":"Прага"}}}},
+    "Berlin": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Berlin"}},"ru":{"stringUnit":{"state":"translated","value":"Берлин"}},"uk":{"stringUnit":{"state":"translated","value":"Берлін"}}}},
+    "Create a table": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Create a table"}},"ru":{"stringUnit":{"state":"translated","value":"Создать стол"}},"uk":{"stringUnit":{"state":"translated","value":"Створити стіл"}}}},
+    "Public tables": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Public tables"}},"ru":{"stringUnit":{"state":"translated","value":"Публичные столы"}},"uk":{"stringUnit":{"state":"translated","value":"Публічні столи"}}}},
+    "Public table": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Public table"}},"ru":{"stringUnit":{"state":"translated","value":"Публичный стол"}},"uk":{"stringUnit":{"state":"translated","value":"Публічний стіл"}}}},
+    "Invite only": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Invite only"}},"ru":{"stringUnit":{"state":"translated","value":"По приглашению"}},"uk":{"stringUnit":{"state":"translated","value":"За запрошенням"}}}},
+    "Who can join?": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Who can join?"}},"ru":{"stringUnit":{"state":"translated","value":"Кто может присоединиться?"}},"uk":{"stringUnit":{"state":"translated","value":"Хто може приєднатися?"}}}},
+    "Your name and table settings appear in the public lobby. All players confirm Ready before the host starts.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Your name and table settings appear in the public lobby. All players confirm Ready before the host starts."}},"ru":{"stringUnit":{"state":"translated","value":"Ваше имя и условия стола видны в общем лобби. Перед стартом все игроки подтверждают готовность."}},"uk":{"stringUnit":{"state":"translated","value":"Ваше ім’я та умови столу видно в спільному лобі. Перед початком усі гравці підтверджують готовність."}}}},
+    "Only players with your room code or invite link can join.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Only players with your room code or invite link can join."}},"ru":{"stringUnit":{"state":"translated","value":"Войти смогут только игроки с кодом комнаты или ссылкой-приглашением."}},"uk":{"stringUnit":{"state":"translated","value":"Приєднатися зможуть лише гравці з кодом кімнати або посиланням-запрошенням."}}}},
+    "Open public table": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open public table"}},"ru":{"stringUnit":{"state":"translated","value":"Открыть публичный стол"}},"uk":{"stringUnit":{"state":"translated","value":"Відкрити публічний стіл"}}}},
+    "Not ready": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Not ready"}},"ru":{"stringUnit":{"state":"translated","value":"Не готов"}},"uk":{"stringUnit":{"state":"translated","value":"Не готовий"}}}},
+    "I'm ready": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"I'm ready"}},"ru":{"stringUnit":{"state":"translated","value":"Я готов"}},"uk":{"stringUnit":{"state":"translated","value":"Я готовий"}}}},
+    "Waiting for a player…": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Waiting for a player…"}},"ru":{"stringUnit":{"state":"translated","value":"Ждём игрока…"}},"uk":{"stringUnit":{"state":"translated","value":"Чекаємо на гравця…"}}}},
+    "Start when everyone has confirmed Ready.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Start when everyone has confirmed Ready."}},"ru":{"stringUnit":{"state":"translated","value":"Начинайте, когда все подтвердят готовность."}},"uk":{"stringUnit":{"state":"translated","value":"Починайте, коли всі підтвердять готовність."}}}},
+    "Every seat must be filled and every player must confirm Ready.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Every seat must be filled and every player must confirm Ready."}},"ru":{"stringUnit":{"state":"translated","value":"Все места должны быть заняты, а игроки — подтвердить готовность."}},"uk":{"stringUnit":{"state":"translated","value":"Усі місця мають бути зайняті, а гравці — підтвердити готовність."}}}},
+    "Confirm that you agree to these settings and have time to finish the pulka.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Confirm that you agree to these settings and have time to finish the pulka."}},"ru":{"stringUnit":{"state":"translated","value":"Подтвердите, что согласны с условиями и у вас есть время закончить пулю."}},"uk":{"stringUnit":{"state":"translated","value":"Підтвердьте, що згодні з умовами й маєте час закінчити пулю."}}}},
+    "Your seat will become available to another player.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Your seat will become available to another player."}},"ru":{"stringUnit":{"state":"translated","value":"Ваше место станет доступно другому игроку."}},"uk":{"stringUnit":{"state":"translated","value":"Ваше місце стане доступним іншому гравцю."}}}},
+    "Refresh tables": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Refresh tables"}},"ru":{"stringUnit":{"state":"translated","value":"Обновить столы"}},"uk":{"stringUnit":{"state":"translated","value":"Оновити столи"}}}},
+    "Table status": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Table status"}},"ru":{"stringUnit":{"state":"translated","value":"Статус стола"}},"uk":{"stringUnit":{"state":"translated","value":"Статус столу"}}}},
+    "Waiting for players": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Waiting for players"}},"ru":{"stringUnit":{"state":"translated","value":"Ждём игроков"}},"uk":{"stringUnit":{"state":"translated","value":"Чекаємо на гравців"}}}},
+    "In progress": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"In progress"}},"ru":{"stringUnit":{"state":"translated","value":"Игра идёт"}},"uk":{"stringUnit":{"state":"translated","value":"Гра триває"}}}},
+    "Sign in or continue as a guest to find players.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Sign in or continue as a guest to find players."}},"ru":{"stringUnit":{"state":"translated","value":"Войдите или продолжите как гость, чтобы найти игроков."}},"uk":{"stringUnit":{"state":"translated","value":"Увійдіть або продовжте як гість, щоб знайти гравців."}}}},
+    "Try again": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Try again"}},"ru":{"stringUnit":{"state":"translated","value":"Повторить"}},"uk":{"stringUnit":{"state":"translated","value":"Спробувати ще раз"}}}},
+    "Finding tables…": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Finding tables…"}},"ru":{"stringUnit":{"state":"translated","value":"Ищем столы…"}},"uk":{"stringUnit":{"state":"translated","value":"Шукаємо столи…"}}}},
+    "No games in progress": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"No games in progress"}},"ru":{"stringUnit":{"state":"translated","value":"Сейчас нет идущих игр"}},"uk":{"stringUnit":{"state":"translated","value":"Зараз немає ігор, що тривають"}}}},
+    "No tables waiting yet": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"No tables waiting yet"}},"ru":{"stringUnit":{"state":"translated","value":"Пока нет столов в ожидании"}},"uk":{"stringUnit":{"state":"translated","value":"Поки немає столів в очікуванні"}}}},
+    "Try another filter or open a table for other players to join.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Try another filter or open a table for other players to join."}},"ru":{"stringUnit":{"state":"translated","value":"Измените фильтр или откройте стол, чтобы другие игроки присоединились."}},"uk":{"stringUnit":{"state":"translated","value":"Змініть фільтр або відкрийте стіл, щоб інші гравці приєдналися."}}}},
+    "Load more tables": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Load more tables"}},"ru":{"stringUnit":{"state":"translated","value":"Показать ещё столы"}},"uk":{"stringUnit":{"state":"translated","value":"Показати ще столи"}}}},
+    "Table details": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Table details"}},"ru":{"stringUnit":{"state":"translated","value":"Условия стола"}},"uk":{"stringUnit":{"state":"translated","value":"Умови столу"}}}},
+    "Join, check the table settings, and confirm Ready. The host starts when everyone agrees.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Join, check the table settings, and confirm Ready. The host starts when everyone agrees."}},"ru":{"stringUnit":{"state":"translated","value":"Займите место, проверьте условия и подтвердите готовность. Организатор начнёт, когда все согласны."}},"uk":{"stringUnit":{"state":"translated","value":"Займіть місце, перевірте умови й підтвердьте готовність. Організатор почне, коли всі згодні."}}}},
+    "Take a seat": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Take a seat"}},"ru":{"stringUnit":{"state":"translated","value":"Занять место"}},"uk":{"stringUnit":{"state":"translated","value":"Зайняти місце"}}}},
+    "This game has started. New players cannot join mid-match.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"This game has started. New players cannot join mid-match."}},"ru":{"stringUnit":{"state":"translated","value":"Игра уже началась. Занять место посреди партии нельзя."}},"uk":{"stringUnit":{"state":"translated","value":"Гра вже почалася. Зайняти місце посеред партії не можна."}}}},
+    "Every seat is occupied.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Every seat is occupied."}},"ru":{"stringUnit":{"state":"translated","value":"Все места заняты."}},"uk":{"stringUnit":{"state":"translated","value":"Усі місця зайняті."}}}},
+    "All conventions": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"All conventions"}},"ru":{"stringUnit":{"state":"translated","value":"Все конвенции"}},"uk":{"stringUnit":{"state":"translated","value":"Усі конвенції"}}}},
+    "3 or 4 players": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"3 or 4 players"}},"ru":{"stringUnit":{"state":"translated","value":"3 или 4 игрока"}},"uk":{"stringUnit":{"state":"translated","value":"3 або 4 гравці"}}}},
+    "3 players": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"3 players"}},"ru":{"stringUnit":{"state":"translated","value":"3 игрока"}},"uk":{"stringUnit":{"state":"translated","value":"3 гравці"}}}},
+    "4 players": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"4 players"}},"ru":{"stringUnit":{"state":"translated","value":"4 игрока"}},"uk":{"stringUnit":{"state":"translated","value":"4 гравці"}}}},
+    "Match length": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Match length"}},"ru":{"stringUnit":{"state":"translated","value":"Длина партии"}},"uk":{"stringUnit":{"state":"translated","value":"Тривалість партії"}}}},
+    "Any length": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Any length"}},"ru":{"stringUnit":{"state":"translated","value":"Любая длина"}},"uk":{"stringUnit":{"state":"translated","value":"Будь-яка тривалість"}}}},
+    "Short pulka": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Short pulka"}},"ru":{"stringUnit":{"state":"translated","value":"Короткая пуля"}},"uk":{"stringUnit":{"state":"translated","value":"Коротка пуля"}}}},
+    "Standard pulka": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Standard pulka"}},"ru":{"stringUnit":{"state":"translated","value":"Обычная пуля"}},"uk":{"stringUnit":{"state":"translated","value":"Звичайна пуля"}}}},
+    "Table pool total: %lld": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Table pool total: %lld"}},"ru":{"stringUnit":{"state":"translated","value":"Общая пуля: %lld"}},"uk":{"stringUnit":{"state":"translated","value":"Спільна пуля: %lld"}}}},
+    "Pulka per player: %lld": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Pulka per player: %lld"}},"ru":{"stringUnit":{"state":"translated","value":"Пуля на игрока: %lld"}},"uk":{"stringUnit":{"state":"translated","value":"Пуля на гравця: %lld"}}}},
+    "Open seats: %lld": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Open seats: %lld"}},"ru":{"stringUnit":{"state":"translated","value":"Свободных мест: %lld"}},"uk":{"stringUnit":{"state":"translated","value":"Вільних місць: %lld"}}}},
+    "Full": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Full"}},"ru":{"stringUnit":{"state":"translated","value":"Мест нет"}},"uk":{"stringUnit":{"state":"translated","value":"Місць немає"}}}},
+    "Vienna, Prague, and Berlin conventions with automatic scoring.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Vienna, Prague, and Berlin conventions with automatic scoring."}},"ru":{"stringUnit":{"state":"translated","value":"Конвенции Вена, Прага и Берлин с автоматическим подсчётом очков."}},"uk":{"stringUnit":{"state":"translated","value":"Конвенції Відень, Прага та Берлін з автоматичним підрахунком очок."}}}},
+    "Choose Vienna, Prague, or Berlin and leave seats open for players.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Choose Vienna, Prague, or Berlin and leave seats open for players."}},"ru":{"stringUnit":{"state":"translated","value":"Выберите Вену, Прагу или Берлин и оставьте места свободными для игроков."}},"uk":{"stringUnit":{"state":"translated","value":"Оберіть Відень, Прагу або Берлін і залиште місця вільними для гравців."}}}},
       "Watching": {
         "extractionState": "manual",
         "localizations": {
@@ -698,19 +746,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sochi, Leningrad, and Rostov variants are prepared with automatic settlement support."
+            "value": "Vienna, Prague, and Berlin variants are prepared with automatic settlement support."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Играйте по правилам Сочи, Ленинграда или Ростова с автоматическим подсчётом очков."
+            "value": "Играйте по правилам Вены, Праги или Берлина с автоматическим подсчётом очков."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Грайте за правилами Сочі, Ленінграда чи Ростова з автоматичним підрахунком очок."
+            "value": "Грайте за правилами Відня, Праги чи Берліна з автоматичним підрахунком очок."
           }
         }
       }
@@ -1784,9 +1832,9 @@
       "comment" : "Rostov whist explanation.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Rostov whist: ordinary trick payments keep the standard value; a failed whist writes half the game value to mountain, gentleman whist splits a failed deal's trick payments and consolation, and each defender adds ten direct whists per missing declarer trick." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Ростовский вист: обычные висты за взятки сохраняют стандартную стоимость; при ремизе виста половина стоимости игры записывается в гору, джентльменский вист делит выплаты за взятки и консоляцию, а каждый защитник пишет по десять прямых вист за каждую недобранную разыгрывающим взятку." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Ростовський віст: звичайні вісті за взятки мають стандартну вартість; за ремізу вісту половина вартості гри записується в гору, джентльменський віст ділить виплати за взятки й консоляцію, а кожен захисник пише по десять прямих вістів за кожну недобрану розігрувачем взятку." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Berlin whist: ordinary trick payments keep the standard value; a failed whist writes half the game value to mountain, gentleman whist splits a failed deal's trick payments and consolation, and each defender adds ten direct whists per missing declarer trick." } },
+        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Берлинский вист: обычные висты за взятки сохраняют стандартную стоимость; при ремизе виста половина стоимости игры записывается в гору, джентльменский вист делит выплаты за взятки и консоляцию, а каждый защитник пишет по десять прямых вист за каждую недобранную разыгрывающим взятку." } },
+        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Берлинський віст: звичайні вісті за взятки мають стандартну вартість; за ремізу вісту половина вартості гри записується в гору, джентльменський віст ділить виплати за взятки й консоляцію, а кожен захисник пише по десять прямих вістів за кожну недобрану розігрувачем взятку." } }
       }
     },
     "rules.talon" : {
@@ -5624,18 +5672,18 @@
       "comment": "Online lobby variant selector title for Odesa.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Odesa" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Одесса" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Одеса" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Vienna" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Вена" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Відень" } }
       }
     },
     "variant.odesa.standard": {
       "comment": "Online lobby standard-name subtitle for Odesa.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Odesa · Sochi" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Одесса · Сочи" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Одеса · Сочі" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Balanced scoring" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Сбалансированный подсчёт" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Збалансований підрахунок" } }
       }
     },
     "variant.odesa.summary": {
@@ -5651,18 +5699,18 @@
       "comment": "Online lobby variant selector title for Wien.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Wien" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Вена" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Відень" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Prague" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Прага" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Прага" } }
       }
     },
     "variant.wien.standard": {
       "comment": "Online lobby standard-name subtitle for Wien.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Wien · Leningrad" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Вена · Ленинград" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Відень · Ленінград" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Double whists, shared pool" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Двойные висты, общая пуля" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Подвійні вісти, спільна пуля" } }
       }
     },
     "variant.wien.summary": {
@@ -5678,18 +5726,18 @@
       "comment": "Online lobby variant selector title for Thessaloniki.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Thessaloniki" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Салоники" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Салоніки" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Berlin" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Берлин" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Берлін" } }
       }
     },
     "variant.thessaloniki.standard": {
       "comment": "Online lobby standard-name subtitle for Thessaloniki.",
       "extractionState": "manual",
       "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Thessaloniki · Rostov" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Салоники · Ростов" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Салоніки · Ростов" } }
+        "en": { "stringUnit": { "state": "translated", "value": "Semi-responsible whist, hidden talon on all-pass" } },
+        "ru": { "stringUnit": { "state": "translated", "value": "Полуответственный вист, закрытый прикуп на распасах" } },
+        "uk": { "stringUnit": { "state": "translated", "value": "Напіввідповідальний віст, закритий прикуп на розпасах" } }
       }
     },
     "variant.thessaloniki.summary": {
@@ -5728,222 +5776,15 @@
         "uk": { "stringUnit": { "state": "translated", "value": "На 6♠ обидва захисники мусять вистувати втемну." } }
       }
     },
-    "convention.tagline.help": {
-      "comment": "Hover tooltip on the lobby hero's house-name tagline (whole row). Spelled out per pill in the convention.<name>.help strings.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "House names. Tap or hover any name for the standard equivalent."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Домашние названия. Нажмите или наведите на любое — увидите стандартное соответствие."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Домашні назви. Натисніть або наведіть на будь-яку — побачите стандартний відповідник."
-          }
-        }
-      }
-    },
-    "convention.tagline.accessibilityLabel": {
-      "comment": "VoiceOver label for the lobby hero's house-name tagline.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "House conventions: Odesa, Wien, Thessaloniki, Kruty"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Домашние конвенции: Одесса, Вена, Салоники, Круты"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Домашні конвенції: Одеса, Відень, Салоніки, Крути"
-          }
-        }
-      }
-    },
-    "convention.tagline.accessibilityHint": {
-      "comment": "VoiceOver hint for the lobby hero tagline button.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Opens the legend with standard names and short descriptions."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Открывает справку со стандартными названиями и краткими описаниями."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відкриває довідку зі стандартними назвами та короткими описами."
-          }
-        }
-      }
-    },
-    "convention.odesa.help": {
-      "comment": "Hover tooltip on the Одеса pill in the lobby hero tagline.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Одеса (house) → Sochi. Default balanced scoring."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Одесса (домашнее) → Сочи. Базовый сбалансированный счёт."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Одеса (домашнє) → Сочі. Базовий збалансований підрахунок."
-          }
-        }
-      }
-    },
-    "convention.odesa.hint": {
-      "comment": "VoiceOver hint on the Одеса pill.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Odesa, our house name for Sochi — default balanced scoring."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Одесса — наше домашнее название для Сочи; базовый сбалансированный счёт."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Одеса — наша домашня назва для Сочі; базовий збалансований підрахунок."
-          }
-        }
-      }
-    },
-    "convention.wien.help": {
-      "comment": "Hover tooltip on the Wien pill in the lobby hero tagline.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wien (house) → Leningrad. Strict, doubled-points variant."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вена (домашнее) → Ленинград. Строгий вариант с удвоенными очками."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відень (домашнє) → Ленінград. Строгий варіант із подвоєними очками."
-          }
-        }
-      }
-    },
-    "convention.wien.hint": {
-      "comment": "VoiceOver hint on the Wien pill.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wien, our house name for Leningrad — strict, doubled-points variant."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Вена — наше домашнее название для Ленинграда; строгий вариант с удвоенными очками."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Відень — наша домашня назва для Ленінграда; строгий варіант із подвоєними очками."
-          }
-        }
-      }
-    },
-    "convention.thessaloniki.help": {
-      "comment": "Hover tooltip on the Θεσσαλονίκη pill in the lobby hero tagline.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Θεσσαλονίκη (house) → Rostov. Aggressive, whist-only variant."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Салоники (домашнее) → Ростов. Агрессивный вариант со ставкой на висты."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Салоніки (домашнє) → Ростов. Агресивний варіант зі ставкою на вісти."
-          }
-        }
-      }
-    },
-    "convention.thessaloniki.hint": {
-      "comment": "VoiceOver hint on the Θεσσαλονίκη pill.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Thessaloniki, our house name for Rostov — aggressive, whist-only variant."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Салоники — наше домашнее название для Ростова; агрессивный вариант со ставкой на висты."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Салоніки — наша домашня назва для Ростова; агресивний варіант зі ставкою на вісти."
-          }
-        }
-      }
-    },
+    "convention.tagline.help": {"comment":"Hover tooltip on the lobby hero's house-name tagline (whole row). Spelled out per pill in the convention.<name>.help strings.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Tap a name to see scoring rules."}},"ru":{"stringUnit":{"state":"translated","value":"Нажмите на название, чтобы увидеть правила подсчёта."}},"uk":{"stringUnit":{"state":"translated","value":"Натисніть на назву, щоб побачити правила підрахунку."}}}},
+    "convention.tagline.accessibilityLabel": {"comment":"VoiceOver label for the lobby hero's house-name tagline.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"House conventions: Vienna, Prague, Berlin, Kruty"}},"ru":{"stringUnit":{"state":"translated","value":"Домашние конвенции: Вена, Прага, Берлин, Круты"}},"uk":{"stringUnit":{"state":"translated","value":"Домашні конвенції: Відень, Прага, Берлін, Крути"}}}},
+    "convention.tagline.accessibilityHint": {"comment":"VoiceOver hint for the lobby hero tagline button.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Opens scoring descriptions."}},"ru":{"stringUnit":{"state":"translated","value":"Открывает описания подсчёта."}},"uk":{"stringUnit":{"state":"translated","value":"Відкриває описи підрахунку."}}}},
+    "convention.odesa.help": {"comment":"Hover tooltip on the Одеса pill in the lobby hero tagline.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Balanced house default."}},"ru":{"stringUnit":{"state":"translated","value":"Сбалансированный домашний вариант."}},"uk":{"stringUnit":{"state":"translated","value":"Збалансований домашній варіант."}}}},
+    "convention.odesa.hint": {"comment":"VoiceOver hint on the Одеса pill.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Balanced house default."}},"ru":{"stringUnit":{"state":"translated","value":"Сбалансированный домашний вариант."}},"uk":{"stringUnit":{"state":"translated","value":"Збалансований домашній варіант."}}}},
+    "convention.wien.help": {"comment":"Hover tooltip on the Wien pill in the lobby hero tagline.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Double whists, hard all-pass, and one shared table pool."}},"ru":{"stringUnit":{"state":"translated","value":"Двойные висты, жёсткие распасы и общая сумма пули."}},"uk":{"stringUnit":{"state":"translated","value":"Подвійні вісти, жорсткі розпаси й спільна сума пулі."}}}},
+    "convention.wien.hint": {"comment":"VoiceOver hint on the Wien pill.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Double whists, hard all-pass, and one shared table pool."}},"ru":{"stringUnit":{"state":"translated","value":"Двойные висты, жёсткие распасы и общая сумма пули."}},"uk":{"stringUnit":{"state":"translated","value":"Подвійні вісти, жорсткі розпаси й спільна сума пулі."}}}},
+    "convention.thessaloniki.help": {"comment":"Hover tooltip on the Θεσσαλονίκη pill in the lobby hero tagline.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Standard trick whists, semi-responsible defense, gentleman remise, and fixed-price hidden-talon raspasy."}},"ru":{"stringUnit":{"state":"translated","value":"Стандартные висты за взятки, полуответственная защита, джентльменский ремиз и распасы с закрытым прикупом без прогрессии."}},"uk":{"stringUnit":{"state":"translated","value":"Стандартні вісті за взятки, напіввідповідальний захист, джентльменська реміза й розпаси із закритим прикупом без прогресії."}}}},
+    "convention.thessaloniki.hint": {"comment":"VoiceOver hint on the Θεσσαλονίκη pill.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Standard trick whists, semi-responsible defense, gentleman remise, and fixed-price hidden-talon raspasy."}},"ru":{"stringUnit":{"state":"translated","value":"Стандартные висты за взятки, полуответственная защита, джентльменский ремиз и распасы с закрытым прикупом без прогрессии."}},"uk":{"stringUnit":{"state":"translated","value":"Стандартні вісті за взятки, напіввідповідальний захист, джентльменська реміза й розпаси із закритим прикупом без прогресії."}}}},
     "convention.kruty.help": {
       "comment": "Hover tooltip on the Крути pill in the lobby hero tagline.",
       "extractionState": "manual",
@@ -6016,54 +5857,8 @@
         }
       }
     },
-    "convention.legend.intro": {
-      "comment": "Intro paragraph at the top of the convention-legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Names we use at our table. Standard Preferans calls these Sochi, Leningrad, Rostov, and Stalingrad."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Названия, которыми мы пользуемся за нашим столом. В стандартном преферансе они звучат как Сочи, Ленинград, Ростов и Сталинград."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Назви, якими ми користуємося за нашим столом. У стандартному преферансі вони звучать як Сочі, Ленінград, Ростов і Сталінград."
-          }
-        }
-      }
-    },
-    "convention.legend.outro": {
-      "comment": "Footer paragraph at the bottom of the convention-legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Outside our circle, players will know the standard names — fall back to those when playing with strangers."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "За пределами нашего круга игроки знают стандартные названия — с незнакомыми соперниками используйте их."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Поза нашим колом гравці знають стандартні назви — з незнайомими суперниками використовуйте їх."
-          }
-        }
-      }
-    },
+    "convention.legend.intro": {"comment":"Intro paragraph at the top of the convention-legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"European city names identify this app’s scoring profiles."}},"ru":{"stringUnit":{"state":"translated","value":"Названия европейских городов обозначают схемы подсчёта в приложении."}},"uk":{"stringUnit":{"state":"translated","value":"Назви європейських міст позначають схеми підрахунку в застосунку."}}}},
+    "convention.legend.outro": {"comment":"Footer paragraph at the bottom of the convention-legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Agree on scoring rules before starting a match."}},"ru":{"stringUnit":{"state":"translated","value":"Согласуйте правила подсчёта до начала партии."}},"uk":{"stringUnit":{"state":"translated","value":"Узгодьте правила підрахунку до початку партії."}}}},
     "convention.legend.replaces": {
       "comment": "Inline label between the house name and the standard name on each row of the convention-legend sheet, e.g. \"Wien REPLACES Leningrad\".",
       "extractionState": "manual",
@@ -6112,132 +5907,15 @@
         }
       }
     },
-    "convention.odesa.standard": {
-      "comment": "Standard Preferans name that Одеса replaces, shown in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Sochi (Сочинка)" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Сочи (Сочинка)" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Сочі (Сочинка)" } }
-      }
-    },
-    "convention.odesa.tradition": {
-      "comment": "Tradition tag for Одеса in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Ukrainian" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "украинская" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "українська" } }
-      }
-    },
-    "convention.odesa.summary": {
-      "comment": "One-paragraph summary for Одеса in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Default balanced scoring. The Russian proverb «знал бы прикуп, жил бы в Сочи» localises cleanly: «знав би прикуп, жив би в Одесі» — same Black Sea coast, same prosperous-port reputation."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Базовый сбалансированный счёт. Поговорка «знал бы прикуп, жил бы в Сочи» естественно ложится на украинский вариант — «знав би прикуп, жив би в Одесі»: то же Чёрное море, та же репутация процветающего порта."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Базовий збалансований підрахунок. Приказка «знал бы прикуп, жил бы в Сочи» природно лягає на «знав би прикуп, жив би в Одесі» — те саме Чорне море, та сама слава заможного порту."
-          }
-        }
-      }
-    },
-    "convention.wien.standard": {
-      "comment": "Standard Preferans name that Wien replaces, shown in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Leningrad (Ленінградка)" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Ленинград (Ленинградка)" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Ленінград (Ленінградка)" } }
-      }
-    },
-    "convention.wien.tradition": {
-      "comment": "Tradition tag for Wien in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Austrian" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "австрийская" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "австрійська" } }
-      }
-    },
-    "convention.wien.summary": {
-      "comment": "One-paragraph summary for Wien in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Strict, doubled-points variant. Vienna is the actual birthplace of the game — Russian Preferans descends from 19th-century Habsburg Préférence — so the strict-and-classical variant takes its name from where the game was actually invented."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Строгий вариант с удвоенными очками. Вена — настоящая родина игры: русский преферанс пошёл от австрийского Préférence XIX века, и «строгий, классический» вариант берёт имя того города, где игра и появилась."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Строгий варіант із подвоєними очками. Відень — справжня батьківщина гри: російський преферанс походить від австрійського Préférence ХІХ століття, тож «строгий, класичний» варіант бере ім’я того міста, де гру й винайшли."
-          }
-        }
-      }
-    },
-    "convention.thessaloniki.standard": {
-      "comment": "Standard Preferans name that Θεσσαλονίκη replaces, shown in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Rostov" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "Ростов" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "Ростов" } }
-      }
-    },
-    "convention.thessaloniki.tradition": {
-      "comment": "Tradition tag for Θεσσαλονίκη in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": { "stringUnit": { "state": "translated", "value": "Greek" } },
-        "ru": { "stringUnit": { "state": "translated", "value": "греческая" } },
-        "uk": { "stringUnit": { "state": "translated", "value": "грецька" } }
-      }
-    },
-    "convention.thessaloniki.summary": {
-      "comment": "One-paragraph summary for Θεσσαλονίκη in the legend sheet.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aggressive, fast-paced variant: no dump points, halved whist penalties, bold bidding rewarded. Thessaloniki — Greece’s mercantile second city — fits the energy, and tips a hat to Greek Prefa, our game’s closest living relative."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Агрессивный, быстрый вариант: без штрафных очков в гору, висты вдвое меньше, смелые заявки в плюс. Салоники — торговый второй город Греции — подходят по характеру, плюс это поклон греческому преферансу, ближайшему родственнику нашей игры."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Агресивний, швидкий варіант: без штрафних очок у гору, вісти вдвічі менші, сміливі заявки в плюс. Салоніки — торговельне друге місто Греції — пасують за характером, до того ж це уклін грецькому преферансу, найближчому родичу нашої гри."
-          }
-        }
-      }
-    },
+    "convention.odesa.standard": {"comment":"Standard Preferans name that Одеса replaces, shown in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Balanced scoring"}},"ru":{"stringUnit":{"state":"translated","value":"Сбалансированный подсчёт"}},"uk":{"stringUnit":{"state":"translated","value":"Збалансований підрахунок"}}}},
+    "convention.odesa.tradition": {"comment":"Tradition tag for Одеса in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Scoring profile"}},"ru":{"stringUnit":{"state":"translated","value":"Схема подсчёта"}},"uk":{"stringUnit":{"state":"translated","value":"Схема підрахунку"}}}},
+    "convention.odesa.summary": {"comment":"One-paragraph summary for Одеса in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Balanced house default."}},"ru":{"stringUnit":{"state":"translated","value":"Сбалансированный домашний вариант."}},"uk":{"stringUnit":{"state":"translated","value":"Збалансований домашній варіант."}}}},
+    "convention.wien.standard": {"comment":"Standard Preferans name that Wien replaces, shown in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Double whists, shared pool"}},"ru":{"stringUnit":{"state":"translated","value":"Двойные висты, общая пуля"}},"uk":{"stringUnit":{"state":"translated","value":"Подвійні вісти, спільна пуля"}}}},
+    "convention.wien.tradition": {"comment":"Tradition tag for Wien in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Scoring profile"}},"ru":{"stringUnit":{"state":"translated","value":"Схема подсчёта"}},"uk":{"stringUnit":{"state":"translated","value":"Схема підрахунку"}}}},
+    "convention.wien.summary": {"comment":"One-paragraph summary for Wien in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Double whists, hard all-pass, and one shared table pool."}},"ru":{"stringUnit":{"state":"translated","value":"Двойные висты, жёсткие распасы и общая сумма пули."}},"uk":{"stringUnit":{"state":"translated","value":"Подвійні вісти, жорсткі розпаси й спільна сума пулі."}}}},
+    "convention.thessaloniki.standard": {"comment":"Standard Preferans name that Θεσσαλονίκη replaces, shown in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Semi-responsible whist, hidden talon on all-pass"}},"ru":{"stringUnit":{"state":"translated","value":"Полуответственный вист, закрытый прикуп на распасах"}},"uk":{"stringUnit":{"state":"translated","value":"Напіввідповідальний віст, закритий прикуп на розпасах"}}}},
+    "convention.thessaloniki.tradition": {"comment":"Tradition tag for Θεσσαλονίκη in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Scoring profile"}},"ru":{"stringUnit":{"state":"translated","value":"Схема подсчёта"}},"uk":{"stringUnit":{"state":"translated","value":"Схема підрахунку"}}}},
+    "convention.thessaloniki.summary": {"comment":"One-paragraph summary for Θεσσαλονίκη in the legend sheet.","extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Standard trick whists, semi-responsible defense, gentleman remise, and fixed-price hidden-talon raspasy."}},"ru":{"stringUnit":{"state":"translated","value":"Стандартные висты за взятки, полуответственная защита, джентльменский ремиз и распасы с закрытым прикупом без прогрессии."}},"uk":{"stringUnit":{"state":"translated","value":"Стандартні вісті за взятки, напіввідповідальний захист, джентльменська реміза й розпаси із закритим прикупом без прогресії."}}}},
     "convention.kruty.standard": {
       "comment": "Standard Preferans name that Крути replaces, shown in the legend sheet.",
       "extractionState": "manual",

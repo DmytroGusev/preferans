@@ -205,6 +205,10 @@ export function validateStartDealAuthority(
       409
     );
   }
+  if (room.visibility === "public" && room.status === "lobby"
+      && room.peers.some(peer => !(room.readyPlayerIDs ?? []).includes(peerID(peer)))) {
+    throw new RoomStateError("players_not_ready", "Every player must confirm Ready before the first deal.", 409);
+  }
 }
 
 export function projectionWireMessage(projection: unknown): Record<string, unknown> {

@@ -81,6 +81,11 @@ export interface OnlinePeer {
 }
 
 export interface RoomState {
+  visibility?: "private" | "public";
+  readyPlayerIDs?: string[];
+  directoryRevision?: number;
+  directoryDirty?: boolean;
+  libraryRemovalAccountIDs?: string[];
   retryCount?: number;
   engineVersion?: string;
   botPending?: boolean;
@@ -120,6 +125,9 @@ export interface RoomState {
 }
 
 export interface PublicRoom {
+  visibility?: "private" | "public";
+  readyPlayerIDs?: WirePlayerID[];
+  tableSettings?: { variant?: string; poolTarget: number; poolClosure: string };
   schemaVersion: number;
   roomCode: string;
   hostPlayerID: WirePlayerID;
@@ -137,6 +145,7 @@ export interface PublicRoom {
 }
 
 export interface CreateRoomInput {
+  visibility?: "private" | "public";
   roomCode: string;
   localPeer: unknown;
   seats?: unknown[];
@@ -256,7 +265,15 @@ export function peerID(peer: Pick<OnlinePeer, "playerID">): string {
 }
 
 export function publicRoom(room: RoomState): PublicRoom {
+  const match = room.engineConfiguration?.match as { poolTarget?: number; poolClosure?: string } | undefined;
   return {
+    visibility: room.visibility ?? "private",
+    readyPlayerIDs: (room.readyPlayerIDs ?? []).map(wirePlayerID),
+    tableSettings: match?.poolTarget ? {
+      variant: room.engineConfiguration?.variant,
+      poolTarget: match.poolTarget,
+      poolClosure: match.poolClosure ?? "individualWithAmericanAid"
+    } : undefined,
     schemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: room.roomCode,
     hostPlayerID: wirePlayerID(room.hostPlayerID),
@@ -280,7 +297,8 @@ export function createInitialRoom({
   now = new Date().toISOString(),
   rules,
   match,
-  variant
+  variant,
+  visibility = "private"
 }: CreateRoomInput): RoomState {
   const normalizedRoomCode = normalizeRoomCode(roomCode);
   const normalizedMaxPlayers = clampMaxPlayers(maxPlayers);
@@ -305,6 +323,8 @@ export function createInitialRoom({
   }
 
   return {
+    visibility,
+    readyPlayerIDs: [],
     schemaVersion: ROOM_SCHEMA_VERSION,
     roomCode: normalizedRoomCode,
     // The authenticated local peer is the creator even when its requested
@@ -380,7 +400,7 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
       playerID: peers[heldIndex].playerID,
       seatToken: generateSeatToken()
     };
-    return { ...room, peers, updatedAt: now };
+    return { ...room, peers, readyPlayerIDs: (room.readyPlayerIDs ?? []).filter(id => id !== peerID(peers[heldIndex])), updatedAt: now };
   }
 
   // New account: claim an open (reserved-but-unclaimed) seat. Honor the seat the
@@ -403,7 +423,7 @@ export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().t
     // A fresh claim mints a fresh token: whatever placeholder credential the
     // open seat may have carried never belonged to this account.
     peers[openIndex] = { ...peer, playerID: peers[openIndex].playerID, seatToken: generateSeatToken() };
-    return { ...room, peers, updatedAt: now };
+    return { ...room, peers, readyPlayerIDs: [], updatedAt: now };
   }
 
   // Every seat is claimed or reserved by another account — the table is full.

@@ -60,6 +60,7 @@ public extension OnlinePeer {
 /// UI render occupancy (who's here, who's still open) without reaching into the
 /// coordinator's private peer map.
 public struct WaitingRoomSeat: Identifiable, Equatable, Sendable {
+    public var isReady: Bool = false
     public enum Occupancy: Equatable, Sendable {
         /// This device's own seat.
         case you(name: String)
@@ -122,6 +123,11 @@ public struct OnlineResumeContext: Sendable {
 
 @MainActor
 public protocol RoomRealtimeTransport: AnyObject {
+    var isPublicTable: Bool { get }
+    var readyPlayerIDs: Set<PlayerID> { get }
+    var tableSettings: OnlineTableSettings? { get }
+    func setReady(_ ready: Bool) async throws
+    func leaveWaitingTable() async throws
     var localPeer: OnlinePeer { get }
     var participants: [OnlinePeer] { get }
     /// Seats with a live room socket. Bots are intentionally absent because
@@ -163,6 +169,11 @@ public protocol RoomRealtimeTransport: AnyObject {
 }
 
 public extension RoomRealtimeTransport {
+    var isPublicTable: Bool { false }
+    var readyPlayerIDs: Set<PlayerID> { [] }
+    var tableSettings: OnlineTableSettings? { nil }
+    func setReady(_ ready: Bool) async throws {}
+    func leaveWaitingTable() async throws {}
     var isServerAuthoritative: Bool { false }
     var authoritativeTableID: UUID? { nil }
     var connectedPlayerIDs: Set<PlayerID> {

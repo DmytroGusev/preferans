@@ -6,6 +6,10 @@ import PreferansEngine
 /// It never constructs an engine or elects a game authority on the device.
 @MainActor
 public final class ServerGameCoordinator: OnlineGamePresenting {
+    @Published public private(set) var isPublicTable = false
+    @Published public private(set) var isReady = false
+    @Published public private(set) var isUpdatingReadiness = false
+    @Published public private(set) var tableSettings: OnlineTableSettings?
     @Published public private(set) var projection: PlayerGameProjection?
     @Published public private(set) var pendingAdvance: PendingAdvance?
     @Published public private(set) var eventLog: [String] = []
@@ -88,6 +92,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         projection = nil; pendingAdvance = nil; pending = nil
         recentEvents = []; eventLog = []; botInsights = []
         tableID = nil; isHost = false; isSubmitting = false
+        isPublicTable = false; isReady = false; isUpdatingReadiness = false; tableSettings = nil
         rosterSeats = []; canHostStart = false; hasDisconnectedHumanSeat = false
         latestReceiptSequence = -1; didAutoStart = false
         errorText = nil; liveness = .connecting; transportStatus = .disconnected
@@ -125,19 +130,43 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         } catch { if generation == attachment { errorText = error.localizedDescription } }
     }
 
+    public func setReady(_ ready: Bool) async {
+        guard let transport, isPublicTable, !isUpdatingReadiness, transportStatus == .connected else { return }
+        let attachment = generation
+        isUpdatingReadiness = true
+        errorText = nil
+        do {
+            try await transport.setReady(ready)
+            guard generation == attachment else { return }
+            await refreshRoster()
+        } catch { if generation == attachment { errorText = error.localizedDescription } }
+        if generation == attachment { isUpdatingReadiness = false }
+    }
+
+    public func leaveWaitingTable() async -> Bool {
+        guard let transport else { return false }
+        do { try await transport.leaveWaitingTable(); return true }
+        catch { errorText = error.localizedDescription; return false }
+    }
+
     private func refreshRoster() async {
         guard let transport else { return }
         let attachment = generation
         let manager = await transport.chooseHost()
         guard generation == attachment else { return }
         isHost = manager?.playerID == transport.localPeer.playerID
+        isPublicTable = transport.isPublicTable
+        isReady = transport.readyPlayerIDs.contains(transport.localPeer.playerID)
+        tableSettings = transport.tableSettings
         rosterSeats = transport.participants.map { peer in
             let occupancy: WaitingRoomSeat.Occupancy
             if peer.isPendingSeat { occupancy = .openWaiting }
             else if peer.isBotSeat { occupancy = .bot(name: peer.displayName) }
             else if peer.playerID == transport.localPeer.playerID { occupancy = .you(name: peer.displayName) }
             else { occupancy = .human(name: peer.displayName) }
-            return WaitingRoomSeat(player: peer.playerID, occupancy: occupancy)
+            var seat = WaitingRoomSeat(player: peer.playerID, occupancy: occupancy)
+            seat.isReady = transport.readyPlayerIDs.contains(peer.playerID)
+            return seat
         }
         hasDisconnectedHumanSeat = transport.participants.contains {
             !$0.isBotSeat && !$0.isPendingSeat && !transport.connectedPlayerIDs.contains($0.playerID)
@@ -154,6 +183,8 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         canHostStart = isHost && !isSubmitting && transportStatus == .connected
             && !hasDisconnectedHumanSeat && !transport.participants.contains(where: \.isPendingSeat)
             && projection?.legal.canStartDeal == true
+            && (!isPublicTable || projection?.sequence != 0
+                || transport.participants.allSatisfy { transport.readyPlayerIDs.contains($0.playerID) })
     }
 
     private func receive(_ received: ReceivedRoomMessage) {

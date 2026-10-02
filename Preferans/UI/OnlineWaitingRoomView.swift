@@ -76,10 +76,17 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             "Leave this table?",
             isPresented: $showLeaveConfirm
         ) {
-            Button("Leave table", role: .destructive) { onLeaveTable() }
+            Button("Leave table", role: .destructive) {
+                Task {
+                    var canLeave = true
+                    if coordinator.isPublicTable { canLeave = await coordinator.leaveWaitingTable() }
+                    if canLeave { onLeaveTable() }
+                }
+            }
             Button("Stay", role: .cancel) {}
         } message: {
-            Text("You can return to this game from Your games in the lobby.")
+            if coordinator.isPublicTable { Text("Your seat will become available to another player.") }
+            else { Text("You can return to this game from Your games in the lobby.") }
         }
         .onChange(of: coordinator.errorText) { _, newValue in
             // A failed start shouldn't leave the host stuck behind a disabled
@@ -129,6 +136,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
     private var rosterRegion: some View {
         VStack(spacing: 18) {
             seatList
+            if coordinator.isPublicTable { readinessControls }
             if coordinator.isHost {
                 hostControls
             } else {
@@ -159,7 +167,8 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 // out of localization.
                 Group {
                     if coordinator.isHost {
-                        Text("Invite friends, then start when everyone's seated.")
+                        if coordinator.isPublicTable { Text("Start when everyone has confirmed Ready.") }
+                        else { Text("Invite friends, then start when everyone's seated.") }
                     } else {
                         Text("You're in. Hang tight for the host.")
                     }
@@ -314,7 +323,14 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(info.isOpen ? theme.textSecondary : theme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            occupancyPill(info)
+            if coordinator.isPublicTable && !info.isOpen && !seat.occupancy.isBot {
+                Group {
+                    if seat.isReady { Text("Ready") }
+                    else { Text("Not ready") }
+                }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(seat.isReady ? theme.accentStrong : theme.textMuted)
+            } else { occupancyPill(info) }
         }
         .padding(10)
         .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
@@ -363,7 +379,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             .disabled(!coordinator.canHostStart || isStarting)
             .accessibilityIdentifier(UIIdentifiers.onlineStartGame)
 
-            if hasOpenSeat {
+            if hasOpenSeat && !coordinator.isPublicTable {
                 Button {
                     guard !isStarting else { return }
                     isStarting = true
@@ -393,6 +409,8 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 Group {
                     if coordinator.hasDisconnectedHumanSeat {
                         Text("A joined player must reconnect before the host can start.")
+                    } else if coordinator.isPublicTable {
+                        Text("Every seat must be filled and every player must confirm Ready.")
                     } else {
                         Text("Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
                     }
@@ -418,6 +436,36 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
     }
 
     // MARK: - Helpers
+
+    private var readinessControls: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let settings = coordinator.tableSettings {
+                Text(LobbyFormat.variantDisplayName(settings.variant)).font(.headline)
+                if settings.poolClosure == "tableTotal" { Text("Table pool total: \(settings.poolTarget)") }
+                else { Text("Pulka per player: \(settings.displayedPoolTarget(playerCount: coordinator.rosterSeats.count))") }
+                if let variant = settings.variant.flatMap(PreferansVariant.init(rawValue:)) {
+                    Text(variant.summary).font(.caption).foregroundStyle(theme.textSecondary)
+                }
+            }
+            Button {
+                Task { await coordinator.setReady(!coordinator.isReady) }
+            } label: {
+                Group {
+                    if coordinator.isUpdatingReadiness { ProgressView() }
+                    else if coordinator.isReady { Label("Not ready", systemImage: "arrow.uturn.backward") }
+                    else { Label("I'm ready", systemImage: "checkmark.circle") }
+                }.frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.feltPrimary)
+            .disabled(coordinator.isUpdatingReadiness || coordinator.transportStatus != .connected)
+            .accessibilityIdentifier("online.confirmReady")
+            Text("Confirm that you agree to these settings and have time to finish the pulka.")
+                .font(.caption).foregroundStyle(theme.textSecondary)
+        }
+        .foregroundStyle(theme.textPrimary)
+        .padding(14)
+        .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 12))
+    }
 
     private var hasOpenSeat: Bool {
         coordinator.rosterSeats.contains { seat in
@@ -484,7 +532,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             return OccupancyInfo(
                 icon: "hourglass",
                 iconColor: theme.textSecondary,
-                title: Text("Waiting for a friend…"),
+                title: coordinator.isPublicTable ? Text("Waiting for a player…") : Text("Waiting for a friend…"),
                 pill: "Open",
                 pillAccent: false,
                 isOpen: true,

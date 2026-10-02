@@ -42,6 +42,10 @@ final class NativeOnlineUITests: XCTestCase {
         let app = try launchApp()
         try registerNativeGuest(in: app, name: "QA Native Host")
         print("[native-online] create through the app")
+        app.buttons["online.createTable"].tap()
+        let privateTable = app.buttons["Invite only"]
+        try reveal(privateTable, in: app)
+        privateTable.tap()
         let create = app.buttons[UIIdentifiers.onlineCreateRoom]
         try reveal(create, in: app)
         create.tap()
@@ -154,6 +158,60 @@ final class NativeOnlineUITests: XCTestCase {
         try deleteNativeAccount(in: app)
     }
 
+    func testNativePlayerFindsPublicTableReadiesAndReceivesFirstDeal() async throws {
+        print("[public-online] create a public table through an independent account")
+        let hostToken = try await registerPeer("QA Public Host")
+        let created = try await request("POST", "/v2/rooms", body: [
+            "visibility": "public", "variant": "odesa", "localPlayerID": ["rawValue": "north"],
+            "seats": [
+                ["playerID": ["rawValue": "north"], "kind": "you"],
+                ["playerID": ["rawValue": "east"], "kind": "open"],
+                ["playerID": ["rawValue": "south"], "kind": "open"]
+            ],
+            "rules": try jsonObject(PreferansRules.sochi),
+            "match": try jsonObject(MatchSettings(poolTarget: 33))
+        ], token: hostToken)
+        let code = try XCTUnwrap(created["roomCode"] as? String)
+        let hostSocket = try await connect(created)
+        let app = try launchApp()
+        try registerNativeGuest(in: app, name: "QA Public Player")
+        let refresh = app.buttons["online.refreshTables"]
+        try reveal(refresh, in: app)
+        refresh.tap()
+        let table = app.buttons["online.publicTable.\(code)"]
+        try require(table.waitForExistence(timeout: 3))
+        try reveal(table, in: app)
+        capture(app, "public-lobby-table-list")
+        table.tap()
+        capture(app, "public-table-conditions")
+        app.buttons["online.takeSeat"].tap()
+        try require(app.descendants(matching: .any)[UIIdentifiers.screenWaitingRoom].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons[UIIdentifiers.onlineStartGame].exists)
+
+        let thirdToken = try await registerPeer("QA Public Third")
+        let third = try await request("POST", "/v2/rooms/\(code)/join", body: ["requestedPlayerID": ["rawValue": "south"]], token: thirdToken)
+        _ = try await connect(third)
+        for (room, token, seat) in [(created, hostToken, "north"), (third, thirdToken, "south")] {
+            _ = try await request("POST", "/v2/rooms/\(code)/ready", body: [
+                "playerID": ["rawValue": seat],
+                "seatToken": try XCTUnwrap(room["seatToken"]), "ready": true
+            ], token: token)
+        }
+        print("[public-online] confirm Ready in the app, then deal on the server")
+        let ready = app.buttons["online.confirmReady"]
+        try reveal(ready, in: app)
+        ready.tap()
+        try require(ready.wait(for: \.label, toEqual: "Not ready", timeout: 3))
+        capture(app, "public-player-ready")
+        try await send(.startDeal(dealer: nil, deck: nil), actor: "north", room: created, sequence: 0, socket: hostSocket)
+        try require(app.staticTexts[UIIdentifiers.phaseTitle].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts[UIIdentifiers.phaseTitle].label, "Bidding")
+        XCTAssertEqual(handIDs(in: app, seat: "east").count, 10)
+        capture(app, "public-first-auction")
+        try leaveTable(in: app)
+        try deleteNativeAccount(in: app)
+    }
+
     private func launchApp() throws -> XCUIApplication {
         let app = XCUIApplication()
         app.disableUITestAnimations()
@@ -215,6 +273,7 @@ final class NativeOnlineUITests: XCTestCase {
             if element.exists && element.isHittable && app.frame.insetBy(dx: 0, dy: 75).contains(element.frame) { return }
             app.swipeUp()
         }
+        print(app.debugDescription)
         try require(element.isHittable, "The requested online control must be reachable")
     }
 

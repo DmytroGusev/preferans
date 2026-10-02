@@ -3,6 +3,8 @@ import PreferansEngine
 import SwiftUI
 
 public enum PreferansVariant: String, CaseIterable, Identifiable, Equatable, Codable {
+    // Persisted identifiers stay stable so saved tables retain their rules.
+    public static var publicCases: [Self] { [.odesa, .wien, .thessaloniki] }
     case odesa
     case wien
     case thessaloniki

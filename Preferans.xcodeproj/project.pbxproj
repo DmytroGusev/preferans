@@ -71,6 +71,7 @@
 		B0000000000000000000C300 /* ConventionLegendSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C301 /* ConventionLegendSheet.swift */; };
 		B0000000000000000000C302 /* OnlineGameSummarySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C303 /* OnlineGameSummarySheet.swift */; };
 		B0000000000000000000C304 /* LobbyYourGamesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C305 /* LobbyYourGamesSection.swift */; };
+		C0DE00000000000000000902 /* LobbyPublicTablesSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000901 /* LobbyPublicTablesSection.swift */; };
 		B0000000000000000000C306 /* LobbyOnlineSetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C307 /* LobbyOnlineSetupCard.swift */; };
 		B0000000000000000000C308 /* ActivityLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C309 /* ActivityLogSheet.swift */; };
 		B0000000000000000000C30A /* LastTrickView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000C30B /* LastTrickView.swift */; };
@@ -179,6 +180,7 @@
 		B0000000000000000000C301 /* ConventionLegendSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ConventionLegendSheet.swift; sourceTree = "<group>"; };
 		B0000000000000000000C303 /* OnlineGameSummarySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/OnlineGameSummarySheet.swift; sourceTree = "<group>"; };
 		B0000000000000000000C305 /* LobbyYourGamesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyYourGamesSection.swift; sourceTree = "<group>"; };
+		C0DE00000000000000000901 /* LobbyPublicTablesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyPublicTablesSection.swift; sourceTree = "<group>"; };
 		B0000000000000000000C307 /* LobbyOnlineSetupCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyOnlineSetupCard.swift; sourceTree = "<group>"; };
 		B0000000000000000000C309 /* ActivityLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/ActivityLogSheet.swift; sourceTree = "<group>"; };
 		B0000000000000000000C30B /* LastTrickView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LastTrickView.swift; sourceTree = "<group>"; };
@@ -300,6 +302,7 @@
 				B0000000000000000000C301 /* ConventionLegendSheet.swift */,
 				B0000000000000000000C303 /* OnlineGameSummarySheet.swift */,
 				B0000000000000000000C305 /* LobbyYourGamesSection.swift */,
+				C0DE00000000000000000901 /* LobbyPublicTablesSection.swift */,
 				B0000000000000000000C307 /* LobbyOnlineSetupCard.swift */,
 				B0000000000000000000C309 /* ActivityLogSheet.swift */,
 				B0000000000000000000C30B /* LastTrickView.swift */,
@@ -521,6 +524,7 @@
 				B0000000000000000000C300 /* ConventionLegendSheet.swift in Sources */,
 				B0000000000000000000C302 /* OnlineGameSummarySheet.swift in Sources */,
 				B0000000000000000000C304 /* LobbyYourGamesSection.swift in Sources */,
+				C0DE00000000000000000902 /* LobbyPublicTablesSection.swift in Sources */,
 				B0000000000000000000C306 /* LobbyOnlineSetupCard.swift in Sources */,
 				B0000000000000000000C308 /* ActivityLogSheet.swift in Sources */,
 				B0000000000000000000C30A /* LastTrickView.swift in Sources */,

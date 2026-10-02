@@ -9,7 +9,8 @@ export default defineConfig({
       compatibilityFlags: ["nodejs_compat"],
       durableObjects: {
         ROOMS: { className: "PreferansTable", useSQLite: true },
-        ACCOUNTS: { className: "PlayerAccountV2", useSQLite: true }
+        ACCOUNTS: { className: "PlayerAccountV2", useSQLite: true },
+        LOBBY: { className: "PublicTableDirectory", useSQLite: true }
       }
     }
   })],
