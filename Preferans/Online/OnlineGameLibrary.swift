@@ -1,6 +1,125 @@
 import Foundation
 import PreferansEngine
 
+public enum OnlineTableVisibility: String, CaseIterable, Identifiable, Sendable {
+    case publicTable = "public"
+    case privateTable = "private"
+    public var id: String { rawValue }
+}
+
+public enum OnlineLobbyIntent: String, CaseIterable, Identifiable {
+    case findTable, createTable
+    public var id: String { rawValue }
+}
+
+public struct OnlineTableSettings: Codable, Sendable, Equatable {
+    public var variant: String?
+    public var poolTarget: Int
+    public var poolClosure: String
+
+    public func displayedPoolTarget(playerCount: Int) -> Int {
+        poolClosure == "tableTotal" ? poolTarget : poolTarget / max(1, playerCount)
+    }
+}
+
+public struct PublicOnlineTable: Decodable, Sendable, Equatable, Identifiable {
+    public struct Player: Decodable, Sendable, Equatable {
+        public var displayName: String
+        public var ready: Bool
+        public var connected: Bool
+    }
+    public var roomCode: String
+    public var variant: String
+    public var poolTarget: Int
+    public var poolClosure: String
+    public var maxPlayers: Int
+    public var players: [Player]
+    public var openSeats: Int
+    public var status: PreferansGameStatus
+    public var dealNumber: Int?
+    public var createdAt: String
+    public var id: String { roomCode }
+    public var canJoin: Bool { status == .lobby && openSeats > 0 }
+    public var settings: OnlineTableSettings {
+        OnlineTableSettings(variant: variant, poolTarget: poolTarget, poolClosure: poolClosure)
+    }
+}
+
+public struct PublicTablePage: Decodable, Sendable {
+    public var tables: [PublicOnlineTable]
+    public var nextOffset: Int?
+}
+
+public protocol PublicTableServing: Sendable {
+    func fetchTables(sessionToken: String, offset: Int) async throws -> PublicTablePage
+}
+
+public struct CloudflarePublicTableDirectory: PublicTableServing {
+    public var baseURL: URL
+    public var session: URLSession
+    public init(baseURL: URL = AppIdentifiers.roomWorkerBaseURL, session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+    public func fetchTables(sessionToken: String, offset: Int = 0) async throws -> PublicTablePage {
+        var components = URLComponents(url: baseURL.appendingPathComponent("v2/public-tables"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [URLQueryItem(name: "offset", value: String(offset))]
+        var request = URLRequest(url: components.url!)
+        request.timeoutInterval = 8
+        request.setValue("Bearer \(sessionToken)", forHTTPHeaderField: "authorization")
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw CloudflareRoomTransportError.invalidHTTPResponse }
+        guard (200..<300).contains(http.statusCode) else {
+            if http.statusCode == 404 || http.statusCode == 503 {
+                throw CloudflareRoomTransportError.serverError(String(localized: "Public tables are not available on this server yet. You can still invite friends with a room code."))
+            }
+            let error = try? JSONDecoder().decode(DirectoryError.self, from: data)
+            throw CloudflareRoomTransportError.serverError(error?.error ?? "Could not load public tables. Please try again.")
+        }
+        return try PreferansJSONCoder.decoder.decode(PublicTablePage.self, from: data)
+    }
+    private struct DirectoryError: Decodable { var error: String }
+}
+
+@MainActor
+public final class PublicTableLobby: ObservableObject {
+    @Published public private(set) var tables: [PublicOnlineTable] = []
+    @Published public private(set) var isLoading = false
+    @Published public private(set) var errorText: String?
+    @Published public private(set) var nextOffset: Int?
+    @Published public private(set) var hasLoaded = false
+    private let directory: any PublicTableServing
+    private var generation = 0
+    public init(directory: any PublicTableServing = CloudflarePublicTableDirectory()) { self.directory = directory }
+
+    public func refresh(sessionToken: String?, loadMore: Bool = false) async {
+        generation &+= 1
+        let current = generation
+        guard let sessionToken, !sessionToken.isEmpty else {
+            tables = []; nextOffset = nil; isLoading = false; errorText = nil; hasLoaded = false
+            return
+        }
+        let offset = loadMore ? (nextOffset ?? 0) : 0
+        isLoading = true
+        errorText = nil
+        defer { if generation == current { isLoading = false; hasLoaded = true } }
+        do {
+            let page = try await directory.fetchTables(sessionToken: sessionToken, offset: offset)
+            guard generation == current else { return }
+            if loadMore {
+                let incoming = Set(page.tables.map(\.id))
+                tables = tables.filter { !incoming.contains($0.id) } + page.tables
+            } else { tables = page.tables }
+            nextOffset = page.nextOffset
+        } catch {
+            guard generation == current else { return }
+            if !loadMore { tables = []; nextOffset = nil }
+            errorText = error.localizedDescription
+        }
+    }
+}
+import PreferansEngine
+
 /// One row in the lobby's "Your games" list — the client mirror of the worker's
 /// `GameSummaryEntry`. Decoded straight from `GET /my-games`; never built locally.
 /// Carries everything a Continue/History row needs plus the `roomCode` a resume

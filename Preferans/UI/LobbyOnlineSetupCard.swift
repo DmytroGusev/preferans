@@ -15,10 +15,62 @@ extension LobbyView {
     var onlineSetupCard: some View {
         VStack(spacing: 12) {
             onlineIdentitySection
+            onlinePanel(title: "Play online", icon: "globe.europe.africa.fill") {
+                HStack(spacing: 10) {
+                    Button {
+                        viewModel.onlineIntent = .findTable
+                    } label: {
+                        Label("Find a table", systemImage: "magnifyingglass")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.feltSecondary)
+                    .accessibilityIdentifier("online.findTable")
+                    Button {
+                        viewModel.prepareOnlineTableCreation()
+                    } label: {
+                        Label("Create a table", systemImage: "plus")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.feltSecondary)
+                    .accessibilityIdentifier("online.createTable")
+                }
+            }
+            if viewModel.onlineIntent == .findTable {
+                LobbyPublicTablesSection(viewModel: viewModel, lobby: publicLobby)
+            }
             onlineJoinSection
-            onlineVariantSection
-            onlineCompositionSection
-            onlineRoomActionsSection
+            if viewModel.onlineIntent == .createTable {
+                onlinePanel(title: "Who can join?", icon: "person.2.fill") {
+                    Picker("Who can join?", selection: $viewModel.onlineTableVisibility) {
+                        Text("Public table").tag(OnlineTableVisibility.publicTable)
+                            .disabled(!publicLobby.hasLoaded || publicLobby.errorText != nil)
+                        Text("Invite only").tag(OnlineTableVisibility.privateTable)
+                    }
+                    .modifier(LobbyChoiceControlStyle())
+                    Group {
+                        if viewModel.onlineTableVisibility == .publicTable {
+                            Text("Your name and table settings appear in the public lobby. All players confirm Ready before the host starts.")
+                        } else { Text("Only players with your room code or invite link can join.") }
+                    }
+                        .font(.caption).foregroundStyle(theme.textSecondary)
+                }
+                onlineVariantSection
+                onlineCompositionSection
+                onlineRoomActionsSection
+            }
+        }
+        .onChange(of: viewModel.onlineTableVisibility) { _, visibility in
+            if visibility == .publicTable {
+                guard publicLobby.hasLoaded && publicLobby.errorText == nil else {
+                    viewModel.onlineTableVisibility = .privateTable
+                    return
+                }
+                viewModel.onlineComposition = OnlineSeatSlot.defaultComposition(count: viewModel.onlineComposition.count)
+                if !PreferansVariant.publicCases.contains(viewModel.onlineVariant) { viewModel.onlineVariant = .odesa }
+            }
+        }
+        .task(id: viewModel.onlineAccountSessionToken) {
+            await publicLobby.refresh(sessionToken: viewModel.onlineAccountSessionToken)
         }
     }
 
@@ -29,7 +81,7 @@ extension LobbyView {
         onlinePanel(title: "Variant", icon: "slider.horizontal.3") {
             variantControls
             pulkaLimitPicker
-            raspasyControls
+            if viewModel.onlineTableVisibility == .privateTable { raspasyControls }
         }
     }
 
@@ -42,7 +94,7 @@ extension LobbyView {
                 compactVariantGrid
             } else {
                 Picker("Variant", selection: $viewModel.onlineVariant) {
-                    ForEach(PreferansVariant.allCases) { variant in
+                    ForEach(availableVariants) { variant in
                         Text(variant.title).tag(variant)
                     }
                 }
@@ -73,7 +125,7 @@ extension LobbyView {
             columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)],
             spacing: 8
         ) {
-            ForEach(PreferansVariant.allCases) { variant in
+            ForEach(availableVariants) { variant in
                 let selected = viewModel.onlineVariant == variant
                 Button {
                     viewModel.onlineVariant = variant
@@ -96,6 +148,11 @@ extension LobbyView {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.onlineVariantPicker)
+    }
+
+    private var availableVariants: [PreferansVariant] {
+        viewModel.lobbyMode == .online && viewModel.onlineTableVisibility == .publicTable
+            ? PreferansVariant.publicCases : PreferansVariant.allCases
     }
 
     private var onlineCompositionSection: some View {
@@ -155,6 +212,9 @@ extension LobbyView {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(theme.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if viewModel.onlineTableVisibility == .publicTable {
+                    Text("Open seat").font(.caption).foregroundStyle(theme.accentStrong)
+                } else {
                 Picker("Seat \(index + 1)", selection: onlineSeatKindBinding(index)) {
                     Text("Friend").tag(OnlineSeatSlot.Kind.invite)
                     Text("Bot").tag(OnlineSeatSlot.Kind.bot)
@@ -162,6 +222,7 @@ extension LobbyView {
                 .pickerStyle(.segmented)
                 .frame(width: 130)
                 .accessibilityIdentifier(UIIdentifiers.onlineSeatKindPicker(index: index))
+                }
             }
         }
         .padding(10)
@@ -343,8 +404,10 @@ extension LobbyView {
                     } else {
                         Image(systemName: "person.3.sequence.fill")
                     }
-                    Text("Create invite link")
-                        .fontWeight(.semibold)
+                    Group {
+                        if viewModel.onlineTableVisibility == .publicTable { Text("Open public table") }
+                        else { Text("Create invite link") }
+                    }.fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)
             }

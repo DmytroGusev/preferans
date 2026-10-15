@@ -2,6 +2,27 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0.2 (28) - Internal TestFlight and European Store Metadata
+
+- Date: 2026-10-15.
+- Source base: `f7dbbaf` public-lobby feature, based on `b2c1d76` misere fix.
+- Operational changes made by: Codex at Dmytro Gusev's request.
+- Added public-table discovery, settings, readiness and waiting-room lifecycle.
+- Renamed display conventions to Vienna, Prague and Berlin, preserving stored IDs.
+- Added a safe invite-only fallback while the production public directory is unavailable.
+- Fixed public-room global identity disclosure and a leave/rejoin library-removal race.
+- Bumped the iOS app from 1.0.1 (27) to 1.0.2 (28).
+- Signed Release archive and upload succeeded; Apple processing state `VALID`.
+- Build ID: `eca4773c-36c9-4ef4-936f-dd7b353fb08e`.
+- Verified available in the existing internal Testers group; internal Pediki also
+  has access to all builds. Saved explicit backend-limitation testing notes.
+- Added 24 App Store metadata localizations, refreshed iPhone/iPad screenshots,
+  an actual app preview recording, Header/Search Results assets and draft PPO.
+- No production backend deployment, external beta review, App Review submission
+  or public release. Published 1.0.1 (27) remains unchanged.
+- Rollout prerequisites and evidence: `AppStore/Release-1.0.2.md`, `ReleaseEvidence/`.
+- Release tag: `testflight/1.0.2-build-28` records the full release work.
+
 ## 1.0.1 (27) - Navy App Icon
 
 - Date: 2026-09-12

@@ -1,7 +1,7 @@
 // Local development only. Production wrangler.toml never imports this module.
 import { PreferansTable } from "./index";
 import type { AuthoritativeEngineBinding } from "./authoritative-engine";
-export { default, PlayerAccountV2 } from "./index";
+export { default, PlayerAccountV2, PublicTableDirectory } from "./index";
 
 export class LocalPreferansTable extends PreferansTable {
   protected engine(): AuthoritativeEngineBinding {

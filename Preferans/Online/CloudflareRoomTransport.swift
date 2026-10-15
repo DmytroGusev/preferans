@@ -2,6 +2,9 @@ import Foundation
 import PreferansEngine
 
 public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
+    public var visibility: String? = nil
+    public var readyPlayerIDs: [PlayerID]? = nil
+    public var tableSettings: OnlineTableSettings? = nil
     public var status: PreferansGameStatus? = nil
     public var schemaVersion: Int
     public var roomCode: String
@@ -140,6 +143,9 @@ public enum CloudflareRoomTransportError: LocalizedError {
 
 @MainActor
 public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransport {
+    @Published public private(set) var isPublicTable: Bool
+    @Published public private(set) var readyPlayerIDs: Set<PlayerID>
+    @Published public private(set) var tableSettings: OnlineTableSettings?
     public let baseURL: URL
     public let roomCode: String
     public let localPeer: OnlinePeer
@@ -197,6 +203,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             throw CloudflareRoomTransportError.missingSocketURL
         }
         self.baseURL = baseURL
+        self.isPublicTable = summary.visibility == "public"
+        self.readyPlayerIDs = Set(summary.readyPlayerIDs ?? [])
+        self.tableSettings = summary.tableSettings
         self.roomCode = summary.roomCode
         self.localPeer = localPeer
         self.authoritativeTableID = summary.authoritativeTableID
@@ -225,6 +234,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         match: MatchSettings = .unbounded,
         variantTag: String? = nil,
         maxPlayers: Int = 4,
+        visibility: OnlineTableVisibility = .privateTable,
         session: URLSession = .shared
     ) async throws -> CloudflareRoomTransport {
         let request = CreateRoomRequest(
@@ -233,7 +243,8 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             maxPlayers: maxPlayers,
             rules: rules,
             match: match,
-            variant: variantTag
+            variant: variantTag,
+            visibility: visibility.rawValue
         )
         let summary = try await postRoomRequest(
             request,
@@ -241,6 +252,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             accountSessionToken: accountSessionToken,
             session: session
         )
+        guard visibility != .publicTable || summary.visibility == "public" else {
+            throw CloudflareRoomTransportError.serverError(String(localized: "Public tables are not available on this server yet. You can still invite friends with a room code."))
+        }
         guard let assignedPeer = summary.peers.first(where: { $0.accountID == localPeer.accountID }) else {
             throw CloudflareRoomTransportError.serverError("Room server did not return the caller's seat.")
         }
@@ -286,6 +300,32 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
 
     public func chooseHost() async -> OnlinePeer? {
         participants.first { $0.playerID == hostPlayerID }
+    }
+
+    public func setReady(_ ready: Bool) async throws {
+        guard let seatToken else { throw CloudflareRoomTransportError.socketNotConnected }
+        _ = try await Self.postRoomRequest(
+            ReadyRequest(playerID: localPeer.playerID, seatToken: seatToken, ready: ready),
+            to: Self.endpoint(baseURL, "v2", "rooms", roomCode, "ready"),
+            accountSessionToken: accountSessionToken, session: session
+        )
+        // Presence is ordered on the socket; an HTTP response may arrive
+        // after a newer roster update and must not restore stale readiness.
+    }
+
+    public func leaveWaitingTable() async throws {
+        guard let seatToken else { throw CloudflareRoomTransportError.socketNotConnected }
+        _ = try await Self.postRoomRequest(
+            HostMutationRequest(playerID: localPeer.playerID, seatToken: seatToken),
+            to: Self.endpoint(baseURL, "v2", "rooms", roomCode, "leave"),
+            accountSessionToken: accountSessionToken, session: session
+        )
+    }
+
+    private func adoptTableSettings(_ summary: CloudflareRoomSummary) {
+        isPublicTable = summary.visibility == "public"
+        readyPlayerIDs = Set(summary.readyPlayerIDs ?? [])
+        tableSettings = summary.tableSettings
     }
 
     public func messages() -> AsyncStream<ReceivedRoomMessage> {
@@ -359,6 +399,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         participants = summary.peers
         hostPlayerID = summary.hostPlayerID
         hostEpoch = summary.hostEpoch
+        adoptTableSettings(summary)
         emitParticipants()
         return summary.peers
     }
@@ -575,6 +616,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                room.relaySequence >= lastRelaySequence {
                 lastRelaySequence = room.relaySequence
                 participants = room.peers
+                adoptTableSettings(room)
                 adoptConnectedPlayerIDs(envelope.connectedPlayerIDs, validPeers: room.peers)
                 hostPlayerID = room.hostPlayerID
                 hostEpoch = room.hostEpoch
@@ -590,6 +632,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                room.schemaVersion == AppIdentifiers.gameWireSchemaVersion,
                room.hostEpoch >= hostEpoch {
                 participants = room.peers
+                adoptTableSettings(room)
                 adoptConnectedPlayerIDs(envelope.connectedPlayerIDs, validPeers: room.peers)
                 hostPlayerID = room.hostPlayerID
                 hostEpoch = room.hostEpoch
@@ -697,6 +740,13 @@ private struct CreateRoomRequest: Encodable {
     var rules: PreferansRules
     var match: MatchSettings
     var variant: String?
+    var visibility: String
+}
+
+private struct ReadyRequest: Encodable {
+    var playerID: PlayerID
+    var seatToken: String
+    var ready: Bool
 }
 
 private struct JoinRoomRequest: Encodable {

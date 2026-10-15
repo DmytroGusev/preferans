@@ -47,6 +47,7 @@ public struct LobbyView: View {
 
     @StateObject var viewModel = LobbyViewModel()
     @StateObject private var gameLibrary = OnlineGameLibrary()
+    @StateObject var publicLobby = PublicTableLobby()
     @State private var activeSheet: Sheet?
     @State private var showingWatchBotsConfirm = false
     @State private var showingTableOptions = false
@@ -189,10 +190,12 @@ public struct LobbyView: View {
         } else if TestHarness.autoCreateOnlineRoom(in: args) {
             didRunOnlineHarness = true
             seedOnlineNameForHarnessIfNeeded()
+            viewModel.onlineTableVisibility = .privateTable
             viewModel.startCloudflareOnlineRoom()
         } else if let roomCode = TestHarness.autoJoinOnlineRoomCode(from: args) {
             didRunOnlineHarness = true
             seedOnlineNameForHarnessIfNeeded()
+            viewModel.onlineTableVisibility = .privateTable
             viewModel.onlineJoinRoomCode = roomCode
             viewModel.joinCloudflareOnlineRoom()
         }

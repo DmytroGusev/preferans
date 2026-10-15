@@ -8,8 +8,9 @@ enum LobbyFormat {
     /// dropped, so a future variant still reads sensibly before it's mapped.
     static func variantDisplayName(_ raw: String?) -> String {
         switch raw {
-        case "odesa": return "Odesa"
-        case "wien":  return "Wien"
+        case "odesa": return String(localized: "Vienna")
+        case "wien":  return String(localized: "Prague")
+        case "thessaloniki": return String(localized: "Berlin")
         case let other?: return other.capitalized
         case nil: return String(localized: "Preferans")
         }

@@ -148,7 +148,7 @@ private struct OnboardingSlide: Equatable {
         ),
         .init(
             title: "Track the pulka",
-            subtitle: "Sochi, Leningrad, and Rostov variants are prepared with automatic settlement support.",
+            subtitle: "Vienna, Prague, and Berlin conventions with automatic scoring.",
             illustration: .scoring
         )
     ]

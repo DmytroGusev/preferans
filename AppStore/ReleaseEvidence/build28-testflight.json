@@ -1,0 +1,14 @@
+{
+  "buildID": "eca4773c-36c9-4ef4-936f-dd7b353fb08e",
+  "version": "1.0.2",
+  "build": 28,
+  "processingState": "VALID",
+  "internalGroupsWithAccessToAllBuilds": [
+    "Testers",
+    "Pediki"
+  ],
+  "internalBuildState": "READY_FOR_BETA_TESTING",
+  "betaNotes": "Test build 1.0.2 (28): Vienna/Prague/Berlin convention names, misere opening visibility fix, and public-lobby preparation. IMPORTANT: the production server has not been upgraded because Cloudflare access is unavailable. Public discovery is unavailable and public creation is disabled until the directory is reachable. Private invite rooms and local play remain available. Test sign-in, private room creation/join/resume, local play, bidding, misere and scoring on iPhone/iPad. Do not submit this release to App Review before backend deployment and public-table checks.",
+  "appReviewSubmitted": false,
+  "productionBackendDeployed": false
+}

@@ -1,0 +1,36 @@
+{
+  "odesa": {
+    "allowSeniorHandHoldBid": true,
+    "requireWhistOnTenTrickContracts": false,
+    "singleWhistScoring": "greedy",
+    "failedDeclarerConsolation": "eachDefender",
+    "whistResponsibility": "responsible",
+    "allPassTalonPolicy": { "classic": {} },
+    "allPassPenaltyPolicy": { "perTrick": { "multiplier": 1, "amnesty": false } },
+    "zeroTricksAllPassPoolBonus": 1
+  },
+  "wien": {
+    "allowSeniorHandHoldBid": true,
+    "requireWhistOnTenTrickContracts": true,
+    "singleWhistScoring": "gentleman",
+    "failedDeclarerConsolation": "eachDefender",
+    "whistResponsibility": "semiResponsible",
+    "allPassTalonPolicy": { "classic": {} },
+    "allPassPenaltyPolicy": { "perTrick": { "multiplier": 2, "amnesty": false } },
+    "zeroTricksAllPassPoolBonus": 1,
+    "mountainValueMultiplier": 2,
+    "whistValueMultiplier": 2,
+    "poolPointWhistValue": 20
+  },
+  "thessaloniki": {
+    "allowSeniorHandHoldBid": true,
+    "requireWhistOnTenTrickContracts": false,
+    "singleWhistScoring": "gentleman",
+    "failedDeclarerConsolation": "none",
+    "whistResponsibility": "semiResponsible",
+    "declarerRemisePolicy": { "directWhistsPerDefender": { "whistsPerUndertrick": 10 } },
+    "allPassTalonPolicy": { "ignored": {} },
+    "allPassPenaltyPolicy": { "directWhistsToLowest": { "pointsPerTrick": 5 } },
+    "zeroTricksAllPassPoolBonus": 1
+  }
+}

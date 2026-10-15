@@ -25,6 +25,10 @@ class_name = "PreferansEngineContainer"
 image = "../../Dockerfile.server"
 max_instances = 3
 
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "PublicTableDirectory"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["PreferansRoom"]
@@ -50,6 +54,10 @@ new_sqlite_classes = ["PreferansRoomV3", "PreferansEngineContainer"]
 tag = "v5-durable-table"
 new_sqlite_classes = ["PreferansTable"]
 deleted_classes = ["PreferansRoom", "PlayerLibrary", "PreferansRoomV2", "PreferansRoomV3"]
+
+[[migrations]]
+tag = "v6-public-directory"
+new_sqlite_classes = ["PublicTableDirectory"]
 
 [observability]
 enabled = true

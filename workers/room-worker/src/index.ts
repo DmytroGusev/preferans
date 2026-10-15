@@ -1,4 +1,6 @@
 import { commandIdentity, MutationQueue, type StoredCommand, type CommandReceipt } from "./command-contract";
+import { publicConfiguration, publicTableEntry, setPlayerReady } from "./public-tables";
+export { PublicTableDirectory } from "./public-directory";
 import {
   type CreateRoomInput,
   type OnlinePeer,
@@ -25,6 +27,7 @@ import {
   peerID,
   playerIDValue,
   publicRoom,
+  publicPeer,
   recordRelay,
   removeAccountFromRoom,
   humanPeers,
@@ -89,6 +92,7 @@ const appleAppSiteAssociation = {
 };
 
 export interface Env {
+  LOBBY?: DurableObjectNamespace;
   ROOMS: DurableObjectNamespace;
   /// Authenticated account + game index, keyed by the server-issued accountID.
   ACCOUNTS: DurableObjectNamespace;
@@ -98,6 +102,7 @@ export interface Env {
 }
 
 interface CreateRoomBody {
+  visibility?: unknown;
   localPlayerID?: unknown;
   seats?: unknown;
   maxPlayers?: unknown;
@@ -209,6 +214,13 @@ export default {
         return env.ACCOUNTS.get(id).fetch("https://account/list");
       }
 
+      if (request.method === "GET" && url.pathname === "/v2/public-tables") {
+        await authenticateAccount(request, env);
+        if (!env.LOBBY) throw new RoomStateError("lobby_unavailable", "Public tables are temporarily unavailable.", 503);
+        const directory = env.LOBBY.get(env.LOBBY.idFromName("public-v1"));
+        return directory.fetch(`https://lobby/list${url.search}`);
+      }
+
       if (request.method === "DELETE" && url.pathname === "/v2/account") {
         return deleteAuthenticatedAccount(request, env);
       }
@@ -229,6 +241,7 @@ export default {
       if (request.method === "POST" && url.pathname === "/v2/rooms") {
         const account = await authenticateAccount(request, env);
         const body = await readJSON<CreateRoomBody>(request);
+        if (body.visibility === "public" && !env.LOBBY) throw new RoomStateError("lobby_unavailable", "Public tables are temporarily unavailable.", 503);
         // A code collision (~1 in a billion per attempt, but inevitable at
         // scale) retries with a fresh code instead of replying with the
         // existing room — an idempotent reply would expose room metadata and
@@ -263,13 +276,19 @@ export default {
         return json(room);
       }
 
-      const match = url.pathname.match(/^\/v2\/rooms\/([A-Za-z0-9-]+)(?:\/(join|socket|state|snapshot|abandon))?$/);
+      const match = url.pathname.match(/^\/v2\/rooms\/([A-Za-z0-9-]+)(?:\/(join|socket|state|snapshot|abandon|ready|leave))?$/);
       if (!match) {
         return json({ error: "Not found." }, 404);
       }
 
       const roomCode = normalizeRoomCode(match[1]);
       const action = match[2];
+
+      if ((action === "ready" || action === "leave") && request.method === "POST") {
+        const account = await authenticateAccount(request, env);
+        const body = await readJSON<AbandonBody & { ready?: unknown }>(request);
+        return json(await roomFetch(env, roomCode, `/${action}`, { ...body, accountID: account.accountID }));
+      }
 
       if (!action && request.method === "GET") {
         const room = await roomFetch(env, roomCode, "/summary");
@@ -396,13 +415,14 @@ export class PreferansTable {
         // are authorized by the authenticated account session, so there is no
         // second long-lived host secret to leak or synchronize.
         const seat = updated.peers.find((peer) => peer.accountID === joiner.accountID);
-        const result: RoomWithSecret = { ...publicRoom(updated), seatToken: seat?.seatToken };
+        const result: RoomWithSecret = { ...publicRoom(updated, joiner.accountID), seatToken: seat?.seatToken };
         return json(result);
       }
 
       if (request.method === "POST" && url.pathname === "/seats/fill-bots") {
         const body = await readJSON<FillBotsBody>(request);
         const room = await this.loadRequiredRoom();
+        if (room.visibility === "public") throw new RoomStateError("public_humans_only", "Public tables wait for human players.", 409);
         authorizeHostSeat(room, String(body.accountID ?? ""), body.playerID, body.seatToken);
         let updated = fillOpenSeatsWithBots(room);
         if (updated !== room) {
@@ -418,6 +438,35 @@ export class PreferansTable {
           );
           await this.fanOutToLibraries(updated);
         }
+        return json(publicRoom(updated));
+      }
+
+      if (request.method === "POST" && (url.pathname === "/ready" || url.pathname === "/leave")) {
+        const body = await readJSON<AbandonBody & { ready?: unknown }>(request);
+        const room = await this.loadRequiredRoom();
+        const peer = authorizeSeat(room, body.playerID, body.seatToken);
+        if (peer.accountID !== body.accountID || !isHumanAccount(peer.accountID)) {
+          throw new RoomStateError("forbidden", "This account does not own that seat.", 403);
+        }
+        if (room.visibility !== "public" || room.status !== "lobby") {
+          throw new RoomStateError("table_in_progress", "This action is only available at a waiting public table.", 409);
+        }
+        let updated: RoomState;
+        if (url.pathname === "/ready") {
+          if (typeof body.ready !== "boolean") throw new RoomStateError("invalid_ready", "A readiness choice is required.");
+          if (!this.activePlayerIDs().includes(peerID(peer))) throw new RoomStateError("not_connected", "Reconnect before confirming readiness.", 409);
+          updated = setPlayerReady(room, peerID(peer), body.ready);
+        } else {
+          updated = { ...removeAccountFromRoom(room, peer.accountID).room, readyPlayerIDs: [],
+            libraryRemovalAccountIDs: [...new Set([...(room.libraryRemovalAccountIDs ?? []), peer.accountID])] };
+          const remaining = humanPeers(updated);
+          updated = remaining.length ? electLiveHost(updated, remaining.map(peerID)) : abandonRoom(updated);
+          if (updated.status === "lobby") updated = await createAuthoritativeGame(updated, this.engine());
+        }
+        await this.commitRoom(updated);
+        if (url.pathname === "/leave") this.closeSocketsForPlayers([peerID(peer)], 4011, "seat_left");
+        await this.broadcastPresence(updated);
+        this.broadcastAuthoritativeProjections(updated, updated.relaySequence, new Date().toISOString());
         return json(publicRoom(updated));
       }
 
@@ -524,7 +573,7 @@ export class PreferansTable {
     const activeRoom = await this.reconcileHost(room);
     server.send(JSON.stringify({
       type: "room",
-      room: publicRoom(activeRoom),
+      room: publicRoom(activeRoom, peer.accountID),
       connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
     }));
     this.sendProjectionToSocket(server, activeRoom, playerID);
@@ -580,8 +629,13 @@ export class PreferansTable {
   }
 
   private async disconnectSocket(ws: WebSocket): Promise<void> {
-    const room = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
+    let room = await this.ctx.storage.get<RoomState>(ROOM_STORAGE_KEY);
     if (room) {
+      if (room.visibility === "public" && room.status === "lobby") {
+        const connected = new Set(this.activePlayerIDs(ws));
+        room = { ...room, readyPlayerIDs: (room.readyPlayerIDs ?? []).filter(id => connected.has(id)) };
+        await this.commitRoom(room);
+      }
       const activeRoom = await this.reconcileHost(room, ws);
       await this.broadcastPresence(activeRoom);
     }
@@ -690,7 +744,10 @@ export class PreferansTable {
     // but never durable work with no alarm to resume it.
     await this.ctx.storage.setAlarm(Date.now() + BOT_MOVE_DELAY_MS);
     await this.ctx.storage.transaction(async txn => {
-      await txn.put(ROOM_STORAGE_KEY, { ...room, botPending: room.status === "playing" && room.botPending, libraryDirty: true });
+      const previous = await txn.get<RoomState>(ROOM_STORAGE_KEY);
+      await txn.put(ROOM_STORAGE_KEY, { ...room, botPending: room.status === "playing" && room.botPending, libraryDirty: true,
+        directoryDirty: room.visibility === "public",
+        directoryRevision: (previous?.directoryRevision ?? 0) + 1 });
       if (key && command) await txn.put(key, { fingerprint: command.fingerprint, receipt: command.receipt });
       const historyKey = `history:${String(room.authoritativeSequence).padStart(12, "0")}`;
       if (room.authoritativeState && (room.authoritativeSequence === 0 || !(await txn.get(historyKey)))) await txn.put(historyKey, {
@@ -706,7 +763,7 @@ export class PreferansTable {
       if (!room) return;
       // The next alarm is installed before any external work. Crashes and exhausted
       // automatic alarm retries therefore cannot strand the durable outbox.
-      if (room.libraryDirty || room.botPending) await this.ctx.storage.setAlarm(Date.now() + 5_000);
+      if (room.libraryDirty || room.botPending || room.directoryDirty || room.libraryRemovalAccountIDs?.length || room.visibility === "public") await this.ctx.storage.setAlarm(Date.now() + 5_000);
       if (room.botPending && room.status === "playing" && room.authoritativeState) {
         try {
           const response = await callEngine(this.engine(), "/v1/bots", { state: room.authoritativeState });
@@ -724,6 +781,22 @@ export class PreferansTable {
         }
       }
       room = await this.loadRequiredRoom();
+      if (room.visibility === "public" && this.env.LOBBY) {
+        try {
+          const response = await this.env.LOBBY.get(this.env.LOBBY.idFromName("public-v1")).fetch("https://lobby/publish", {
+            method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ roomCode: room.roomCode, revision: room.directoryRevision ?? 0,
+              table: publicTableEntry(room, new Set(this.activePlayerIDs())) }),
+            signal: AbortSignal.timeout(3_000)
+          });
+          if (!response.ok) throw new Error("Directory unavailable");
+          room = { ...room, directoryDirty: false };
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
+        } catch {
+          room = { ...room, directoryDirty: true };
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
+        }
+      }
       if (room.libraryDirty) {
         const results = await Promise.allSettled(humanPeers(room).map(peer => this.upsertLibraryEntry(room!, peer)));
         if (results.every(result => result.status === "fulfilled")) {
@@ -731,9 +804,26 @@ export class PreferansTable {
           await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
         }
       }
-      if (room.botPending || room.libraryDirty) {
+      if (room.libraryRemovalAccountIDs?.length) {
+        const pending: string[] = [];
+        for (const accountID of room.libraryRemovalAccountIDs) {
+          if (room.peers.some(peer => peer.accountID === accountID)) continue;
+          try {
+            const response = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName(accountID)).fetch("https://account/remove", {
+              method: "POST", headers: { "content-type": "application/json" },
+              body: JSON.stringify({ roomCode: room.roomCode }), signal: AbortSignal.timeout(3_000)
+            });
+            if (!response.ok && response.status !== 404 && response.status !== 410) pending.push(accountID);
+          } catch { pending.push(accountID); }
+        }
+        room = { ...room, libraryRemovalAccountIDs: pending };
+        await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
+      }
+      if (room.botPending || room.libraryDirty || room.directoryDirty || room.libraryRemovalAccountIDs?.length) {
         const delay = room.retryCount ? Math.min(60_000, 1_000 * 2 ** room.retryCount) : (room.botPending ? BOT_MOVE_DELAY_MS : 5_000);
         await this.ctx.storage.setAlarm(Date.now() + delay);
+      } else if (room.visibility === "public" && publicTableEntry(room, new Set(this.activePlayerIDs()))) {
+        await this.ctx.storage.setAlarm(Date.now() + 30_000);
       } else {
         await this.ctx.storage.deleteAlarm();
       }
@@ -759,8 +849,8 @@ export class PreferansTable {
     const outbound = JSON.stringify({
       type: "wire",
       authority: "server",
-      sender: normalizePeer(authorityPeer),
-      message: projectionWireMessage(projection),
+      sender: publicPeer(room, authorityPeer),
+      message: projectionWireMessage(projection, room),
       serverSequence,
       sentAt
     });
@@ -774,8 +864,8 @@ export class PreferansTable {
     ws.send(JSON.stringify({
       type: "wire",
       authority: "server",
-      sender: normalizePeer(authorityPeer),
-      message: projectionWireMessage(projection),
+      sender: publicPeer(room, authorityPeer),
+      message: projectionWireMessage(projection, room),
       serverSequence: room.relaySequence,
       sentAt: new Date().toISOString()
     }));
@@ -793,14 +883,22 @@ export class PreferansTable {
   }
 
   async broadcastPresence(room: RoomState): Promise<void> {
-    const message = JSON.stringify({
-      type: "presence",
-      room: publicRoom(room),
-      connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
-    });
+    if (room.visibility === "public") {
+      const saved = await this.loadRequiredRoom();
+      await this.ctx.storage.setAlarm(Date.now() + BOT_MOVE_DELAY_MS);
+      await this.ctx.storage.put(ROOM_STORAGE_KEY, { ...saved, directoryDirty: true,
+        directoryRevision: (saved.directoryRevision ?? 0) + 1 });
+    }
     for (const socket of this.ctx.getWebSockets()) {
       try {
-        socket.send(message);
+        const attachment = socket.deserializeAttachment() as SocketAttachment | undefined;
+        const caller = room.peers.find(peer => peerID(peer) === attachment?.playerID
+          && peer.seatToken !== undefined && peer.seatToken === attachment?.seatToken);
+        socket.send(JSON.stringify({
+          type: "presence",
+          room: publicRoom(room, caller?.accountID),
+          connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
+        }));
       } catch {
         // Ignore dead sockets; Cloudflare will deliver close/error callbacks.
       }
@@ -1107,6 +1205,9 @@ function authenticatedPeer(account: PublicAccount, playerID: unknown): OnlinePee
 }
 
 function createRoomInput(roomCode: string, body: CreateRoomBody, account: PublicAccount): CreateRoomInput {
+  if (body.visibility !== undefined && body.visibility !== "private" && body.visibility !== "public") {
+    throw new RoomStateError("invalid_visibility", "Choose a public or private table.");
+  }
   if (!Array.isArray(body.seats) || (body.seats.length !== 3 && body.seats.length !== 4)) {
     throw new RoomStateError("invalid_seats", "A Preferans room must have 3 or 4 seats.");
   }
@@ -1138,14 +1239,24 @@ function createRoomInput(roomCode: string, body: CreateRoomBody, account: Public
   if (!hasLocalSeat) {
     throw new RoomStateError("invalid_seats", "The authenticated player must occupy one room seat.");
   }
+  let configuration = {
+    rules: requiredEngineConfiguration(body.rules, "rules"),
+    match: requiredEngineConfiguration(body.match, "match"),
+    variant: typeof body.variant === "string" ? body.variant.slice(0, 32) : undefined
+  };
+  if (body.visibility === "public") {
+    if (seats.some(peer => peer.accountID.startsWith(BOT_ACCOUNT_PREFIX))) {
+      throw new RoomStateError("public_humans_only", "Public tables are for human players.");
+    }
+    configuration = publicConfiguration(body.variant, (body.match as { poolTarget?: unknown })?.poolTarget, seats.length);
+  }
   return {
+    visibility: body.visibility === "public" ? "public" : "private",
     roomCode,
     localPeer: authenticatedPeer(account, localID),
     seats,
     maxPlayers: body.seats.length,
-    rules: requiredEngineConfiguration(body.rules, "rules"),
-    match: requiredEngineConfiguration(body.match, "match"),
-    variant: typeof body.variant === "string" ? body.variant.slice(0, 32) : undefined
+    ...configuration
   };
 }
 
@@ -1175,7 +1286,7 @@ async function roomFetch(env: Env, roomCode: string, pathname: string, body?: un
 /// `/join` hands back the joiner's token the same way; broadcasts omit it.
 function createResult(room: RoomState): RoomWithSecret {
   const hostSeat = room.peers.find((peer) => peerID(peer) === room.hostPlayerID);
-  return { ...publicRoom(room), seatToken: hostSeat?.seatToken };
+  return { ...publicRoom(room, hostSeat?.accountID), seatToken: hostSeat?.seatToken };
 }
 
 function withSocketURL(request: Request, room: RoomWithSecret, localPeer: unknown): RoomWithSocketURL {

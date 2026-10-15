@@ -1,0 +1,12 @@
+{
+  "locale": "en-GB",
+  "name": "Preferans card game",
+  "subtitle": "Cards, friends and open tables",
+  "promotionalText": "Find a Preferans table or invite friends. Choose Vienna, Prague or Berlin, agree on the pulka, and enjoy a classic game for three or four players.",
+  "description": "Play Preferans, also known as Preference: a classic trick-taking card game for three or four players on iPhone and iPad. Practice locally against bots or gather friends in a private room with a code or invite link.\n\nFind players in the public lobby. Browse table settings, see the players and open seats, then join. Or create your own public table. Everyone confirms Ready before the host starts.\n\nCHOOSE YOUR TABLE\nVienna: balanced scoring with individual pool limits.\nPrague: doubled whists and a shared table pool.\nBerlin: semi-responsible defense and a hidden talon on all-pass deals.\nThese are the app's names for scoring profiles. Check the settings before you play.\n\nPLAY EVERY PART OF THE HAND\nBid for a suit or no-trump contract, try misere, or play an all-pass deal. Pick up the talon, discard two cards manually, and choose open or closed defense. Automatic scoring records the deal and final match results.\n\nAT YOUR TABLE\n- Public tables with player-count, convention and match-length filters\n- Private rooms with codes and invite links\n- Three players or four with a rotating dealer\n- Short pulka presets and configurable targets\n- Resume your existing online game after disconnecting\n- Local practice against bots\n- Suit contracts, no trump, misere and all-pass play\n- Readable cards and six table themes\n- Deal score breakdowns and final standings\n\nThe app interface is currently available in English, Russian and Ukrainian. Online play requires an internet connection. There is no real-money betting.",
+  "whatsNew": "Find players in the new public lobby. See table settings and open seats, create public or invite-only tables, and confirm Ready before the first deal. Scoring profiles now use the names Vienna, Prague and Berlin. We also corrected when defenders' hands open on misere.",
+  "keywords": "preference,multiplayer,trick,taking,whist,misere,pulka,vienna,prague,berlin,offline,deck",
+  "supportUrl": "https://dmytrogusev.github.io/preferans/",
+  "marketingUrl": "https://dmytrogusev.github.io/preferans/",
+  "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html"
+}
