@@ -43,6 +43,7 @@ extension LobbyView {
                 onlinePanel(title: "Who can join?", icon: "person.2.fill") {
                     Picker("Who can join?", selection: $viewModel.onlineTableVisibility) {
                         Text("Public table").tag(OnlineTableVisibility.publicTable)
+                            .disabled(!publicLobby.hasLoaded || publicLobby.errorText != nil)
                         Text("Invite only").tag(OnlineTableVisibility.privateTable)
                     }
                     .modifier(LobbyChoiceControlStyle())
@@ -60,9 +61,16 @@ extension LobbyView {
         }
         .onChange(of: viewModel.onlineTableVisibility) { _, visibility in
             if visibility == .publicTable {
+                guard publicLobby.hasLoaded && publicLobby.errorText == nil else {
+                    viewModel.onlineTableVisibility = .privateTable
+                    return
+                }
                 viewModel.onlineComposition = OnlineSeatSlot.defaultComposition(count: viewModel.onlineComposition.count)
                 if !PreferansVariant.publicCases.contains(viewModel.onlineVariant) { viewModel.onlineVariant = .odesa }
             }
+        }
+        .task(id: viewModel.onlineAccountSessionToken) {
+            await publicLobby.refresh(sessionToken: viewModel.onlineAccountSessionToken)
         }
     }
 

@@ -1,0 +1,46 @@
+{
+  "localizations": [
+    {
+      "locale": "en-US",
+      "id": "55a7d4b3-5ae8-4e3b-b0f1-cf7251179122",
+      "placementID": "72000019-3241-8217-8f24-4d20017a61ad"
+    }
+  ],
+  "experimentID": "03cc13ca-b31e-4d47-aaa4-63efc1bf7064",
+  "state": "PREPARE_FOR_SUBMISSION",
+  "baseline": "Header A: navy card fan on version 1.0.2; publish that version before starting.",
+  "treatment": "Header B: actual auction UI. Search Results remains Header A in both groups.",
+  "traffic": "50% original / 50% treatment",
+  "started": false,
+  "startPrerequisites": [
+    "Production backend deployed and verified",
+    "Version 1.0.2 tested, reviewed and released with Header A",
+    "Header B and PPO treatment approved by Apple"
+  ],
+  "treatmentID": "a5cebae0-de05-4c28-b789-8abf9ec185fa",
+  "pendingLocalesUntilVersionRelease": [
+    "ca",
+    "cs",
+    "da",
+    "de-DE",
+    "el",
+    "en-GB",
+    "es-ES",
+    "fi",
+    "fr-FR",
+    "hr",
+    "hu",
+    "it",
+    "nl-NL",
+    "no",
+    "pl",
+    "pt-PT",
+    "ro",
+    "ru",
+    "sk",
+    "sl-SI",
+    "sv",
+    "tr",
+    "uk"
+  ]
+}

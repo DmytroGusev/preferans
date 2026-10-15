@@ -29,7 +29,7 @@ public final class LobbyViewModel: ObservableObject {
     @Published public private(set) var onlineAccountSessionToken: String?
     @Published public var onlineJoinRoomCode = ""
     @Published public var isOnlineRoomLoading = false
-    @Published public var onlineTableVisibility: OnlineTableVisibility = .publicTable
+    @Published public var onlineTableVisibility: OnlineTableVisibility = .privateTable
     @Published public var onlineIntent: OnlineLobbyIntent = .findTable
     @Published public private(set) var isDeletingOnlineAccount = false
     /// Online display name, kept entirely separate from the local bot roster.

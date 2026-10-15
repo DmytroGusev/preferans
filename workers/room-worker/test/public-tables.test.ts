@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createInitialRoom, joinRoom, type RoomState } from "../src/room-state.ts";
+import { createInitialRoom, joinRoom, publicRoom, removeAccountFromRoom, type RoomState } from "../src/room-state.ts";
 import { publicConfiguration, publicTableEntry, setPlayerReady } from "../src/public-tables.ts";
 import { validateStartDealAuthority } from "../src/authoritative-engine.ts";
 
@@ -50,4 +50,35 @@ test("public presets enforce finite truthful pool targets and immutable scoring"
   }
   assert.throws(() => publicConfiguration("odesa", 11, 3), /divide evenly/);
   assert.throws(() => publicConfiguration("unrecognized", 33, 3), /Choose Vienna/);
+});
+
+test("public rosters mask other accounts but preserve the authenticated caller and seat kinds", () => {
+  const state = joinRoom(room(), peer("north", "apple:private-subject"));
+  const caller = publicRoom(state, "apple:private-subject");
+  const own = caller.peers.find(peer => peer.accountID === "apple:private-subject")!;
+  assert.equal(own.playerID.rawValue, "east");
+  assert.equal(caller.peers[0].accountID, "seat:PUBLIC:north");
+  assert.equal(caller.peers[0].provider, "dev");
+  assert.equal(caller.peers[2].accountID, "pending:south");
+  for (const peer of caller.peers) assert.equal(peer.seatToken, undefined);
+  const anonymous = publicRoom(state);
+  assert.ok(!JSON.stringify(anonymous).includes("apple:private-subject"));
+  assert.ok(!JSON.stringify(anonymous).includes("guest:north"));
+  const rejoined = joinRoom(state, peer("south", "apple:private-subject"));
+  assert.equal(publicRoom(rejoined).peers[1].accountID, anonymous.peers[1].accountID);
+  assert.notEqual(publicRoom({ ...state, roomCode: "OTHER1" }).peers[1].accountID, anonymous.peers[1].accountID);
+  assert.equal(publicRoom({ ...state, visibility: "private" }).peers[0].accountID, "guest:north");
+  assert.equal(state.peers[1].accountID, "apple:private-subject");
+});
+
+test("claim and held-seat rejoin cancel only the joining account's pending library removal", () => {
+  const guest = peer("east");
+  const joined = joinRoom(room(), guest);
+  const left = { ...removeAccountFromRoom(joined, guest.accountID).room,
+    libraryRemovalAccountIDs: [guest.accountID, "guest:other"] };
+  const reclaimed = joinRoom(left, guest);
+  assert.deepEqual(reclaimed.libraryRemovalAccountIDs, ["guest:other"]);
+  const held = joinRoom({ ...reclaimed, libraryRemovalAccountIDs: [guest.accountID, "guest:other"] }, guest);
+  assert.deepEqual(held.libraryRemovalAccountIDs, ["guest:other"]);
+  assert.deepEqual(left.libraryRemovalAccountIDs, [guest.accountID, "guest:other"]);
 });

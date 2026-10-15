@@ -65,6 +65,20 @@ test("buildSummaryEntry projects the room from a given seat's perspective", () =
   assert.deepEqual(entry.hostPlayerID, { rawValue: "north" });
 });
 
+test("public library rosters preserve only their owner's global identity", () => {
+  const room = { ...playingRoom("2026-05-04T00:00:00.000Z"), visibility: "public" as const };
+  const northEntry = buildSummaryEntry(room, north);
+  const southEntry = buildSummaryEntry(room, south);
+  assert.equal(northEntry.peers[0].accountID, north.accountID);
+  assert.equal(northEntry.peers[2].accountID, "seat:ROOM1:south");
+  assert.equal(southEntry.peers[0].accountID, "seat:ROOM1:north");
+  assert.equal(southEntry.peers[2].accountID, south.accountID);
+  assert.equal(northEntry.peers[1].accountID, "bot:east");
+  assert.ok(!JSON.stringify(northEntry).includes(south.accountID));
+  assert.ok(!JSON.stringify(southEntry).includes(north.accountID));
+  assert.equal(buildSummaryEntry({ ...room, visibility: "private" }, north).peers[2].accountID, south.accountID);
+});
+
 test("upsertGame replaces the entry for the same room instead of duplicating it", () => {
   const first = buildSummaryEntry(playingRoom("2026-05-04T00:00:00.000Z"), north);
   const second = buildSummaryEntry(playingRoom("2026-05-04T00:05:00.000Z"), north);

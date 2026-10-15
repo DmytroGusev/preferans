@@ -252,6 +252,9 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             accountSessionToken: accountSessionToken,
             session: session
         )
+        guard visibility != .publicTable || summary.visibility == "public" else {
+            throw CloudflareRoomTransportError.serverError(String(localized: "Public tables are not available on this server yet. You can still invite friends with a room code."))
+        }
         guard let assignedPeer = summary.peers.first(where: { $0.accountID == localPeer.accountID }) else {
             throw CloudflareRoomTransportError.serverError("Room server did not return the caller's seat.")
         }

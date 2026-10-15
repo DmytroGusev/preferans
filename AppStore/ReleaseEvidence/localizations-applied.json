@@ -1,0 +1,122 @@
+[
+  {
+    "locale": "ca",
+    "appInfoLocalizationID": "c4dd21c1-054e-4733-b1a9-d6b4f7265dc7",
+    "versionLocalizationID": "30c1a5c9-6709-486a-b97b-1ec126ada530"
+  },
+  {
+    "locale": "cs",
+    "appInfoLocalizationID": "21fe3172-5821-4db1-9e26-efddc4063710",
+    "versionLocalizationID": "b0af2ab7-4fdd-4b92-ab16-01e877b56cf3"
+  },
+  {
+    "locale": "da",
+    "appInfoLocalizationID": "11ca38b3-dbbe-4b76-9598-8da2a5af9976",
+    "versionLocalizationID": "45521d0f-6f86-4690-8ddc-f202eedb6f58"
+  },
+  {
+    "locale": "de-DE",
+    "appInfoLocalizationID": "115dc433-6b5c-4379-bf56-815f2a0ed3b2",
+    "versionLocalizationID": "384059dd-4ce7-4728-b10c-46d6c0e7a3a0"
+  },
+  {
+    "locale": "el",
+    "appInfoLocalizationID": "f5853178-2a7d-4aa7-982c-ba315f7ca0ab",
+    "versionLocalizationID": "9d05edcb-582f-4ed1-9021-c63999117186"
+  },
+  {
+    "locale": "en-GB",
+    "appInfoLocalizationID": "0fcad227-6d20-4962-bc8a-79622f971f36",
+    "versionLocalizationID": "b83d3802-c616-4baf-b282-e6e16f1a6904"
+  },
+  {
+    "locale": "en-US",
+    "appInfoLocalizationID": "5eb1fb32-f03f-4d4e-a4bf-38917ab59585",
+    "versionLocalizationID": "40fae82a-c1c9-4490-9bb3-e15b2c060046"
+  },
+  {
+    "locale": "es-ES",
+    "appInfoLocalizationID": "0c89c0d3-5f33-4a76-9827-9f81bab5ab44",
+    "versionLocalizationID": "aeca64fc-8314-48fb-9b96-fa45eea5cdd0"
+  },
+  {
+    "locale": "fi",
+    "appInfoLocalizationID": "6d565f91-aa68-4488-b454-a73a4a25f0e4",
+    "versionLocalizationID": "76b892fe-fc2c-4163-8f97-548bf87f513c"
+  },
+  {
+    "locale": "fr-FR",
+    "appInfoLocalizationID": "e3268682-1ff2-4b00-a5b1-439ed3bbbb02",
+    "versionLocalizationID": "633a7544-9e60-47cf-9052-70027532df33"
+  },
+  {
+    "locale": "hr",
+    "appInfoLocalizationID": "1b133e2f-c266-4fec-8087-8248541b93b6",
+    "versionLocalizationID": "b2f0a779-68c7-4bf1-909f-3d27de786126"
+  },
+  {
+    "locale": "hu",
+    "appInfoLocalizationID": "f721b2be-cd9c-4b6f-aaaf-3f229e54b046",
+    "versionLocalizationID": "6d2ef238-0897-478e-b5b1-223fb37210d0"
+  },
+  {
+    "locale": "it",
+    "appInfoLocalizationID": "92e2cab7-749d-434a-92f2-8255d0eb8626",
+    "versionLocalizationID": "f670a320-ac5a-437d-a500-c3efdd224eea"
+  },
+  {
+    "locale": "nl-NL",
+    "appInfoLocalizationID": "5df08cf7-88e6-403d-9c5f-d69ccb213a52",
+    "versionLocalizationID": "21973cb0-7144-4402-adbe-36eb724a8efb"
+  },
+  {
+    "locale": "no",
+    "appInfoLocalizationID": "5765ccb0-c1ae-4fc1-a7fa-e2884fcfa76a",
+    "versionLocalizationID": "21e0ca78-1569-4475-bb09-5b8353ea3f84"
+  },
+  {
+    "locale": "pl",
+    "appInfoLocalizationID": "d236f239-5fe8-461d-874a-250641c8d214",
+    "versionLocalizationID": "4d06d5b1-b1ec-4189-83a8-a7d4da8b84da"
+  },
+  {
+    "locale": "pt-PT",
+    "appInfoLocalizationID": "303ccadb-0346-4e38-8cb7-cd89d01981b0",
+    "versionLocalizationID": "c9d5a6b3-9c4c-4499-9d5a-9d1ccfdb4034"
+  },
+  {
+    "locale": "ro",
+    "appInfoLocalizationID": "436ecd0c-19a0-4c2c-844b-d2ccdeb2090f",
+    "versionLocalizationID": "cb4b9193-29a5-44a1-be19-f4d5a5efd76e"
+  },
+  {
+    "locale": "ru",
+    "appInfoLocalizationID": "9175b605-d4c0-4e58-97aa-884ce0e93a29",
+    "versionLocalizationID": "0993d73c-11a1-451f-a1c0-d1c682903d04"
+  },
+  {
+    "locale": "sk",
+    "appInfoLocalizationID": "50ed4b43-999e-4e40-9a70-8fa32a2c8ab1",
+    "versionLocalizationID": "188de23d-d861-4b8e-a787-5f4a9ce019d3"
+  },
+  {
+    "locale": "sl-SI",
+    "appInfoLocalizationID": "8b89467d-0c8f-4fcb-b8cb-69867b8987b7",
+    "versionLocalizationID": "828b1ee5-e69c-40b4-b43a-fa6d9e4590b6"
+  },
+  {
+    "locale": "sv",
+    "appInfoLocalizationID": "b5eb9e8c-c420-4596-acfa-3da0dc35f830",
+    "versionLocalizationID": "c8427fe2-aadd-408d-b3c3-37596c83aeea"
+  },
+  {
+    "locale": "tr",
+    "appInfoLocalizationID": "519e6e08-f1d3-4b2c-89d8-800acfc0bb8b",
+    "versionLocalizationID": "cf8a7dd5-af42-43c9-bab0-88266af60a3e"
+  },
+  {
+    "locale": "uk",
+    "appInfoLocalizationID": "41a8b336-6bfb-494f-b125-c8fdfa3ca161",
+    "versionLocalizationID": "5c14848e-886d-425a-b764-90742f7f49e7"
+  }
+]

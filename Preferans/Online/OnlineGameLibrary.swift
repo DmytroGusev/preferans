@@ -70,6 +70,9 @@ public struct CloudflarePublicTableDirectory: PublicTableServing {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw CloudflareRoomTransportError.invalidHTTPResponse }
         guard (200..<300).contains(http.statusCode) else {
+            if http.statusCode == 404 || http.statusCode == 503 {
+                throw CloudflareRoomTransportError.serverError(String(localized: "Public tables are not available on this server yet. You can still invite friends with a room code."))
+            }
             let error = try? JSONDecoder().decode(DirectoryError.self, from: data)
             throw CloudflareRoomTransportError.serverError(error?.error ?? "Could not load public tables. Please try again.")
         }

@@ -1,0 +1,56 @@
+{
+  "version": "1.0.2",
+  "build": 28,
+  "sources": [
+    {
+      "file": "iphone/1-03-bidding-east.png",
+      "source": "bin/.screens/20261015-155146/AD11649F-886C-4B22-B26F-93D6A217A362.png",
+      "captureTimestamp": 1792075931.079
+    },
+    {
+      "file": "iphone/2-06-talon-exchange.png",
+      "source": "bin/.screens/20261015-155146/032F0A78-4B1A-43F0-82AE-74583444AC5C.png",
+      "captureTimestamp": 1792075934.376
+    },
+    {
+      "file": "iphone/3-01-lobby.png",
+      "source": "bin/.screens/20261015-155146/B9CE1714-9300-422F-80D8-EE73D4AA9514.png",
+      "captureTimestamp": 1792075926.065
+    },
+    {
+      "file": "ipad/1-03-bidding-east.png",
+      "source": "bin/.screens/20261015-155302/66DE3747-8D43-405B-A21E-C9459F8A04FD.png",
+      "captureTimestamp": 1792076010.617
+    },
+    {
+      "file": "ipad/2-06-talon-exchange.png",
+      "source": "bin/.screens/20261015-155302/06E0A896-D789-4441-AF01-EEEAAE9E686F.png",
+      "captureTimestamp": 1792076015.73
+    },
+    {
+      "file": "ipad/3-01-lobby.png",
+      "source": "bin/.screens/20261015-155302/7F30B173-D2D8-4130-971F-FC98160BA61D.png",
+      "captureTimestamp": 1792076006.441
+    },
+    {
+      "file": "iphone-medium/1-03-bidding-east.png",
+      "source": "bin/.screens/20261015-160203/AFF1D34D-F2DE-438A-85FF-02087CE0C892.png",
+      "captureTimestamp": 1792076559.368
+    },
+    {
+      "file": "iphone-medium/2-06-talon-exchange.png",
+      "source": "bin/.screens/20261015-160203/5B0632A7-8D65-493C-BAE8-710BBDA17194.png",
+      "captureTimestamp": 1792076562.685
+    },
+    {
+      "file": "iphone-medium/3-01-lobby.png",
+      "source": "bin/.screens/20261015-160203/631A9E5D-0AB2-410A-B9C4-C16143E9750B.png",
+      "captureTimestamp": 1792076554.2
+    }
+  ],
+  "creativeVariants": {
+    "A": "Navy card fan and brand",
+    "B": "Same navy background and brand with actual auction UI"
+  },
+  "preview": "Real simulator screen recording with a final-frame editorial hold, H.264 30 fps, silent stereo AAC."
+}

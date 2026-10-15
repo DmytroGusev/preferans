@@ -56,6 +56,16 @@ Empty or fully disconnected tables and completed/abandoned games are not adverti
 Joining always checks the current authoritative room, so a stale listing cannot
 grant a seat in an already-started or full game.
 
+Public participant rosters retain only the authenticated caller's own global ID.
+Other human seats use stable room-scoped IDs, including library entries and engine
+projections. Previously persisted projections are masked on delivery. Rejoining
+cancels queued library removal; alarms never remove a currently seated account.
+
+The client defaults to invite-only while server deployment is unverified. Public
+creation becomes selectable after a successful directory response. An old server
+cannot silently downgrade a public-create request to a private room: the client
+requires explicit public visibility in the response.
+
 ## Deployment
 
 Migration `v6-public-directory` adds a new namespace and preserves existing rooms

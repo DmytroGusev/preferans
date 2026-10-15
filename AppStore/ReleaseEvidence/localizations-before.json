@@ -1,0 +1,87 @@
+{
+  "versionID": "98378d13-7f10-4728-85bc-a501b9698373",
+  "appInfoID": "c4e23e60-d944-4f7e-93e2-c5163b1ec30d",
+  "versions": {
+    "data": [
+      {
+        "type": "appStoreVersionLocalizations",
+        "id": "40fae82a-c1c9-4490-9bb3-e15b2c060046",
+        "attributes": {
+          "description": "Gather your friends for Preferans, the classic trick-taking card game, on iPhone and iPad. Play online using an invite link or room code, or practice locally against bots.\n\nSet up a three-player table or choose the four-player format with a rotating dealer. Bid for a contract, take the talon, choose your two discards, decide whist or pass, and play your hand. Automatic scoring helps you follow the results of each deal and the final standings.\n\nAT YOUR TABLE\n- Online rooms with invite links and room codes\n- Local play against bots\n- Three-player and four-player table formats\n- Suit contracts, no trump, misere, and all-pass play\n- Manual discards and open or closed defense\n- Score breakdowns for each deal and final match results\n- Six table themes with a saved appearance preference\n- Readable cards and layouts for iPhone and iPad\n\nPreferans is a game of cards and strategy. There is no real-money betting.",
+          "locale": "en-US",
+          "keywords": "preferans,preference,trick taking,cards,whist,misere,multiplayer,bots,strategy",
+          "marketingUrl": "https://dmytrogusev.github.io/preferans/",
+          "promotionalText": null,
+          "supportUrl": "https://dmytrogusev.github.io/preferans/",
+          "whatsNew": null
+        },
+        "relationships": {
+          "appScreenshotSets": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/relationships/appScreenshotSets",
+              "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/appScreenshotSets"
+            }
+          },
+          "appPreviewSets": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/relationships/appPreviewSets",
+              "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/appPreviewSets"
+            }
+          },
+          "searchKeywords": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/relationships/searchKeywords",
+              "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/searchKeywords"
+            }
+          },
+          "placements": {
+            "links": {
+              "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/relationships/placements",
+              "related": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/placements"
+            }
+          }
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046"
+        }
+      }
+    ],
+    "links": {
+      "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersions/98378d13-7f10-4728-85bc-a501b9698373/appStoreVersionLocalizations?limit=200"
+    },
+    "meta": {
+      "paging": {
+        "total": 1,
+        "limit": 200
+      }
+    }
+  },
+  "infos": {
+    "data": [
+      {
+        "type": "appInfoLocalizations",
+        "id": "5eb1fb32-f03f-4d4e-a4bf-38917ab59585",
+        "attributes": {
+          "locale": "en-US",
+          "name": "Preferans card game",
+          "subtitle": "Preferanse - card game for all",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/5eb1fb32-f03f-4d4e-a4bf-38917ab59585"
+        }
+      }
+    ],
+    "links": {
+      "self": "https://api.appstoreconnect.apple.com/v1/appInfos/c4e23e60-d944-4f7e-93e2-c5163b1ec30d/appInfoLocalizations?limit=200"
+    },
+    "meta": {
+      "paging": {
+        "total": 1,
+        "limit": 200
+      }
+    }
+  }
+}

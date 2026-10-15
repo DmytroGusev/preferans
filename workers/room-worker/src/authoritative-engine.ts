@@ -4,7 +4,8 @@ import {
   type OnlinePeer,
   type RoomState,
   RoomStateError,
-  peerID
+  peerID,
+  publicPeer
 } from "./room-state.ts";
 
 export interface AuthoritativeProjectionEnvelope {
@@ -55,7 +56,7 @@ export async function createAuthoritativeGame(
   }
   const response = await callEngine(engine, "/v1/games", {
     tableID: room.authoritativeTableID ?? null,
-    identities: room.peers.map(playerIdentity),
+    identities: room.peers.map(peer => playerIdentity(publicPeer(room, peer))),
     rules: configuration.rules,
     match: configuration.match,
     firstDealer: room.peers[0]?.playerID ?? null,
@@ -133,7 +134,7 @@ export function adoptingEngineResponse(
     if (projections[viewer] !== undefined) {
       throw new RoomStateError("engine_invalid_response", "Duplicate projection seat.", 502);
     }
-    projections[viewer] = envelope;
+    projections[viewer] = publicProjection(room, envelope);
   }
   if (Object.keys(projections).length !== room.peers.length || !tableID) {
     throw new RoomStateError("engine_invalid_response", "Engine did not return one projection per seat.", 502);
@@ -211,8 +212,20 @@ export function validateStartDealAuthority(
   }
 }
 
-export function projectionWireMessage(projection: unknown): Record<string, unknown> {
-  return { projection: { _0: projection } };
+function publicProjection(room: RoomState, envelope: unknown): unknown {
+  if (room.visibility !== "public" || !isRecord(envelope) || !isRecord(envelope.projection)
+      || !Array.isArray(envelope.projection.identities)) return envelope;
+  return { ...envelope, projection: { ...envelope.projection,
+    identities: envelope.projection.identities.map((identity: unknown) => {
+      if (!isRecord(identity)) return identity;
+      return { ...identity, gamePlayerID: `seat:${room.roomCode}:${playerIDValue(identity.playerID)}` };
+    })
+  } };
+}
+
+export function projectionWireMessage(projection: unknown, room: RoomState): Record<string, unknown> {
+  // Re-mask at delivery as well: rooms saved before this fix may contain global IDs.
+  return { projection: { _0: publicProjection(room, projection) } };
 }
 
 function playerIdentity(peer: OnlinePeer): Record<string, unknown> {

@@ -117,9 +117,39 @@ test("wire helpers recognize commands and wrap server projections", () => {
   assert.equal(clientActionFromWireMessage({ projection: { _0: {} } }), undefined);
   assert.equal(isStartDealCommand({ action: { startDeal: { _0: {} } } }), true);
   assert.equal(isStartDealCommand({ action: { bid: { _0: {} } } }), false);
-  assert.deepEqual(projectionWireMessage({ sequence: 5 }), {
+  assert.deepEqual(projectionWireMessage({ sequence: 5 }, room()), {
     projection: { _0: { sequence: 5 } }
   });
+});
+
+test("public engine identities and legacy projections use stable room-scoped IDs without mutating private state", async () => {
+  const publicRoom = { ...room(), visibility: "public" as const };
+  const identities = publicRoom.peers.map(peer => ({
+    playerID: peer.playerID, gamePlayerID: peer.accountID, displayName: peer.displayName
+  }));
+  const legacy = response();
+  legacy.projections = legacy.projections.map(envelope => ({ ...envelope,
+    projection: { ...(envelope.projection as object), identities }
+  }));
+  let sent: any;
+  const created = await createAuthoritativeGame(publicRoom, {
+    async fetch(_path, body) { sent = body; return Response.json(legacy); }
+  });
+  assert.equal(sent.identities[0].gamePlayerID, "seat:ROOM1:north");
+  assert.equal(sent.identities[1].gamePlayerID, "seat:ROOM1:east");
+  assert.equal(created.authoritativeState, "opaque-0");
+  for (const projection of Object.values(created.authoritativeProjections!)) {
+    assert.ok(!JSON.stringify(projection).includes(north.accountID));
+    assert.ok(!JSON.stringify(projection).includes(east.accountID));
+  }
+  const wire = projectionWireMessage(legacy.projections[0], publicRoom) as any;
+  assert.equal(wire.projection._0.projection.identities[0].gamePlayerID, sent.identities[0].gamePlayerID);
+  assert.equal(identities[0].gamePlayerID, north.accountID);
+  assert.deepEqual(projectionWireMessage(legacy.projections[0], room()), {
+    projection: { _0: legacy.projections[0] }
+  });
+  const otherRoom = projectionWireMessage(legacy.projections[0], { ...publicRoom, roomCode: "ROOM2" }) as any;
+  assert.notEqual(otherRoom.projection._0.projection.identities[0].gamePlayerID, sent.identities[0].gamePlayerID);
 });
 
 test("only the connected lobby manager can start with a complete roster", () => {

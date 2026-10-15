@@ -27,6 +27,7 @@ import {
   peerID,
   playerIDValue,
   publicRoom,
+  publicPeer,
   recordRelay,
   removeAccountFromRoom,
   humanPeers,
@@ -414,7 +415,7 @@ export class PreferansTable {
         // are authorized by the authenticated account session, so there is no
         // second long-lived host secret to leak or synchronize.
         const seat = updated.peers.find((peer) => peer.accountID === joiner.accountID);
-        const result: RoomWithSecret = { ...publicRoom(updated), seatToken: seat?.seatToken };
+        const result: RoomWithSecret = { ...publicRoom(updated, joiner.accountID), seatToken: seat?.seatToken };
         return json(result);
       }
 
@@ -532,13 +533,7 @@ export class PreferansTable {
       }
 
       if (request.method === "GET" && url.pathname === "/summary") {
-        const room = await this.loadRequiredRoom();
-        const summary = publicRoom(room);
-        if (room.visibility === "public") {
-          summary.peers = summary.peers.map(peer => ({ ...peer,
-            accountID: `seat:${peerID(peer)}`, provider: "dev" }));
-        }
-        return json(summary);
+        return json(publicRoom(await this.loadRequiredRoom()));
       }
 
       if (request.method === "GET" && url.pathname.endsWith("/socket")) {
@@ -578,7 +573,7 @@ export class PreferansTable {
     const activeRoom = await this.reconcileHost(room);
     server.send(JSON.stringify({
       type: "room",
-      room: publicRoom(activeRoom),
+      room: publicRoom(activeRoom, peer.accountID),
       connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
     }));
     this.sendProjectionToSocket(server, activeRoom, playerID);
@@ -812,6 +807,7 @@ export class PreferansTable {
       if (room.libraryRemovalAccountIDs?.length) {
         const pending: string[] = [];
         for (const accountID of room.libraryRemovalAccountIDs) {
+          if (room.peers.some(peer => peer.accountID === accountID)) continue;
           try {
             const response = await this.env.ACCOUNTS.get(this.env.ACCOUNTS.idFromName(accountID)).fetch("https://account/remove", {
               method: "POST", headers: { "content-type": "application/json" },
@@ -853,8 +849,8 @@ export class PreferansTable {
     const outbound = JSON.stringify({
       type: "wire",
       authority: "server",
-      sender: normalizePeer(authorityPeer),
-      message: projectionWireMessage(projection),
+      sender: publicPeer(room, authorityPeer),
+      message: projectionWireMessage(projection, room),
       serverSequence,
       sentAt
     });
@@ -868,8 +864,8 @@ export class PreferansTable {
     ws.send(JSON.stringify({
       type: "wire",
       authority: "server",
-      sender: normalizePeer(authorityPeer),
-      message: projectionWireMessage(projection),
+      sender: publicPeer(room, authorityPeer),
+      message: projectionWireMessage(projection, room),
       serverSequence: room.relaySequence,
       sentAt: new Date().toISOString()
     }));
@@ -893,14 +889,16 @@ export class PreferansTable {
       await this.ctx.storage.put(ROOM_STORAGE_KEY, { ...saved, directoryDirty: true,
         directoryRevision: (saved.directoryRevision ?? 0) + 1 });
     }
-    const message = JSON.stringify({
-      type: "presence",
-      room: publicRoom(room),
-      connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
-    });
     for (const socket of this.ctx.getWebSockets()) {
       try {
-        socket.send(message);
+        const attachment = socket.deserializeAttachment() as SocketAttachment | undefined;
+        const caller = room.peers.find(peer => peerID(peer) === attachment?.playerID
+          && peer.seatToken !== undefined && peer.seatToken === attachment?.seatToken);
+        socket.send(JSON.stringify({
+          type: "presence",
+          room: publicRoom(room, caller?.accountID),
+          connectedPlayerIDs: this.activePlayerIDs().map(wirePlayerID)
+        }));
       } catch {
         // Ignore dead sockets; Cloudflare will deliver close/error callbacks.
       }
@@ -1288,7 +1286,7 @@ async function roomFetch(env: Env, roomCode: string, pathname: string, body?: un
 /// `/join` hands back the joiner's token the same way; broadcasts omit it.
 function createResult(room: RoomState): RoomWithSecret {
   const hostSeat = room.peers.find((peer) => peerID(peer) === room.hostPlayerID);
-  return { ...publicRoom(room), seatToken: hostSeat?.seatToken };
+  return { ...publicRoom(room, hostSeat?.accountID), seatToken: hostSeat?.seatToken };
 }
 
 function withSocketURL(request: Request, room: RoomWithSecret, localPeer: unknown): RoomWithSocketURL {

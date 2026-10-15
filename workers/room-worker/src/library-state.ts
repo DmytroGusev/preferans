@@ -5,7 +5,7 @@ import {
   type OnlinePeer,
   type RoomState,
   type WirePlayerID,
-  normalizePeer,
+  publicPeer,
   wirePlayerID
 } from "./room-state.ts";
 
@@ -53,7 +53,7 @@ export function buildSummaryEntry(room: RoomState, seat: OnlinePeer): GameSummar
     hostPlayerID: wirePlayerID(room.hostPlayerID),
     status: room.status ?? "lobby",
     maxPlayers: room.maxPlayers,
-    peers: room.peers.map(normalizePeer),
+    peers: room.peers.map(peer => publicPeer(room, peer, seat.accountID)),
     youSeat: seat.playerID,
     variant: summary?.variant,
     phase: summary?.phase,

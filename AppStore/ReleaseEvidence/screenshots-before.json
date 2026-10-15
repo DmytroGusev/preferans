@@ -1,0 +1,357 @@
+{
+  "data": [
+    {
+      "type": "appScreenshotSets",
+      "id": "44a39672-d217-4082-808c-eb81e2a17b34",
+      "attributes": {
+        "screenshotDisplayType": "APP_IPHONE_67"
+      },
+      "relationships": {
+        "appScreenshots": {
+          "meta": {
+            "paging": {
+              "total": 5,
+              "limit": 10
+            }
+          },
+          "data": [
+            {
+              "type": "appScreenshots",
+              "id": "2139c456-1d21-4817-9477-11cc29411ce3"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "d5daeb86-25cd-456b-bbe3-315a5f5b745b"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "69820caa-7c18-412e-a620-6eb35cc1898d"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "1e16567a-bd4b-4aee-9935-e1afef23eb27"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "57ff1288-2895-43cc-b77e-3566e498e7af"
+            }
+          ],
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/44a39672-d217-4082-808c-eb81e2a17b34/relationships/appScreenshots",
+            "related": "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/44a39672-d217-4082-808c-eb81e2a17b34/appScreenshots"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/44a39672-d217-4082-808c-eb81e2a17b34"
+      }
+    },
+    {
+      "type": "appScreenshotSets",
+      "id": "0159b6e9-97c2-4ee9-b4ba-3e8a08cc5c2c",
+      "attributes": {
+        "screenshotDisplayType": "APP_IPAD_PRO_3GEN_129"
+      },
+      "relationships": {
+        "appScreenshots": {
+          "meta": {
+            "paging": {
+              "total": 5,
+              "limit": 10
+            }
+          },
+          "data": [
+            {
+              "type": "appScreenshots",
+              "id": "8bf42e28-ee31-4980-92ca-92e564ddce28"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "ae257d5d-63ad-4ec0-8266-34f80fb7afd5"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "c1c1e903-d45d-4247-a278-715d8230441e"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "eccdb83e-a4d7-481e-849a-a2a9e62c7f21"
+            },
+            {
+              "type": "appScreenshots",
+              "id": "94c13b6f-0a0c-469b-93ad-d4b1cae49110"
+            }
+          ],
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/0159b6e9-97c2-4ee9-b4ba-3e8a08cc5c2c/relationships/appScreenshots",
+            "related": "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/0159b6e9-97c2-4ee9-b4ba-3e8a08cc5c2c/appScreenshots"
+          }
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshotSets/0159b6e9-97c2-4ee9-b4ba-3e8a08cc5c2c"
+      }
+    }
+  ],
+  "included": [
+    {
+      "type": "appScreenshots",
+      "id": "2139c456-1d21-4817-9477-11cc29411ce3",
+      "attributes": {
+        "fileSize": 2545283,
+        "fileName": "iphone-1-auction.png",
+        "sourceFileChecksum": "734b8f38f86f6c4d5ef1d2d561d64c83",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/fOGrVbLY-gQP2vnp3kHQOw/{w}x{h}bb.{f}",
+          "width": 1320,
+          "height": 2868
+        },
+        "assetToken": "PurpleSource221/v4/e0/ad/f5/e0adf5af-a91f-18e9-dee7-8dd29ecebdb7/iphone-1-auction.png",
+        "assetType": "SortedD74ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/2139c456-1d21-4817-9477-11cc29411ce3"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "d5daeb86-25cd-456b-bbe3-315a5f5b745b",
+      "attributes": {
+        "fileSize": 2250681,
+        "fileName": "iphone-2-lobby.png",
+        "sourceFileChecksum": "15e13f99c364da92de0e2a5b1a275167",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/ayLz5tzaMpPtXEO9TlEdjQ/{w}x{h}bb.{f}",
+          "width": 1320,
+          "height": 2868
+        },
+        "assetToken": "PurpleSource211/v4/fd/19/33/fd193338-2b0f-c8da-ce5d-7586fa93d438/iphone-2-lobby.png",
+        "assetType": "SortedD74ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/d5daeb86-25cd-456b-bbe3-315a5f5b745b"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "69820caa-7c18-412e-a620-6eb35cc1898d",
+      "attributes": {
+        "fileSize": 2692164,
+        "fileName": "iphone-3-open-hands.png",
+        "sourceFileChecksum": "321a3f45418f3d9184c08b1db89b87ca",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/Ydd_PvPF46xeHMlWcCF9fA/{w}x{h}bb.{f}",
+          "width": 1320,
+          "height": 2868
+        },
+        "assetToken": "PurpleSource211/v4/cc/4e/44/cc4e4416-df53-9bd0-1d50-63101f823584/iphone-3-open-hands.png",
+        "assetType": "SortedD74ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/69820caa-7c18-412e-a620-6eb35cc1898d"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "1e16567a-bd4b-4aee-9935-e1afef23eb27",
+      "attributes": {
+        "fileSize": 1718965,
+        "fileName": "iphone-4-result.png",
+        "sourceFileChecksum": "a766d9d0143729d47cb3f622f5d5af3a",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/6PEg7wYbYU9FAlo9qMBDiw/{w}x{h}bb.{f}",
+          "width": 1320,
+          "height": 2868
+        },
+        "assetToken": "PurpleSource211/v4/28/fd/64/28fd6402-3909-6fa1-0785-2a150ee5ab8e/iphone-4-result.png",
+        "assetType": "SortedD74ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/1e16567a-bd4b-4aee-9935-e1afef23eb27"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "57ff1288-2895-43cc-b77e-3566e498e7af",
+      "attributes": {
+        "fileSize": 2516261,
+        "fileName": "iphone-5-gallery.png",
+        "sourceFileChecksum": "7cc6b62f6be3f58f421037e459001c09",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/lT4sEDbf9Fn5RrC5G4qsbw/{w}x{h}bb.{f}",
+          "width": 1320,
+          "height": 2868
+        },
+        "assetToken": "PurpleSource221/v4/79/3b/24/793b242a-6bb1-3ae4-d6c8-8c629b324742/iphone-5-gallery.png",
+        "assetType": "SortedD74ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/57ff1288-2895-43cc-b77e-3566e498e7af"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "8bf42e28-ee31-4980-92ca-92e564ddce28",
+      "attributes": {
+        "fileSize": 3936486,
+        "fileName": "ipad-1-auction.png",
+        "sourceFileChecksum": "a3a203b87788b951481200c7707ac07a",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/hRp-ovZazfU1ck96KzvDCQ/{w}x{h}bb.{f}",
+          "width": 2064,
+          "height": 2752
+        },
+        "assetToken": "PurpleSource221/v4/bf/90/0c/bf900c17-6ca0-ecc3-89e4-9335ad548dff/ipad-1-auction.png",
+        "assetType": "SortedJ320ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/8bf42e28-ee31-4980-92ca-92e564ddce28"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "ae257d5d-63ad-4ec0-8266-34f80fb7afd5",
+      "attributes": {
+        "fileSize": 3987503,
+        "fileName": "ipad-2-lobby.png",
+        "sourceFileChecksum": "f8944a6d483f92efcaf47270bb34d036",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/0BAbzBq5G8YsqwK5bgYSwg/{w}x{h}bb.{f}",
+          "width": 2064,
+          "height": 2752
+        },
+        "assetToken": "PurpleSource211/v4/24/56/b1/2456b1a6-6bcb-a1bd-362a-2e233adb10e9/ipad-2-lobby.png",
+        "assetType": "SortedJ320ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/ae257d5d-63ad-4ec0-8266-34f80fb7afd5"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "c1c1e903-d45d-4247-a278-715d8230441e",
+      "attributes": {
+        "fileSize": 4285831,
+        "fileName": "ipad-3-open-hands.png",
+        "sourceFileChecksum": "c20d1bbfe0712161d7d8e7b423b90d18",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/qnq2XPt4JHgg8odW5RHXaQ/{w}x{h}bb.{f}",
+          "width": 2064,
+          "height": 2752
+        },
+        "assetToken": "PurpleSource211/v4/9f/fb/f2/9ffbf21e-5202-f029-fd8a-80f3e1989e41/ipad-3-open-hands.png",
+        "assetType": "SortedJ320ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/c1c1e903-d45d-4247-a278-715d8230441e"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "eccdb83e-a4d7-481e-849a-a2a9e62c7f21",
+      "attributes": {
+        "fileSize": 3592055,
+        "fileName": "ipad-4-result.png",
+        "sourceFileChecksum": "09abad3632191fabc5c6eed12cff62dc",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/ADrCBnCifQcxwmlEi0DDIA/{w}x{h}bb.{f}",
+          "width": 2064,
+          "height": 2752
+        },
+        "assetToken": "PurpleSource211/v4/34/ad/33/34ad3375-22e8-059b-0823-ab83d5d5469e/ipad-4-result.png",
+        "assetType": "SortedJ320ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/eccdb83e-a4d7-481e-849a-a2a9e62c7f21"
+      }
+    },
+    {
+      "type": "appScreenshots",
+      "id": "94c13b6f-0a0c-469b-93ad-d4b1cae49110",
+      "attributes": {
+        "fileSize": 3351344,
+        "fileName": "ipad-5-gallery.png",
+        "sourceFileChecksum": "69a2e5d7f3be30fad3b058743551fa61",
+        "imageAsset": {
+          "templateUrl": "https://is1-ssl.mzstatic.com/image/thumb/c-9rn9YI3Vqd4Xgj5q9ULA/{w}x{h}bb.{f}",
+          "width": 2064,
+          "height": 2752
+        },
+        "assetToken": "PurpleSource211/v4/ea/bd/5d/eabd5d7e-95cc-277d-79f3-ec47c5ac7bbf/ipad-5-gallery.png",
+        "assetType": "SortedJ320ScreenShot",
+        "uploadOperations": [],
+        "assetDeliveryState": {
+          "errors": [],
+          "warnings": null,
+          "state": "COMPLETE"
+        }
+      },
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/appScreenshots/94c13b6f-0a0c-469b-93ad-d4b1cae49110"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/40fae82a-c1c9-4490-9bb3-e15b2c060046/appScreenshotSets?include=appScreenshots"
+  },
+  "meta": {
+    "paging": {
+      "total": 2,
+      "limit": 50
+    }
+  }
+}

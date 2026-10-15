@@ -2,6 +2,7 @@
   "sourceLanguage": "en",
   "version": "1.0",
   "strings": {
+    "Public tables are not available on this server yet. You can still invite friends with a room code.": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Public tables are not available on this server yet. You can still invite friends with a room code."}},"ru":{"stringUnit":{"state":"translated","value":"Публичные столы пока недоступны на сервере. Вы можете пригласить друзей по коду комнаты."}},"uk":{"stringUnit":{"state":"translated","value":"Публічні столи поки недоступні на сервері. Ви можете запросити друзів за кодом кімнати."}}}},
     "Vienna": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Vienna"}},"ru":{"stringUnit":{"state":"translated","value":"Вена"}},"uk":{"stringUnit":{"state":"translated","value":"Відень"}}}},
     "Prague": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Prague"}},"ru":{"stringUnit":{"state":"translated","value":"Прага"}},"uk":{"stringUnit":{"state":"translated","value":"Прага"}}}},
     "Berlin": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Berlin"}},"ru":{"stringUnit":{"state":"translated","value":"Берлин"}},"uk":{"stringUnit":{"state":"translated","value":"Берлін"}}}},

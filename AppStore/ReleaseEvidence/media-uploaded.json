@@ -1,0 +1,62 @@
+[
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/1-03-bidding-east.png",
+    "id": "8a000019-3241-8217-802e-2defa5983ee4",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/2-06-talon-exchange.png",
+    "id": "e0c00019-3241-8217-8007-afaef83110d9",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/3-01-lobby.png",
+    "id": "76c00019-3241-8217-801e-63b222cedfe0",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/ipad/1-03-bidding-east.png",
+    "id": "0a000019-3241-8217-8024-fbe7e73a5da9",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/ipad/2-06-talon-exchange.png",
+    "id": "71800019-3241-8217-8037-bf1268d44f7d",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/ipad/3-01-lobby.png",
+    "id": "16400019-3241-8217-803c-ff1d3245c033",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/app-preview.mp4",
+    "id": "90400019-3241-8217-8118-d3ba045544eb",
+    "type": "appPreviews"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/creatives/header-a-cards.png",
+    "id": "b0800019-3241-8217-800b-a3ff514de2d5",
+    "type": "appAssetLibraryImages"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/creatives/header-b-table.png",
+    "id": "d8800019-3241-8217-8005-d25dfb30b01f",
+    "type": "appAssetLibraryImages"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone-medium/1-03-bidding-east.png",
+    "id": "96000019-3241-8217-8006-32c3884549a4",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone-medium/2-06-talon-exchange.png",
+    "id": "72400019-3241-8217-8021-90d016f63002",
+    "type": "appScreenshots"
+  },
+  {
+    "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone-medium/3-01-lobby.png",
+    "id": "ca000019-3241-8217-8039-bea5bede6877",
+    "type": "appScreenshots"
+  }
+]

@@ -146,6 +146,36 @@ final class OnlineTransportSecurityTests: XCTestCase {
     }
 
     @MainActor
+    func testPublicCreationRejectsLegacyServerSilentlyCreatingPrivateRoom() async throws {
+        CapturingURLProtocol.handler = { _ in
+            (201, Data(#"{"schemaVersion":4,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[],"maxPlayers":3,"createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","relaySequence":0,"status":"lobby"}"#.utf8))
+        }
+        let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Ada")
+        do {
+            _ = try await CloudflareRoomTransport.createRoom(
+                baseURL: baseURL, localPeer: host, seats: [host],
+                accountSessionToken: "pref2.account.secret", maxPlayers: 3,
+                visibility: .publicTable, session: session
+            )
+            XCTFail("Public room creation must not silently downgrade to private.")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("Public tables are not available"))
+        }
+    }
+
+    @MainActor
+    func testPublicDirectoryExplainsMissingProductionDeployment() async throws {
+        CapturingURLProtocol.handler = { _ in (404, Data()) }
+        do {
+            _ = try await CloudflarePublicTableDirectory(baseURL: baseURL, session: session)
+                .fetchTables(sessionToken: "pref2.account.secret")
+            XCTFail("An old server does not support public discovery.")
+        } catch {
+            XCTAssertTrue(error.localizedDescription.contains("room code"))
+        }
+    }
+
+    @MainActor
     func testAccountDeletionUsesAuthenticatedV2Endpoint() async throws {
         var captured: URLRequest?
         CapturingURLProtocol.handler = { request in

@@ -401,6 +401,29 @@ final class RedesignScreenshotTests: XCTestCase {
 
     // MARK: - Human-vs-bots playthrough
 
+    /// Deliberate editorial holds for a real screen recording, not retry delays.
+    func testRecordAppStorePreview() {
+        let app = XCUIApplication()
+        app.configureForMatchScript("game1", disableAnimations: false)
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        robot.startLocalTable()
+        robot.waitForPhase("Ready")
+        print("PREFERANS_PREVIEW_START")
+        Thread.sleep(forTimeInterval: 3)
+        robot.startNextDeal()
+        robot.waitForPhase("Bidding")
+        Thread.sleep(forTimeInterval: 3)
+        robot.bid(.bid(.game(GameContract(6, .suit(.spades)))))
+        Thread.sleep(forTimeInterval: 3)
+        robot.bid(.pass)
+        Thread.sleep(forTimeInterval: 3)
+        robot.bid(.pass)
+        robot.waitForPhase("Prikup")
+        Thread.sleep(forTimeInterval: 3)
+        print("PREFERANS_PREVIEW_END")
+    }
+
     /// Starts a table and keeps the same human seat through a full deal
     /// against two bots (pass on bids, whist on defense, play legal cards),
     /// screenshotting every phase. PNGs land in `$PREFERANS_SCREEN_DIR/screens`

@@ -1,0 +1,170 @@
+{
+  "verifiedDate": "2026-10-15",
+  "metadataLocaleCount": 24,
+  "metadataMatched": true,
+  "build": {
+    "id": "eca4773c-36c9-4ef4-936f-dd7b353fb08e",
+    "number": "28",
+    "processingState": "VALID",
+    "availableInInternalTesters": true
+  },
+  "version": {
+    "id": "98378d13-7f10-4728-85bc-a501b9698373",
+    "state": "PREPARE_FOR_SUBMISSION",
+    "releaseType": "MANUAL",
+    "selectedBuild": "eca4773c-36c9-4ef4-936f-dd7b353fb08e"
+  },
+  "assets": [
+    {
+      "id": "8a000019-3241-8217-802e-2defa5983ee4",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/1-03-bidding-east.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        1320,
+        2868
+      ]
+    },
+    {
+      "id": "e0c00019-3241-8217-8007-afaef83110d9",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/2-06-talon-exchange.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        1320,
+        2868
+      ]
+    },
+    {
+      "id": "76c00019-3241-8217-801e-63b222cedfe0",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/3-01-lobby.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        1320,
+        2868
+      ]
+    },
+    {
+      "id": "0a000019-3241-8217-8024-fbe7e73a5da9",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/ipad/1-03-bidding-east.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        2064,
+        2752
+      ]
+    },
+    {
+      "id": "71800019-3241-8217-8037-bf1268d44f7d",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/ipad/2-06-talon-exchange.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        2064,
+        2752
+      ]
+    },
+    {
+      "id": "16400019-3241-8217-803c-ff1d3245c033",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/ipad/3-01-lobby.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        2064,
+        2752
+      ]
+    },
+    {
+      "id": "90400019-3241-8217-8118-d3ba045544eb",
+      "type": "appPreviews",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone/app-preview.mp4",
+      "state": "COMPLETE"
+    },
+    {
+      "id": "b0800019-3241-8217-800b-a3ff514de2d5",
+      "type": "appAssetLibraryImages",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/creatives/header-a-cards.png",
+      "state": "PREPARE_FOR_SUBMISSION",
+      "dimensions": [
+        5244,
+        2950
+      ]
+    },
+    {
+      "id": "d8800019-3241-8217-8005-d25dfb30b01f",
+      "type": "appAssetLibraryImages",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/creatives/header-b-table.png",
+      "state": "PREPARE_FOR_SUBMISSION",
+      "dimensions": [
+        5244,
+        2950
+      ]
+    },
+    {
+      "id": "96000019-3241-8217-8006-32c3884549a4",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone-medium/1-03-bidding-east.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        1206,
+        2622
+      ]
+    },
+    {
+      "id": "72400019-3241-8217-8021-90d016f63002",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone-medium/2-06-talon-exchange.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        1206,
+        2622
+      ]
+    },
+    {
+      "id": "ca000019-3241-8217-8039-bea5bede6877",
+      "type": "appScreenshots",
+      "file": "/Users/dmytrogusev/Documents/Projects/PreferansRelease20261015/AppStore/Media/1.0.2/iphone-medium/3-01-lobby.png",
+      "state": "COMPLETE",
+      "dimensions": [
+        1206,
+        2622
+      ]
+    }
+  ],
+  "draftCreativePlacements": 48,
+  "experiment": {
+    "id": "03cc13ca-b31e-4d47-aaa4-63efc1bf7064",
+    "state": "PREPARE_FOR_SUBMISSION",
+    "treatmentLocales": [
+      "en-US"
+    ],
+    "pendingLocales": [
+      "ca",
+      "cs",
+      "da",
+      "de-DE",
+      "el",
+      "en-GB",
+      "es-ES",
+      "fi",
+      "fr-FR",
+      "hr",
+      "hu",
+      "it",
+      "nl-NL",
+      "no",
+      "pl",
+      "pt-PT",
+      "ro",
+      "ru",
+      "sk",
+      "sl-SI",
+      "sv",
+      "tr",
+      "uk"
+    ]
+  },
+  "productionBackendDeployed": false,
+  "appReviewSubmitted": false
+}
