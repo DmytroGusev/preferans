@@ -1,0 +1,98 @@
+name: Owner server image (build only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/owner-server-build]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-server-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Check worker contracts
+        working-directory: workers/room-worker
+        run: |
+          bun install --frozen-lockfile
+          timeout 60s bun run typecheck
+          timeout 60s bun run test
+          timeout 60s bun run test:runtime
+
+      - name: Validate checked-in Worker configuration (no deployment)
+        working-directory: workers/room-worker
+        run: bunx wrangler deploy --config wrangler.toml --dry-run --containers-rollout none --outdir /tmp/preferans-worker-ci
+
+      - name: Build the Swift engine for Cloudflare Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 20m docker build --platform linux/amd64 \
+            --file Dockerfile.server \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "preferans-engine:${GITHUB_SHA}" .
+
+      - name: Smoke test the built container
+        shell: bash
+        run: |
+          set -euo pipefail
+          container=$(docker run --detach --publish 127.0.0.1:18081:8080 "preferans-engine:${GITHUB_SHA}")
+          cleanup() { docker logs "$container"; docker rm --force "$container" >/dev/null; }
+          trap cleanup EXIT
+          healthy=false
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:18081/health > /tmp/preferans-ci-health.json; then
+              healthy=true
+              break
+            fi
+            sleep 1
+          done
+          test "$healthy" = true
+          node -e 'const fs=require("fs");const h=JSON.parse(fs.readFileSync("/tmp/preferans-ci-health.json"));if(h.ok!==true||h.service!=="preferans-authoritative-engine")throw Error("Unexpected engine health response")'
+          curl --fail --silent --show-error --max-time 8 \
+            --header 'content-type: application/json' \
+            --data-binary @workers/room-worker/fixtures/create-game.json \
+            http://127.0.0.1:18081/v1/games > /tmp/preferans-ci-game.json
+          node -e 'const fs=require("fs");const g=JSON.parse(fs.readFileSync("/tmp/preferans-ci-game.json"));if(g.engineVersion!=="preferans-1"||g.status!=="lobby"||typeof g.state!=="string"||!g.state||!Array.isArray(g.projections)||g.projections.length!==3)throw Error("Container could not create a valid table")'
+
+      - name: Export image and provenance (no registry push)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          docker save "preferans-engine:${GITHUB_SHA}" | gzip > dist/preferans-engine-linux-amd64.tar.gz
+          docker image inspect "preferans-engine:${GITHUB_SHA}" --format '{{.Id}}' > dist/image-id.txt
+          printf '%s\n' "$GITHUB_SHA" > dist/source-commit.txt
+          cp /tmp/preferans-ci-health.json dist/health.json
+          (cd dist && sha256sum preferans-engine-linux-amd64.tar.gz > SHA256SUMS)
+          {
+            echo '## Preferans owner-server build'
+            echo "Source commit: \`$GITHUB_SHA\`"
+            echo 'Architecture: linux/amd64. Image artifact retained for 14 days.'
+            echo 'Worker contracts, container health and table creation checked.'
+            echo '**No Cloudflare deployment, data migration or client switch performed.**'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preferans-engine-linux-amd64-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
