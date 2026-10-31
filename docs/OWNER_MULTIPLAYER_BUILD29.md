@@ -29,6 +29,9 @@ different app.
 Do not deploy `wrangler.toml` to the friend's account. Owner deployments use
 `wrangler.owner.toml` explicitly. New deployments must retain these namespaces
 and migrations; do not delete/recreate state to update the Worker.
+The old uncommitted owner-config draft includes ClubLedger under the same
+bootstrap tag. Do not deploy that draft unchanged: adding Club later requires
+a new migration tag creating ClubLedger, not editing this applied bootstrap.
 
 ## Client Changes
 
@@ -82,11 +85,36 @@ These checks do not replace testing Sign in with Apple and invitations on two
 physical devices. Apple may cache AASA records; manual room codes and the
 bundle-specific scheme are available as fallbacks.
 
+Live UI tests are opt-in: set `TEST_RUNNER_PREFERANS_OWNER_SERVER_QA=1` on
+`xcodebuild` and select `OwnerOnlineUITests` on a dedicated QA simulator. Without
+this flag they skip before contacting the server. Keep routine CI on loopback.
+
 ## Delivery And Rollback
 
 The TestFlight upload does not replace published 1.0.2 (28), change its metadata,
 or submit a new App Review. All test participants need the new build and must
 register on the new server. Do not claim old rooms or subscriptions migrated.
+
+Upload succeeded on 31 October 2026 at 13:27:40 UTC. Release source commit:
+`1fa44c5`. Draft PR: <https://github.com/DmytroGusev/preferans/pull/4>.
+Apple processing and beta-group availability are recorded in
+`AppStore/Release29/build-status.json` and final readback evidence when available.
+The app's signed IPA was verified before upload. Apple CDN also returns the
+new domain's AASA file successfully (HTTP 200).
+
+Apple processing completed: build ID `9a259207-6b63-428f-82d2-1180dd392ebb`,
+state `VALID`. Standard OS-only encryption metadata was completed via the build
+API (`usesNonExemptEncryption=false`); no binary was modified after upload.
+The internal `Testers` and `Pediki` groups are linked, but both contain zero
+testers. Internal state is `READY_FOR_BETA_TESTING`, not `IN_BETA_TESTING`.
+An Apple ID email is needed to arrange the owner's actual tester access;
+external colleagues need a separate external beta review. No external review
+was submitted. Do not equate a successful upload with delivered invitations.
+
+The opt-in live UI suite passed again with
+`TEST_RUNNER_PREFERANS_OWNER_SERVER_QA=1`. All 142 app/engine/project source
+hashes still match the archive's release manifest. The published App Store
+version is confirmed unchanged: 1.0.2 (28), `READY_FOR_SALE`.
 
 Roll back the client using the previous TestFlight build if needed; it still
 connects to the old backend. For a new-owner Worker regression, retain the new

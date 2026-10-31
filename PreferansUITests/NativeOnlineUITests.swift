@@ -443,4 +443,11 @@ class NativeOnlineUITests: XCTestCase {
 /// Run on a dedicated QA simulator; all accounts created here are deleted.
 final class OwnerOnlineUITests: NativeOnlineUITests {
     override var baseURL: URL { URL(string: "https://preferans-room-worker.dmytro-gusev.workers.dev")! }
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["PREFERANS_OWNER_SERVER_QA"] == "1" else {
+            throw XCTSkip("Live owner-server QA requires TEST_RUNNER_PREFERANS_OWNER_SERVER_QA=1 and a dedicated simulator")
+        }
+        try await super.setUp()
+    }
 }
