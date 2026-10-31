@@ -4,6 +4,7 @@ import PreferansEngine
 
 private final class CapturingURLProtocol: URLProtocol {
     nonisolated(unsafe) static var handler: ((URLRequest) throws -> (Int, Data))?
+    nonisolated(unsafe) static var healthHandler: ((URLRequest) throws -> (Int, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -11,7 +12,12 @@ private final class CapturingURLProtocol: URLProtocol {
     override func startLoading() {
         do {
             guard let handler = Self.handler else { throw URLError(.badServerResponse) }
-            let (status, data) = try handler(request)
+            let (status, data): (Int, Data)
+            if request.url?.path == "/health" {
+                (status, data) = try Self.healthHandler?(request) ?? (200, Data(#"{"ok":true,"service":"preferans-room-worker","accountSchemaVersion":2,"roomSchemaVersion":4}"#.utf8))
+            } else {
+                (status, data) = try handler(request)
+            }
             let response = HTTPURLResponse(
                 url: try XCTUnwrap(request.url),
                 statusCode: status,
@@ -42,9 +48,33 @@ final class OnlineTransportSecurityTests: XCTestCase {
 
     override func tearDown() {
         CapturingURLProtocol.handler = nil
+        CapturingURLProtocol.healthHandler = nil
         session.invalidateAndCancel()
         session = nil
         super.tearDown()
+    }
+
+    @MainActor
+    func testLegacyServerIsRejectedBeforeCreateOrJoinMutatesAnything() async throws {
+        var mutations = 0
+        CapturingURLProtocol.handler = { _ in mutations += 1; return (500, Data()) }
+        CapturingURLProtocol.healthHandler = { request in
+            XCTAssertNil(request.value(forHTTPHeaderField: "authorization"))
+            XCTAssertEqual(request.timeoutInterval, 8)
+            return (200, Data(#"{"ok":true,"service":"preferans-room-worker","accountSchemaVersion":2,"roomSchemaVersion":3}"#.utf8))
+        }
+        let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Ada")
+        for isJoin in [false, true] {
+            do {
+                if isJoin {
+                    _ = try await CloudflareRoomTransport.joinRoom(baseURL: baseURL, roomCode: "ABC123", localPeer: host, accountSessionToken: "secret", session: session)
+                } else {
+                    _ = try await CloudflareRoomTransport.createRoom(baseURL: baseURL, localPeer: host, seats: [host], accountSessionToken: "secret", session: session)
+                }
+                XCTFail("Legacy servers cannot open protocol-4 tables")
+            } catch CloudflareRoomTransportError.incompatibleServer {} catch { XCTFail("Unexpected error: \(error)") }
+        }
+        XCTAssertEqual(mutations, 0)
     }
 
     @MainActor

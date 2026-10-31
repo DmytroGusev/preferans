@@ -229,8 +229,11 @@ public final class LobbyViewModel: ObservableObject {
         }
     }
 
-    public func prepareOnlineTableCreation() {
+    public func prepareOnlineTableCreation(publicTablesAvailable: Bool = false) {
         onlineIntent = .createTable
+        errorText = nil
+        infoText = nil
+        onlineTableVisibility = publicTablesAvailable ? .publicTable : .privateTable
         pulkaLimit = .short
         if !PreferansVariant.publicCases.contains(onlineVariant) { onlineVariant = .odesa }
         if onlineTableVisibility == .publicTable {
@@ -333,6 +336,7 @@ public final class LobbyViewModel: ObservableObject {
 
     public func handleInviteURL(_ url: URL) {
         guard let roomCode = PreferansInviteLink.roomCode(from: url) else { return }
+        lobbyMode = .online
         onlineJoinRoomCode = roomCode
         errorText = nil
         infoText = String(localized: "Invite \(roomCode) is ready — tap Join to take a seat.")

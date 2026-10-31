@@ -61,7 +61,7 @@ struct LobbyPublicTablesSection: View {
                         .font(.headline).foregroundStyle(theme.textPrimary)
                     Text("Try another filter or open a table for other players to join.")
                         .font(.footnote).foregroundStyle(theme.textSecondary)
-                    Button("Create a table") { viewModel.prepareOnlineTableCreation() }
+                    Button("Create a table") { viewModel.prepareOnlineTableCreation(publicTablesAvailable: lobby.hasLoaded && lobby.errorText == nil) }
                         .buttonStyle(.feltPrimary)
                 }.padding(.vertical, 8)
             } else {

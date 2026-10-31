@@ -12,6 +12,7 @@
 	<array>
 		<string>applinks:preferans.game</string>
 		<string>applinks:preferans-room-worker.ontofractal.workers.dev</string>
+		<string>applinks:preferans-room-worker.dmytro-gusev.workers.dev</string>
 	</array>
 </dict>
 </plist>

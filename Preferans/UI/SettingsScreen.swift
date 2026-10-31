@@ -41,6 +41,11 @@ public struct SettingsScreen: View {
                 languageSection
                 accountSection
                 privacySection
+                Section {
+                    Link("Privacy Policy", destination: URL(string: "https://guruofcards.com/apps/preferans/privacy/")!)
+                    Link("Terms of Use", destination: URL(string: "https://guruofcards.com/apps/preferans/terms/")!)
+                }
+                .listRowBackground(theme.panel)
                 #if DEBUG
                 Section {
                     Toggle("Reveal all hands", isOn: $revealAllHands)

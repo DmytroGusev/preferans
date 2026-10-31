@@ -1428,6 +1428,9 @@ function invitePage(roomCode: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="apple-itunes-app" content="app-id=6763581975">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
   <title>Join Preferans Table ${escapedCode}</title>
   <style>
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #063528; color: #f8efd6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -1442,7 +1445,9 @@ function invitePage(roomCode: string): string {
     <h1>Join Preferans</h1>
     <p>Your table code is:</p>
     <div class="code">${escapedCode}</div>
-    <p>Install the beta, then enter this room code from the lobby.</p>
+    <p><a style="color:#dab056;font-weight:700" href="com.mixandmatch.preferans://table/join/${escapedCode}">Open Preferans</a></p>
+    <p>Open Play online, sign in or continue as a guest, then paste this code in Join a table. You need version 1.0.3 or newer to join this server.</p>
+    <p><a style="color:#dab056" href="https://apps.apple.com/app/id6763581975">Preferans on the App Store</a></p>
   </main>
 </body>
 </html>`;

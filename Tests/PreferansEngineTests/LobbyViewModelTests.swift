@@ -49,6 +49,24 @@ private final class AccountSessionStoreStub: OnlineAccountSessionStoring {
 
 @MainActor
 final class LobbyViewModelTests: AppTestCase {
+    func testPublicCreationStartsWithPublicSeatsOnlyWhenDirectoryIsAvailable() {
+        let model = LobbyViewModel()
+        model.infoText = "Online account ready."
+        model.prepareOnlineTableCreation(publicTablesAvailable: true)
+        XCTAssertEqual(model.onlineTableVisibility, .publicTable)
+        XCTAssertNil(model.infoText)
+        XCTAssertEqual(model.onlineComposition.filter { $0.kind == .bot }.count, 0)
+        model.prepareOnlineTableCreation(publicTablesAvailable: false)
+        XCTAssertEqual(model.onlineTableVisibility, .privateTable)
+    }
+
+    func testInviteSwitchesFromLocalToOnlineAndPreservesCodeForSignIn() {
+        let model = LobbyViewModel()
+        model.handleInviteURL(PreferansInviteLink.inviteURL(roomCode: "ABC123"))
+        XCTAssertEqual(model.lobbyMode, .online)
+        XCTAssertEqual(model.pendingJoinRoomCode, "ABC123")
+    }
+
     func testLobbyLayoutKeepsDefaultIPadTwoRegionComposition() {
         let policy = LobbyLayoutPolicy(
             isRegularWidth: true,

@@ -1,0 +1,12 @@
+Preferans 1.0.3 (29): online tables on the new Guru of Cards server.
+
+Important: all players must install build 29 or newer. Build 28 uses the previous server. Existing guest accounts, room codes and history from that server do not migrate automatically. Sign in again or create a new guest account in this build. The previous server and its data were not changed.
+
+1. Open Play online, enter your name and Continue as Guest, or Sign in with Apple.
+2. Choose Create a table. After discovery loads, Public table is selected by default. Choose three or four players and a convention, then tap Open public table. Check that the waiting room and room code appear.
+3. On another device, open Find a table, select the waiting table and Take a seat. Every player confirms Ready. The host starts when all seats are occupied, connected and ready.
+4. Play a deal. Check bidding, talon/discard, defence, private cards and scoring. Leave the active game screen and resume from Your games. Try a brief disconnect/reconnect.
+5. Try Invite only creation. Share a fresh link with another build-29 player. If Safari opens, tap Open Preferans; alternatively paste the code into Join a table.
+6. Verify Settings > Privacy Policy and Terms of Use, and online account deletion.
+
+Subscriptions and the five-pulka quota are not enabled in this multiplayer release. No App Store public release or review submission is performed by the TestFlight upload.

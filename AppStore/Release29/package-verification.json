@@ -1,0 +1,15 @@
+{
+  "version": "1.0.3",
+  "build": "29",
+  "xcode": "27A9275",
+  "sdk": "iphoneos27.1",
+  "ipa": "build/export29/Preferans.ipa",
+  "bytes": 6693157,
+  "sha256": "11d6b083d1e2bf36be31fb1ee41454946dba54cf500817ffc4973d9f53d2f1d8",
+  "signatureVerified": true,
+  "appleSignIn": true,
+  "ownerDomain": true,
+  "backend": "https://preferans-room-worker.dmytro-gusev.workers.dev",
+  "storageNamespace": ".owner-v1",
+  "subscriptionDraftExcluded": true
+}

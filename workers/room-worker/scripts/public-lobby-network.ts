@@ -1,14 +1,17 @@
 // Real Worker + shared Swift engine check. Uses only isolated loopback services.
-import profiles from "../fixtures/public-rules.json";
+import profiles from "../fixtures/public-rules.json" with { type: "json" };
 
-const base = "http://127.0.0.1:8787";
+const base = process.env.PREFERANS_ROOM_WORKER_URL ?? "http://127.0.0.1:8787";
+const allowed = ["http://127.0.0.1:8787", "https://preferans-room-worker.dmytro-gusev.workers.dev"];
+if (!allowed.includes(base)) throw new Error("Network QA is restricted to loopback or the isolated owner server");
+const requestTimeout = base.startsWith("https:") ? 30_000 : 3_000;
 const tokens: string[] = [];
 const sockets: WebSocket[] = [];
 function require(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 async function request(method: string, path: string, token?: string, body?: unknown, expected = 200): Promise<any> {
-  const response = await fetch(`${base}${path}`, { method, signal: AbortSignal.timeout(3_000),
+  const response = await fetch(`${base}${path}`, { method, signal: AbortSignal.timeout(requestTimeout),
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body) });
   require(response.status === expected, `${method} ${path} expected ${expected}, received ${response.status}`);
