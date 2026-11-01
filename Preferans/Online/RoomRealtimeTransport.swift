@@ -222,6 +222,10 @@ public enum RoomTransportEvent: Equatable, Sendable {
     case reconnecting
     /// The same account rejoined this seat and rotated its room credential.
     case seatTakenOver
+    /// The server permanently refused this seat (left, account deleted,
+    /// credential revoked or room gone). Reconnecting cannot help; the message
+    /// is user-facing.
+    case seatLost(String)
     /// The authoritative room rejected a command or another socket request.
     case serverError(String)
     case commandReceipt(OnlineCommandReceipt)

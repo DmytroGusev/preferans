@@ -4,6 +4,7 @@ import {
   type OnlinePeer,
   type RoomState,
   RoomStateError,
+  isHumanAccount,
   peerID,
   publicPeer
 } from "./room-state.ts";
@@ -178,11 +179,23 @@ export function isStartDealCommand(envelope: EngineCommandEnvelope): boolean {
     && isRecord(envelope.action.startDeal);
 }
 
+/// The first deal is a lobby decision: only the connected lobby manager may
+/// start it, with a complete, connected (and, for public tables, ready) roster.
+/// Later deals continue a table that is already in play, so any seated human
+/// may deal and nobody waits for absent players: a disconnected seat simply
+/// acts when it returns, exactly as it would mid-deal. Requiring the manager
+/// and every socket here stalled tables whenever one phone slept.
 export function validateStartDealAuthority(
   room: RoomState,
   sender: OnlinePeer,
   connectedPlayerIDs: ReadonlySet<string>
 ): void {
+  if (room.status === "playing") {
+    if (!isHumanAccount(sender.accountID)) {
+      throw new RoomStateError("forbidden", "Only a seated player can start the next deal.", 403);
+    }
+    return;
+  }
   if (peerID(sender) !== room.hostPlayerID) {
     throw new RoomStateError(
       "lobby_manager_required",

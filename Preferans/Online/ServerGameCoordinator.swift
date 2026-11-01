@@ -233,12 +233,13 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
             transportStatus = .seatTakenOver; retry?.cancel(); retry = nil
             canHostStart = false
         case .tableAbandoned:
-            if let pending, let transport {
-                try? outbox.remove(table: pending.tableID, account: transport.localPeer.accountID)
-            }
-            pending = nil; isSubmitting = false; retry?.cancel(); retry = nil
+            discardPendingCommand()
             transportStatus = .disconnected; canHostStart = false
             errorText = "This table was abandoned. Return to the lobby to start another game."
+        case let .seatLost(message):
+            discardPendingCommand()
+            transportStatus = .disconnected; canHostStart = false
+            errorText = message
         case let .serverError(message): errorText = message
         case let .commandReceipt(receipt):
             guard let pending, receipt.tableID == tableID, receipt.clientNonce == pending.clientNonce,
@@ -247,9 +248,26 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
             catch { errorText = "Your move was resolved, but local recovery storage could not be cleared."; return }
             latestReceiptSequence = max(latestReceiptSequence, receipt.sequence)
             self.pending = nil; isSubmitting = false; retry?.cancel(); retry = nil
-            errorText = receipt.status == .rejected ? (receipt.message ?? "The move was rejected.") : nil
+            errorText = Self.rejectionMessage(for: receipt, basedOn: pending)
         }
         Task { [weak self] in await self?.refreshRoster() }
+    }
+
+    /// A rejection is only news when it judged the state the player acted on.
+    /// When the table had already moved past the command's base revision (for
+    /// example two players tapped Next deal together), the newer projection
+    /// already shows the outcome, so the stale command is dropped silently.
+    static func rejectionMessage(for receipt: OnlineCommandReceipt, basedOn command: ClientActionEnvelope) -> String? {
+        guard receipt.status == .rejected else { return nil }
+        guard receipt.sequence <= command.baseHostSequence else { return nil }
+        return receipt.message ?? "The move was rejected."
+    }
+
+    private func discardPendingCommand() {
+        if let pending, let transport {
+            try? outbox.remove(table: pending.tableID, account: transport.localPeer.accountID)
+        }
+        pending = nil; isSubmitting = false; retry?.cancel(); retry = nil
     }
 
     private func scheduleRetry() {
@@ -262,10 +280,18 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
                 guard let self, self.generation == attachment,
                       let pending = self.pending, let transport = self.transport else { return }
                 do { try await transport.sendToAll(.clientAction(pending), reliably: true) }
-                catch { if self.generation == attachment { self.errorText = "Reconnecting… Your move is saved." } }
+                catch { if self.generation == attachment { self.errorText = String(localized: "Reconnecting… Your move is saved.") } }
                 attempt += 1
+                // Durak-style watchdog: after ~20 s without a receipt, say so
+                // instead of spinning silently. Delivery keeps retrying.
+                if attempt == Self.unconfirmedMoveNoticeAttempt, self.errorText == nil {
+                    self.errorText = String(localized: "Your move hasn't been confirmed yet. Still trying…")
+                }
                 try? await Task.sleep(for: .seconds(min(attempt * 2, 8)))
             }
         }
     }
+
+    /// Sends go out at 0, 2, 6, 12 and 20 s; the fifth unanswered one shows the notice.
+    static let unconfirmedMoveNoticeAttempt = 5
 }
