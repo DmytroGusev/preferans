@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-01T19:16:44.293Z",
+  "owner": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "service": "preferans-room-worker",
+      "accountSchemaVersion": 2,
+      "roomSchemaVersion": 4
+    }
+  },
+  "friendReadOnly": {
+    "status": 200,
+    "body": {
+      "ok": true,
+      "service": "preferans-room-worker",
+      "accountSchemaVersion": 2,
+      "roomSchemaVersion": 3
+    }
+  }
+}

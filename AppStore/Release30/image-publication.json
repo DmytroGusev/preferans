@@ -1,0 +1,7 @@
+{
+  "source": "c4621082a8a36c3cffdbf58d1f7a01faff64cefa",
+  "ciRun": "41339653980",
+  "target": "registry.cloudflare.com/df302a84563143eb92fc75a7277079ec/preferans-engine:main-c4621082a8a3",
+  "digest": "sha256:90d5da73d8fc8cd677e3e4047174b46c03cfd8539005d685a8274c16b1e456dc",
+  "archiveHash": "f3df87ad8a98f911ef659613ecb77307f14c3130089fd92d72d64a91f736c978"
+}

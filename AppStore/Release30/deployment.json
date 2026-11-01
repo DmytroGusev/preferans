@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-01",
+  "baseline": "c4621082a8a36c3cffdbf58d1f7a01faff64cefa",
+  "accountID": "df302a84563143eb92fc75a7277079ec",
+  "endpoint": "https://preferans-room-worker.dmytro-gusev.workers.dev",
+  "workerVersion": "057ca688-8fb1-4f89-a057-4eea2ce36091",
+  "previousWorkerVersion": "d0199534-c9c0-4942-a340-d05e76062d93",
+  "containerApplicationID": "a032d1ae-1fb4-4259-b62b-4cfa10bead7a",
+  "containerVersion": 2,
+  "activeInstances": 3,
+  "instanceVersions": [2, 2, 2],
+  "imageDigest": "sha256:90d5da73d8fc8cd677e3e4047174b46c03cfd8539005d685a8274c16b1e456dc",
+  "previousImageDigest": "sha256:2aef1184f568365af0d18f0054193590cbf44ef389a128a964add72ba9b091bf",
+  "ciRun": "41339653980",
+  "config": "workers/room-worker/wrangler.owner.toml",
+  "namespacesRecreated": false,
+  "accountOrActiveGameReset": false,
+  "friendServerModified": false,
+  "retentionApproved": true,
+  "rollbackExecuted": false
+}

@@ -1,0 +1,15 @@
+{
+  "version": "1.0.3",
+  "build": "30",
+  "baseline": "c4621082a8a36c3cffdbf58d1f7a01faff64cefa",
+  "xcode": "27A9275",
+  "sdk": "iphoneos27.1",
+  "ipa": "build/export30/Preferans.ipa",
+  "bytes": 6701154,
+  "sha256": "29c824f04d76b9afd8d34c157092b51b050e0c2720c369df7dc086d11d34114a",
+  "signatureVerified": true,
+  "ownerDomain": true,
+  "appleSignIn": true,
+  "usesNonExemptEncryption": false,
+  "moveWatchdogIncluded": true
+}

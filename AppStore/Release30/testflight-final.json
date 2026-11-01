@@ -1,0 +1,36 @@
+{
+  "checkedAt": "2026-11-01T19:16:26.936Z",
+  "id": "eef9c00f-9198-43a7-a3a6-4ed12d3ed52a",
+  "version": "1.0.3",
+  "uploadedDate": "2026-11-01T11:12:20-08:00",
+  "expirationDate": "2027-01-30T11:12:20-08:00",
+  "expired": false,
+  "minOsVersion": "17.0",
+  "lsMinimumSystemVersion": null,
+  "computedMinMacOsVersion": "14.0",
+  "computedMinVisionOsVersion": "1.0",
+  "processingState": "VALID",
+  "buildAudienceType": "APP_STORE_ELIGIBLE",
+  "usesNonExemptEncryption": false,
+  "build": "30",
+  "beta": {
+    "autoNotifyEnabled": true,
+    "internalBuildState": "READY_FOR_BETA_TESTING",
+    "externalBuildState": "READY_FOR_BETA_SUBMISSION"
+  },
+  "groups": [
+    {
+      "id": "0702be10-ea15-4148-af56-212045b44fa2",
+      "name": "Testers",
+      "testerCount": 0
+    },
+    {
+      "id": "541111df-ebdb-4219-82d7-56897125380f",
+      "name": "Pediki",
+      "testerCount": 0
+    }
+  ],
+  "whatToTestVerified": true,
+  "appReviewSubmitted": false,
+  "storeMetadataUnchanged": true
+}

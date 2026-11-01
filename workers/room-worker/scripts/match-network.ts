@@ -6,6 +6,7 @@ import { ROOM_SCHEMA_VERSION } from "../src/room-state.ts";
 // projection. The first deal plays every card; later uncontested contracts
 // close a small table-total pool so the run stays bounded and reproducible.
 const baseURL = new URL(process.env.PREFERANS_ROOM_WORKER_URL ?? "http://127.0.0.1:8787");
+const verifyRelease30 = process.env.PREFERANS_VERIFY_RELEASE30 === "1";
 const fixture = JSON.parse(await readFile(new URL("../fixtures/create-game.json", import.meta.url), "utf8"));
 const id = (value: any): string => typeof value === "string" ? value : value.rawValue;
 const projectionOf = (frame: any): any => frame.message?.projection?._0?.projection;
@@ -108,6 +109,7 @@ for (const count of [3, 4]) {
   const started = performance.now();
   let sequence = 0, deals = 0, cards = 0, manager = 0;
   let completed = false, retried = false, managerRecovered = false;
+  let continuedWithoutManager = false;
   try {
     for (const seat of seats) accounts.push(await post("/v2/accounts/guest", { displayName: `Network QA ${seat.rawValue}` }));
     rooms.push(await post("/v2/rooms", {
@@ -154,9 +156,44 @@ for (const count of [3, 4]) {
         assert.ok(summary.dealsPlayed >= 3 && summary.dealsPlayed <= 4);
         assert.ok(Math.abs(summary.standings.reduce((sum: number, row: any) => sum + row.balance, 0)) < 1e-8);
         for (const projection of projections) assert.deepEqual(projection.phase.gameOver.summary, summary);
+        if (verifyRelease30) {
+          assert.ok(continuedWithoutManager, "The match must continue past an offline manager");
+          const expected = Object.fromEntries(summary.standings.map((row: any) => [id(row.player), row.balance]));
+          for (const account of accounts) {
+            const deadline = performance.now() + 3_000;
+            let result: any;
+            do {
+              const response = await fetch(new URL("/v2/my-games", baseURL), {
+                headers: { authorization: `Bearer ${account.sessionToken}` }, signal: AbortSignal.timeout(3_000)
+              });
+              assert.ok(response.ok, "QA history must be readable");
+              const library = await response.json() as { games: { roomCode: string; result?: unknown }[] };
+              result = library.games.find(game => game.roomCode === rooms[0].roomCode)?.result;
+              if (!result) await new Promise(resolve => setTimeout(resolve, 50));
+            } while (!result && performance.now() < deadline);
+            assert.deepEqual(result?.finalBalances, expected, "Every player's history must contain the authoritative balances");
+          }
+        }
         completed = true; break;
       }
       if (projections[0].legal.canStartDeal) {
+        if (verifyRelease30 && deals === 1 && !continuedWithoutManager) {
+          const offline = manager;
+          const observer = (offline + 1) % count;
+          sockets[offline].socket.close();
+          const presence = await sockets[observer].wait(frame => frame.type === "presence"
+            && !frame.connectedPlayerIDs.some((player: any) => id(player) === id(seats[offline])));
+          manager = seats.findIndex(seat => id(seat) === id(presence.room.hostPlayerID));
+          const actor = seats.findIndex((_, index) => index !== offline && index !== manager);
+          assert.ok(actor >= 0, "A connected non-manager must be available");
+          const receipt = await send(actor, packet(seats[actor], { startDeal: {} }), "accepted");
+          assert.equal(receipt.sequence, ++sequence);
+          deals++;
+          await rejoin(offline);
+          continuedWithoutManager = true;
+          console.log(`NETWORK seats=${count} phase=non-manager-next-deal-with-offline-peer revision=${sequence}`);
+          continue;
+        }
         deals++;
         const receipt = await send(manager, packet(seats[manager], { startDeal: {} }), "accepted");
         assert.equal(receipt.sequence, ++sequence);
