@@ -172,6 +172,57 @@ test("any seated player starts a later deal even while others are offline", asyn
   });
 });
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+test("a finished table records its result, drops private checkpoints and is wiped after retention", async () => {
+  await runInDurableObject(stub(), async (instance: any, state) => {
+    const room = initial(); await state.storage.put("room", room);
+    await state.storage.put("history:000000000000", { state: "private-0" });
+    instance.upsertLibraryEntry = async () => {};
+    const outcome = { winner: { rawValue: "north" }, finalBalances: { north: 20, east: -10, south: -10 } };
+    instance.engine = () => ({ fetch: async () => Response.json({ ...response(1), status: "finished", phase: "gameOver", result: outcome }) });
+    await instance.relayWireMessage(room, room.peers[0], { message: { clientAction: { _0: command() } } });
+    let saved = await state.storage.get<RoomState>("room");
+    expect(saved?.status).toBe("finished");
+    expect(saved?.summary?.result).toEqual(outcome);
+    expect(typeof saved?.terminalAt).toBe("string");
+
+    await instance.alarm();
+    saved = await state.storage.get<RoomState>("room");
+    expect(saved?.historyPurged).toBe(true);
+    expect((await state.storage.list({ prefix: "history:" })).size).toBe(0);
+    expect((await state.storage.list({ prefix: "command:" })).size).toBe(1); // late retries still get their receipt
+    expect(await state.storage.getAlarm()).toBeGreaterThan(Date.now() + 29 * DAY_MS);
+
+    await state.storage.put("room", { ...saved, terminalAt: new Date(Date.now() - 31 * DAY_MS).toISOString() });
+    await instance.alarm();
+    expect((await state.storage.list()).size).toBe(0);
+    expect(await state.storage.getAlarm()).toBeNull();
+  });
+});
+
+test("library work for deleted accounts cannot keep an expired table alive", async () => {
+  await runInDurableObject(stub(), async (instance: any, state) => {
+    // No account objects exist here, so every library call answers 401 account_not_found.
+    await state.storage.put("room", { ...initial(), status: "abandoned", libraryDirty: true, historyPurged: true,
+      libraryRemovalAccountIDs: ["guest:gone"], terminalAt: new Date(Date.now() - 31 * DAY_MS).toISOString() });
+    await instance.alarm();
+    expect(await state.storage.get("room")).toBeUndefined();
+  });
+});
+
+test("an unfinished table is never purged", async () => {
+  await runInDurableObject(stub(), async (instance: any, state) => {
+    const playing = adoptingEngineResponse(initial(), response(3));
+    await state.storage.put("room", { ...playing, updatedAt: new Date(Date.now() - 400 * DAY_MS).toISOString() });
+    await state.storage.put("history:000000000003", { state: "private-3" });
+    instance.upsertLibraryEntry = async () => {};
+    await instance.alarm();
+    expect((await state.storage.get<RoomState>("room"))?.status).toBe("playing");
+    expect((await state.storage.list({ prefix: "history:" })).size).toBe(1);
+  });
+});
+
 test("fresh socket resumes from storage without calling Swift", async () => {
   const roomStub = stub();
   const token = await runInDurableObject(roomStub, async (_instance: any, state) => {

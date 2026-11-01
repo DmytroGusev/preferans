@@ -81,6 +81,10 @@ export interface OnlinePeer {
 }
 
 export interface RoomState {
+  /// When the table first became `finished`/`abandoned`; starts the retention clock.
+  terminalAt?: string;
+  /// True once the private `history:*` checkpoints of a terminal table are gone.
+  historyPurged?: boolean;
   visibility?: "private" | "public";
   readyPlayerIDs?: string[];
   directoryRevision?: number;
@@ -265,9 +269,11 @@ export function peerID(peer: Pick<OnlinePeer, "playerID">): string {
 }
 
 // Only a server-authenticated caller may retain its own global ID for client seat lookup.
+// Every other human is masked in public *and* private rooms: a room code is shared
+// freely, and must not reveal account identifiers such as `apple:<sub>`.
 export function publicPeer(room: RoomState, peer: OnlinePeer, callerAccountID?: string): OnlinePeer {
   const normalized = normalizePeer(peer);
-  if (room.visibility !== "public" || !isHumanAccount(peer.accountID) || peer.accountID === callerAccountID) {
+  if (!isHumanAccount(peer.accountID) || peer.accountID === callerAccountID) {
     return normalized;
   }
   return { ...normalized, accountID: `seat:${room.roomCode}:${peerID(peer)}`, provider: "dev" };

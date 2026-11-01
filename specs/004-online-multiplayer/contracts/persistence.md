@@ -72,10 +72,10 @@ All operations run through a per-instance `MutationQueue`.
 
 | Data | Retained until |
 | --- | --- |
-| Room record (incl. projections of finished games) | forever (no TTL) |
+| Room record (incl. projections of finished games) | unfinished: forever. Finished/abandoned: 30 days after `terminalAt`, then the whole Durable Object is wiped (`TERMINAL_ROOM_RETENTION_MS`) |
 | Live private engine state | finish (dropped), abandon (dropped), account deletion of a seated player in non-lobby rooms (dropped) |
-| Revision checkpoints (complete private states) | forever, unless a participant deletes their account |
-| Command receipts | forever, per account until that account is deleted |
+| Revision checkpoints (complete private states) | until the table ends: deleted by the next alarm after `finished`/`abandoned` (`historyPurged`), or when a participant deletes their account |
+| Command receipts | until the 30-day wipe of a terminal table (late retries still get their receipt); per account until that account is deleted |
 | Library rows | forever; removed only by `/leave` (public lobby) or account deletion |
 | Sessions | 180 days; pruned lazily when a new session is issued; account deletion |
 | Directory listings | 90 s lease |

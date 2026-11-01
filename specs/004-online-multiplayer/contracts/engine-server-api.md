@@ -77,6 +77,7 @@ Response **200** `AuthoritativeGameResponse`.
 | `status` | `"lobby" \| "playing" \| "finished"` | `waitingForDeal` & sequence 0 → lobby; `gameOver` → finished; else playing |
 | `dealNumber` | Int | `engine.dealsPlayed + 1` |
 | `phase` | string | `projections.first.projection.phase.token` (fallback `waitingForDeal`) |
+| `result` | `{winner?: PlayerID, finalBalances: {seat: Double}}`? | Only when `status == finished`: `MatchSummary.soleWinner` (absent on a shared lead) and every seat's final normalized balance (`AuthoritativeGameResult`) |
 
 Worker validation (`adoptingEngineResponse`) — any failure → `engine_invalid_response` 502, nothing committed:
 
@@ -86,7 +87,7 @@ Worker validation (`adoptingEngineResponse`) — any failure → `engine_invalid
 - `tableID` equals the stored `authoritativeTableID` (if any);
 - outside the lobby `sequence ≥ authoritativeSequence`.
 
-On adoption: `authoritativeState = (status == finished ? undefined : state)`, `authoritativeSequence`, `authoritativeTableID`, `authoritativeProjections` (public rooms masked), `status`, `botPending`, `summary {variant, lastSequence, phase, dealNumber}`.
+On adoption: `authoritativeState = (status == finished ? undefined : state)`, `authoritativeSequence`, `authoritativeTableID`, `authoritativeProjections` (masked in every room), `status`, `botPending`, `summary {variant, lastSequence, phase, dealNumber, result}` (`result` only when finished and valid, `matchResult`).
 
 ## Test evidence
 

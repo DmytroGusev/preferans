@@ -76,7 +76,8 @@ test("public library rosters preserve only their owner's global identity", () =>
   assert.equal(northEntry.peers[1].accountID, "bot:east");
   assert.ok(!JSON.stringify(northEntry).includes(south.accountID));
   assert.ok(!JSON.stringify(southEntry).includes(north.accountID));
-  assert.equal(buildSummaryEntry({ ...room, visibility: "private" }, north).peers[2].accountID, south.accountID);
+  assert.equal(buildSummaryEntry({ ...room, visibility: "private" }, north).peers[2].accountID, "seat:ROOM1:south");
+  assert.equal(buildSummaryEntry({ ...room, visibility: "private" }, north).peers[0].accountID, north.accountID);
 });
 
 test("upsertGame replaces the entry for the same room instead of duplicating it", () => {

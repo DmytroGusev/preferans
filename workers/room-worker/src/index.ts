@@ -71,6 +71,13 @@ import {
 
 const ROOM_STORAGE_KEY = "room";
 const BOT_MOVE_DELAY_MS = 500; // Matches BotPacing.interactive; server-owned presentation cadence.
+/// Finished/abandoned tables keep their non-private record (receipts for late
+/// retries, final projections, seats) this long and are then wiped. Private
+/// engine checkpoints (`history:*`) are deleted as soon as the table ends.
+const TERMINAL_ROOM_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const STORAGE_DELETE_BATCH = 128; // Durable Object `delete(keys[])` limit.
+/// The account no longer exists, so there is no library left to update.
+const GONE_ACCOUNT_STATUSES = new Set([401, 404, 410]);
 const ACCOUNT_STORAGE_KEY = "account";
 const APP_ID = "3WSQ6X9CDT.com.mixandmatch.preferans";
 const DEFAULT_APPLE_AUDIENCE = "com.mixandmatch.preferans";
@@ -747,7 +754,8 @@ export class PreferansTable {
       const previous = await txn.get<RoomState>(ROOM_STORAGE_KEY);
       await txn.put(ROOM_STORAGE_KEY, { ...room, botPending: room.status === "playing" && room.botPending, libraryDirty: true,
         directoryDirty: room.visibility === "public",
-        directoryRevision: (previous?.directoryRevision ?? 0) + 1 });
+        directoryRevision: (previous?.directoryRevision ?? 0) + 1,
+        terminalAt: isTerminalRoom(room) ? (room.terminalAt ?? previous?.terminalAt ?? new Date().toISOString()) : undefined });
       if (key && command) await txn.put(key, { fingerprint: command.fingerprint, receipt: command.receipt });
       const historyKey = `history:${String(room.authoritativeSequence).padStart(12, "0")}`;
       if (room.authoritativeState && (room.authoritativeSequence === 0 || !(await txn.get(historyKey)))) await txn.put(historyKey, {
@@ -799,7 +807,8 @@ export class PreferansTable {
       }
       if (room.libraryDirty) {
         const results = await Promise.allSettled(humanPeers(room).map(peer => this.upsertLibraryEntry(room!, peer)));
-        if (results.every(result => result.status === "fulfilled")) {
+        if (results.every(result => result.status === "fulfilled"
+            || (result.reason instanceof AccountStateError && GONE_ACCOUNT_STATUSES.has(result.reason.status)))) {
           room = { ...room, libraryDirty: false };
           await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
         }
@@ -813,21 +822,54 @@ export class PreferansTable {
               method: "POST", headers: { "content-type": "application/json" },
               body: JSON.stringify({ roomCode: room.roomCode }), signal: AbortSignal.timeout(3_000)
             });
-            if (!response.ok && response.status !== 404 && response.status !== 410) pending.push(accountID);
+            if (!response.ok && !GONE_ACCOUNT_STATUSES.has(response.status)) pending.push(accountID);
           } catch { pending.push(accountID); }
         }
         room = { ...room, libraryRemovalAccountIDs: pending };
         await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
       }
-      if (room.botPending || room.libraryDirty || room.directoryDirty || room.libraryRemovalAccountIDs?.length) {
+      const outboxPending = Boolean(room.botPending || room.libraryDirty || room.directoryDirty || room.libraryRemovalAccountIDs?.length);
+      if (isTerminalRoom(room)) {
+        if (!room.historyPurged && await this.purgeHistory()) {
+          room = { ...room, historyPurged: true };
+          await this.ctx.storage.put(ROOM_STORAGE_KEY, room);
+        }
+        // Only after every library holds the final result and the directory
+        // has dropped the listing; otherwise those deliveries would be lost.
+        if (room.historyPurged && !outboxPending && Date.now() >= retentionDeadline(room)) {
+          await this.purgeTerminalRoom();
+          return;
+        }
+      }
+      if (outboxPending) {
         const delay = room.retryCount ? Math.min(60_000, 1_000 * 2 ** room.retryCount) : (room.botPending ? BOT_MOVE_DELAY_MS : 5_000);
         await this.ctx.storage.setAlarm(Date.now() + delay);
       } else if (room.visibility === "public" && publicTableEntry(room, new Set(this.activePlayerIDs()))) {
         await this.ctx.storage.setAlarm(Date.now() + 30_000);
+      } else if (isTerminalRoom(room)) {
+        await this.ctx.storage.setAlarm(room.historyPurged ? retentionDeadline(room) : Date.now() + 1_000);
       } else {
         await this.ctx.storage.deleteAlarm();
       }
     });
+  }
+
+  /// Deletes private engine checkpoints in bounded pages; true once none remain.
+  private async purgeHistory(maxPages = 8): Promise<boolean> {
+    for (let page = 0; page < maxPages; page++) {
+      const keys = [...(await this.ctx.storage.list({ prefix: "history:", limit: STORAGE_DELETE_BATCH })).keys()];
+      if (keys.length === 0) return true;
+      await this.ctx.storage.delete(keys);
+    }
+    return (await this.ctx.storage.list({ prefix: "history:", limit: 1 })).size === 0;
+  }
+
+  /// End of retention: close lingering sockets and wipe the object. A client
+  /// that reconnects gets 404 and shows "This table no longer exists".
+  private async purgeTerminalRoom(): Promise<void> {
+    for (const socket of this.ctx.getWebSockets()) socket.close(1000, "table_expired");
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
   }
 
   private broadcastAuthoritativeProjections(room: RoomState, serverSequence: number, sentAt: string): void {
@@ -989,6 +1031,16 @@ export class PreferansTable {
     await this.fanOutToLibraries(updated);
     return updated;
   }
+}
+
+function isTerminalRoom(room: RoomState): boolean {
+  return room.status === "finished" || room.status === "abandoned";
+}
+
+/// Rooms that ended before `terminalAt` existed age from their last update.
+function retentionDeadline(room: RoomState): number {
+  const since = Date.parse(room.terminalAt ?? room.updatedAt);
+  return (Number.isFinite(since) ? since : Date.now()) + TERMINAL_ROOM_RETENTION_MS;
 }
 
 function libraryProgressSignature(room: RoomState): string {

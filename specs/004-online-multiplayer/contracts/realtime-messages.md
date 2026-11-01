@@ -92,7 +92,7 @@ Client acceptance: schema 4 and `hostEpoch ≥ known` (no relay-sequence check, 
 
 ```json
 {"type":"wire","authority":"server",
- "sender": <OnlinePeer: room.peers[0], masked for public rooms>,
+ "sender": <OnlinePeer: room.peers[0], masked unless it is the recipient>,
  "message":{"projection":{"_0": <ProjectionEnvelope>}},
  "serverSequence": <room.relaySequence>, "sentAt":"<ISO>"}
 ```

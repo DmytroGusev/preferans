@@ -149,6 +149,27 @@ public struct AuthoritativeCommandRequest: Codable, Equatable, Sendable {
     }
 }
 
+/// Public match outcome for the players' "Your games" history. Only seat IDs
+/// and final balances: nothing private, nothing account-specific.
+public struct AuthoritativeGameResult: Codable, Equatable, Sendable {
+    /// The sole leader; `nil` when the top balance is shared.
+    public var winner: PlayerID?
+    /// Final normalized whist balance per seat (`PlayerID.rawValue` → balance).
+    public var finalBalances: [String: Double]
+
+    public init(winner: PlayerID?, finalBalances: [String: Double]) {
+        self.winner = winner
+        self.finalBalances = finalBalances
+    }
+
+    public init(summary: MatchSummary) {
+        self.init(
+            winner: summary.soleWinner,
+            finalBalances: Dictionary(uniqueKeysWithValues: summary.standings.map { ($0.player.rawValue, $0.balance) })
+        )
+    }
+}
+
 public struct AuthoritativeGameResponse: Codable, Equatable, Sendable {
     public var engineVersion: String = AuthoritativeGameState.engineVersion
     public var botPending: Bool = false
@@ -158,6 +179,8 @@ public struct AuthoritativeGameResponse: Codable, Equatable, Sendable {
     public var status: PreferansGameStatus
     public var dealNumber: Int
     public var phase: String
+    /// Present only once `status == .finished`.
+    public var result: AuthoritativeGameResult?
 
     public init(
         state: String,
@@ -380,6 +403,9 @@ public enum AuthoritativeGameService {
         )
         if let actor = engine.state.currentActor {
             result.botPending = state.botProfiles[engine.controllingActor(of: actor)] != nil
+        }
+        if case let .gameOver(summary) = engine.state {
+            result.result = AuthoritativeGameResult(summary: summary)
         }
         return result
     }

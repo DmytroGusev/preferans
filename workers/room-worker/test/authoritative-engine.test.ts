@@ -6,6 +6,7 @@ import {
   clientActionFromWireMessage,
   createAuthoritativeGame,
   isStartDealCommand,
+  matchResult,
   projectionWireMessage,
   validateStartDealAuthority,
   type AuthoritativeEngineBinding,
@@ -79,7 +80,8 @@ test("create sends identities/configuration and stores only opaque state plus re
   assert.equal(created.summary?.variant, "odesa");
 
   const request = captured as Record<string, any>;
-  assert.equal(request.identities[0].gamePlayerID, "guest:north");
+  // The engine never learns account IDs, in private rooms as in public ones.
+  assert.equal(request.identities[0].gamePlayerID, "seat:ROOM1:north");
   assert.deepEqual(request.botProfiles, [
     { rawValue: "south" },
     { difficulty: "seasoned", temperament: "adaptive" }
@@ -145,9 +147,10 @@ test("public engine identities and legacy projections use stable room-scoped IDs
   const wire = projectionWireMessage(legacy.projections[0], publicRoom) as any;
   assert.equal(wire.projection._0.projection.identities[0].gamePlayerID, sent.identities[0].gamePlayerID);
   assert.equal(identities[0].gamePlayerID, north.accountID);
-  assert.deepEqual(projectionWireMessage(legacy.projections[0], room()), {
-    projection: { _0: legacy.projections[0] }
-  });
+  // Private rooms re-mask legacy projections at delivery too.
+  const privateWire = projectionWireMessage(legacy.projections[0], room()) as any;
+  assert.equal(privateWire.projection._0.projection.identities[0].gamePlayerID, "seat:ROOM1:north");
+  assert.ok(!JSON.stringify(privateWire).includes(north.accountID));
   const otherRoom = projectionWireMessage(legacy.projections[0], { ...publicRoom, roomCode: "ROOM2" }) as any;
   assert.notEqual(otherRoom.projection._0.projection.identities[0].gamePlayerID, sent.identities[0].gamePlayerID);
 });
@@ -196,4 +199,23 @@ test("any seated human can start a later deal without waiting for absent players
   ), /seated player/);
   // The first deal keeps the lobby gate.
   assert.throws(() => validateStartDealAuthority(room(), east, new Set(["north", "east"])), /lobby manager/);
+});
+
+test("only a well-formed result naming this room's seats reaches Your games", () => {
+  const balances = { north: 12.5, east: -2.5, south: -10 };
+  assert.deepEqual(matchResult(room(), { winner: { rawValue: "north" }, finalBalances: balances }),
+    { winner: { rawValue: "north" }, finalBalances: balances });
+  assert.deepEqual(matchResult(room(), { finalBalances: balances }), { finalBalances: balances }, "a shared lead has no winner");
+  assert.equal(matchResult(room(), { winner: { rawValue: "west" }, finalBalances: balances }), undefined);
+  assert.equal(matchResult(room(), { finalBalances: { ...balances, west: 0 } }), undefined);
+  assert.equal(matchResult(room(), { finalBalances: { north: 1, east: -1 } }), undefined);
+  assert.equal(matchResult(room(), { finalBalances: { ...balances, south: Number.NaN } }), undefined);
+  assert.equal(matchResult(room(), undefined), undefined);
+
+  const outcome = { winner: { rawValue: "east" }, finalBalances: balances };
+  const finished = adoptingEngineResponse(room(), { ...response(9), status: "finished", phase: "gameOver", result: outcome });
+  assert.deepEqual(finished.summary?.result, outcome);
+  assert.equal(finished.authoritativeState, undefined);
+  const playing = adoptingEngineResponse(room(), { ...response(9), result: outcome });
+  assert.equal(playing.summary?.result, undefined, "results only accompany a finished match");
 });
