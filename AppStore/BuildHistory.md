@@ -17,6 +17,9 @@ This file records App Store/TestFlight build provenance and review-facing change
 - Full evidence, test caveats and rollback: `docs/OWNER_MULTIPLAYER_BUILD30.md`
   and `AppStore/Release30/`.
 - Release tag: `testflight/1.0.3-build-30`.
+- Follow-up authorization: added build 30 to the existing external group with all
+  five saved testers, automatic notification enabled; Beta App Review submitted
+  2026-11-01, status `WAITING_FOR_REVIEW`. Public release submission unchanged.
 
 ## 1.0.2 (28) - Internal TestFlight and European Store Metadata
 

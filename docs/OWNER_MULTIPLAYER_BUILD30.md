@@ -68,13 +68,29 @@ need owner testing. Automated network checks do not prove every gameplay scenari
 
 ## Delivery And Rollback
 
-TestFlight only: no external beta review, App Review submission, new screenshots,
-keyword edits or public release. The draft 1.0.3 stays on build 29 and published
+The initial upload was internal TestFlight only: no external beta review,
+App Review submission, new screenshots, keyword edits or public release.
+The draft 1.0.3 stays on build 29 and published
 1.0.2 stays on build 28. `store-after.json` verifies protected metadata unchanged.
 
-Both existing internal TestFlight groups are linked, but have zero testers.
-Build state is `READY_FOR_BETA_TESTING`; an Apple ID email/group membership is
-still needed for an actual invitation. Do not describe this as delivered access.
+At initial upload both existing internal TestFlight groups were linked but had
+zero testers. Internal state was `READY_FOR_BETA_TESTING`, not delivered tester
+access. The subsequent external-testing authorization below resolves distribution
+through the existing external group rather than adding internal members.
+
+### External Testing Follow-up
+
+The owner then authorized external testing for all existing addresses. The
+existing external group `Pediki` already contained every one of the app's five
+testers. Build 30 was attached without changing memberships or enabling a public
+link. Beta description and reviewer instructions were completed, and automatic
+notification was enabled. No email addresses are included in release evidence.
+
+Beta App Review was submitted at 19:19:38 UTC on 1 November 2026. The immediate
+readback is `WAITING_FOR_BETA_REVIEW` / `WAITING_FOR_REVIEW`, not yet available
+for external installation. Automatic notification is enabled for after approval.
+See `AppStore/Release30/external-testing.json` for the receipt. This follow-up
+does not submit the public App Store version for review or alter its build.
 
 For client rollback, select build 29 in TestFlight; it uses the same owner backend.
 For a server regression, redeploy the prior owner configuration/image using the
