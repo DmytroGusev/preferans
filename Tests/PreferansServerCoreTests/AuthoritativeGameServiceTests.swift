@@ -41,8 +41,15 @@ final class AuthoritativeGameServiceTests: XCTestCase {
                 }
                 XCTAssertEqual(result.projections.count, count)
                 XCTAssertTrue(result.projections.allSatisfy { $0.sequence == result.sequence })
+                if result.status != .finished { XCTAssertNil(result.result) }
             }
             XCTAssertEqual(result.status, .finished, "A bounded match must not stall")
+            let outcome = try XCTUnwrap(result.result, "A finished match reports its outcome for Your games")
+            XCTAssertEqual(Set(outcome.finalBalances.keys), Set(seats.map(\.rawValue)))
+            XCTAssertEqual(outcome.finalBalances.values.reduce(0, +), 0, accuracy: 0.0001, "Balances are zero-sum")
+            if let winner = outcome.winner {
+                XCTAssertEqual(outcome.finalBalances[winner.rawValue], outcome.finalBalances.values.max())
+            }
         }
     }
 

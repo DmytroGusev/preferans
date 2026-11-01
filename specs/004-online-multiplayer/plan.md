@@ -294,4 +294,4 @@ flowchart TD
 - **Serialization boundary.** A single in-memory `MutationQueue` per DO instance (not a storage lock) prevents interleaving across the awaited engine fetch; correctness relies on DO single-instance semantics.
 - **Write amplification.** Every commit marks `libraryDirty`, so each move triggers one account-DO write per human seat on the next alarm; public rooms also rewrite `room` on every presence broadcast (`directoryRevision`).
 - **Two sequence counters.** Engine `sequence` (revision; human + bot moves) gates client acceptance; `relaySequence` (human commands only) is carried as `serverSequence` and used by the transport only as a floor for `room` frames.
-- **Identity masking** is applied at four points (room summaries, library entries, engine identities for public rooms, and re-masking of stored projections on delivery) because of a retrofit for rooms saved before the privacy fix.
+- **Identity masking** is applied at four points, in public and private rooms alike (room summaries, library entries, engine identities, and re-masking of stored projections on delivery) because of a retrofit for rooms saved before the privacy fix.

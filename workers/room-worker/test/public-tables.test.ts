@@ -67,7 +67,8 @@ test("public rosters mask other accounts but preserve the authenticated caller a
   const rejoined = joinRoom(state, peer("south", "apple:private-subject"));
   assert.equal(publicRoom(rejoined).peers[1].accountID, anonymous.peers[1].accountID);
   assert.notEqual(publicRoom({ ...state, roomCode: "OTHER1" }).peers[1].accountID, anonymous.peers[1].accountID);
-  assert.equal(publicRoom({ ...state, visibility: "private" }).peers[0].accountID, "guest:north");
+  assert.equal(publicRoom({ ...state, visibility: "private" }).peers[0].accountID, "seat:PUBLIC:north");
+  assert.equal(publicRoom({ ...state, visibility: "private" }, "apple:private-subject").peers[1].accountID, "apple:private-subject");
   assert.equal(state.peers[1].accountID, "apple:private-subject");
 });
 

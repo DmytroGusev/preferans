@@ -1,6 +1,7 @@
 import {
   BOT_ACCOUNT_PREFIX,
   PENDING_ACCOUNT_PREFIX,
+  type GameResultSummary,
   type OnlinePeer,
   type RoomState,
   RoomStateError,
@@ -28,6 +29,8 @@ export interface AuthoritativeGameResponse {
   status: "lobby" | "playing" | "finished";
   dealNumber: number;
   phase: string;
+  /// Present once `status === "finished"` (winner seat + final balances).
+  result?: unknown;
 }
 
 export interface EngineCommandEnvelope {
@@ -162,10 +165,29 @@ export function adoptingEngineResponse(
       variant: room.engineConfiguration?.variant,
       lastSequence: response.sequence,
       phase,
-      dealNumber: response.dealNumber
+      dealNumber: response.dealNumber,
+      result: status === "finished" ? matchResult(room, response.result) : undefined
     },
     updatedAt: now
   };
+}
+
+/// Accept the engine's outcome only when it names this room's seats with finite
+/// balances. A malformed summary is dropped rather than failing the final move:
+/// history without a winner is better than a match that cannot finish.
+export function matchResult(room: RoomState, value: unknown): GameResultSummary | undefined {
+  if (!isRecord(value) || !isRecord(value.finalBalances)) return undefined;
+  const seats = new Set(room.peers.map(peerID));
+  const finalBalances: Record<string, number> = {};
+  for (const [seat, balance] of Object.entries(value.finalBalances)) {
+    if (!seats.has(seat) || typeof balance !== "number" || !Number.isFinite(balance)) return undefined;
+    finalBalances[seat] = balance;
+  }
+  if (Object.keys(finalBalances).length !== seats.size) return undefined;
+  if (value.winner === undefined || value.winner === null) return { finalBalances };
+  const winner = isRecord(value.winner) && typeof value.winner.rawValue === "string" ? value.winner.rawValue : undefined;
+  if (!winner || !seats.has(winner)) return undefined;
+  return { winner: { rawValue: winner }, finalBalances };
 }
 
 export function clientActionFromWireMessage(message: unknown): EngineCommandEnvelope | undefined {
@@ -226,7 +248,7 @@ export function validateStartDealAuthority(
 }
 
 function publicProjection(room: RoomState, envelope: unknown): unknown {
-  if (room.visibility !== "public" || !isRecord(envelope) || !isRecord(envelope.projection)
+  if (!isRecord(envelope) || !isRecord(envelope.projection)
       || !Array.isArray(envelope.projection.identities)) return envelope;
   return { ...envelope, projection: { ...envelope.projection,
     identities: envelope.projection.identities.map((identity: unknown) => {

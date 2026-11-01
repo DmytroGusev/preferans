@@ -157,7 +157,7 @@ Errors: 404 `room_not_found`, 410 `room_upgrade_required`, 409 `room_full`, 409 
 
 ### `GET /v2/rooms/{code}`
 
-Auth: **none**. Response **200** `PublicRoom` with no caller (all humans masked in public rooms; real account IDs in private rooms). Errors: 404, 410.
+Auth: **none**. Response **200** `PublicRoom` with no caller (all humans masked, in public and private rooms). Errors: 404, 410.
 
 ### `POST /v2/rooms/{code}/seats/fill-bots`
 

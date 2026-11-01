@@ -30,7 +30,7 @@ Conventions:
 | `relaySequence` | number | Count of accepted *human* commands; safe-integer guarded (`recordRelay`), sent as `serverSequence` |
 | `status` | `"lobby" \| "playing" \| "finished" \| "abandoned"` | Mirrors engine status except `abandoned` (Worker-only) |
 | `readyPlayerIDs` | string[]? | Seats that confirmed Ready (public lobby only) |
-| `summary` | `GameSummary`? | `{variant?, lastSequence, phase?, dealNumber?, result?}` — server-authored progress metadata; `result` is never populated (spec gap 1) |
+| `summary` | `GameSummary`? | `{variant?, lastSequence, phase?, dealNumber?, result?}` — server-authored progress metadata; `result {winner?, finalBalances}` is set once `status = finished` (validated by `matchResult`) |
 | `engineConfiguration` | `{rules, match, variant?}` | Opaque Swift `PreferansRules` / `MatchSettings` JSON; immutable; `variant` ≤ 32 chars |
 | `engineVersion` | string? | `"preferans-1"` once the engine answered |
 | `authoritativeState` | string? | Opaque JSON of Swift `AuthoritativeGameState`; dropped when finished or abandoned |
