@@ -174,6 +174,9 @@ public struct LobbyView: View {
         .onOpenURL { url in
             viewModel.handleInviteURL(url)
         }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { viewModel.handleInviteURL(url) }
+        }
     }
 
     private func runOnlineHarnessIfNeeded() {

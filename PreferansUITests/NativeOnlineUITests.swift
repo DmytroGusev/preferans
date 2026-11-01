@@ -6,8 +6,8 @@ import PreferansEngine
 /// Run the services described in workers/room-worker/README.md first.
 /// Credentials use the app's isolated DEBUG loopback namespace.
 @MainActor
-final class NativeOnlineUITests: XCTestCase {
-    private let baseURL = URL(string: "http://127.0.0.1:8787")!
+class NativeOnlineUITests: XCTestCase {
+    var baseURL: URL { URL(string: "http://127.0.0.1:8787")! }
     private var peerTokens: [String] = []
     private var sockets: [URLSessionWebSocketTask] = []
 
@@ -212,6 +212,38 @@ final class NativeOnlineUITests: XCTestCase {
         try deleteNativeAccount(in: app)
     }
 
+    func testNativeHostCreatesDiscoverablePublicTable() async throws {
+        let app = try launchApp()
+        try registerNativeGuest(in: app, name: "QA Native Public Host")
+        let observer = try await registerPeer("QA Public Observer")
+        let refresh = app.buttons["online.refreshTables"]
+        try reveal(refresh, in: app)
+        refresh.tap()
+        let createSettings = app.buttons["online.createTable"].firstMatch
+        try reveal(createSettings, in: app)
+        createSettings.tap()
+        let create = app.buttons[UIIdentifiers.onlineCreateRoom]
+        try reveal(create, in: app)
+        try require(create.label.contains("Open public table"), "Discovery must lead to public, not invite-only creation")
+        create.tap()
+        let codeElement = app.staticTexts[UIIdentifiers.onlineRoomCode]
+        try require(codeElement.waitForExistence(timeout: 3))
+        let code = try XCTUnwrap(codeElement.value as? String)
+        print("[public-online] wait for the connected host's directory outbox")
+        let deadline = Date().addingTimeInterval(3)
+        var discovered = false
+        repeat {
+            let listing = try await request("GET", "/v2/public-tables", token: observer)
+            let tables = try XCTUnwrap(listing["tables"] as? [[String: Any]])
+            discovered = tables.contains { $0["roomCode"] as? String == code }
+            if !discovered { try await Task.sleep(for: .milliseconds(100)) }
+        } while !discovered && Date() < deadline
+        try require(discovered, "Native host's table must be discoverable by another account")
+        try require(app.buttons["online.confirmReady"].exists)
+        try leaveTable(in: app, expectedMessage: "Your seat will become available to another player.")
+        try deleteNativeAccount(in: app)
+    }
+
     private func launchApp() throws -> XCUIApplication {
         let app = XCUIApplication()
         app.disableUITestAnimations()
@@ -240,12 +272,13 @@ final class NativeOnlineUITests: XCTestCase {
         capture(app, "native-account-registered")
     }
 
-    private func leaveTable(in app: XCUIApplication, captureName: String? = nil) throws {
+    private func leaveTable(in app: XCUIApplication, captureName: String? = nil,
+                            expectedMessage: String = "You can return to this game from Your games in the lobby.") throws {
         app.buttons[UIIdentifiers.buttonLeaveTable].tap()
         let alert = app.alerts.firstMatch
         try require(alert.waitForExistence(timeout: 2))
         try require(alert.buttons["Stay"].exists)
-        try require(alert.staticTexts["You can return to this game from Your games in the lobby."].exists)
+        try require(alert.staticTexts[expectedMessage].exists)
         if let captureName { capture(app, captureName) }
         alert.buttons["Leave table"].tap()
         try require(app.buttons[UIIdentifiers.lobbySettingsButton].waitForExistence(timeout: 3))
@@ -329,7 +362,7 @@ final class NativeOnlineUITests: XCTestCase {
     private func connect(_ room: [String: Any]) async throws -> URLSessionWebSocketTask {
         let raw = try XCTUnwrap(room["websocketURL"] as? String)
         let url = try XCTUnwrap(URL(string: raw))
-        XCTAssertEqual(url.host, "127.0.0.1")
+        XCTAssertEqual(url.host, baseURL.host)
         let socket = URLSession.shared.webSocketTask(with: url)
         sockets.append(socket)
         socket.resume()
@@ -403,5 +436,18 @@ final class NativeOnlineUITests: XCTestCase {
             if envelope?["sequence"] as? Int == sequence { return }
         }
         try require(false, "An independent peer did not receive the native player's committed action")
+    }
+}
+
+/// Explicitly opt into this suite only against the newly provisioned owner server.
+/// Run on a dedicated QA simulator; all accounts created here are deleted.
+final class OwnerOnlineUITests: NativeOnlineUITests {
+    override var baseURL: URL { URL(string: "https://preferans-room-worker.dmytro-gusev.workers.dev")! }
+
+    override func setUp() async throws {
+        guard ProcessInfo.processInfo.environment["PREFERANS_OWNER_SERVER_QA"] == "1" else {
+            throw XCTSkip("Live owner-server QA requires TEST_RUNNER_PREFERANS_OWNER_SERVER_QA=1 and a dedicated simulator")
+        }
+        try await super.setUp()
     }
 }

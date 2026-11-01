@@ -1,0 +1,15 @@
+{
+  "groups": [
+    {
+      "id": "0702be10-ea15-4148-af56-212045b44fa2",
+      "name": "Testers",
+      "testers": 0
+    },
+    {
+      "id": "541111df-ebdb-4219-82d7-56897125380f",
+      "name": "Pediki",
+      "testers": 0
+    }
+  ],
+  "externalReviewSubmitted": false
+}

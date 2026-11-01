@@ -6,7 +6,7 @@ public enum AppIdentifiers {
     public static let gameCenterActivityID = "com.mixandmatch.preferans.activity.table"
 
     public static let roomWorkerBaseURL = localTestRoomWorkerURL
-        ?? URL(string: "https://preferans-room-worker.ontofractal.workers.dev")!
+        ?? URL(string: "https://preferans-room-worker.dmytro-gusev.workers.dev")!
     public static let inviteBaseURL = roomWorkerBaseURL
 
     private static var localTestRoomWorkerURL: URL? {
@@ -21,7 +21,9 @@ public enum AppIdentifiers {
     /// saved credentials. Relaunches retain the isolated QA identity so the
     /// native resume and account-deletion paths can be exercised.
     static var onlineStorageSuffix: String {
-        guard let url = localTestRoomWorkerURL else { return "" }
+        // Never send the old server's bearer/seat credentials to the new backend.
+        // Preserve legacy storage so this update does not erase old account data.
+        guard let url = localTestRoomWorkerURL else { return ".owner-v1" }
         return ".uiTestLocal.\(url.host ?? "localhost").\(url.port ?? 80)"
     }
 

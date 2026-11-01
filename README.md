@@ -2,6 +2,10 @@
 
 Preferans is a SwiftUI iOS card game for local play and online rooms with friends.
 
+## Documentation
+
+Full as-built specifications (rules, scoring, bots, online backend, app, testing and release) live in [`specs/`](specs/README.md), in GitHub spec-kit format. Start with the [system overview](specs/000-system-overview/spec.md) and the [quickstart](specs/000-system-overview/quickstart.md). Engineering principles are in [`.specify/memory/constitution.md`](.specify/memory/constitution.md).
+
 ## What is included
 
 - Xcode project: `Preferans.xcodeproj`

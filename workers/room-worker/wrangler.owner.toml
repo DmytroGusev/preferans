@@ -1,0 +1,43 @@
+# Fresh destination only. This is not a migration of the friend's rooms/accounts.
+name = "preferans-room-worker"
+account_id = "df302a84563143eb92fc75a7277079ec"
+main = "src/index.ts"
+compatibility_date = "2026-04-07"
+workers_dev = true
+preview_urls = false
+
+[vars]
+APPLE_CLIENT_ID = "com.mixandmatch.preferans"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "PreferansTable"
+
+[[durable_objects.bindings]]
+name = "ACCOUNTS"
+class_name = "PlayerAccountV2"
+
+[[durable_objects.bindings]]
+name = "ENGINE"
+class_name = "PreferansEngineContainer"
+
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "PublicTableDirectory"
+
+[[containers]]
+class_name = "PreferansEngineContainer"
+image = "registry.cloudflare.com/df302a84563143eb92fc75a7277079ec/preferans-engine@sha256:2aef1184f568365af0d18f0054193590cbf44ef389a128a964add72ba9b091bf"
+max_instances = 3
+
+[[migrations]]
+tag = "owner-v1-bootstrap"
+new_sqlite_classes = ["PreferansTable", "PlayerAccountV2", "PreferansEngineContainer", "PublicTableDirectory"]
+
+[[ratelimits]]
+name = "REQUEST_LIMIT"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
+
+[observability]
+enabled = true

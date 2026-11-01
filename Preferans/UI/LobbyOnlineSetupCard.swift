@@ -26,7 +26,7 @@ extension LobbyView {
                     .buttonStyle(.feltSecondary)
                     .accessibilityIdentifier("online.findTable")
                     Button {
-                        viewModel.prepareOnlineTableCreation()
+                        viewModel.prepareOnlineTableCreation(publicTablesAvailable: publicLobby.hasLoaded && publicLobby.errorText == nil)
                     } label: {
                         Label("Create a table", systemImage: "plus")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -40,6 +40,8 @@ extension LobbyView {
             }
             onlineJoinSection
             if viewModel.onlineIntent == .createTable {
+                Text("Choose your table settings, then tap Open public table or Create invite link below.")
+                    .font(.footnote).foregroundStyle(theme.textSecondary)
                 onlinePanel(title: "Who can join?", icon: "person.2.fill") {
                     Picker("Who can join?", selection: $viewModel.onlineTableVisibility) {
                         Text("Public table").tag(OnlineTableVisibility.publicTable)
@@ -405,7 +407,8 @@ extension LobbyView {
                         Image(systemName: "person.3.sequence.fill")
                     }
                     Group {
-                        if viewModel.onlineTableVisibility == .publicTable { Text("Open public table") }
+                        if viewModel.isOnlineRoomLoading { Text("Opening your table…") }
+                        else if viewModel.onlineTableVisibility == .publicTable { Text("Open public table") }
                         else { Text("Create invite link") }
                     }.fontWeight(.semibold)
                 }
@@ -418,6 +421,12 @@ extension LobbyView {
                     || viewModel.isOnlineRoomLoading
             )
             .accessibilityIdentifier(UIIdentifiers.onlineCreateRoom)
+
+            if let error = viewModel.errorText {
+                Text(error)
+                    .font(.footnote).foregroundStyle(theme.error)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             // The field-level error in the "You" panel is the fix-it cue;
             // down here a quiet pointer explains the disabled CTA without

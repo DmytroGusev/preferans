@@ -119,6 +119,7 @@ public struct CloudflareAccountClient: Sendable, OnlineAccountServing {
 }
 
 public enum CloudflareRoomTransportError: LocalizedError {
+    case incompatibleServer
     case missingSocketURL
     case invalidHTTPResponse
     case serverError(String)
@@ -127,6 +128,8 @@ public enum CloudflareRoomTransportError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
+        case .incompatibleServer:
+            return String(localized: "The online server needs an update before this app can open tables. Please try again later.")
         case .missingSocketURL:
             return "Room response did not include a WebSocket URL."
         case .invalidHTTPResponse:
@@ -237,6 +240,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         visibility: OnlineTableVisibility = .privateTable,
         session: URLSession = .shared
     ) async throws -> CloudflareRoomTransport {
+        try await checkServerCompatibility(baseURL: baseURL, session: session)
         let request = CreateRoomRequest(
             localPlayerID: localPeer.playerID,
             seats: seats.map(RoomSeatIntent.init(peer:)),
@@ -274,6 +278,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         accountSessionToken: String,
         session: URLSession = .shared
     ) async throws -> CloudflareRoomTransport {
+        try await checkServerCompatibility(baseURL: baseURL, session: session)
         let request = JoinRoomRequest(requestedPlayerID: localPeer.playerID)
         let summary = try await postRoomRequest(
             request,
@@ -704,6 +709,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         session: URLSession
     ) async throws -> CloudflareRoomSummary {
         var request = URLRequest(url: url)
+        request.timeoutInterval = 30
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue("Bearer \(accountSessionToken)", forHTTPHeaderField: "authorization")
@@ -724,6 +730,30 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
             throw CloudflareRoomTransportError.serverError("Room server returned an incompatible room version.")
         }
         return summary
+    }
+
+    /// Reject old deployments before a mutation creates an unusable orphan room.
+    static func checkServerCompatibility(baseURL: URL, session: URLSession) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("health"))
+        request.timeoutInterval = 8
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CloudflareRoomTransportError.invalidHTTPResponse
+        }
+        struct Health: Decodable {
+            var ok: Bool
+            var service: String
+            var accountSchemaVersion: Int
+            var roomSchemaVersion: Int
+        }
+        guard http.statusCode == 200,
+              let health = try? JSONDecoder().decode(Health.self, from: data),
+              health.ok, health.service == "preferans-room-worker",
+              health.accountSchemaVersion == AppIdentifiers.onlineAccountSchemaVersion,
+              health.roomSchemaVersion == AppIdentifiers.gameWireSchemaVersion else {
+            throw CloudflareRoomTransportError.incompatibleServer
+        }
     }
 
     private static func endpoint(_ baseURL: URL, _ components: String...) -> URL {

@@ -119,7 +119,9 @@ for (const count of [3, 4]) {
       requestedPlayerID: seats[index]
     }, accounts[index].sessionToken));
     rooms.forEach(room => sockets.push(connect(room.websocketURL)));
-    await sockets[0].wait(frame => frame.connectedPlayerIDs?.length === count);
+    const initialPresence = await sockets[0].wait(frame => frame.connectedPlayerIDs?.length === count);
+    manager = seats.findIndex(seat => id(seat) === id(initialPresence.room.hostPlayerID));
+    assert.ok(manager >= 0, "A connected player must manage the table");
 
     const packet = (actor: any, action: any, nonce = crypto.randomUUID()) => ({ type: "wire", message: { clientAction: { _0: {
       schemaVersion: ROOM_SCHEMA_VERSION, tableID: rooms[0].authoritativeTableID,
@@ -129,7 +131,7 @@ for (const count of [3, 4]) {
       sockets[index].socket.send(JSON.stringify(command));
       const response = await sockets[index].wait(frame => frame.type === "receipt"
         && frame.receipt.clientNonce === command.message.clientAction._0.clientNonce, after);
-      assert.equal(response.receipt.status, expected);
+      assert.equal(response.receipt.status, expected, `${response.receipt.code ?? ""}: ${response.receipt.message ?? ""}`);
       return response.receipt;
     };
     const rejoin = async (index: number) => {

@@ -102,6 +102,7 @@ if isServerLane {
                 "Assets.xcassets",
                 "Preferans.entitlements",
                 "PreferansApp.swift",
+                "Info.plist",
                 "Support/Preferans.entitlements.example"
             ],
             resources: [

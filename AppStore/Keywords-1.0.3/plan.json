@@ -1,0 +1,193 @@
+{
+  "appID": "6763581975",
+  "versionID": "708305c7-7af1-42fb-9614-df78e0743cb5",
+  "version": "1.0.3",
+  "protectedLocale": "en-US",
+  "sourceKeywords": "preference,multiplayer,trick,taking,whist,misere,pulka,vienna,prague,berlin,offline,deck,pref,tick,",
+  "updates": [
+    {
+      "locale": "ca",
+      "id": "64d4d50e-babb-49d4-8fc5-68868ddf6678",
+      "before": "bases,cartes,preferència,whist,misèria,sense trumfo,pal,licitació,taló,multijugador,pulka",
+      "keywords": "pref,tick,preferència,whist,misèria,multijugador,sense trumfo,cartes,licitació,taló,pulka,viena,pals",
+      "characters": 100,
+      "utf8Bytes": 104
+    },
+    {
+      "locale": "cs",
+      "id": "4a165691-d725-4891-abfd-86abfc171722",
+      "before": "zdvihy,karetní hra,trumfy,bez trumfů,misér,talon,vist,pulka,hra více hráčů",
+      "keywords": "pref,tick,preference,vist,misér,více hráčů,bez trumfů,talon,pulka,online,offline,zdvihy,balíček,stůl",
+      "characters": 100,
+      "utf8Bytes": 109
+    },
+    {
+      "locale": "da",
+      "id": "86de7f7b-d2ae-4866-b773-4c2b0779e08f",
+      "before": "stikspil,kortspil,trumf,uden trumf,misère,talon,modspil,pulka,flerspiller",
+      "keywords": "pref,tick,præference,flerspiller,misère,modspil,uden trumf,talon,pulka,online,offline,bud,kort,kulør",
+      "characters": 100,
+      "utf8Bytes": 103
+    },
+    {
+      "locale": "de-DE",
+      "id": "65ec968b-bcda-439a-ab05-3198c644f1c7",
+      "before": "stichspiel,kartenspiel,präferenz,whist,misère,talon,reizen,ohne trumpf,mehrspieler,pulka",
+      "keywords": "pref,tick,präferenz,mehrspieler,whist,misère,ohne trumpf,talon,pulka,reizen,online,offline,wien,prag",
+      "characters": 100,
+      "utf8Bytes": 102
+    },
+    {
+      "locale": "el",
+      "id": "215d19ee-0afe-4a85-8daf-f0e7179eabfd",
+      "before": "πρέφα,μπάζες,ατού,μιζέρ,ταλόν,πούλα,ουίστ,χαρτιά,παρέα,διαδικτυακά",
+      "keywords": "pref,tick,preference,ουίστ,μιζέρ,μπάζες,χωρίς ατού,ταλόν,πούλα,χαρτιά,διαδικτυακά,πλειοδοσία,τραπέζι",
+      "characters": 100,
+      "utf8Bytes": 169
+    },
+    {
+      "locale": "en-GB",
+      "id": "7eda4f51-611c-4517-a582-6ad29f28bb6f",
+      "before": "preference,multiplayer,trick,taking,whist,misere,pulka,vienna,prague,berlin,offline,deck",
+      "keywords": "pref,tick,preference,multiplayer,whist,misere,trick taking,pulka,no trump,offline,deck,auction,talon",
+      "characters": 100,
+      "utf8Bytes": 100
+    },
+    {
+      "locale": "es-ES",
+      "id": "73e5eb5f-664e-47c5-ba66-b7557433e078",
+      "before": "bazas,cartas,preferencia,whist,miseria,sin triunfo,triunfo,subasta,talón,multijugador,pulka",
+      "keywords": "pref,tick,preferencia,whist,miseria,multijugador,sin triunfo,cartas,subasta,talón,pulka,online,viena",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "fi",
+      "id": "c66421f3-9ace-48cc-bc10-b1bb45f6d8be",
+      "before": "tikkipeli,korttipeli,valtti,sangi,misääri,talon,visti,pulkka,moninpeli",
+      "keywords": "pref,tick,preferenssi,moninpeli,misääri,visti,tikkipeli,valtti,sangi,talon,pulkka,verkossa,pakka,maa",
+      "characters": 100,
+      "utf8Bytes": 102
+    },
+    {
+      "locale": "fr-FR",
+      "id": "dc3a28df-ddf3-458d-a815-9ffbe14108b0",
+      "before": "jeu de plis,cartes,préférence,whist,misère,sans atout,enchères,talon,multijoueur,pulka",
+      "keywords": "pref,tick,préférence,whist,misère,multijoueur,sans atout,cartes,enchères,talon,pulka,en ligne,paquet",
+      "characters": 100,
+      "utf8Bytes": 104
+    },
+    {
+      "locale": "hr",
+      "id": "2ab8084c-b3d0-48e0-8675-8b37b6a2729d",
+      "before": "štih,adut,bez aduta,mizer,vist,talon,pulka,karte,licitacija,više igrača,mrežno",
+      "keywords": "pref,tick,mizer,vist,više igrača,bez aduta,talon,pulka,karte,licitacija,mrežno,štih,prag,berlin,stol",
+      "characters": 100,
+      "utf8Bytes": 104
+    },
+    {
+      "locale": "hu",
+      "id": "294c6933-ae9e-441e-a798-9eef3892c16c",
+      "before": "ütésvivő,kártyajáték,adu,szan,betli,talon,viszt,pulka,többjátékos",
+      "keywords": "pref,tick,preferánsz,betli,viszt,többjátékos,adu,szan,talon,pulka,kártya,online,offline,pakli,berlin",
+      "characters": 100,
+      "utf8Bytes": 105
+    },
+    {
+      "locale": "it",
+      "id": "7dad1d67-aebe-454d-946b-2a426b20704c",
+      "before": "gioco di prese,carte,preferenza,whist,misère,senza atout,dichiarazione,tallone,multigiocatore",
+      "keywords": "pref,tick,preferenza,whist,misère,multigiocatore,senza atout,carte,dichiarazione,tallone,pulka,mazzo",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "nl-NL",
+      "id": "bbd3748b-5bd8-4cb4-aa0d-909c328e589b",
+      "before": "slagenspel,kaartspel,preference,whist,misère,zonder troef,bieden,talon,multiplayer,pulka",
+      "keywords": "pref,tick,preference,whist,misère,multiplayer,zonder troef,bieden,talon,pulka,kaartspel,online,wenen",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "no",
+      "id": "7f422db1-1885-4df5-aefa-6a82ef35c892",
+      "before": "stikkspill,kortspill,trumf,grand,misère,talong,motspill,pulka,flerspiller",
+      "keywords": "pref,tick,preferanse,flerspiller,misère,motspill,trumf,grand,talong,pulka,online,offline,kort,berlin",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "pl",
+      "id": "6a20e86c-f70a-49c1-b4a2-5f9fbee7e34a",
+      "before": "lewy,gra karciana,atut,bez atu,mizerka,talon,wist,pulka,wieloosobowa",
+      "keywords": "pref,tick,mizerka,wist,wieloosobowa,bez atu,talon,pulka,licytacja,karty,online,offline,wiedeń,berlin",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "pt-PT",
+      "id": "705f34ce-5e5b-468d-ae4e-ce394a69fbb2",
+      "before": "vazas,cartas,preferência,whist,miséria,sem trunfo,naipe,licitação,talão,multijogador,pulka",
+      "keywords": "pref,tick,preferência,whist,miséria,multijogador,sem trunfo,cartas,licitação,talão,pulka,online,mesa",
+      "characters": 100,
+      "utf8Bytes": 105
+    },
+    {
+      "locale": "ro",
+      "id": "18e3cae0-4ac2-4842-977a-25573592d85b",
+      "before": "levate,atu,fără atu,mizer,vist,talon,pulka,cărți,licitație,multijucător,online",
+      "keywords": "pref,tick,preference,mizer,vist,multijucător,fără atu,talon,pulka,licitație,online,pachet,viena,masă",
+      "characters": 100,
+      "utf8Bytes": 105
+    },
+    {
+      "locale": "ru",
+      "id": "04652309-9195-4cdc-ad17-11f557fda302",
+      "before": "взятки,вист,мизер,распасы,прикуп,пулька,козырь,карты,онлайн,боты,торговля",
+      "keywords": "pref,tick,преф,вист,мизер,распасы,прикуп,пулька,без козыря,онлайн,торговля,снос,пуля,вена,прага,стол",
+      "characters": 100,
+      "utf8Bytes": 176
+    },
+    {
+      "locale": "sk",
+      "id": "d3ef7e34-6a28-4dff-abdf-7e0fe1f9f6ab",
+      "before": "zdvihy,kartová hra,tromfy,bez tromfov,misér,talón,vist,pulka,hra viacerých hráčov",
+      "keywords": "pref,tick,preferencia,vist,misér,viacerí hráči,bez tromfov,talón,pulka,zdvihy,licitácia,online,karty",
+      "characters": 100,
+      "utf8Bytes": 106
+    },
+    {
+      "locale": "sl-SI",
+      "id": "cfe631bd-9d59-4abb-a19f-2777e05bdaca",
+      "before": "vzetki,adut,brez aduta,mizer,vist,talon,pulka,karte,licitacija,več igralcev,spletno",
+      "keywords": "pref,tick,mizer,vist,več igralcev,brez aduta,talon,pulka,karte,licitacija,spletno,dunaj,praga,berlin",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "sv",
+      "id": "cb542498-4267-461b-a623-607f21d89248",
+      "before": "stickspel,kortspel,trumf,sang,misär,talong,motspel,pulka,flera spelare",
+      "keywords": "pref,tick,preferens,misär,motspel,flera spelare,stickspel,trumf,sang,talong,pulka,online,offline,bud",
+      "characters": 100,
+      "utf8Bytes": 101
+    },
+    {
+      "locale": "tr",
+      "id": "e36695b6-a80c-4cda-9a76-c155aa0eb7f3",
+      "before": "löve,koz,kozsuz,mizer,vist,talon,pulka,kart,iskambil,çok oyunculu,çevrimiçi",
+      "keywords": "pref,tick,mizer,vist,çok oyunculu,kozsuz,talon,pulka,iskambil,çevrimiçi,kart,online,çevrimdışı,ihale",
+      "characters": 100,
+      "utf8Bytes": 107
+    },
+    {
+      "locale": "uk",
+      "id": "7d8e5593-c29c-49b5-8849-5303353ccf4d",
+      "before": "взятки,віст,мізер,розпаси,прикуп,пулька,козир,карти,онлайн,боти,торгівля",
+      "keywords": "pref,tick,преф,віст,мізер,розпаси,прикуп,пулька,без козиря,онлайн,торгівля,знос,пуля,відень,контракт",
+      "characters": 100,
+      "utf8Bytes": 177
+    }
+  ]
+}
