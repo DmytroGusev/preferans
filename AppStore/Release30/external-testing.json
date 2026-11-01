@@ -1,0 +1,28 @@
+{
+  "checkedAt": "2026-11-01T19:19:41.220Z",
+  "appID": "6763581975",
+  "version": "1.0.3",
+  "build": "30",
+  "buildID": "eef9c00f-9198-43a7-a3a6-4ed12d3ed52a",
+  "group": {
+    "id": "bd14644b-667a-47ce-b543-57118aedf8bd",
+    "name": "Pediki",
+    "testerCount": 5,
+    "allExistingAppTestersIncluded": true,
+    "membershipUnchanged": true,
+    "publicLinkEnabled": false
+  },
+  "processingState": "VALID",
+  "beta": {
+    "autoNotifyEnabled": true,
+    "internalBuildState": "READY_FOR_BETA_TESTING",
+    "externalBuildState": "WAITING_FOR_BETA_REVIEW"
+  },
+  "betaReview": {
+    "betaReviewState": "WAITING_FOR_REVIEW",
+    "submittedDate": "2026-11-01T11:19:38-08:00"
+  },
+  "betaDescription": "Play Preferans, the classic trick-taking card game, with bots or friends. This beta focuses on public tables, room-code invitations, reconnect recovery and final match scores. Use build 30 on every test device to play together on the updated server.",
+  "betaReviewNotes": "Build 1.0.3 (30) tests the updated owner-hosted multiplayer service. No purchased subscription or demo credentials are needed. Open Play online, enter a display name and tap Continue as Guest (Sign in with Apple is also available). Choose Create a table, or Find a table to join another device running build 30. Players mark Ready before the first deal. Local bot play is also available. Focus: public creation/join, reconnection after backgrounding, starting the next deal when the table manager is offline, and final balances in game history. Settings contains account deletion and legal links.",
+  "appStoreReviewSubmitted": false
+}

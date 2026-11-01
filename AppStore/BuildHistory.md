@@ -2,6 +2,25 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0.3 (30) - Multiplayer Recovery And Match History
+
+- Date: 2026-11-01.
+- Source: main `c4621082a8a36c3cffdbf58d1f7a01faff64cefa`, PRs #6 and #7.
+- Feature/fix author: Vitaly Kushnir; release preparation: Codex at the owner's request.
+- Fixes next-deal progress with an offline manager, reconnect and move feedback.
+- Adds authoritative history balances, account-ID masking and ended-table retention.
+- Updates only the owner's Worker and engine; retains account/unfinished-game data.
+- CI, Worker suites, Swift rerun, native create/join and live 3/4-seat matches passed.
+- Signed Xcode 27.1 archive uploaded; Apple build `eef9c00f-9198-43a7-a3a6-4ed12d3ed52a`
+  is `VALID`, ready for internal TestFlight. Internal groups currently have no testers.
+- App Review and Store metadata/build selection unchanged. Old friend's server untouched.
+- Full evidence, test caveats and rollback: `docs/OWNER_MULTIPLAYER_BUILD30.md`
+  and `AppStore/Release30/`.
+- Release tag: `testflight/1.0.3-build-30`.
+- Follow-up authorization: added build 30 to the existing external group with all
+  five saved testers, automatic notification enabled; Beta App Review submitted
+  2026-11-01, status `WAITING_FOR_REVIEW`. Public release submission unchanged.
+
 ## 1.0.2 (28) - Internal TestFlight and European Store Metadata
 
 - Date: 2026-10-15.

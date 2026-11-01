@@ -1,0 +1,18 @@
+Preferans 1.0.3 (30) — multiplayer reliability and match history
+
+Install build 30 on every test device. Build 28 uses the older, separate server.
+
+1. Create a public table; find it on another device, join and mark Ready.
+2. Play through a deal. Disconnect the table manager: another seated player
+   should be able to start the next deal without waiting for that player.
+3. Background and reopen the app; verify reconnection and the current hand.
+4. Check that an unconfirmed move shows a retry message rather than hanging.
+5. Finish a match and check the final balances in every player's game history.
+6. Check that another player's account identifier is not exposed in room data.
+7. Exercise invite links, room codes and Sign in with Apple on physical devices.
+
+The new server keeps existing owner-server accounts and unfinished games.
+Finished-table private checkpoints are cleaned up; terminal tables are retained
+for 30 days. This release does not migrate accounts from the friend's server.
+
+Source: main c4621082a8a36c3cffdbf58d1f7a01faff64cefa (PRs #6 and #7).

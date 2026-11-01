@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-01",
+  "baseline": "c4621082a8a36c3cffdbf58d1f7a01faff64cefa",
+  "ciRun": {"id": "41339653980", "result": "success"},
+  "worker": {"typecheck": "passed", "unitTests": 54, "runtimeTests": 18, "failures": 0},
+  "portableEngine": "passed",
+  "publicNetwork": {"threeSeats": "passed", "fourSeats": "passed", "qaAccountsDeleted": true},
+  "swiftFullRerun": {
+    "serverXCTest": 9,
+    "engineXCTest": 234,
+    "appXCTest": 268,
+    "appSkipped": 3,
+    "swiftTestingCases": 34,
+    "failures": 0
+  },
+  "initialSwiftFailure": {
+    "test": "RoomDurabilityRetryRunnerTests.testHostActionQueueCancellationDropsQueuedMutations",
+    "reason": "Scheduling-sensitive Task.yield assertion; expected first:end had not yet occurred",
+    "isolatedRerun": "passed",
+    "fullRerun": "passed",
+    "testOrProductionCodeChangedToPass": false
+  },
+  "nativeUI": {
+    "device": "iPhone 17 Pro, iOS 27.0 dedicated QA simulator",
+    "createDiscoverablePublicTable": "passed",
+    "findJoinReadyFirstDeal": "passed",
+    "qaAccountsDeleted": true
+  },
+  "liveMatches": {
+    "threeSeats": {"result": "passed", "deals": 4, "firstDealCardsPlayed": 30, "elapsedMs": 15711},
+    "fourSeats": {"result": "passed", "deals": 4, "firstDealCardsPlayed": 30, "elapsedMs": 15575},
+    "nonManagerNextDealWithOfflineManager": "passed",
+    "pendingReplayAndReconnect": "passed",
+    "allAccountHistoryBalances": "passed",
+    "initialFourSeatResultPoll": "No history result within three-second bound during post-deployment rollout; unchanged rerun passed",
+    "initialFailureRootCause": "Not proven; container rollout was still provisioning",
+    "qaAccountsDeleted": true
+  },
+  "archiveExportSignature": "passed",
+  "physicalDeviceSignInAndInvites": "requires owner testing",
+  "logs": [
+    "/tmp/preferans30-portable.log",
+    "/tmp/preferans30-swift-tests.log",
+    "/tmp/preferans30-swift-tests-rerun.log",
+    "/tmp/preferans30-cancellation-rerun.log",
+    "/tmp/preferans30-native-ui.log",
+    "/tmp/preferans30-live-matches.log",
+    "/tmp/preferans30-live-matches-rerun.log",
+    "/tmp/preferans30-public-network.log",
+    "/tmp/preferans30-archive.log",
+    "/tmp/preferans30-export.log",
+    "/tmp/preferans30-upload.log"
+  ]
+}
