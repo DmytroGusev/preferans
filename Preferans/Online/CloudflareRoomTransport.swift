@@ -1,5 +1,8 @@
 import Foundation
 import PreferansEngine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct CloudflareRoomSummary: Codable, Sendable, Equatable {
     public var visibility: String? = nil
@@ -173,6 +176,10 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     private var socketTask: URLSessionWebSocketTask?
     private var keepAliveTask: Task<Void, Never>?
     private var connectionTask: Task<Void, Never>?
+    /// The current reconnect wait; cancelling it reconnects immediately.
+    private var backoffTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
+    private var activationObserver: (any NSObjectProtocol)?
     private var isClosed = false
     /// Highest worker relay sequence delivered to this client. The worker does
     /// not retain a replay log, so after a reconnect the coordinator requests a
@@ -473,6 +480,11 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     public func disconnect() {
         isClosed = true
         keepAliveTask?.cancel(); keepAliveTask = nil
+        backoffTask?.cancel(); backoffTask = nil
+        if let activationObserver {
+            NotificationCenter.default.removeObserver(activationObserver)
+            self.activationObserver = nil
+        }
         connectionTask?.cancel()
         connectionTask = nil
         socketTask?.cancel(with: .goingAway, reason: nil)
@@ -499,6 +511,59 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         let initial = openSocket()
         connectionTask = Task { [weak self] in
             await self?.maintainConnection(initial: initial)
+        }
+        observeAppActivation()
+    }
+
+    /// iOS suspends sockets in the background. Returning to the table must not
+    /// wait out a reconnect backoff (up to ~10 s) or the next 15 s keep-alive
+    /// ping before noticing a dead socket.
+    private func observeAppActivation() {
+        #if canImport(UIKit)
+        guard activationObserver == nil else { return }
+        activationObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reconnectPromptly() }
+        }
+        #endif
+    }
+
+    /// Skip the remaining backoff, or probe the current socket so a connection
+    /// that died while suspended is replaced right away.
+    public func reconnectPromptly() {
+        guard !isClosed else { return }
+        reconnectAttempt = 0
+        if let backoffTask {
+            backoffTask.cancel()
+        } else if let socketTask {
+            let deadline = Task {
+                try? await Task.sleep(for: .seconds(5))
+                if !Task.isCancelled { socketTask.cancel(with: .goingAway, reason: nil) }
+            }
+            socketTask.sendPing { error in
+                if error != nil { socketTask.cancel(with: .goingAway, reason: nil) }
+                deadline.cancel()
+            }
+        }
+    }
+
+    /// Disconnects after which reconnecting cannot succeed: the server closed
+    /// the seat (4010 account deleted, 4011 seat left) or refused the socket
+    /// upgrade because the seat or room no longer exists. 4009 (seat opened on
+    /// another device) is handled separately as a takeover.
+    nonisolated static func terminalDisconnectMessage(closeCode: Int, httpStatus: Int?) -> String? {
+        switch closeCode {
+        case 4010: return String(localized: "This online account was deleted.")
+        case 4011: return String(localized: "You left this table.")
+        default: break
+        }
+        switch httpStatus {
+        case 401, 403: return String(localized: "This device no longer holds a seat at this table. Return to the lobby.")
+        case 404, 410: return String(localized: "This table no longer exists. Return to the lobby.")
+        default: return nil
         }
     }
 
@@ -538,7 +603,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     /// without the player having to leave and re-join the table.
     private func maintainConnection(initial: URLSessionWebSocketTask) async {
         var task = initial
-        var attempt = 0
+        reconnectAttempt = 0
         while !Task.isCancelled, !isClosed {
             do {
                 var establishedThisSocket = false
@@ -546,11 +611,14 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                     let message = try await task.receive()
                     if !establishedThisSocket {
                         establishedThisSocket = true
-                        attempt = 0            // a delivered frame proves the link is healthy
+                        reconnectAttempt = 0   // a delivered frame proves the link is healthy
                         lastError = nil
                         emitConnectionEvent(.connected)
                     }
-                    try handleSocketMessage(message)
+                    // One undecodable frame (for example a newer server message
+                    // type) must not tear down an otherwise healthy socket.
+                    do { try handleSocketMessage(message) }
+                    catch { lastError = error.localizedDescription }
                 }
             } catch {
                 if Task.isCancelled || isClosed { break }
@@ -560,14 +628,27 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                     isClosed = true
                     break
                 }
+                if let message = Self.terminalDisconnectMessage(
+                    closeCode: task.closeCode.rawValue,
+                    httpStatus: (task.response as? HTTPURLResponse)?.statusCode
+                ) {
+                    lastError = message
+                    emitConnectionEvent(.seatLost(message))
+                    isClosed = true
+                    break
+                }
                 lastError = error.localizedDescription
                 emitConnectionEvent(.reconnecting)
             }
             socketTask?.cancel()
             socketTask = nil
             if Task.isCancelled || isClosed { break }
-            attempt += 1
-            try? await Task.sleep(for: Self.reconnectDelay(attempt: attempt))
+            reconnectAttempt += 1
+            let delay = Self.reconnectDelay(attempt: reconnectAttempt)
+            let backoff = Task<Void, Never> { try? await Task.sleep(for: delay) }
+            backoffTask = backoff
+            await withTaskCancellationHandler { await backoff.value } onCancel: { backoff.cancel() }
+            backoffTask = nil
             if Task.isCancelled || isClosed { break }
             task = openSocket()
         }

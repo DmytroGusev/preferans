@@ -156,4 +156,4 @@ Verify a downloaded artifact (`docs/SERVER_CI.md`): `sha256sum -c SHA256SUMS`, t
 | 503 `engine_unavailable` / `error` frames during play | engine container down or > 8 s; pending move is kept and retried |
 | `bin/dev-online`: "Engine did not become healthy." | Docker build/run failed or port 18081 busy |
 | Socket closes with 4009 | the same account re-joined the seat from another device/session |
-| `players_not_ready` / `room_not_ready` / `lobby_manager_required` receipts | start-deal preconditions (manager, full roster, all humans connected, public Ready) |
+| `players_not_ready` / `room_not_ready` / `lobby_manager_required` receipts | first-deal preconditions (manager, full roster, all humans connected, public Ready). Later deals only need a seated human |

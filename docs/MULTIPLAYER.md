@@ -2,7 +2,8 @@
 
 The online runtime is a clean break. No peer may host a match, supply a deck,
 upload a snapshot, or publish a player projection. The lobby manager only manages
-seats and requests deals. Offline simulation is a separate execution path.
+seats and requests the first deal; any seated player may request later deals, and
+absent players never block them. Offline simulation is a separate execution path.
 
 ## Commit boundary
 

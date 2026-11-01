@@ -121,6 +121,54 @@ final class ServerAuthoritativeCoordinatorTests: XCTestCase {
         coordinator.detach()
     }
 
+    func testSupersededRejectionIsSilentButAJudgedRejectionIsShown() {
+        let command = ClientActionEnvelope(tableID: UUID(), actor: "east",
+            action: .startDeal(dealer: nil, deck: nil), baseHostSequence: 7)
+        func receipt(_ sequence: Int, _ status: OnlineCommandReceipt.Status) -> OnlineCommandReceipt {
+            .init(tableID: command.tableID, clientNonce: command.clientNonce, sequence: sequence,
+                  status: status, code: "engine_rejected_command", message: "Stale command sequence.")
+        }
+        XCTAssertNil(ServerGameCoordinator.rejectionMessage(for: receipt(8, .rejected), basedOn: command),
+                     "Another player's Next deal won the race; the newer projection already shows it.")
+        XCTAssertEqual(ServerGameCoordinator.rejectionMessage(for: receipt(7, .rejected), basedOn: command),
+                       "Stale command sequence.")
+        XCTAssertNil(ServerGameCoordinator.rejectionMessage(for: receipt(8, .accepted), basedOn: command))
+    }
+
+    func testLostSeatStopsSubmissionAndDropsTheSavedMove() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let outbox = OnlineCommandOutbox(directory: directory)
+        let table = UUID()
+        let peer = OnlinePeer(playerID: "north", accountID: "guest:north", provider: .guest, displayName: "North")
+        let command = ClientActionEnvelope(tableID: table, actor: "north",
+            action: .startDeal(dealer: nil, deck: nil), baseHostSequence: 0)
+        try outbox.store(command, account: peer.accountID)
+        let transport = ServerAuthoritativeTestTransport(localPeer: peer, participants: [peer], tableID: table)
+        let coordinator = ServerGameCoordinator(outbox: outbox)
+        await coordinator.attach(transport: transport)
+        XCTAssertTrue(coordinator.isSubmitting)
+        transport.receiveConnectionEvent(.seatLost("You left this table."))
+        await eventually { coordinator.transportStatus == .disconnected }
+        XCTAssertFalse(coordinator.isSubmitting)
+        XCTAssertEqual(coordinator.errorText, "You left this table.")
+        XCTAssertNil(try outbox.load(table: table, account: peer.accountID))
+        coordinator.detach()
+    }
+
+    func testOnlyPermanentDisconnectsStopReconnecting() {
+        let terminal: [(Int, Int?)] = [(4010, nil), (4011, nil), (1006, 401), (1006, 403), (1006, 404), (1006, 410)]
+        for (code, status) in terminal {
+            XCTAssertNotNil(CloudflareRoomTransport.terminalDisconnectMessage(closeCode: code, httpStatus: status),
+                            "close \(code), HTTP \(String(describing: status))")
+        }
+        let transient: [(Int, Int?)] = [(1006, nil), (1001, 101), (1011, 101), (1006, 429), (1006, 500), (1006, 503), (4009, nil)]
+        for (code, status) in transient {
+            XCTAssertNil(CloudflareRoomTransport.terminalDisconnectMessage(closeCode: code, httpStatus: status),
+                         "close \(code), HTTP \(String(describing: status))")
+        }
+    }
+
     private func eventually(
         _ predicate: @escaping @MainActor () -> Bool,
         file: StaticString = #filePath,

@@ -709,7 +709,7 @@ public final class RoomOnlineGameCoordinator: ObservableObject {
             stopHeartbeat()
             botMoveScheduler.cancel()
             stagedBotInsights = [:]
-        case .commandReceipt, .tableAbandoned:
+        case .commandReceipt, .tableAbandoned, .seatLost:
             break // Offline peer simulation never receives durable server receipts.
         case let .serverError(message):
             errorText = message

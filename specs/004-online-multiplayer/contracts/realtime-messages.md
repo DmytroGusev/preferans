@@ -55,7 +55,7 @@ Start-deal command: `"action":{"startDeal":{}}` (dealer and deck are ignored and
 2. If a stored command exists → send stored receipt (or a *transient* `rejected` receipt with `code: "command_id_conflict"`, `message: "This command ID was used for another action."` when the fingerprint differs), then the sender's current projection. Done.
 3. Inside a try block:
    - status `finished`/`abandoned` → `table_closed` (409);
-   - `startDeal` → `validateStartDealAuthority`: sender must be manager (`lobby_manager_required`, 403); no `pending:` seat (`room_not_ready`, 409); every non-bot seat connected (`room_not_ready`, 409); public lobby: every seat Ready (`players_not_ready`, 409);
+   - `startDeal` → `validateStartDealAuthority`. **Later deals** (`status: "playing"`): any human seat (otherwise `forbidden`, 403), with no connectivity requirement. **First deal** (`status: "lobby"`): sender must be manager (`lobby_manager_required`, 403); no `pending:` seat (`room_not_ready`, 409); every non-bot seat connected (`room_not_ready`, 409); public lobby: every seat Ready (`players_not_ready`, 409);
    - `applyAuthoritativeCommand`: engine version (`engine_version_mismatch` 503), state present (`engine_state_missing` 409), `schemaVersion == 4` and `tableID == authoritativeTableID` (`protocol_mismatch` 409), actor/nonce/`baseHostSequence` (`invalid_command` 400), action present; `POST /v1/commands`; validate response;
    - `recordRelay` (relaySequence + 1; `relay_sequence_exhausted` 409 if the counter is not a safe non-negative integer).
 4. On `RoomStateError` with status < 500 → store and send `rejected` receipt (`sequence` = current engine sequence) + sender's projection.
@@ -129,9 +129,13 @@ Client: `seat_credential_invalid` → `.seatTakenOver`; any other → `.serverEr
 | Code | Reason | Trigger | iOS handling |
 | --- | --- | --- | --- |
 | 4009 | `seat_replaced` | Another socket connected for the seat; `/join` rotated the seat's token; a frame failed `seat_credential_invalid` | `.seatTakenOver`, "This table was opened on another device.", reconnect loop ends |
-| 4010 | `account_deleted` | Seat's account deleted | Treated as a transient drop → reconnect (which then fails 403) |
-| 4011 | `seat_left` | Seat owner called `/leave` | Same as above |
-| other / network | — | — | `.reconnecting`, backoff |
+| 4010 | `account_deleted` | Seat's account deleted | `.seatLost("This online account was deleted.")`, reconnect loop ends |
+| 4011 | `seat_left` | Seat owner called `/leave` | `.seatLost("You left this table.")`, reconnect loop ends |
+| upgrade HTTP 401/403 | — | Seat token no longer valid | `.seatLost(…no longer holds a seat…)`, reconnect loop ends |
+| upgrade HTTP 404/410 | — | Room gone | `.seatLost(…no longer exists…)`, reconnect loop ends |
+| other / network | — | — | `.reconnecting`, backoff 0.5→8 s (+≤30 % jitter). Returning to the foreground (`UIApplication.didBecomeActiveNotification`) skips the remaining backoff, or pings the live socket with a 5 s deadline (`CloudflareRoomTransport.reconnectPromptly`) |
+
+An undecodable frame no longer tears down the socket. It is recorded in `lastError` and skipped.
 
 ## Ordering, revisioning and delivery guarantees
 

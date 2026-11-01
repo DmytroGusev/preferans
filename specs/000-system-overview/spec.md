@@ -139,7 +139,7 @@ The full lists live in each spec. These are the items that matter at system leve
 | 4 | Online | Match results (winner, balances) are never filled in, so "Your games" shows no winner | [004](../004-online-multiplayer/spec.md) |
 | 5 | Online | In private rooms, account IDs are visible to anyone with the room code via an unauthenticated summary endpoint | [004](../004-online-multiplayer/spec.md) |
 | 6 | Online | Nothing is pruned: rooms, receipts and checkpoints (with full private state) are kept forever | [004](../004-online-multiplayer/contracts/persistence.md) |
-| 7 | Online | The iOS client keeps reconnecting after close codes 4010 (account deleted) and 4011 (seat left) | [004](../004-online-multiplayer/spec.md) |
+| 7 | Online | ~~The iOS client keeps reconnecting after close codes 4010 (account deleted) and 4011 (seat left)~~ Fixed on `fix/online-play`, together with deals stalling between rounds and slow reconnects after returning to the app | [004](../004-online-multiplayer/spec.md) |
 | 8 | Online | Associated domain `preferans.game` is declared but the invite parser rejects it, and the worker, entitlements and `AppStore/UniversalLinks` notes list different domains | [004 invite-links](../004-online-multiplayer/contracts/invite-links.md) |
 | 9 | Bots | Online bots always use the Seasoned/Adaptive profile and ignore the lobby's difficulty | [003](../003-bots/spec.md) |
 | 10 | App | Game Center and the App Tracking Transparency prompt are wired up but unused. The privacy policy says no advertising identifiers are collected | [005](../005-ios-app/spec.md), [006](../006-testing-and-release/spec.md) |

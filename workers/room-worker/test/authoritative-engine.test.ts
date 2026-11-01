@@ -11,7 +11,7 @@ import {
   type AuthoritativeEngineBinding,
   type AuthoritativeGameResponse
 } from "../src/authoritative-engine.ts";
-import { createInitialRoom, type OnlinePeer } from "../src/room-state.ts";
+import { createInitialRoom, type OnlinePeer, type RoomState } from "../src/room-state.ts";
 
 const north: OnlinePeer = {
   playerID: { rawValue: "north" },
@@ -183,4 +183,17 @@ test("only the connected lobby manager can start with a complete roster", () => 
     north,
     new Set(["north", "east"])
   ), /claimed or filled/);
+});
+
+test("any seated human can start a later deal without waiting for absent players", () => {
+  const playing: RoomState = { ...room(), status: "playing" };
+  assert.doesNotThrow(() => validateStartDealAuthority(playing, east, new Set(["east"])));
+  assert.doesNotThrow(() => validateStartDealAuthority(playing, north, new Set()));
+  assert.throws(() => validateStartDealAuthority(
+    playing,
+    { ...south, accountID: "bot:south" },
+    new Set(["north", "east"])
+  ), /seated player/);
+  // The first deal keeps the lobby gate.
+  assert.throws(() => validateStartDealAuthority(room(), east, new Set(["north", "east"])), /lobby manager/);
 });

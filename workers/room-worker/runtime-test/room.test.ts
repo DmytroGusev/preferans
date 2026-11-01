@@ -147,6 +147,31 @@ test("different payload under the same ID is rejected without another transition
   });
 });
 
+test("any seated player starts a later deal even while others are offline", async () => {
+  await runInDurableObject(stub(), async (instance: any, state) => {
+    const receipts: any[] = [];
+    instance.sendReceipt = (_room: any, _seat: any, receipt: any) => receipts.push(receipt);
+    instance.engine = () => ({ fetch: async () => Response.json(response(6)) });
+    const east = peers[1];
+    const startDeal = (baseHostSequence: number) => ({ message: { clientAction: { _0: {
+      schemaVersion: 4, tableID, actor: east.playerID, action: { startDeal: {} },
+      clientNonce: crypto.randomUUID(), baseHostSequence } } } });
+
+    // First deal: still a lobby decision for the manager (north) only.
+    const lobby = initial(); await state.storage.put("room", lobby);
+    await instance.relayWireMessage(lobby, lobby.peers[1], startDeal(0));
+    expect(receipts[0].code).toBe("lobby_manager_required");
+
+    // Between deals, east may deal although no socket is connected.
+    const between = adoptingEngineResponse(lobby, { ...response(5), phase: "dealFinished" });
+    await state.storage.put("room", between);
+    await instance.relayWireMessage(between, between.peers[1], startDeal(5));
+    expect(receipts[1].status).toBe("accepted");
+    expect((await state.storage.get<RoomState>("room"))?.authoritativeSequence).toBe(6);
+    await state.storage.deleteAlarm();
+  });
+});
+
 test("fresh socket resumes from storage without calling Swift", async () => {
   const roomStub = stub();
   const token = await runInDurableObject(roomStub, async (_instance: any, state) => {
