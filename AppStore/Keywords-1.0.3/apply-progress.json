@@ -1,0 +1,94 @@
+[
+  {
+    "locale": "ca",
+    "keywords": "pref,tick,preferència,whist,misèria,multijugador,sense trumfo,cartes,licitació,taló,pulka,viena,pals"
+  },
+  {
+    "locale": "cs",
+    "keywords": "pref,tick,preference,vist,misér,více hráčů,bez trumfů,talon,pulka,online,offline,zdvihy,balíček,stůl"
+  },
+  {
+    "locale": "da",
+    "keywords": "pref,tick,præference,flerspiller,misère,modspil,uden trumf,talon,pulka,online,offline,bud,kort,kulør"
+  },
+  {
+    "locale": "de-DE",
+    "keywords": "pref,tick,präferenz,mehrspieler,whist,misère,ohne trumpf,talon,pulka,reizen,online,offline,wien,prag"
+  },
+  {
+    "locale": "el",
+    "keywords": "pref,tick,preference,ουίστ,μιζέρ,μπάζες,χωρίς ατού,ταλόν,πούλα,χαρτιά,διαδικτυακά,πλειοδοσία,τραπέζι"
+  },
+  {
+    "locale": "en-GB",
+    "keywords": "pref,tick,preference,multiplayer,whist,misere,trick taking,pulka,no trump,offline,deck,auction,talon"
+  },
+  {
+    "locale": "es-ES",
+    "keywords": "pref,tick,preferencia,whist,miseria,multijugador,sin triunfo,cartas,subasta,talón,pulka,online,viena"
+  },
+  {
+    "locale": "fi",
+    "keywords": "pref,tick,preferenssi,moninpeli,misääri,visti,tikkipeli,valtti,sangi,talon,pulkka,verkossa,pakka,maa"
+  },
+  {
+    "locale": "fr-FR",
+    "keywords": "pref,tick,préférence,whist,misère,multijoueur,sans atout,cartes,enchères,talon,pulka,en ligne,paquet"
+  },
+  {
+    "locale": "hr",
+    "keywords": "pref,tick,mizer,vist,više igrača,bez aduta,talon,pulka,karte,licitacija,mrežno,štih,prag,berlin,stol"
+  },
+  {
+    "locale": "hu",
+    "keywords": "pref,tick,preferánsz,betli,viszt,többjátékos,adu,szan,talon,pulka,kártya,online,offline,pakli,berlin"
+  },
+  {
+    "locale": "it",
+    "keywords": "pref,tick,preferenza,whist,misère,multigiocatore,senza atout,carte,dichiarazione,tallone,pulka,mazzo"
+  },
+  {
+    "locale": "nl-NL",
+    "keywords": "pref,tick,preference,whist,misère,multiplayer,zonder troef,bieden,talon,pulka,kaartspel,online,wenen"
+  },
+  {
+    "locale": "no",
+    "keywords": "pref,tick,preferanse,flerspiller,misère,motspill,trumf,grand,talong,pulka,online,offline,kort,berlin"
+  },
+  {
+    "locale": "pl",
+    "keywords": "pref,tick,mizerka,wist,wieloosobowa,bez atu,talon,pulka,licytacja,karty,online,offline,wiedeń,berlin"
+  },
+  {
+    "locale": "pt-PT",
+    "keywords": "pref,tick,preferência,whist,miséria,multijogador,sem trunfo,cartas,licitação,talão,pulka,online,mesa"
+  },
+  {
+    "locale": "ro",
+    "keywords": "pref,tick,preference,mizer,vist,multijucător,fără atu,talon,pulka,licitație,online,pachet,viena,masă"
+  },
+  {
+    "locale": "ru",
+    "keywords": "pref,tick,преф,вист,мизер,распасы,прикуп,пулька,без козыря,онлайн,торговля,снос,пуля,вена,прага,стол"
+  },
+  {
+    "locale": "sk",
+    "keywords": "pref,tick,preferencia,vist,misér,viacerí hráči,bez tromfov,talón,pulka,zdvihy,licitácia,online,karty"
+  },
+  {
+    "locale": "sl-SI",
+    "keywords": "pref,tick,mizer,vist,več igralcev,brez aduta,talon,pulka,karte,licitacija,spletno,dunaj,praga,berlin"
+  },
+  {
+    "locale": "sv",
+    "keywords": "pref,tick,preferens,misär,motspel,flera spelare,stickspel,trumf,sang,talong,pulka,online,offline,bud"
+  },
+  {
+    "locale": "tr",
+    "keywords": "pref,tick,mizer,vist,çok oyunculu,kozsuz,talon,pulka,iskambil,çevrimiçi,kart,online,çevrimdışı,ihale"
+  },
+  {
+    "locale": "uk",
+    "keywords": "pref,tick,преф,віст,мізер,розпаси,прикуп,пулька,без козиря,онлайн,торгівля,знос,пуля,відень,контракт"
+  }
+]

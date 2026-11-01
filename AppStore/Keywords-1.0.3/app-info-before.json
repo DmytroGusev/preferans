@@ -1,0 +1,376 @@
+{
+  "id": "1c594ee3-5392-4bcb-82bd-da4b9c5eabe1",
+  "localizations": {
+    "data": [
+      {
+        "type": "appInfoLocalizations",
+        "id": "04c2454c-3024-4052-a39d-d083cfb73e15",
+        "attributes": {
+          "locale": "sv",
+          "name": "Preferans",
+          "subtitle": "Klassiskt kortspel med stick",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/04c2454c-3024-4052-a39d-d083cfb73e15"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "31a72274-7454-4f56-a164-cc341ec28471",
+        "attributes": {
+          "locale": "ro",
+          "name": "Preferans",
+          "subtitle": "Joc de cărți cu levate",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/31a72274-7454-4f56-a164-cc341ec28471"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "0ee791b1-3285-40a0-9484-73f3f46a0012",
+        "attributes": {
+          "locale": "it",
+          "name": "Preferans",
+          "subtitle": "Il classico gioco di prese",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/0ee791b1-3285-40a0-9484-73f3f46a0012"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "20172385-8144-4a5f-9d6f-cbb00ea7a2b4",
+        "attributes": {
+          "locale": "cs",
+          "name": "Preferans",
+          "subtitle": "Klasická zdvihová karetní hra",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/20172385-8144-4a5f-9d6f-cbb00ea7a2b4"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "3a336676-2d6d-46dd-a93a-9e688fd1c212",
+        "attributes": {
+          "locale": "pl",
+          "name": "Preferans",
+          "subtitle": "Klasyczna gra na lewy",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/3a336676-2d6d-46dd-a93a-9e688fd1c212"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "93eeb73f-f50e-4c97-ab80-50f68931a92a",
+        "attributes": {
+          "locale": "el",
+          "name": "Preferans",
+          "subtitle": "Πρέφα με παρέα",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/93eeb73f-f50e-4c97-ab80-50f68931a92a"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "57e40ea9-90c3-4546-bb89-831a9ef6b885",
+        "attributes": {
+          "locale": "en-US",
+          "name": "Preferans card game",
+          "subtitle": "Cards, friends and open tables",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/57e40ea9-90c3-4546-bb89-831a9ef6b885"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "4ddcdd8f-f790-4a86-8025-bd7e922d5fff",
+        "attributes": {
+          "locale": "sk",
+          "name": "Preferans",
+          "subtitle": "Klasická zdvihová kartová hra",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/4ddcdd8f-f790-4a86-8025-bd7e922d5fff"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "cb4d0255-dffd-48f9-a44b-ee9d5a8c3b58",
+        "attributes": {
+          "locale": "tr",
+          "name": "Preferans",
+          "subtitle": "Klasik löve oyunu",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/cb4d0255-dffd-48f9-a44b-ee9d5a8c3b58"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "b1acb818-3880-4b7e-b76a-d6058d69d9b0",
+        "attributes": {
+          "locale": "da",
+          "name": "Preferans",
+          "subtitle": "Klassisk kortspil med stik",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/b1acb818-3880-4b7e-b76a-d6058d69d9b0"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "725ffca9-c0bb-4bd9-a65e-96709e2b7fb7",
+        "attributes": {
+          "locale": "fi",
+          "name": "Preferans",
+          "subtitle": "Perinteinen tikkikorttipeli",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/725ffca9-c0bb-4bd9-a65e-96709e2b7fb7"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "60f3aa79-347d-4bc5-9165-9088016d16e1",
+        "attributes": {
+          "locale": "sl-SI",
+          "name": "Preferans",
+          "subtitle": "Igra s kartami na vzetke",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/60f3aa79-347d-4bc5-9165-9088016d16e1"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "6617304f-7e09-41c1-b370-bbccf91df4d8",
+        "attributes": {
+          "locale": "fr-FR",
+          "name": "Preferans",
+          "subtitle": "Le jeu de plis classique",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/6617304f-7e09-41c1-b370-bbccf91df4d8"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "05b9b9fb-70aa-424f-b88d-ff722da59d7b",
+        "attributes": {
+          "locale": "nl-NL",
+          "name": "Preferans",
+          "subtitle": "Het klassieke slagenspel",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/05b9b9fb-70aa-424f-b88d-ff722da59d7b"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "e6c53095-9c49-49a7-9a3f-9cfa8a362556",
+        "attributes": {
+          "locale": "es-ES",
+          "name": "Preferans",
+          "subtitle": "El clásico juego de bazas",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/e6c53095-9c49-49a7-9a3f-9cfa8a362556"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "2c5ccc7e-2ef6-41be-9bc8-fa0c349d0ade",
+        "attributes": {
+          "locale": "de-DE",
+          "name": "Preferans",
+          "subtitle": "Das klassische Stichspiel",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/2c5ccc7e-2ef6-41be-9bc8-fa0c349d0ade"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "e25831b4-92af-412e-81f1-90246d1b124d",
+        "attributes": {
+          "locale": "pt-PT",
+          "name": "Preferans",
+          "subtitle": "O clássico jogo de vazas",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/e25831b4-92af-412e-81f1-90246d1b124d"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "366d0148-fd4a-40c6-872c-a2aebb32cfe2",
+        "attributes": {
+          "locale": "hr",
+          "name": "Preferans",
+          "subtitle": "Kartaška igra na štihove",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/366d0148-fd4a-40c6-872c-a2aebb32cfe2"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "3d9eacd3-8dbe-41dd-8b18-f3e56b62e3e2",
+        "attributes": {
+          "locale": "ca",
+          "name": "Preferans",
+          "subtitle": "El clàssic joc de bases",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/3d9eacd3-8dbe-41dd-8b18-f3e56b62e3e2"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "c5e9b40b-2dc9-4d29-a8ee-26f784bf955e",
+        "attributes": {
+          "locale": "ru",
+          "name": "Preferans: Преферанс",
+          "subtitle": "Карточная игра на взятки",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/c5e9b40b-2dc9-4d29-a8ee-26f784bf955e"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "9e63b09c-cea3-4d4d-be67-70cb3d61cbc1",
+        "attributes": {
+          "locale": "uk",
+          "name": "Preferans: Преферанс",
+          "subtitle": "Карткова гра на взятки",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/9e63b09c-cea3-4d4d-be67-70cb3d61cbc1"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "9dca6098-addb-4416-ae27-6f4aa1f40f5f",
+        "attributes": {
+          "locale": "hu",
+          "name": "Preferans",
+          "subtitle": "Klasszikus ütésvivő játék",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/9dca6098-addb-4416-ae27-6f4aa1f40f5f"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "7c448b42-b641-445a-a484-cab81a54f89c",
+        "attributes": {
+          "locale": "en-GB",
+          "name": "Preferans card game",
+          "subtitle": "Cards, friends and open tables",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/7c448b42-b641-445a-a484-cab81a54f89c"
+        }
+      },
+      {
+        "type": "appInfoLocalizations",
+        "id": "7f504b8c-827d-461b-8afe-ce14f462b80b",
+        "attributes": {
+          "locale": "no",
+          "name": "Preferans",
+          "subtitle": "Klassisk kortspill med stikk",
+          "privacyPolicyUrl": "https://dmytrogusev.github.io/preferans/privacy-policy.html",
+          "privacyChoicesUrl": null,
+          "privacyPolicyText": null
+        },
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/7f504b8c-827d-461b-8afe-ce14f462b80b"
+        }
+      }
+    ],
+    "links": {
+      "self": "https://api.appstoreconnect.apple.com/v1/appInfos/1c594ee3-5392-4bcb-82bd-da4b9c5eabe1/appInfoLocalizations?limit=200"
+    },
+    "meta": {
+      "paging": {
+        "total": 24,
+        "limit": 200
+      }
+    }
+  }
+}
