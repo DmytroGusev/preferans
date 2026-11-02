@@ -90,3 +90,21 @@ No rollback was executed. No GitHub PR was merged by this rollout.
 Build 31's unresolved App Privacy editor validation is separate from this bot
 rollout. Build 32 retains the removal of ATT/IDFA; no tracking is added. Keep the
 public Store draft and its metadata/build selection unchanged in this task.
+
+## November 2 Review Follow-Up
+
+After the rollout, a separately submitted public version 1.0.3 (31) was rejected
+under 5.1.2(i) because Other Diagnostic Data still has its legacy tracking flag.
+Read-only API verification at 17:01 UTC confirms REJECTED with build 31 selected.
+This supersedes the earlier draft-state observation, not the rollout receipt.
+
+A fresh signed-in Chrome attempt selected No tracking for Other Diagnostic Data,
+preserving App Functionality and identity linkage. Publish again failed with the
+NSUserTrackingUsageDescription validation despite the signed-package checks for
+31/32. The accurate label is therefore still NOT fully published; build 32 alone
+must not be described as resolving the review issue. The validation's root cause
+is unconfirmed. No tracking code was added, real disclosure removed, build
+selection changed, review reply sent, or public resubmission performed.
+
+See `privacy-review-followup.json` and `apple-review-reply-draft.txt`. The reply
+is unsent and requires owner approval. Preserve the historical Release31 receipt.
