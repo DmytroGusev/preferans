@@ -2,6 +2,26 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0.3 (32) - Online Bot Seats And Club Information
+
+- Date: 2026-11-02. Operational work by Codex at the owner's explicit request.
+- Exact archived app/deployed Worker source: `f4b65759eb107c87592e71a84a63307bd43046c0`.
+- Based on build 31, with bot feature `9864885` integrated as `ef40496`.
+- Host Add bot/difficulty/remove controls for empty public/private waiting seats.
+- Verified two humans plus one/two bots for three/four seats; Ready reconfirmation.
+- Settings links to maintained Guru Club/pricing information and Terms/Privacy/Support.
+- Club payment and three-free-pulkas/month enforcement remain OFF, not shipped.
+- Owner Worker `58c7f8e0-eb14-43cd-a5dc-46e72f0fba58`; no engine image change,
+  namespace migration, player reset or friend's-server deployment.
+- Worker 59 unit/19 runtime, app 272 XCTest (3 skips)/24 Swift Testing passed.
+- Native bot/Settings flows passed on iPhone and iPad; four live first-deal cases
+  passed, all disposable accounts cleaned up. Not physical-device/full-match QA.
+- Signed Xcode 27.1 archive/export/package verification passed; no ATT/IDFA added.
+- Build ID `8535d1ba-3fa4-4086-8ff7-3b4d59f80213`, VALID, external TestFlight
+  APPROVED / IN_BETA_TESTING for the unchanged six testers.
+- Public Store draft still selects build 31, metadata unchanged, no public review.
+- Receipts, source hashes, rollback cautions and Guru publication: `AppStore/Release32/`.
+
 ## 1.0.3 (31) - Non-Tracking Privacy Correction
 
 - Date: 2026-11-02. Authored by Codex at the owner's explicit request.

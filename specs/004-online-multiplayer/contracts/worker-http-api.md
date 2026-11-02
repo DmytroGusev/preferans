@@ -165,7 +165,26 @@ Auth: Bearer + seat proof. Request `{"playerID": PlayerID, "seatToken": string}`
 
 Response **200** `PublicRoom` (anonymous view). Converts every `pending:` seat to `bot:<seat>` "Bot N" and rebuilds the game; no-op (same room, no broadcast) if no open seat.
 
-Errors: 409 `public_humans_only`, 409 `room_in_progress`, 403 `unknown_player` / `seat_credential_invalid` / `forbidden` ("This account does not own that seat." / "Only the current host can perform this operation."), 404, 410.
+Available at private and public waiting tables. A change clears human readiness.
+Errors: 409 `room_in_progress`, 403 `unknown_player` / `seat_credential_invalid` / `forbidden`, 404, 410.
+
+### `POST /v2/rooms/{code}/seats/bot`
+
+Auth: Bearer + current manager seat proof. Request `{playerID, seatToken,
+targetPlayerID, difficulty}`. The target must be an open or bot seat in the lobby
+at sequence zero. Difficulty is `casual`, `seasoned`, `expert`; explicit null
+removes a bot. Omitted/invalid difficulty is rejected. Joined humans cannot be
+replaced, even when disconnected. Works at public and invite-only tables.
+
+Response **200** PublicRoom. The chosen difficulty persists as optional
+`OnlinePeer.botDifficulty`; legacy bots default to seasoned. The existing Swift
+engine is rebuilt with that profile before durable commit. No-op edits preserve
+Ready; real edits clear it for all humans. Bots never require Ready themselves.
+Engine failure does not save the proposed change. No cards are dealt implicitly.
+
+Errors: 400 `invalid_seat` / `invalid_player_id` / `invalid_bot_difficulty`,
+409 `seat_occupied` / `room_in_progress`, 403 invalid host proof; existing engine
+errors also apply. All mutations use the same room queue as join and start.
 
 ### `POST /v2/rooms/{code}/ready`
 
@@ -233,7 +252,7 @@ Auth: none. **200** `text/html` invite landing page; see [invite-links.md](invit
 | `message_too_large` | 413 | `readJSON`, `parseSocketPayload` |
 | `invalid_json`, `invalid_socket_json` | 400 | parsing |
 | `invalid_room_code`, `invalid_player_id`, `invalid_peer`, `invalid_seats`, `invalid_visibility`, `invalid_engine_configuration`, `invalid_max_players`, `duplicate_player`, `duplicate_account` | 400 | validation |
-| `public_humans_only` | 400 (create) / 409 (fill-bots) | public rules |
+| `public_humans_only` | 400 (initial create) | public seat intents |
 | `invalid_public_variant`, `invalid_pool_target` | 400 | `publicConfiguration` |
 | `lobby_unavailable` | 503 | missing `LOBBY` binding |
 | `room_exists` | 409 (after 5 attempts) | create |

@@ -1,0 +1,19 @@
+{
+  "source": "ca3dd79d8745d77bbe29a461129ec2afa8c39bf2",
+  "publishedAt": "2026-11-02T15:53:18.681Z",
+  "scope": "/apps/preferans/",
+  "clubURLs": [
+    "https://guruofcards.com/apps/preferans/club/",
+    "https://guruofcards.com/apps/preferans/ru/club/",
+    "https://guruofcards.com/apps/preferans/uk/club/"
+  ],
+  "backup": "/home/gurujtkn/.guru-cards-releases/preferans-pages-before.uOiN0w",
+  "publicHTMLAndCSSChecks": 19,
+  "allStatuses200AndHashesMatched": true,
+  "apacheConfigStatus": 403,
+  "fullSiteChecks": { "htmlPages": 1688, "localLinksAndFragments": 54853, "passed": true },
+  "clubListedInAllPageNavigation": true,
+  "checkoutOrTrackingScriptsAdded": false,
+  "paymentModelMarkedPlannedNotActive": true,
+  "outsideScopeModified": false
+}

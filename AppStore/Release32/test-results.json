@@ -1,0 +1,37 @@
+{
+  "sourceCommit": "f4b65759eb107c87592e71a84a63307bd43046c0",
+  "workerTypecheck": "passed",
+  "workerUnit": {
+    "passed": 59,
+    "failed": 0
+  },
+  "workerdLifecycle": {
+    "passed": 19,
+    "failed": 0
+  },
+  "appXCTest": {
+    "executed": 272,
+    "skipped": 3,
+    "failures": 0
+  },
+  "swiftTesting": {
+    "tests": 24,
+    "failures": 0
+  },
+  "iphone": {
+    "botFlowSeconds": 56.828,
+    "settingsLinksSeconds": 16.029,
+    "passed": true
+  },
+  "ipad": {
+    "botFlowSeconds": 46.552,
+    "settingsLinksSeconds": 16.931,
+    "passed": true
+  },
+  "caveats": [
+    "The initial Settings test queried a SwiftUI Link as Button; corrected test rerun passed. The first combined iPhone run therefore reports failure although its bot case passed.",
+    "The initial IPA verifier hit the default child-process buffer on large icon assets and looked for a joined route literal, although source constructs path components. Both verifier assumptions were corrected, without changing app code.",
+    "Three live-backend app test cases are environment-gated skips; separate real-network checks cover the owner service.",
+    "First-deal bot admission, not complete-match bot play or physical-device billing, was tested here."
+  ]
+}

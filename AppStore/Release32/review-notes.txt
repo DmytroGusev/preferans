@@ -1,0 +1,18 @@
+Preferans 1.0.3 (32). TestFlight-only update; no public Store release is submitted here.
+
+ONLINE BOTS: Play online > enter a display name > Continue as Guest (or Sign in with Apple) > Create a table, public or invite-only, for three or four players. On a second device, join through Find a table or the shared room code/invite. The host sees Add bot on each empty seat and chooses Casual, Seasoned or Expert. Add one bot beside two humans at a three-seat table, or two at a four-seat table. Bot settings changes difficulty or removes a bot before the first deal. Claimed human seats cannot be replaced.
+
+PUBLIC READY: Humans can mark Ready before adding bots. A real roster/difficulty change clears Ready to obtain agreement to the new table. All humans confirm again; bots require no socket or Ready action. The host taps Start game separately. Private waiting tables use connected-seat checks rather than the public Ready gate. The owner's existing server was updated for these controls without changing the engine image or resetting player data.
+
+SETTINGS AND PRICING: Settings starts with Club & online access. It opens https://guruofcards.com/apps/preferans/club/ with English/Russian/Ukrainian navigation. This is a future-access explanation, not checkout. Payments, subscriptions and the proposed three-pulkas/month limit are not activated. Local practice and current online play are free. No purchase or demo credentials are needed.
+
+PRIVACY: No advertising, analytics, attribution or third-party crash SDK is bundled. The unused ATT/IDFA flow and tracking usage key removed in build 31 remain absent; no ATT prompt is expected. Account/gameplay data serves online functionality, not cross-app advertising tracking.
+
+ACCOUNT DELETION: Settings > Account > Delete online account > confirmation. This permanently removes the server account/game library and sessions and anonymizes shared seats/results as applicable. Signing out/uninstalling is not deletion.
+
+Support: https://guruofcards.com/apps/preferans/support/
+Terms: https://guruofcards.com/apps/preferans/terms/
+Privacy: https://guruofcards.com/apps/preferans/privacy/
+Contact: support@guruofcards.com
+
+No real-money betting or cash prizes. Interface: English, Russian, Ukrainian.

@@ -87,4 +87,21 @@ final class AccessibilityContractTests: XCTestCase {
         robot.waitForElement(UIIdentifiers.screenLobby)
         XCTAssertFalse(app.alerts.firstMatch.exists)
     }
+
+    func testSettingsExposeClubAndLegalLinks() {
+        let app = XCUIApplication()
+        app.disableUITestAnimations()
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        robot.waitForElement(UIIdentifiers.screenLobby)
+        app.buttons[UIIdentifiers.lobbySettingsButton].tap()
+        robot.waitForElement(UIIdentifiers.screenSettings)
+        let club = app.descendants(matching: .any)["settings.clubInfo"]
+        XCTAssertTrue(club.waitForExistence(timeout: 2) && club.isHittable)
+        for identifier in ["settings.privacy", "settings.terms", "settings.support"] {
+            let link = app.descendants(matching: .any)[identifier]
+            for _ in 0..<4 where !link.isHittable { app.swipeUp() }
+            XCTAssertTrue(link.exists && link.isHittable, "Missing legal/help entry: \(identifier)")
+        }
+    }
 }

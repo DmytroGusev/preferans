@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createInitialRoom, joinRoom, publicRoom, removeAccountFromRoom, type RoomState } from "../src/room-state.ts";
+import { configureBotSeat, createInitialRoom, joinRoom, publicRoom, removeAccountFromRoom, type RoomState } from "../src/room-state.ts";
 import { publicConfiguration, publicTableEntry, setPlayerReady } from "../src/public-tables.ts";
 import { validateStartDealAuthority } from "../src/authoritative-engine.ts";
 
@@ -16,13 +16,29 @@ test("public listings expose no account, credential, projection or hidden engine
   const listing = publicTableEntry(state, new Set(["north"]))!;
   assert.equal(listing.openSeats, 2);
   assert.equal(listing.poolTarget, 33);
-  assert.deepEqual(listing.players, [{ displayName: "north", ready: false, connected: true }]);
+  assert.deepEqual(listing.players, [{ displayName: "north", ready: false, connected: true, isBot: false }]);
   const json = JSON.stringify(listing);
   for (const secret of ["accountID", "seatToken", "PRIVATE", "pending:", "guest:"]) assert.ok(!json.includes(secret));
   assert.equal(publicTableEntry({ ...state, visibility: "private" }, new Set(["north"])), undefined);
   assert.equal(publicTableEntry(state, new Set()), undefined);
   assert.equal(publicTableEntry({ ...state, status: "abandoned" }, new Set(["north"])), undefined);
   assert.equal(publicTableEntry({ ...state, status: "playing" }, new Set(["north"]))?.openSeats, 0);
+});
+
+test("public mixed tables list bot difficulty and require readiness only from connected humans", () => {
+  let state = configureBotSeat(joinRoom(room(), peer("east")), "south", "expert");
+  const connected = new Set(["north", "east"]);
+  const listing = publicTableEntry(state, connected)!;
+  assert.equal(listing.openSeats, 0);
+  assert.equal(listing.players.length, 3);
+  assert.deepEqual(listing.players[2], { displayName: "Bot 3", isBot: true, botDifficulty: "expert", ready: true, connected: true });
+  assert.throws(() => validateStartDealAuthority(state, state.peers[0], connected), /confirm Ready/);
+  for (const human of connected) state = setPlayerReady(state, human, true);
+  assert.doesNotThrow(() => validateStartDealAuthority(state, state.peers[0], connected));
+  assert.throws(() => validateStartDealAuthority(state, state.peers[0], new Set(["north"])), /connected/);
+  state = configureBotSeat(state, "south", null);
+  assert.deepEqual(state.readyPlayerIDs, []);
+  assert.equal(publicTableEntry(state, connected)?.openSeats, 1);
 });
 
 test("a new player invalidates readiness; only ready and connected tables may start", () => {

@@ -1,0 +1,106 @@
+{
+  "checkedAt": "2026-11-02T16:01:21.496Z",
+  "local": {
+    "base": "http://127.0.0.1:8787",
+    "cases": [
+      {
+        "visibility": "public",
+        "seats": 3,
+        "humans": 2,
+        "bots": 1,
+        "readyBeforeAndAfterBot": true,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 149
+      },
+      {
+        "visibility": "public",
+        "seats": 4,
+        "humans": 2,
+        "bots": 2,
+        "readyBeforeAndAfterBot": true,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 111
+      },
+      {
+        "visibility": "private",
+        "seats": 3,
+        "humans": 2,
+        "bots": 1,
+        "readyBeforeAndAfterBot": false,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 56
+      },
+      {
+        "visibility": "private",
+        "seats": 4,
+        "humans": 2,
+        "bots": 2,
+        "readyBeforeAndAfterBot": false,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 63
+      }
+    ],
+    "temporaryAccountsDeleted": 8,
+    "realPlayerDataModified": false
+  },
+  "owner": {
+    "base": "https://preferans-room-worker.dmytro-gusev.workers.dev",
+    "cases": [
+      {
+        "visibility": "public",
+        "seats": 3,
+        "humans": 2,
+        "bots": 1,
+        "readyBeforeAndAfterBot": true,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 8760
+      },
+      {
+        "visibility": "public",
+        "seats": 4,
+        "humans": 2,
+        "bots": 2,
+        "readyBeforeAndAfterBot": true,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 3545
+      },
+      {
+        "visibility": "private",
+        "seats": 3,
+        "humans": 2,
+        "bots": 1,
+        "readyBeforeAndAfterBot": false,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 3955
+      },
+      {
+        "visibility": "private",
+        "seats": 4,
+        "humans": 2,
+        "bots": 2,
+        "readyBeforeAndAfterBot": false,
+        "protectedHumanSeat": true,
+        "privateProjections": true,
+        "firstDealAccepted": true,
+        "elapsedMs": 3327
+      }
+    ],
+    "temporaryAccountsDeleted": 8,
+    "realPlayerDataModified": false
+  },
+  "humanOnlyPublicRegression": "passed"
+}

@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-02T16:03:20.318Z",
+  "version": "1.0.3",
+  "build": "32",
+  "buildID": "8535d1ba-3fa4-4086-8ff7-3b4d59f80213",
+  "processingState": "VALID",
+  "beta": {
+    "autoNotifyEnabled": true,
+    "internalBuildState": "READY_FOR_BETA_TESTING",
+    "externalBuildState": "IN_BETA_TESTING"
+  },
+  "betaReview": {
+    "betaReviewState": "APPROVED",
+    "submittedDate": null
+  },
+  "existingExternalTesterCount": 6,
+  "membershipUnchanged": true,
+  "publicLinkUnchanged": true,
+  "whatToTestVerified": true,
+  "storeVersionSelectionsAndMetadataUnchanged": true,
+  "publicReviewSubmitted": false,
+  "subscriptionsActivated": false
+}

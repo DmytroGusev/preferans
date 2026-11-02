@@ -27,6 +27,8 @@ public struct PublicOnlineTable: Decodable, Sendable, Equatable, Identifiable {
         public var displayName: String
         public var ready: Bool
         public var connected: Bool
+        public var isBot: Bool?
+        public var botDifficulty: BotDifficulty?
     }
     public var roomCode: String
     public var variant: String

@@ -1,0 +1,27 @@
+UNSENT DRAFT - owner approval required before sending
+
+Subject: Submission d4bea8da-ce05-4574-8f22-c60408f4e0b6 - App Privacy validation prevents correction
+
+Hello App Review,
+
+Regarding the November 2 rejection of Preferans card game, version 1.0.3 (31), under 5.1.2(i): the app does not track users across third-party apps or websites for advertising or share data with a data broker. It has no advertising, analytics, attribution or third-party crash-reporting SDK.
+
+The Other Diagnostic Data tracking declaration is a legacy questionnaire answer, not the behavior of build 31. We attempted to correct it to No again after receiving this rejection. App Store Connect refuses to publish the correction and displays:
+
+"Your app contains NSUserTrackingUsageDescription, indicating that it may request permission to track users."
+
+Our signed-package verification for build 31 confirms that NSUserTrackingUsageDescription, AppTrackingTransparency/AdSupport framework linkage, and ATT request/IDFA APIs are absent. Build 32, now available in TestFlight, retains this removal. We have not replaced the selected App Store build while investigating this discrepancy.
+
+The five actual collected data types remain disclosed: Name, User ID, Gameplay Content, Product Interaction and Other Diagnostic Data. All are used for App Functionality and linked to the online account. The first four already have No tracking saved. Technical diagnostic data is used for service operation/support, not cross-app advertising tracking.
+
+Please investigate which binary the App Privacy validator is evaluating and help us publish the accurate No tracking answer for Other Diagnostic Data. We do not want to remove an actual diagnostic disclosure or claim tracking that does not occur. Please advise if you need additional binary-verification evidence or an App Store Connect Support case.
+
+Apple ID: 6763581975
+Bundle ID: com.mixandmatch.preferans
+Selected build 31 ID: f874d707-5832-485c-8da5-74dea2f66edb
+TestFlight build 32 ID: 8535d1ba-3fa4-4086-8ff7-3b4d59f80213
+Privacy policy: https://guruofcards.com/apps/preferans/privacy/
+
+Thank you,
+Guru of Cards
+support@guruofcards.com

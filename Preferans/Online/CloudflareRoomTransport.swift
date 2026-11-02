@@ -416,6 +416,23 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         return summary.peers
     }
 
+    public func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async throws {
+        guard let seatToken else {
+            throw CloudflareRoomTransportError.serverError("This device no longer owns the room seat.")
+        }
+        let summary = try await Self.postRoomRequest(
+            BotSeatMutationRequest(playerID: localPeer.playerID, seatToken: seatToken,
+                                   targetPlayerID: player, difficulty: difficulty),
+            to: Self.endpoint(baseURL, "v2", "rooms", roomCode, "seats", "bot"),
+            accountSessionToken: accountSessionToken, session: session
+        )
+        participants = summary.peers
+        hostPlayerID = summary.hostPlayerID
+        hostEpoch = summary.hostEpoch
+        adoptTableSettings(summary)
+        emitParticipants()
+    }
+
     /// Schema-v3 Cloudflare rooms reject client-authored state. This protocol
     /// requirement remains for in-memory peer-host fixtures only.
     public func reportState(
@@ -889,6 +906,24 @@ private struct RoomSeatIntent: Encodable {
 private struct HostMutationRequest: Encodable {
     var playerID: PlayerID
     var seatToken: String
+}
+
+private struct BotSeatMutationRequest: Encodable {
+    var playerID: PlayerID
+    var seatToken: String
+    var targetPlayerID: PlayerID
+    var difficulty: BotDifficulty?
+
+    private enum CodingKeys: String, CodingKey { case playerID, seatToken, targetPlayerID, difficulty }
+
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(playerID, forKey: .playerID)
+        try values.encode(seatToken, forKey: .seatToken)
+        try values.encode(targetPlayerID, forKey: .targetPlayerID)
+        // Explicit null reopens the seat; omission is rejected by the server.
+        try values.encode(difficulty, forKey: .difficulty)
+    }
 }
 
 private struct AbandonRequest: Encodable {
