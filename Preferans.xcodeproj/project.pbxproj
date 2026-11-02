@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C0DE00000000000000000A02 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000A01 /* PrivacyInfo.xcprivacy */; };
 		265F5A4613A45F1440C8983C /* TableLayoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */; };
 		629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */; };
 		B00000000000000000000DE1 /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = B00000000000000000000DE0 /* Dependencies */; };
@@ -125,6 +126,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		C0DE00000000000000000A01 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LobbyViewModel.swift; path = Preferans/UI/LobbyViewModel.swift; sourceTree = "<group>"; };
 		9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TableLayoutModel.swift; path = Preferans/UI/TableLayoutModel.swift; sourceTree = "<group>"; };
 		A00000000000000000000010 /* Preferans.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Preferans.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -331,6 +333,7 @@
 				B0000000000000000000008B /* CenterActionBanner.swift */,
 				B0000000000000000000A082 /* Localized.swift */,
 				B0000000000000000000A083 /* Localizable.xcstrings */,
+				C0DE00000000000000000A01 /* PrivacyInfo.xcprivacy */,
 				A00000000000000000000018 /* Assets.xcassets */,
 				A00000000000000000000019 /* README.md */,
 			);
@@ -467,6 +470,7 @@
 			files = (
 				A00000000000000000000008 /* Assets.xcassets in Resources */,
 				B0000000000000000000A081 /* Localizable.xcstrings in Resources */,
+				C0DE00000000000000000A02 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

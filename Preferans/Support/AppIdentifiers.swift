@@ -68,11 +68,7 @@ public enum SettingsKeys {
     /// House-rule variant selected for both bot and online rooms.
     public static let onlineVariant = "settings.onlineVariant"
 
-    /// Local audit flag noting that the user explicitly opened the ATT prompt.
-    /// The actual tracking authorization state remains owned by iOS.
-
-    /// First-run product tour completion flag. Keeping this separate from
-    /// privacy state lets testers reset ATT independently from onboarding.
+    /// First-run product tour completion flag.
     public static let firstLaunchOnboardingCompleted = "settings.firstLaunchOnboardingCompleted"
 
     /// Per-player pulka preset selected for newly-created local and online tables.

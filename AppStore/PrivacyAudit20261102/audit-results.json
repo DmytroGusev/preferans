@@ -1,0 +1,106 @@
+{
+  "date": "2026-11-02",
+  "request": "Recheck internally before contacting Apple",
+  "storeReadbackAt": "2026-11-02T17:04:00.229Z",
+  "store": {
+    "appID": "6763581975",
+    "liveVersion": "1.0.2",
+    "liveBuild": "28",
+    "rejectedVersion": "1.0.3",
+    "selectedBuild": "31",
+    "selectedBuildID": "f874d707-5832-485c-8da5-74dea2f66edb",
+    "platformsFound": ["IOS"],
+    "remainingPublishedTrackingCategory": "Other Diagnostic Data"
+  },
+  "signedPackages": [
+    {
+      "build": "30",
+      "role": "negative control",
+      "sha256": "29c824f04d76b9afd8d34c157092b51b050e0c2720c369df7dc086d11d34114a",
+      "signatureVerified": true,
+      "fileCount": 14,
+      "plistCount": 7,
+      "trackingPermissionPresent": true,
+      "ATTFrameworkAndAPIsPresent": true,
+      "nonTrackingGuardPassed": false,
+      "manifestPresent": false
+    },
+    {
+      "build": "31",
+      "sha256": "178ec2ad2d7bbd3108c465e3081062fb54eaf54ac423cbc2b95bb805381edd86",
+      "matchesOriginalReceipt": true,
+      "signatureVerified": true,
+      "fileCount": 14,
+      "plistCount": 7,
+      "nestedBundleCount": 0,
+      "trackingKeysFound": [],
+      "trackingAPIsFound": [],
+      "trackingOrAnalyticsLibrariesFound": [],
+      "nonTrackingGuardPassed": true,
+      "manifestPresent": false
+    },
+    {
+      "build": "32",
+      "sha256": "6339ccbe20d062e1b54a0cfe43684b6309b015ddd58475b5f150c67be0c8a9af",
+      "matchesOriginalReceipt": true,
+      "signatureVerified": true,
+      "fileCount": 14,
+      "plistCount": 7,
+      "nestedBundleCount": 0,
+      "trackingKeysFound": [],
+      "trackingAPIsFound": [],
+      "trackingOrAnalyticsLibrariesFound": [],
+      "nonTrackingGuardPassed": true,
+      "manifestPresent": false
+    }
+  ],
+  "upload31": {
+    "pipelineArchive": "/tmp/Preferans31.xcarchive",
+    "trackingKeyFoundInPipelineLog": false,
+    "processedAppleMetadataMatchesArchiveBundleVersionAndSDK": true
+  },
+  "sourceAndNetworkReview": {
+    "adAnalyticsAttributionOrThirdPartyCrashSDKFound": false,
+    "appleSignInScopes": ["fullName"],
+    "emailRequested": false,
+    "onlineTransport": "Owner-hosted Preferans Worker over HTTPS/WebSocket",
+    "realAccountGameplayAndTechnicalLogsRemainDisclosed": true
+  },
+  "liveVersionTransition": {
+    "sourceCommit": "d965448",
+    "trackingKeyInCommittedDebugAndReleaseSettings": true,
+    "signedBuild28AvailableForAudit": false,
+    "appleDocumentation": "https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy/",
+    "documentationSaysPrivacyResponsesAreAppLevelAndShouldReflectCurrentlyLiveVersion": true,
+    "validatorEvaluatingLiveBuild28IsHypothesisNotProven": true
+  },
+  "newSourceCorrection": {
+    "missingPrivacyManifestAdded": true,
+    "tracking": false,
+    "trackingDomains": [],
+    "fiveCollectedDataTypesPreserved": true,
+    "allTypesLinkedForAppFunctionalityOnly": true,
+    "userDefaultsReason": "CA92.1",
+    "obsoleteATTCommentsRemoved": true,
+    "rootCauseOfTrackingCheckboxValidationProven": false,
+    "manifestDoesNotAutomaticallyChangeAppStoreQuestionnaire": true
+  },
+  "verification": {
+    "guardTestsPassed": 6,
+    "guardTestsFailed": 0,
+    "xcode": "27A9275",
+    "localReleaseBuild": "BUILD SUCCEEDED",
+    "manifestInBuiltMainBundle": true,
+    "newBuiltPackageNonTrackingAndManifestGuard": "PASS",
+    "localBuildSigned": false,
+    "localBuildNumberRetainedOnlyForVerification": "32"
+  },
+  "externalChangesThisAudit": {
+    "appStoreSubmissionChanged": false,
+    "selectedBuildChanged": false,
+    "newBuildUploaded": false,
+    "reviewMessageSent": false,
+    "privacyLabelPublished": false,
+    "serverDeployed": false
+  }
+}

@@ -103,6 +103,7 @@ if isServerLane {
                 "Preferans.entitlements",
                 "PreferansApp.swift",
                 "Info.plist",
+                "PrivacyInfo.xcprivacy",
                 "Support/Preferans.entitlements.example"
             ],
             resources: [
