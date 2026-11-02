@@ -160,7 +160,6 @@ public enum UIIdentifiers {
     public static let onlineRegisterWithApple  = "online.registerWithApple"
     public static let onlineRegisterAsGuest    = "online.registerAsGuest"
     public static let onlineDeleteAccount      = "online.deleteAccount"
-    public static let trackingPermissionRequest = "privacy.tracking.request"
     public static let onlineAccountEmail       = "online.accountEmail"
     public static let onlineLocalSeatPicker    = "online.localSeat"
     public static let onlineCreateRoom         = "online.createRoom"

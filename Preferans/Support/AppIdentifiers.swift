@@ -70,7 +70,6 @@ public enum SettingsKeys {
 
     /// Local audit flag noting that the user explicitly opened the ATT prompt.
     /// The actual tracking authorization state remains owned by iOS.
-    public static let trackingPermissionRequested = "settings.trackingPermissionRequested"
 
     /// First-run product tour completion flag. Keeping this separate from
     /// privacy state lets testers reset ATT independently from onboarding.

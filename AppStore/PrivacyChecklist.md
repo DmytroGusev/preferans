@@ -1,61 +1,67 @@
 # Privacy Checklist
 
-Use this file when filling in App Store Connect privacy answers.
+Compare every answer with the exact submitted binary and backend behavior.
 
-## Current shipping assumption
+## Build 31
 
-The current shipping app supports local play and authenticated online rooms
-through Sign in with Apple, guest accounts, and Cloudflare room sync. Build 21
-requests App Tracking Transparency on first launch when iOS tracking status is
-not determined.
+Build 31 removes the unused App Tracking Transparency request, advertising-ID
+helper, tracking controls and NSUserTrackingUsageDescription. There is no ad,
+analytics, attribution or third-party crash-reporting SDK in this release.
+Do not declare tracking for hypothetical future integrations. Adding one later
+requires a fresh data-flow review, updated disclosures and consent where required.
 
-Only mark data as "used to track the user" in App Store Connect if the submitted build actually collects that category for tracking, advertising attribution, third-party analytics, or data broker sharing. Do not mark categories that are not collected by the app.
+The app still collects online account and game data. Do not select Data Not
+Collected. Local-only play is not an anonymous description of the online service.
 
-## Likely answers for the current codebase
+## App Privacy Answers
 
-- Tracking: Yes only if App Store Connect privacy labels intentionally declare tracking for advertising attribution or similar tracking use.
-- Data used to track the user: Only the categories actually collected for tracking after ATT authorization.
-- Contact Info: Email address is not requested or stored by the app.
-- Health & Fitness: Not collected
-- Financial Info: Not collected
-- Location: Not collected
-- Sensitive Info: Not collected
-- Contacts: Not collected
-- User Content: Gameplay room data is processed for online multiplayer, but no public user-generated content feature is provided.
-- Browsing History: Not collected
-- Search History: Not collected
-- Identifiers: Sign in with Apple user identifier or anonymous room identifier may be collected, linked to the user, and used only for app functionality and online room participation.
-- Name: Display name may be collected, linked to the user, and used only for app functionality so other room participants can identify seats.
-- Purchases: Not collected
-- Usage Data: Not collected
-- Product Interaction: Not collected
-- Diagnostics: Not collected
-- Crash Data: Not collected
-- Performance Data: Not collected
-- Advertising Data: Not collected
+Declare these types for App Functionality only, linked to the user's identity,
+not used for cross-app tracking:
 
-## ATT implementation
+- Name: Apple fullName/display name, visible to room participants.
+- User ID: guest/Apple account identity used for authentication and game access.
+- Gameplay Content: persistent online game state and history.
+- Product Interaction: gameplay actions and saved position in a game.
+- Other Diagnostic Data: technical/security service logs and troubleshooting.
 
-Build 21 requests App Tracking Transparency automatically on first launch before future tracking data can be accessed. The permission status and manual request button are also available in **Settings → Privacy**.
+Remove unsupported Advertising Data, Email Address, Crash Data, Performance Data
+and Other Usage Data declarations. Apple sign-in requests fullName, not email.
+Voluntary support correspondence is separate; reassess Apple's optional-support
+criteria if its collection or use changes.
 
-Code may access the advertising identifier only through `TrackingPermissionCenter.advertisingIdentifierForTracking`, which returns a value only after `ATTrackingManager.trackingAuthorizationStatus == .authorized`.
+No Third-Party Advertising, Developer Advertising/Marketing, Analytics,
+Product Personalization or Other Purposes are implemented for these categories.
+No device ID/IDFA, location, contacts, financial or health data is collected here.
+Apple's own platform diagnostics are not an added developer crash-reporting SDK.
 
-## Account deletion
+## Store Validation
 
-The app includes an authenticated **Delete online account** action in
-**Settings → Account**. It deletes the Cloudflare account record, active bearer
-sessions, game library, room identity, and room credentials before clearing the
-local Keychain session and profile. Active games containing the account are
-abandoned and lose their resume snapshot; shared finished history retains only
-an anonymized seat and score.
+On 2 November 2026 Apple refused to remove the last legacy tracking answer while
+build 30, which includes NSUserTrackingUsageDescription, was selected. The UI
+explicitly required a new binary or actual tracking disclosures. The correct
+resolution is a non-tracking build, not falsely claiming advertising behavior.
+Select processed build 31, complete the remaining answer, publish, reload and
+verify every type plus the absence of Data Used to Track You.
 
-## Update before submission if you add any of these
+`node AppStore/Release31/verify-privacy.mjs --ipa build/export31/Preferans.ipa`
+checks source, signed IPA plist, linked frameworks and tracking API symbols.
 
-- Analytics SDK
-- Crash reporting SDK
-- A new authentication provider
-- Another backend beyond the current Cloudflare room service
-- Push notifications
-- Deep-link attribution
+## Account Deletion
 
-Do not submit privacy answers based on this file without comparing them to the actual shipping build.
+Settings > Account > Delete online account is authenticated and permanent.
+It removes the server account, sessions, game library and local credentials;
+active games are abandoned and shared finished history retains anonymized seats.
+Sign-out or uninstalling is not deletion. Test the full flow on physical devices
+before review. The smoke test opens/cancels confirmation without deleting data.
+
+## Public Notices
+
+- <https://guruofcards.com/apps/preferans/privacy/>
+- <https://guruofcards.com/apps/preferans/terms/>
+- <https://guruofcards.com/apps/preferans/support/#account-deletion>
+- support@guruofcards.com
+
+Guru of Cards is the public brand; it does not change the Apple seller's legal
+identity. Confirm any legally required controller/trader disclosures separately.
+
+Reference: <https://developer.apple.com/app-store/app-privacy-details/>.
