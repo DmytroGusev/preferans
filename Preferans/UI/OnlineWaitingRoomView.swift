@@ -512,6 +512,8 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             .accessibilityIdentifier("online.confirmReady")
             Text("Confirm that you agree to these settings and have time to finish the pulka.")
                 .font(.caption).foregroundStyle(theme.textSecondary)
+            Text("Changing seats or bot difficulty clears Ready. All human players must confirm again.")
+                .font(.caption).foregroundStyle(theme.textMuted)
         }
         .foregroundStyle(theme.textPrimary)
         .padding(14)

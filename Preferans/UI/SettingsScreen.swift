@@ -33,15 +33,27 @@ public struct SettingsScreen: View {
     public var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Link("Club & online access", destination: URL(string: "https://guruofcards.com/apps/preferans/club/")!)
+                        .accessibilityIdentifier("settings.clubInfo")
+                } footer: {
+                    Text("Online play is currently free. Club subscriptions are not active.")
+                        .foregroundStyle(theme.textSecondary)
+                }
+                .listRowBackground(theme.panel)
                 appearanceSection
                 tableSection
                 languageSection
                 accountSection
                 Section {
                     Link("Privacy Policy", destination: URL(string: "https://guruofcards.com/apps/preferans/privacy/")!)
+                        .accessibilityIdentifier("settings.privacy")
                     Link("Terms of Use", destination: URL(string: "https://guruofcards.com/apps/preferans/terms/")!)
+                        .accessibilityIdentifier("settings.terms")
+                    Link("Support", destination: URL(string: "https://guruofcards.com/apps/preferans/support/")!)
+                        .accessibilityIdentifier("settings.support")
                 } header: {
-                    Text("Privacy").foregroundStyle(theme.textSecondary)
+                    Text("Help & Legal").foregroundStyle(theme.textSecondary)
                 }
                 .listRowBackground(theme.panel)
                 #if DEBUG

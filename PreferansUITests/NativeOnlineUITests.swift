@@ -108,6 +108,15 @@ class NativeOnlineUITests: XCTestCase {
         let joined = try await request("POST", "/v2/rooms/\(code)/join",
             body: ["requestedPlayerID": ["rawValue": "east"]], token: friend)
         _ = try await connect(joined)
+        let ready = app.buttons["online.confirmReady"]
+        try reveal(ready, in: app)
+        ready.tap()
+        let peers = try XCTUnwrap(joined["peers"] as? [[String: Any]])
+        let player = try XCTUnwrap(peers.first { ($0["accountID"] as? String)?.hasPrefix("guest:") == true }?["playerID"])
+        _ = try await request("POST", "/v2/rooms/\(code)/ready",
+            body: ["playerID": player, "seatToken": try XCTUnwrap(joined["seatToken"]), "ready": true], token: friend)
+        print("[native-online] both humans Ready; host can still add a bot")
+        XCTAssertFalse(app.buttons[UIIdentifiers.onlineStartGame].isEnabled)
         let menu = app.buttons[UIIdentifiers.waitingRoomBotMenu(player: "south")]
         try reveal(menu, in: app)
         try require(menu.waitForExistence(timeout: 3))
@@ -116,6 +125,7 @@ class NativeOnlineUITests: XCTestCase {
         app.buttons["Casual"].tap()
         let row = app.descendants(matching: .any)[UIIdentifiers.waitingRoomSeat(index: 2)]
         try require(row.wait(for: \.botSeatOccupancy, toEqual: "bot", timeout: 3))
+        try require(ready.wait(for: \.label, toEqual: "I'm ready", timeout: 3))
         menu.tap()
         app.buttons["Expert"].tap()
         try require(row.staticTexts["Expert"].waitForExistence(timeout: 3))
@@ -125,11 +135,8 @@ class NativeOnlineUITests: XCTestCase {
         menu.tap()
         app.buttons["Seasoned"].tap()
         try require(row.staticTexts["Seasoned"].waitForExistence(timeout: 3))
-        let ready = app.buttons["online.confirmReady"]
         try reveal(ready, in: app)
         ready.tap()
-        let peers = try XCTUnwrap(joined["peers"] as? [[String: Any]])
-        let player = try XCTUnwrap(peers.first { ($0["accountID"] as? String)?.hasPrefix("guest:") == true }?["playerID"])
         _ = try await request("POST", "/v2/rooms/\(code)/ready",
             body: ["playerID": player, "seatToken": try XCTUnwrap(joined["seatToken"]), "ready": true], token: friend)
         let start = app.buttons[UIIdentifiers.onlineStartGame]

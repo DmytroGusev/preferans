@@ -27,7 +27,7 @@ class_name = "PublicTableDirectory"
 
 [[containers]]
 class_name = "PreferansEngineContainer"
-image = "registry.cloudflare.com/df302a84563143eb92fc75a7277079ec/preferans-engine@sha256:2aef1184f568365af0d18f0054193590cbf44ef389a128a964add72ba9b091bf"
+image = "registry.cloudflare.com/df302a84563143eb92fc75a7277079ec/preferans-engine@sha256:90d5da73d8fc8cd677e3e4047174b46c03cfd8539005d685a8274c16b1e456dc"
 max_instances = 3
 
 [[migrations]]

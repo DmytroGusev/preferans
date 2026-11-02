@@ -82,9 +82,9 @@ try {
     const publicTable = listing.tables.find((table: any) => table.roomCode === code);
     require(publicTable.openSeats === count - 1, "Wrong initial seat count");
     require(!JSON.stringify(publicTable).includes("accountID"), "Directory leaked accounts");
-    await request("POST", `/v2/rooms/${code}/seats/fill-bots`, accounts[0], {
+    await request("POST", `/v2/rooms/${code}/seats/fill-bots`, accounts[1], {
       playerID: players[0], seatToken: created.seatToken
-    }, 409);
+    }, 403);
     const joined = [created, ...await Promise.all(players.slice(1).map((id, index) =>
       request("POST", `/v2/rooms/${code}/join`, accounts[index + 1], { requestedPlayerID: { rawValue: id } })))];
     for (const room of joined.slice(1)) await connect(room);
