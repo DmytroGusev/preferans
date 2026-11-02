@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-02",
+  "sourceCommit": "82588b067a751444a76f02b0080a9ee10c1e545b",
+  "privacyPackageGuard": {
+    "command": "node --test bin/audit-privacy-package.test.mjs",
+    "passed": 6,
+    "failed": 0
+  },
+  "xcode": "27A9275",
+  "releaseArchive": "SUCCEEDED",
+  "distributionExport": "SUCCEEDED",
+  "signedPackageAudit": "PASSED",
+  "privacyManifestBundled": true,
+  "ATTAndIDFAAbsent": true,
+  "sourceHashesComparedAgainstCommittedSource": true,
+  "uploadSucceededAt": "2026-11-02T17:38:33.517Z",
+  "processingAndPrivacyLabelVerification": "Recorded separately; upload is not proof of label correction",
+  "newGameplayOrPhysicalDeviceTestsPerformed": false,
+  "inheritedMultiplayerChecks": "See AppStore/Release32/test-results.json and network-verification.json",
+  "serverChanged": false,
+  "publicReleaseSubmitted": false
+}

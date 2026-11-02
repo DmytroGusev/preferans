@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-02T17:41:26.323Z",
+  "build": "33",
+  "buildID": "fb67887b-ddc1-4ad8-8030-25f4f826b7b6",
+  "processingState": "VALID",
+  "beta": {
+    "autoNotifyEnabled": true,
+    "internalBuildState": "READY_FOR_BETA_TESTING",
+    "externalBuildState": "IN_BETA_TESTING"
+  },
+  "betaReview": {
+    "betaReviewState": "APPROVED",
+    "submittedDate": null
+  },
+  "existingExternalTesterCount": 6,
+  "membershipUnchanged": true,
+  "publicLinkUnchanged": true,
+  "publicReviewSubmitted": false
+}

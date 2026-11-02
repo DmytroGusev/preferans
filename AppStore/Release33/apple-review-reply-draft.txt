@@ -1,0 +1,30 @@
+UNSENT DRAFT - awaiting owner confirmation
+
+Hello App Review,
+
+Regarding submission d4bea8da-ce05-4574-8f22-c60408f4e0b6 and the November 2 rejection of Preferans card game 1.0.3 (31) under 5.1.2(i): the app does not track users across other companies' apps/websites for advertising or share data with data brokers. It has no advertising, analytics, attribution or third-party crash-reporting SDK.
+
+We have now uploaded and selected version 1.0.3 build 33. Apple processing is VALID, and the version is Prepare for Submission. We have not resubmitted the public release while its privacy declaration remains unresolved.
+
+We verified the signed build 33 IPA before uploading its archive:
+- NSUserTrackingUsageDescription is absent, including localized resources.
+- AppTrackingTransparency/AdSupport framework linkage and ATT/IDFA APIs are absent.
+- PrivacyInfo.xcprivacy is present in the main app bundle, declaring NSPrivacyTracking false, empty tracking domains, all collected-data tracking booleans false and app-private UserDefaults reason CA92.1.
+- The upload uses the correct build 33 archive and bundle com.mixandmatch.preferans.
+
+The five actual collected types remain disclosed: Name, User ID, Gameplay Content, Product Interaction and Other Diagnostic Data. These serve App Functionality and are linked to the online account. Four already have No tracking saved. Other Diagnostic Data still has a legacy Yes tracking answer that we are trying to correct, not an actual advertising-tracking data flow.
+
+After selecting build 33, we opened a fresh App Privacy page, preserved App Functionality and identity linkage, selected No tracking for Other Diagnostic Data and clicked Publish. App Store Connect again refused the correction with:
+
+"Your app contains NSUserTrackingUsageDescription, indicating that it may request permission to track users."
+
+The currently live version is 1.0.2 (28), with an older tracking-permission configuration. Please confirm which binary the validator is evaluating, and help us publish the accurate non-tracking answer for build 33 before resubmission. We do not want to remove an actual diagnostic disclosure or add an unnecessary advertising-tracking flow to satisfy an inconsistent declaration. If this requires an App Store Connect Support case, please advise.
+
+Apple ID: 6763581975
+Build 33 ID: fb67887b-ddc1-4ad8-8030-25f4f826b7b6
+Verified exported IPA SHA-256: 73e5f7d19c8d99b0dff4609c2d46a0367ccc5575ae294fd24375731b127027da
+Privacy: https://guruofcards.com/apps/preferans/privacy/
+
+Thank you,
+Guru of Cards
+support@guruofcards.com

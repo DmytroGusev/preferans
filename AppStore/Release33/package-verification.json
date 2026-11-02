@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-11-02T17:37:02.976Z",
+  "sourceCommit": "82588b067a751444a76f02b0080a9ee10c1e545b",
+  "version": "1.0.3",
+  "build": "33",
+  "xcode": "27A9275",
+  "bytes": 6714602,
+  "sha256": "73e5f7d19c8d99b0dff4609c2d46a0367ccc5575ae294fd24375731b127027da",
+  "signatureVerified": true,
+  "nonTrackingGuardPassed": true,
+  "manifestInMainBundle": true,
+  "manifestSHA256": "d1c7b63dfe0ade991d12678104b146def6767bd37bb43ca71b27ec351df9612f",
+  "accountGameplayAndDiagnosticDisclosuresPreserved": true,
+  "localUserDefaultsReason": "CA92.1",
+  "appleSignInAndInvitesPreserved": true,
+  "ownerBackendAndNamespacePreserved": true,
+  "onlineBotControlsPreserved": true,
+  "subscriptionsActivated": false,
+  "serverDeployed": false
+}
