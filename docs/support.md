@@ -2,28 +2,12 @@
 title: Support
 ---
 
-# Support
+<meta http-equiv="refresh" content="0; url=https://guruofcards.com/apps/preferans/support/">
 
-Last updated: April 27, 2026
+# Preferans Support
 
-For help with the Preferans iOS app, contact the developer at:
+[Open Guru of Cards support](https://guruofcards.com/apps/preferans/support/)
+for online-table troubleshooting, game recovery, scoring reports and account deletion.
 
-`dmytro.gusev@gmail.com`
-
-## What To Include
-
-- Your device model and iOS version.
-- The app version and build number.
-- Whether you were playing locally or in an online room.
-- A short description of what happened and what you expected.
-
-## Online Rooms
-
-If you have trouble joining an online room, confirm that:
-
-- You are signed in with Apple on the device.
-- Your device has a working internet connection.
-- You entered the room code exactly as shared.
-- All players are using the latest available version of the app.
-
-Preferans does not offer real-money gambling, betting, casino play, or cash prizes.
+Contact [support@guruofcards.com](mailto:support@guruofcards.com).
+Do not email passwords, game-session tokens or payment details.

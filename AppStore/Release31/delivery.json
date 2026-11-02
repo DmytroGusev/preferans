@@ -1,0 +1,20 @@
+{
+  "version": "1.0.3",
+  "build": "31",
+  "sourceCommit": "6561e140abaaf9030ab17ff0875bd9dba8afd036",
+  "baseline": "c4621082a8a36c3cffdbf58d1f7a01faff64cefa",
+  "buildID": "f874d707-5832-485c-8da5-74dea2f66edb",
+  "uploadedAt": "2026-11-02T12:32:10Z",
+  "uploadMethod": "Xcode 27.1 signed archive export/upload",
+  "processingState": "VALID",
+  "selectedForDraft": "1.0.3",
+  "versionState": "PREPARE_FOR_SUBMISSION",
+  "externalTesting": "IN_BETA_TESTING",
+  "betaReview": "APPROVED",
+  "existingExternalTesterCount": 6,
+  "testerMembershipUnchanged": true,
+  "appStoreReviewSubmitted": false,
+  "publicReleasePerformed": false,
+  "serverDeployed": false,
+  "onlineBotSeatFeatureIncluded": false
+}

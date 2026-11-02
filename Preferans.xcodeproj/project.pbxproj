@@ -13,7 +13,6 @@
 		A00000000000000000000008 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000018 /* Assets.xcassets */; };
 		B00000000000000000000001 /* PreferansApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000031 /* PreferansApp.swift */; };
 		B00000000000000000000002 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000032 /* GameViewModel.swift */; };
-		B00000000000000000000D10 /* TrackingPermissionCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000D11 /* TrackingPermissionCenter.swift */; };
 		B00000000000000000000007 /* GameCenterService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00000000000000000000037 /* GameCenterService.swift */; };
 		B0000000000000000000000B /* GameLogReplayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003B /* GameLogReplayer.swift */; };
 		B0000000000000000000000C /* HostGameActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0000000000000000000003C /* HostGameActor.swift */; };
@@ -140,7 +139,6 @@
 		B0000000000000000000003D /* HostedOnlineGameCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Online/HostedOnlineGameCoordinator.swift; sourceTree = "<group>"; };
 		B0000000000000000000003F /* AppEngineSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppEngineSnapshot.swift; sourceTree = "<group>"; };
 		B00000000000000000000040 /* AppIdentifiers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppIdentifiers.swift; sourceTree = "<group>"; };
-		B00000000000000000000D11 /* TrackingPermissionCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/TrackingPermissionCenter.swift; sourceTree = "<group>"; };
 		B00000000000000000000042 /* PreferansEngine+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Support/PreferansEngine+UI.swift"; sourceTree = "<group>"; };
 		B00000000000000000000044 /* CardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/CardView.swift; sourceTree = "<group>"; };
 		B00000000000000000000045 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/LobbyView.swift; sourceTree = "<group>"; };
@@ -293,7 +291,6 @@
 				B0000000000000000000C231 /* BotPacing.swift */,
 				B0000000000000000000003F /* AppEngineSnapshot.swift */,
 				B00000000000000000000040 /* AppIdentifiers.swift */,
-				B00000000000000000000D11 /* TrackingPermissionCenter.swift */,
 				B00000000000000000000042 /* PreferansEngine+UI.swift */,
 				B0000000000000000000004A /* TestHarness.swift */,
 				B00000000000000000000044 /* CardView.swift */,
@@ -515,7 +512,6 @@
 				B0000000000000000000C230 /* BotPacing.swift in Sources */,
 				B0000000000000000000000F /* AppEngineSnapshot.swift in Sources */,
 				B00000000000000000000010 /* AppIdentifiers.swift in Sources */,
-				B00000000000000000000D10 /* TrackingPermissionCenter.swift in Sources */,
 				B00000000000000000000012 /* PreferansEngine+UI.swift in Sources */,
 				B0000000000000000000001A /* TestHarness.swift in Sources */,
 				B00000000000000000000014 /* CardView.swift in Sources */,
@@ -688,7 +684,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 31;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -696,7 +692,6 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Preferans;
 				INFOPLIST_KEY_CKSharingSupported = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Preferans asks permission to use tracking data only for advertising attribution and measuring how players discover the app. You can continue playing if you decline.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -724,14 +719,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 29;
+				CURRENT_PROJECT_VERSION = 31;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Preferans/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Preferans;
 				INFOPLIST_KEY_CKSharingSupported = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.games";
-				INFOPLIST_KEY_NSUserTrackingUsageDescription = "Preferans asks permission to use tracking data only for advertising attribution and measuring how players discover the app. You can continue playing if you decline.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

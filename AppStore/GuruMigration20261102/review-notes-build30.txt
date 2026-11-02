@@ -1,0 +1,22 @@
+Preferans 1.0.3 (30). This is the build currently selected for this version.
+
+This update uses the new owner-hosted multiplayer service. It includes public tables, invite-only rooms, reconnect recovery, next-deal progress when the table manager is offline, and final scores in each player's game history. All devices playing together should use build 30 on the same service; room codes from older releases' separate service are not interchangeable.
+
+LOCAL PLAY: Choose Play with bots in the lobby, configure the table and start. Follow bidding, talon exchange, manual two-card discard, contract declaration, defense and trick-play prompts. Scoring is automatic. The app supports three players or four with a rotating dealer.
+
+ONLINE PLAY: Choose Play online, enter a display name and tap Continue as Guest, or use Sign in with Apple. No supplied demo credentials, purchase or subscription is required. Choose Create a table and public or invite-only access. On another device running build 30, use Find a table or the room code/invite. Public-table players confirm Ready; the host then starts. Use Your games to resume an existing game with the same account.
+
+BOT SCOPE: Build 30 supports local bot practice. Per-seat bot controls in an online waiting room are a separate, unshipped feature and must not be expected in this build. There is no Club subscription purchase or monthly online quota in build 30.
+
+ACCOUNT DELETION: Gear button > Settings > Account > Delete online account, then confirm. This permanently deletes the server profile/game library, invalidates sessions and removes the player's identity from rooms. Shared results can retain anonymized seats and scores. Sign-out or uninstalling is not account deletion.
+
+PRIVACY: No advertising, analytics, attribution or third-party crash-reporting SDK is bundled. ATT may be requested on first active launch/onboarding while iOS status is notDetermined. Declining does not restrict play; iOS can suppress the prompt under device restrictions. Permission alone does not activate tracking or analytics. Online account and gameplay information is processed to provide multiplayer, not cross-app advertising.
+
+PUBLIC LINKS:
+Support: https://guruofcards.com/apps/preferans/support/
+Privacy: https://guruofcards.com/apps/preferans/privacy/
+Terms: https://guruofcards.com/apps/preferans/terms/
+App information: https://guruofcards.com/apps/preferans/
+Support email: support@guruofcards.com
+
+Interface languages: English, Russian and Ukrainian. No real-money betting, redeemable game currency or cash prizes.

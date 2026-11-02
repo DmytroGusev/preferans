@@ -1,0 +1,20 @@
+Subject: App Privacy validation still references tracking key after non-tracking build 31
+
+Hello App Review / App Store Connect Support,
+
+For Preferans card game (Apple ID 6763581975, bundle com.mixandmatch.preferans), we uploaded version 1.0.3 build 31. Processing is VALID, the build is selected for the version, and external TestFlight is approved.
+
+Build 31 removes the unused ATT request, advertising-identifier helper and tracking controls. We verified the signed IPA has no NSUserTrackingUsageDescription key, no AppTrackingTransparency or AdSupport framework linkage and no ATTrackingManager/ASIdentifierManager request symbols. The app includes no advertising, analytics, attribution or third-party crash-reporting SDK and does not track users across third-party apps/websites.
+
+We are correcting the older privacy questionnaire to reflect account/gameplay functionality. The five actual data types are Name, User ID, Gameplay Content, Product Interaction and Other Diagnostic Data, used for App Functionality and linked to the online account. Four are now marked not used for tracking. The remaining legacy Other Diagnostic Data tracking answer should also be No.
+
+However, publishing that last correction still produces a validation message saying that the app contains NSUserTrackingUsageDescription and requires a new binary or tracking disclosures. This persists after selecting processed build 31 and opening a fresh App Store Connect page. Released version 1.0.2 uses an older binary; we have not submitted 1.0.3 for public review yet.
+
+Please check which binary this validation is evaluating and advise how to publish the accurate non-tracking privacy answers for build 31. We do not want to claim tracking that the app does not perform.
+
+Build ID: f874d707-5832-485c-8da5-74dea2f66edb
+Support and privacy information: https://guruofcards.com/apps/preferans/privacy/
+
+Thank you,
+Guru of Cards
+support@guruofcards.com

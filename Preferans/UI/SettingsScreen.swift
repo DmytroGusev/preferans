@@ -13,7 +13,6 @@ public struct SettingsScreen: View {
     @AppStorage(SettingsKeys.revealAllHands) private var revealAllHands = false
     @AppStorage(SettingsKeys.appLanguage) private var appLanguageRaw: String = AppLanguage.default.rawValue
     @AppStorage(SettingsKeys.cardSuitDisplayOrder) private var cardSuitDisplayOrderRaw: String = CardSuitDisplayOrder.default.rawValue
-    @AppStorage(SettingsKeys.trackingPermissionRequested) private var trackingPermissionRequested = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -22,8 +21,6 @@ public struct SettingsScreen: View {
     @State private var isDeletingAccount = false
     @State private var accountDeletionError: String?
     @State private var accountStatusText = Self.accountStatusText()
-    @State private var trackingStatusText = TrackingPermissionCenter.statusText
-    @State private var canRequestTrackingPermission = TrackingPermissionCenter.canRequestPermission
 
     private let onDeleteOnlineAccount: (@MainActor () async throws -> Void)?
 
@@ -40,10 +37,11 @@ public struct SettingsScreen: View {
                 tableSection
                 languageSection
                 accountSection
-                privacySection
                 Section {
                     Link("Privacy Policy", destination: URL(string: "https://guruofcards.com/apps/preferans/privacy/")!)
                     Link("Terms of Use", destination: URL(string: "https://guruofcards.com/apps/preferans/terms/")!)
+                } header: {
+                    Text("Privacy").foregroundStyle(theme.textSecondary)
                 }
                 .listRowBackground(theme.panel)
                 #if DEBUG
@@ -107,7 +105,6 @@ public struct SettingsScreen: View {
             }
             .onAppear {
                 refreshAccountStatus()
-                refreshTrackingStatus()
             }
             .accessibilityIdentifier(UIIdentifiers.screenSettings)
         }
@@ -189,52 +186,6 @@ public struct SettingsScreen: View {
         .listRowBackground(theme.panel)
     }
 
-    private var privacySection: some View {
-        Section {
-            LabeledContent {
-                Text(trackingStatusText).foregroundStyle(theme.textSecondary)
-            } label: {
-                Text("Tracking permission")
-            }
-            Button {
-                Task { await requestTrackingPermission() }
-            } label: {
-                Label("Request tracking permission", systemImage: "hand.raised")
-            }
-            .disabled(!canRequestTrackingPermission)
-            .accessibilityIdentifier(UIIdentifiers.trackingPermissionRequest)
-
-            #if canImport(UIKit)
-            if !canRequestTrackingPermission {
-                Button {
-                    UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!)
-                } label: {
-                    Label("Open Privacy Settings", systemImage: "gear")
-                }
-            }
-            #endif
-
-            if usesCollapsibleExplanations {
-                DisclosureGroup {
-                    Text(privacyExplanation)
-                        .foregroundStyle(theme.textSecondary)
-                } label: {
-                    Label("Why this permission is needed", systemImage: "info.circle")
-                }
-            }
-        } header: {
-            Text("Privacy")
-                .foregroundStyle(theme.textSecondary)
-        } footer: {
-            if !usesCollapsibleExplanations {
-                Text(privacyExplanation)
-                    .font(.footnote)
-                .foregroundStyle(theme.textSecondary)
-            }
-        }
-        .listRowBackground(theme.panel)
-    }
-
     /// Large-content users should encounter the controls first rather than
     /// having to scroll through several screens of secondary legal copy. The
     /// explanations remain available at the requested text size in explicit
@@ -248,10 +199,6 @@ public struct SettingsScreen: View {
             return String(localized: "Return to the lobby before deleting the online account.")
         }
         return String(localized: "Permanently deletes the server account, revokes its sessions and room credentials, and clears local account data. Shared game results retain only an anonymized seat.")
-    }
-
-    private var privacyExplanation: String {
-        String(localized: "If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites.")
     }
 
     private var tableSection: some View {
@@ -301,17 +248,6 @@ public struct SettingsScreen: View {
         let version = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "—"
         return "\(version) (\(build))"
-    }
-
-    private func requestTrackingPermission() async {
-        trackingPermissionRequested = true
-        await TrackingPermissionCenter.requestPermission()
-        refreshTrackingStatus()
-    }
-
-    private func refreshTrackingStatus() {
-        trackingStatusText = TrackingPermissionCenter.statusText
-        canRequestTrackingPermission = TrackingPermissionCenter.canRequestPermission
     }
 
     private func refreshAccountStatus() {

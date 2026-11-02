@@ -1,0 +1,17 @@
+{
+  "version": "1.0.3",
+  "build": "31",
+  "xcode": "27A9275",
+  "sdk": "iphoneos27.1",
+  "bytes": 6672007,
+  "sha256": "178ec2ad2d7bbd3108c465e3081062fb54eaf54ac423cbc2b95bb805381edd86",
+  "signatureVerified": true,
+  "trackingUsageDescriptionAbsent": true,
+  "trackingFrameworksAbsent": true,
+  "trackingRequestAndIDFAAbsent": true,
+  "ownerBackendPreserved": true,
+  "appleSignInPreserved": true,
+  "inviteSchemePreserved": true,
+  "serverDeployed": false,
+  "onlineBotSeatsIncluded": false
+}

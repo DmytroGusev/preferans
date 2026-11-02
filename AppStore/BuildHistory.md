@@ -2,6 +2,25 @@
 
 This file records App Store/TestFlight build provenance and review-facing changes.
 
+## 1.0.3 (31) - Non-Tracking Privacy Correction
+
+- Date: 2026-11-02. Authored by Codex at the owner's explicit request.
+- Exact app source: `6561e140abaaf9030ab17ff0875bd9dba8afd036`.
+- Functional baseline: main `c462108`, also used for build 30. No server deploy.
+- Removed unused ATT/IDFA code, first-launch requests, tracking controls and plist key.
+- Preserved Apple sign-in, account deletion, owner multiplayer and scoring.
+- Signed archive/export and IPA privacy/entitlements checks passed with Xcode 27.1.
+- App tests: 268 XCTest (3 environment skips), 24 Swift Testing; zero failures.
+- Two focused UI tests passed on each of iPhone and iPad simulators.
+- Build ID: `f874d707-5832-485c-8da5-74dea2f66edb`; processing VALID.
+- Selected for draft 1.0.3; external TestFlight IN_BETA_TESTING / APPROVED for the
+  six existing testers, unchanged membership. No public App Review submission.
+- Guru support/legal pages are live; all 24 draft locale links/release notes updated.
+- Privacy questionnaire partially corrected. Apple's final no-tracking validation
+  remains blocked despite the verified non-tracking binary; see Release31 evidence.
+- Online per-seat bot controls from PR #9 are NOT included or deployed here.
+- Evidence and support-message draft: `AppStore/Release31/`.
+
 ## 1.0.2 (28) - Internal TestFlight and European Store Metadata
 
 - Date: 2026-10-15.

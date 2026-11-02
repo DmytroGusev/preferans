@@ -23,7 +23,6 @@ struct OnboardingView: View {
     private let slides = OnboardingSlide.sampleSlides
 
     @State private var selectedIndex = 0
-    @State private var didStartTrackingRequest = false
     let onComplete: () -> Void
 
     var body: some View {
@@ -51,7 +50,7 @@ struct OnboardingView: View {
 
                 TabView(selection: $selectedIndex) {
                     ForEach(Array(slides.enumerated()), id: \.offset) { index, slide in
-                        OnboardingSlideView(slide: slide, index: index, showsTrackingNote: index == slides.count - 1)
+                        OnboardingSlideView(slide: slide, index: index)
                             .tag(index)
                     }
                 }
@@ -97,24 +96,10 @@ struct OnboardingView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenOnboarding)
-        .task {
-            await requestTrackingAfterLaunchSettles()
-        }
-    }
-
-    private func requestTrackingAfterLaunchSettles() async {
-        guard !didStartTrackingRequest else { return }
-        didStartTrackingRequest = true
-        try? await Task.sleep(nanoseconds: 1_400_000_000)
-        guard !Task.isCancelled else { return }
-        await TrackingPermissionCenter.requestPermissionIfNeeded()
     }
 
     private func completeOnboarding() {
-        Task { @MainActor in
-            await TrackingPermissionCenter.requestPermissionIfNeeded()
-            onComplete()
-        }
+        onComplete()
     }
 }
 
@@ -159,7 +144,6 @@ private struct OnboardingSlideView: View {
 
     let slide: OnboardingSlide
     let index: Int
-    let showsTrackingNote: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var illustrationHeight: CGFloat {
@@ -198,15 +182,6 @@ private struct OnboardingSlideView: View {
                             .accessibilityIdentifier(UIIdentifiers.onboardingSlideDescription(index))
                     }
                     .padding(.horizontal, 26)
-
-                    if showsTrackingNote {
-                        Text("The iOS tracking permission may appear during first launch. You can continue even if you decline.")
-                            .font(.caption.weight(.medium))
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(theme.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.horizontal, 28)
-                    }
 
                     Spacer(minLength: 0)
                 }
