@@ -1,0 +1,20 @@
+Preferans 1.0.3 (33).
+
+PRIVACY: This app does not track users across other companies' apps or websites for advertising and does not share data with data brokers. No advertising, analytics, attribution or third-party crash-reporting SDK is bundled. No ATT prompt is expected. NSUserTrackingUsageDescription, ATT request and IDFA APIs remain absent. This build adds PrivacyInfo.xcprivacy declaring no tracking, no tracking domains, the actual account/gameplay/technical-data use for App Functionality and the app-private UserDefaults reason CA92.1.
+
+ONLINE PLAY: Play online > enter a display name > Continue as Guest, or Sign in with Apple > Create a table. Choose public or invite-only, three or four players. On a second build-32-or-newer device, use Find a table or the room code/invite. No demo credentials, purchase or subscription is needed.
+
+ONLINE BOTS: The host can add a bot to an empty waiting-room seat, choose Casual/Seasoned/Expert and change/remove it before the first deal. Two humans can play with one bot at a three-seat table or two bots at a four-seat table. Joined human seats cannot be replaced. Public-table roster/difficulty changes clear humans' Ready confirmations; humans confirm again, then the host taps Start game. Bots need no Ready action. Private tables use connected-seat checks. The server/engine/data are unchanged for build 33.
+
+LOCAL PLAY: Play with bots offers free offline practice, bidding, talon exchange, manual two-card discard, contract declaration, defense, trick play and automatic scoring. Three players or four with a rotating dealer are supported.
+
+SETTINGS AND PRICING: Settings > Club & online access links to the planned offer, not checkout. Subscriptions, purchases and online quotas are not active. Current local and online play are free.
+
+ACCOUNT DELETION: Settings > Account > Delete online account > confirm. This permanently deletes the online account/game library and sessions, removes local credentials and anonymizes shared seats/results as applicable. Sign-out/uninstalling is not deletion.
+
+Support: https://guruofcards.com/apps/preferans/support/
+Terms: https://guruofcards.com/apps/preferans/terms/
+Privacy: https://guruofcards.com/apps/preferans/privacy/
+Contact: support@guruofcards.com
+
+Interface: English, Russian, Ukrainian. No real-money betting, cash prizes or redeemable game currency.

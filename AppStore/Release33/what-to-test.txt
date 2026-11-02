@@ -1,0 +1,5 @@
+Build 33 keeps online bot seats and Club/support links from build 32 and adds the missing non-tracking privacy manifest. No tracking-permission popup is expected: this app does not perform cross-company advertising tracking.
+
+Check a fresh launch and an update from 32, offline bot play, public/invite-only online rooms, Add bot with difficulty choices, Ready reconfirmation and starting with two humans plus one/two bots. Settings has Privacy Policy, Terms, Support, Club & online access and Delete online account (do not confirm deletion unless testing a disposable account).
+
+The backend and player data have not been reset or changed for build 33. Build 32 and 33 use the same owner-hosted service. Payments, subscriptions and online quotas remain disabled. App Store privacy-label correction is separate and must be verified before public resubmission.
