@@ -15,7 +15,7 @@ assert(log('worker-tests').includes('pass 59') && log('worker-tests').includes('
 assert(log('worker-runtime').includes('19 passed'));
 assert(log('app-tests').includes('Executed 272 tests, with 3 tests skipped and 0 failures'));
 assert(log('app-tests').includes('Test run with 24 tests in 3 suites passed'));
-assert(log('native-ui').includes('testNativeHostConfiguresBotBesideFriendAndStartsPublicTable]')); 
+assert(log('native-ui').includes('testNativeHostConfiguresBotBesideFriendAndStartsPublicTable]'));
 assert(log('native-ui').includes('passed (56.828 seconds)'));
 assert(log('settings-ui').includes('passed (16.029 seconds)'));
 assert(log('ipad-ui').includes('Executed 2 tests, with 0 failures'));
