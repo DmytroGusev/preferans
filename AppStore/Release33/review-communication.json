@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-02",
+  "submissionID": "d4bea8da-ce05-4574-8f22-c60408f4e0b6",
+  "destination": "App Store Connect > Preferans > existing App Review rejection conversation",
+  "ownerApproval": "Yes, send the technical reply",
+  "purpose": "Ask Apple to investigate App Privacy validation blocking the truthful No tracking answer after build 33 selection",
+  "sent": true,
+  "displayedMessageTimeUTC": "17:45",
+  "verification": "After clicking Reply, the composer closed and Messages (2) displayed the new developer message with the approved body",
+  "body": "apple-review-reply-sent.txt, excluding its archival first line",
+  "charactersSent": 2533,
+  "attachmentsUploaded": 0,
+  "publicReviewResubmitted": false,
+  "privacyFlagResolved": false,
+  "serverDeployed": false
+}

@@ -69,7 +69,9 @@ See `privacy-label-verification.json`. The editor is left with the accurate No
 answer selected and the error visible; no false declaration or disclosure
 removal was used as a workaround. The precise validation cause is unconfirmed.
 
-A build-33-specific technical reply is prepared in `apple-review-reply-draft.txt`;
-owner confirmation to send was requested separately. Do not claim it was sent
-without a subsequent communication receipt. Repeating uploads or resubmitting
-while the legacy tracking flag remains is not recorded as a resolution.
+A build-33-specific technical reply was explicitly approved and sent to the
+existing App Review conversation at 17:45 UTC. The UI shows Messages (2) and the
+posted developer reply. See `apple-review-reply-sent.txt` and
+`review-communication.json`. No attachments or public resubmission were sent.
+App Privacy is still unresolved pending investigation; repeating uploads or
+resubmitting while the legacy tracking flag remains is not a resolution.
