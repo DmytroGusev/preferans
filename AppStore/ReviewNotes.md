@@ -1,22 +1,29 @@
-# App Review Notes Draft
+# App Review Notes: Build 31
 
-## Demo Summary
+The authoritative current reviewer text is [Release31/review-notes.txt](Release31/review-notes.txt).
+It is applied to draft 1.0.3 only after build 31 processes and is selected.
+Do not reuse the historical build-27/ATT instructions for this release.
 
-Preferans is a card game for 3 to 4 players. The submitted build supports local game setup and a simplified hand flow based on Preferans.
+Preferans supports local bot play and authenticated public/invite-only online
+tables on the owner's existing service. Build 31 removes the unused tracking
+prompt/IDFA helper without changing multiplayer, scoring or accounts.
 
-## Reviewer Instructions
+## Reviewer Checks
 
-1. Launch the app.
-2. Choose Online mode.
-3. Enter any display name in the You section. Sign in with Apple is optional.
-4. Tap Create invite link to create an online room, or paste an invite code/link and tap Join.
-5. To verify account deletion, open Settings from the gear button, then use Account → Delete online account and confirm. The authenticated server account and game library are deleted before the device clears its saved session.
-6. To verify App Tracking Transparency, reinstall the app and launch it fresh. The system tracking permission prompt is requested automatically on first launch when iOS status is not determined. The current status is also visible from Settings → Privacy.
-7. For local gameplay, choose Local mode, tap Start Hand, bid or pass, take the talon when prompted, and play cards from the hand to complete tricks.
+1. Finish the four-slide onboarding or skip it. No ATT prompt is expected.
+2. Choose Play with bots for a local table without sign-in.
+3. For online play, enter a display name and Continue as Guest, or Sign in with Apple.
+4. Create a public or invite-only table; another compatible build-30/31 device can join.
+5. For public tables, confirm Ready before the host starts. Your games resumes tables.
+6. Gear > Settings > Account > Delete online account initiates permanent deletion.
 
 ## Notes
 
-- The app requests App Tracking Transparency on first launch before any future tracking data can be accessed.
-- The current build does not include advertising, analytics, attribution, crash reporting, or data broker SDKs.
-- Online room identity is used only for multiplayer room participation.
-- Authenticated account deletion is available in-app from Settings → Account → Delete online account.
+- No ad, analytics, attribution or third-party crash-reporting SDK is included.
+- Online account, gameplay and technical diagnostics serve App Functionality, not tracking.
+- Online per-seat bot controls and Club subscriptions are not included in build 31.
+- No demo credentials or purchase is needed. No real-money gambling or cash prizes.
+- Support: <https://guruofcards.com/apps/preferans/support/>.
+- Privacy: <https://guruofcards.com/apps/preferans/privacy/>.
+- Terms: <https://guruofcards.com/apps/preferans/terms/>.
+- Contact: support@guruofcards.com.

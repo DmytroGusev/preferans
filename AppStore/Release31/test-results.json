@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-02",
+  "sourceCommit": "6561e14",
+  "xcode": "27A9275",
+  "sourcePrivacyGuard": "passed",
+  "signedIPAPrivacyAndEntitlements": "passed",
+  "iphoneUI": {
+    "device": "Preferans Owner29 QA",
+    "runtime": "iOS 27.0",
+    "tests": 2,
+    "failures": 0,
+    "scope": ["four-slide onboarding without tracking controls", "Settings language/account deletion confirmation and cancellation"],
+    "durationSeconds": 28.785
+  },
+  "ipadUI": {
+    "device": "Preferans 31 Privacy iPad QA",
+    "runtime": "iOS 27.0",
+    "tests": 2,
+    "failures": 0,
+    "durationSeconds": 33.013
+  },
+  "appXCTest": { "executed": 268, "skipped": 3, "failures": 0 },
+  "swiftTesting": { "tests": 24, "suites": 3, "failures": 0 },
+  "skips": "Three live-backend integration tests are environment-gated; not run.",
+  "initialBuildFailure": "File-provider FinderInfo metadata on generated app/test bundles blocked codesign in Documents. Archive, export, UI and app tests passed after moving generated output to /private/tmp. No source or signing security bypass was used.",
+  "physicalDeviceFlowTested": false,
+  "serverDeployed": false,
+  "onlineBotSeatFeatureIncluded": false
+}

@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-11-02T12:35:24.509Z",
+  "appID": "6763581975",
+  "build": "31",
+  "buildID": "f874d707-5832-485c-8da5-74dea2f66edb",
+  "group": {
+    "id": "bd14644b-667a-47ce-b543-57118aedf8bd",
+    "testerCount": 6,
+    "allExistingAppTestersIncluded": true,
+    "membershipUnchanged": true,
+    "publicLinkEnabled": false
+  },
+  "processingState": "VALID",
+  "beta": {
+    "autoNotifyEnabled": true,
+    "internalBuildState": "READY_FOR_BETA_TESTING",
+    "externalBuildState": "IN_BETA_TESTING"
+  },
+  "betaReview": {
+    "betaReviewState": "APPROVED",
+    "submittedDate": null
+  },
+  "whatToTestVerified": true,
+  "appStoreReviewSubmitted": false,
+  "serverDeployed": false
+}

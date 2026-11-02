@@ -1,0 +1,10 @@
+Build 1.0.3 (31): privacy correction; multiplayer stays compatible with build 30.
+
+- Fresh launch: finish/skip all four onboarding slides. No tracking-permission prompt should appear.
+- Settings: Privacy Policy and Terms open Guru of Cards. There is no tracking-request control.
+- Settings > Account: confirm that Delete online account is available. Only complete deletion on a disposable account; it permanently removes account/game-library data.
+- Local play: start a table with bots, bid, exchange the talon, discard two cards, choose defense and complete a hand.
+- Online: Continue as Guest or Sign in with Apple, then create a public or invite-only table. A second device using build 30 or 31 on the owner-hosted service can join. Confirm Ready before starting public tables.
+- Background/reopen and use Your games to resume; check next-deal progress and final history scores.
+
+No purchase, subscription or demo credentials required. Online per-seat Add Bot/difficulty controls are not part of this build. No server deployment was made for this update.

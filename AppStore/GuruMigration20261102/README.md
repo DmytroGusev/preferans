@@ -1,8 +1,11 @@
 # Guru of Cards migration and release preflight
 
-2 November 2026. The owner explicitly chose **pages and metadata only**.
-No PR was merged, no room Worker/container was deployed, no new app was built or
-uploaded, and neither App Store Review nor Beta App Review was submitted here.
+2 November 2026. The initial scope was **pages and metadata only**. After Apple
+blocked the final privacy answer for build 30, the owner explicitly expanded
+scope to build/upload/select non-tracking build 31 and distribute it to the
+existing external TestFlight group. No PR was merged, no Worker/container was
+deployed and no public App Review was submitted. Current release receipts and
+the remaining privacy blocker are in [Release31](../Release31/README.md).
 
 ## Completed
 
@@ -17,15 +20,21 @@ uploaded, and neither App Store Review nor Beta App Review was submitted here.
   [PR #1](https://github.com/DmytroGusev/masti-card-encyclopedia/pull/1).
   Exact deployed source: `e2502cdd98f5879b4e2457fb80d84ebaedf66c6a`.
   Backup: `/home/gurujtkn/.guru-cards-releases/preferans-pages-before.5GBrY7`.
+  A later scoped policy clarification distinguishes build 31 from older ATT
+  prompts: source `5f1ccb3ac6fc46f1bca33f1bb2a070b82ba9c890`, backup
+  `/home/gurujtkn/.guru-cards-releases/preferans-pages-before.kMEGo1`.
+  All 16 public HTML/CSS checks again returned 200 with exact hashes.
   Full build/check suite passed, including 1,685 HTML pages and scoped page tests.
   The existing dirty website checkout was not altered; integrate this source
   before any future whole-site publication so older untracked pages cannot return.
 - Draft 1.0.3 already selected build 30 when this task began. That selection is
-  preserved. Replaced stale build-27 App Review notes with build-30 instructions.
+  initially preserved. Stale build-27 notes were replaced with build-30
+  instructions, then authorized build-31 instructions after the privacy fix.
 - Updated all 24 draft support and marketing links plus all 24 draft privacy
   links. Russian/Ukrainian locales use translated pages; other locales use English.
   Privacy Choices points to the direct account-deletion help section.
 - Filled empty What's New for all 24 locales with actual build-30 changes.
+  The build-31 follow-up appends a translated privacy-correction sentence.
 - Corrected draft age declarations: no advertising, no messaging/chat, no social
   media and no age-restricted social media. Apple required the last two previously
   unanswered fields with the update. Other age answers were preserved.
@@ -44,7 +53,9 @@ build is required for new online bot-seat controls.
 ## Current Release State
 
 - Public version: 1.0.2 (28), unchanged. It uses the earlier separate online service.
-- Draft: 1.0.3 (30), PREPARE_FOR_SUBMISSION, unchanged build selection.
+- Draft: 1.0.3 (31), PREPARE_FOR_SUBMISSION, explicitly authorized selection.
+- Build 31: VALID, Beta App Review APPROVED, external IN_BETA_TESTING for the
+  six existing testers, unchanged membership/public-link settings.
 - Build 30: VALID, Beta App Review APPROVED, external state IN_BETA_TESTING;
   existing external tester configuration unchanged during this task.
 - Online bot feature: PR #9, source `9864885`, green Worker and portable-engine CI;
@@ -55,43 +66,30 @@ build is required for new online bot-seat controls.
   APP_IPAD_PRO_3GEN_129. No screenshot was changed or claimed visually re-audited.
   The nine unrelated local screenshot deletions were preserved and not committed.
 
-## Remaining Review Gate: App Privacy Questionnaire
+## Remaining Review Gate: Final Privacy Answer
 
-The public Apple product page was read on 2 November 2026 and still says
-**Data Used to Track You**, with advertising/marketing/analytics purposes for
-Contact Info, Identifiers, Usage Data and Diagnostics. This is separate from
-the privacy-policy URL and separate from the age-rating advertising checkbox.
-It was **not changed** by the API scripts. Do not submit while declarations and
-actual processing disagree.
+The owner signed into the dedicated browser and authorized correction. Using
+the official App Store Connect UI, the collected types were reduced to Name,
+User ID, Gameplay Content, Product Interaction and Other Diagnostic Data. All
+five now have App Functionality-only purposes and remain linked to identity.
+Unsupported email, advertising, crash, performance and catch-all usage types
+were removed. No guessed/private API or extracted browser credentials were used.
 
-The owner subsequently approved correcting the questionnaire. It cannot be
-edited with the supported metadata endpoints used here. The Orca CLI was missing
-(`zsh:1: command not found: orca`), but the separate browser connector is available.
-Native Chrome was signed in yet contained a stale unsaved version form, which was
-left untouched to avoid overwriting the API updates. Its UI control could not be
-used reliably. A dedicated in-app browser tab is open at the App Store Connect
-sign-in page, awaiting the owner's login. No privacy-label mutation has yet been
-performed. No guessed/private API or extracted browser credentials were used.
+Four categories are saved as not used for tracking. Apple refuses to save the
+last Other Diagnostic Data No answer, citing NSUserTrackingUsageDescription.
+The owner authorized removing that unused capability in build 31; signed IPA
+checks verify the key, tracking frameworks and ATT/IDFA APIs are absent.
 
-In App Store Connect -> Preferans -> App Privacy, review these exact points:
+The same validation error persists after build 31 is VALID/selected and in a
+fresh signed-in editor. Its cause is not established; it may involve metadata
+propagation or another binary, but neither is proven. The questionnaire is
+**not fully corrected**, and the preview still shows Diagnostics under Data
+Used to Track You. Do not submit public review until this is resolved.
 
-1. Current build 30 has no ads/analytics/attribution SDK, and no use of the unused
-   IDFA helper was found. No third-party-data advertising linkage/data-broker
-   sharing is implemented. Do not mark data as used for tracking just because ATT
-   permission can be requested or because a future release might add analytics.
-2. Do **not** switch to Data Not Collected: persistent online accounts/game history
-   do collect data off device. Declare display/name information, account User ID
-   and Gameplay Content for App Functionality, linked to the online account.
-3. Remove advertising, developer-marketing and analytics purposes only where they
-   do not actually occur. Review Product Interaction/diagnostic types against
-   retained service logs instead of checking every category speculatively.
-4. Apple sign-in in this build requests fullName, not the email scope. Support
-   email correspondence is a distinct processing path. Assess its disclosure
-   against Apple's optional-support disclosure criteria; do not invent account
-   email collection or omit mandatory categories without reviewing the facts.
-5. Publish the corrected questionnaire and verify its preview/public label. Apple
-   permits updating privacy answers without a new binary; the URL change alone
-   cannot correct them. Keep any actually collected categories disclosed.
+`Release31/apple-support-draft.txt` is prepared for Apple to check the binary
+used for validation. It has not been sent. The signed-in editor remains open
+with the desired No answer pending; no fake tracking implementation was added.
+Do not save the older native Chrome version form over the newer API metadata.
 
 Reference: [Apple App Privacy Details](https://developer.apple.com/app-store/app-privacy-details/).
 

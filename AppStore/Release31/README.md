@@ -1,12 +1,14 @@
 # Preferans 1.0.3 (31): Non-Tracking Privacy Correction
 
 2 November 2026. Initially limited to pages/metadata, this task was expanded by
-the owner's explicit approval to prepare, upload and select build 31. No public
+the owner's explicit approval to prepare, upload and select build 31, and use
+the existing external TestFlight group. No public
 App Review submission or room Worker/container deployment is authorized here.
 
 ## Source
 
 Functional baseline is main c462108, the same functional baseline as build 30.
+Exact app source commit: `6561e140abaaf9030ab17ff0875bd9dba8afd036`.
 The Guru page/metadata migration is included from 23eb204. Build 30's standard
 encryption declaration is retained. PRs #8 and #9 are not merged; online bot-seat
 controls, Club subscriptions and Firebase drafts are not included.
@@ -30,9 +32,23 @@ not used for tracking. Apple blocked the last Other Diagnostic Data tracking
 correction because selected build 30 contains NSUserTrackingUsageDescription.
 This is a metadata/binary compatibility blocker, not actual tracking behavior.
 
-After build 31 processes, select it for draft 1.0.3, finish/publish the last
-non-tracking answer and read the UI back. Do not submit while that gate remains.
-Existing released 1.0.2 (28) and the server must remain unchanged.
+Build 31 is now VALID, selected for draft 1.0.3, and IN_BETA_TESTING with Beta
+App Review APPROVED for all six existing external testers. Membership/public-link
+settings were preserved and notifications enabled. Review notes and all 24
+What's New texts were updated; other localization metadata was preserved.
+
+The privacy UI still refuses the final no-tracking answer after selection of
+build 31 and in a fresh signed-in page. It continues to display the same
+NSUserTrackingUsageDescription validation message, despite the verified new
+binary. Whether this is propagation, another version's binary or another Apple
+validation condition is not established. The label is NOT fully corrected:
+Other Diagnostic Data is still marked used for tracking. Do not submit public
+App Review until this is resolved. `apple-support-draft.txt` is prepared but not
+sent; no misleading tracking capability was added to satisfy the editor.
+
+The original and fresh privacy dialogs retain the pending No answer. Do not
+save the stale Chrome version form over the newer API metadata. Existing
+released 1.0.2 (28) and both servers remain unchanged.
 
 For client rollback, reselect build 30 if needed, but do not submit that older
 binary with an incompatible privacy declaration. No server rollback is needed:

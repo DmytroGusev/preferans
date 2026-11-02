@@ -1,5 +1,5 @@
 {
-  "parent": "23eb20481e297924df3b42e239703765127fd093",
+  "sourceCommit": "6561e140abaaf9030ab17ff0875bd9dba8afd036",
   "baseline": "c4621082a8a36c3cffdbf58d1f7a01faff64cefa",
   "files": [
     {
@@ -301,6 +301,150 @@
     {
       "path": "Preferans/UI/ViewerHandRail.swift",
       "sha256": "7e336b219a0002015900f3ad67c80ce3c5c0fd5924773b7595c280cf875bd83f"
+    },
+    {
+      "path": "Sources/PreferansEngine/Bot/BotProfile.swift",
+      "sha256": "e2b96186ad960d14d8172f2ebcdbdb9f188f053dc7f0e7941201ea1868c13ef9"
+    },
+    {
+      "path": "Sources/PreferansEngine/Bot/CardPlayPlanner.swift",
+      "sha256": "5d7ec57e7b923a5a9eacbae1bb674c3b2785c0ff6adc017e8e53815eb91b4271"
+    },
+    {
+      "path": "Sources/PreferansEngine/Bot/DealSampler.swift",
+      "sha256": "dc508529dcc829eb27874fe7c5aba8dd4747b5e8a7ada364eff530f4be4fb385"
+    },
+    {
+      "path": "Sources/PreferansEngine/Bot/HandEvaluator.swift",
+      "sha256": "c068e28bdb4bcf3bfa72ec38ff349c61cfa3b25821fc861abdb9241ff3567c43"
+    },
+    {
+      "path": "Sources/PreferansEngine/Bot/HeuristicStrategy.swift",
+      "sha256": "bde0a687110b38d9e89dbb5d5f1064654b65f4b77deb290468d9f7d86193108e"
+    },
+    {
+      "path": "Sources/PreferansEngine/Bot/PlayerStrategy.swift",
+      "sha256": "48027af62fc0ba5a4826cfb7e615bd1f797ebcab2a9cb62df45488f2105b00c2"
+    },
+    {
+      "path": "Sources/PreferansEngine/DealDeckLayout.swift",
+      "sha256": "3d10911f65a10504850ef897a11e9a0b9968c5939e4058ad75d4b5b80cb9c53c"
+    },
+    {
+      "path": "Sources/PreferansEngine/DealSource.swift",
+      "sha256": "a5caa0ede3746b98b9c57759155ab8dd18bd0d7d8a91c0bece0bd8286df17f75"
+    },
+    {
+      "path": "Sources/PreferansEngine/Domain.swift",
+      "sha256": "d20d8bc87c7649fefdce3bd887ffc54a14508133d1e62625f4a8e3c2625731f5"
+    },
+    {
+      "path": "Sources/PreferansEngine/EngineMatchDriver.swift",
+      "sha256": "47e8c47f756e61fcc1c528fa891ae6b19414d014dc2911aacd9c2a98f148aee3"
+    },
+    {
+      "path": "Sources/PreferansEngine/EngineTransition.swift",
+      "sha256": "4ea52ba2c844d72c5ac8d82e8b225ba88179e6ce2c0b4333766b70c2e6b458f2"
+    },
+    {
+      "path": "Sources/PreferansEngine/HandRecipe.swift",
+      "sha256": "438bd56d25fc6b1820a78616a2b1e0f13ea6fd7a9b5b4d33411f0b7ba3f70a27"
+    },
+    {
+      "path": "Sources/PreferansEngine/MatchScript.swift",
+      "sha256": "434dbe1915e7c29a8d85c3dbb00566d6ac1af8e4292e7f69ab9a83a612384dbf"
+    },
+    {
+      "path": "Sources/PreferansEngine/MatchScriptFixtures.swift",
+      "sha256": "db1de008ff9f031e5046b7df2f0275409f24e40437d9444f6566243c8dca8daf"
+    },
+    {
+      "path": "Sources/PreferansEngine/MatchSettings.swift",
+      "sha256": "de23c4df623aa0bc712176323a91eb4494fce55a23de8115127db52fbe2ffd21"
+    },
+    {
+      "path": "Sources/PreferansEngine/Online/GameWireMessage.swift",
+      "sha256": "59c643045c427ada4a22efaa3efd14285a1a374efa806710a0a0d4839672c783"
+    },
+    {
+      "path": "Sources/PreferansEngine/Online/PreferansGameStatus.swift",
+      "sha256": "96044a81baea580b694228eecb79246a0e5814cf9a7e238a9eff61d6a1fbb0ef"
+    },
+    {
+      "path": "Sources/PreferansEngine/PlayerIdentity.swift",
+      "sha256": "68fa8bee2a83112fe6f48ecd5c5435d4b8e8ab553f461628408d7c9bac23504a"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine+BiddingReducer.swift",
+      "sha256": "acd571655869327cf42ac549f33d42bcb4370af433677aa15ae52c06b4ddcaf0"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine+ExchangeReducer.swift",
+      "sha256": "d460705bc8d13b2d20b43af4114f604cf3fb3ad29bada2baa8336742a486be50"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine+Invariants.swift",
+      "sha256": "fe79dac9eee6b23caf3ad265e019299cf7e8b7b90c37a4f4e5d896193532a12f"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine+PlayReducer.swift",
+      "sha256": "e95612e9ebb263833da708d61465abb82f9a4ffd812909f9d8b67c4c3193bf99"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine+SettlementReducer.swift",
+      "sha256": "28b54b0f72bd2ac36814fe098779c4ab5b7dcbf070e18185e7e65590f99c141f"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine+WhistReducer.swift",
+      "sha256": "ce702a9b0bd81af015dde9a6c7a0e80ccd671ad9a7316ac82e7e6e77eee11a5c"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansEngine.swift",
+      "sha256": "84c889d2240b7bd3131dcf1f83e24a3eae86a3ea47a9c81adad35e459b6d3981"
+    },
+    {
+      "path": "Sources/PreferansEngine/PreferansError.swift",
+      "sha256": "1d99a64392ea1d5c8efa6360027e80cacf27e55b530f44c315746a03a58d620a"
+    },
+    {
+      "path": "Sources/PreferansEngine/Projection/OnlineEventProjection.swift",
+      "sha256": "4841d7b315069b20a871afdf7d0f34781505d0025fca3c3949acecd4cbbf6692"
+    },
+    {
+      "path": "Sources/PreferansEngine/Projection/PlayerProjection.swift",
+      "sha256": "defb55de80ecced972a624077a0849488253cfa0e535f595a0059e358f45fa1a"
+    },
+    {
+      "path": "Sources/PreferansEngine/Projection/PlayerProjectionBuilder+Phase.swift",
+      "sha256": "4b2edf7010bb45e4f7c057afd146e485ced97e46beac9f791e86adfa18dcd717"
+    },
+    {
+      "path": "Sources/PreferansEngine/Projection/PlayerProjectionBuilder+Visibility.swift",
+      "sha256": "dc6078a5c1f99d8384829668bd3ef5e7ebfd3f94839a4a6ac89cccc4abc3058a"
+    },
+    {
+      "path": "Sources/PreferansEngine/Projection/ProjectionBuildFrame.swift",
+      "sha256": "fabe5fd673c590243a6a42d2d415940c69a58b926f6db986a811b7e565371892"
+    },
+    {
+      "path": "Sources/PreferansEngine/Rules.swift",
+      "sha256": "f5de5b4faaa87f320dd1fe93cacd00584421bcfba69be88f8c1de873b47e1d8a"
+    },
+    {
+      "path": "Sources/PreferansEngine/Score.swift",
+      "sha256": "2be90c8a0e93c56401e1ddb007b5d640e60c77aa4b3865463d070626914e2cf9"
+    },
+    {
+      "path": "Sources/PreferansEngine/ScoringEngine.swift",
+      "sha256": "dc79faa39d609c8938602c64aba7263a72cbf598a01bd86d72b671b43beee79d"
+    },
+    {
+      "path": "Sources/PreferansEngine/State.swift",
+      "sha256": "e2fdfa18339cfd5b01ac393818b34154748b9a21382dc3f7fa15fc5c7498eaa6"
+    },
+    {
+      "path": "Sources/PreferansEngine/UIIdentifiers.swift",
+      "sha256": "10eee0f1edaaf91fab475d658974fdd451344b81502745462d67c929f1d63e01"
     },
     {
       "path": "Preferans/Info.plist",

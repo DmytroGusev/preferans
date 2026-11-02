@@ -18,10 +18,16 @@ for (const file of sourceFiles) {
 }
 assert.equal(plist('Preferans/Info.plist').NSUserTrackingUsageDescription, undefined);
 const sourceManifest = {
-  parent: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
+  sourceCommit: '6561e140abaaf9030ab17ff0875bd9dba8afd036',
   baseline: 'c4621082a8a36c3cffdbf58d1f7a01faff64cefa',
-  files: [...sourceFiles, 'Preferans/Info.plist', 'Preferans.xcodeproj/project.pbxproj'].map(file => ({ path: file, sha256: hash(fs.readFileSync(file)) })),
+  files: [...sourceFiles,
+    ...fs.readdirSync('Sources/PreferansEngine', { recursive: true }).filter(file => file.endsWith('.swift')).map(file => path.join('Sources/PreferansEngine', file)).sort(),
+    'Preferans/Info.plist', 'Preferans.xcodeproj/project.pbxproj'].map(file => ({ path: file, sha256: hash(fs.readFileSync(file)) })),
 };
+for (const file of sourceManifest.files) {
+  const committed = execFileSync('git', ['show', `${sourceManifest.sourceCommit}:${file.path}`]);
+  assert.equal(file.sha256, hash(committed), `Source changed after archive: ${file.path}`);
+}
 fs.writeFileSync(new URL('./source-manifest.json', import.meta.url), JSON.stringify(sourceManifest, null, 2) + '\n');
 console.log('Source privacy guard passed: no ATT request or IDFA access.');
 
