@@ -2,22 +2,15 @@
 title: Preferans
 ---
 
-# Preferans
+<meta http-equiv="refresh" content="0; url=https://guruofcards.com/apps/preferans/">
 
-Preferans is an iOS card game for playing Preferans locally or with friends in online rooms.
+# Preferans by Guru of Cards
 
-## App Store Links
+Our application information and legal/support pages have moved:
 
-- Support URL: `https://dmytrogusev.github.io/preferans/`
-- Privacy Policy URL: `https://dmytrogusev.github.io/preferans/privacy-policy.html`
-- Terms of Use URL: `https://dmytrogusev.github.io/preferans/terms-of-use.html`
+- [Application](https://guruofcards.com/apps/preferans/)
+- [Support](https://guruofcards.com/apps/preferans/support/)
+- [Privacy Policy](https://guruofcards.com/apps/preferans/privacy/)
+- [Terms & Conditions](https://guruofcards.com/apps/preferans/terms/)
 
-## Legal
-
-- [Privacy Policy](privacy-policy.md)
-- [Terms of Use](terms-of-use.md)
-- [Support](support.md)
-
-## Support
-
-For support, contact the developer at dmytro.gusev@gmail.com.
+Contact: [support@guruofcards.com](mailto:support@guruofcards.com).
