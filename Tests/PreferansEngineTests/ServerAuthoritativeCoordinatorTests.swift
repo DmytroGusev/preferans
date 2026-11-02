@@ -4,6 +4,55 @@ import XCTest
 
 @MainActor
 final class ServerAuthoritativeCoordinatorTests: XCTestCase {
+    func testHostAddsBotWithoutAutoStartingAndPublicBotsNeedNoReadyTap() async throws {
+        let tableID = UUID()
+        let host = OnlinePeer(playerID: "north", accountID: "guest:north", provider: .guest, displayName: "Host")
+        let guest = OnlinePeer(playerID: "east", accountID: "guest:east", provider: .guest, displayName: "Friend")
+        let open = OnlinePeer(playerID: "south", accountID: "pending:south", provider: .dev, displayName: "Open seat")
+        let transport = ServerAuthoritativeTestTransport(localPeer: host, participants: [host, guest, open], tableID: tableID)
+        transport.isPublicTable = true
+        transport.readyPlayerIDs = ["north", "east"]
+        let coordinator = ServerGameCoordinator()
+        await coordinator.attach(transport: transport)
+        let engine = try PreferansEngine(players: ["north", "east", "south"], rules: .sochi, firstDealer: "north")
+        let projection = PlayerProjectionBuilder.projection(for: "north", tableID: tableID, sequence: 0,
+            engine: engine, identities: [host, guest, open].map(\.playerIdentity), policy: .online)
+        transport.receive(.init(message: .projection(.init(tableID: tableID, sequence: 0, viewer: "north",
+            projection: projection, eventSummaries: [])), sender: host, authority: .server))
+        await eventually { coordinator.canManageBotSeats }
+        await coordinator.configureBotSeat("south", difficulty: .expert)
+        XCTAssertEqual(coordinator.rosterSeats.last?.botDifficulty, .expert)
+        XCTAssertTrue(coordinator.rosterSeats.last?.occupancy.isBot == true)
+        XCTAssertFalse(coordinator.isUpdatingBotSeats)
+        XCTAssertFalse(coordinator.canHostStart, "Roster changes require humans to confirm Ready again")
+        XCTAssertTrue(transport.sentMessages.isEmpty, "Adding a bot must not start the game")
+        transport.rejectsBotEdits = true
+        await coordinator.configureBotSeat("south", difficulty: .casual)
+        XCTAssertNotNil(coordinator.errorText)
+        XCTAssertFalse(coordinator.isUpdatingBotSeats, "Failure must release the editing controls")
+        XCTAssertEqual(coordinator.rosterSeats.last?.botDifficulty, .expert)
+        transport.rejectsBotEdits = false
+        transport.readyPlayerIDs = ["north", "east"]
+        transport.receiveConnectionEvent(.connected)
+        await eventually { coordinator.canHostStart }
+        await coordinator.configureBotSeat("south", difficulty: nil)
+        XCTAssertEqual(coordinator.rosterSeats.last?.occupancy, .openWaiting)
+        XCTAssertFalse(coordinator.canHostStart)
+        coordinator.detach()
+    }
+
+    func testNonHostCannotEditBotSeats() async {
+        let host = OnlinePeer(playerID: "north", accountID: "guest:north", provider: .guest, displayName: "Host")
+        let guest = OnlinePeer(playerID: "east", accountID: "guest:east", provider: .guest, displayName: "Friend")
+        let transport = ServerAuthoritativeTestTransport(localPeer: guest, participants: [host, guest], tableID: UUID())
+        let coordinator = ServerGameCoordinator()
+        await coordinator.attach(transport: transport)
+        XCTAssertFalse(coordinator.canManageBotSeats)
+        await coordinator.configureBotSeat("south", difficulty: .casual)
+        XCTAssertEqual(transport.botEdits, 0)
+        coordinator.detach()
+    }
+
     func testPendingMoveSurvivesClientRestartAndReceiptClearsIt() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -184,7 +233,11 @@ final class ServerAuthoritativeCoordinatorTests: XCTestCase {
 @MainActor
 private final class ServerAuthoritativeTestTransport: RoomRealtimeTransport {
     let localPeer: OnlinePeer
-    let participants: [OnlinePeer]
+    var participants: [OnlinePeer]
+    var isPublicTable = false
+    var readyPlayerIDs: Set<PlayerID> = []
+    var botEdits = 0
+    var rejectsBotEdits = false
     let authoritativeTableID: UUID?
     let isServerAuthoritative = true
     var connectedPlayerIDs: Set<PlayerID> { Set(participants.map(\.playerID)) }
@@ -200,6 +253,16 @@ private final class ServerAuthoritativeTestTransport: RoomRealtimeTransport {
     }
 
     func chooseHost() async -> OnlinePeer? { participants.first }
+
+    func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async throws {
+        if rejectsBotEdits { throw URLError(.notConnectedToInternet) }
+        botEdits += 1
+        let index = participants.firstIndex { $0.playerID == player }!
+        participants[index] = OnlinePeer(playerID: player,
+            accountID: "\(difficulty == nil ? "pending" : "bot"):\(player.rawValue)",
+            provider: .dev, displayName: "Bot", botDifficulty: difficulty)
+        readyPlayerIDs = []
+    }
 
     func messages() -> AsyncStream<ReceivedRoomMessage> {
         AsyncStream { continuation = $0 }

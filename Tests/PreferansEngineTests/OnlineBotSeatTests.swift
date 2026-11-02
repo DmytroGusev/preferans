@@ -8,6 +8,15 @@ import XCTest
 /// the full autonomous play loop a host runs for its bot seats.
 @MainActor
 final class OnlineBotSeatTests: XCTestCase {
+    func testBotDifficultyRoundTripsAndOlderRostersRemainDecodable() throws {
+        let old = Data(#"{"playerID":{"rawValue":"east"},"accountID":"bot:east","provider":"dev","displayName":"Bot 2"}"#.utf8)
+        let legacy = try JSONDecoder().decode(OnlinePeer.self, from: old)
+        XCTAssertNil(legacy.botDifficulty)
+        var selected = legacy
+        selected.botDifficulty = .expert
+        XCTAssertEqual(try JSONDecoder().decode(OnlinePeer.self, from: JSONEncoder().encode(selected)), selected)
+    }
+
     // MARK: - Seat classification
 
     func testAccountPrefixClassifiesPendingBotAndRealSeats() {

@@ -7,6 +7,7 @@ import {
   authorizeSeat,
   createInitialRoom,
   fillOpenSeatsWithBots,
+  configureBotSeat,
   electLiveHost,
   isHostAccount,
   isHumanAccount,
@@ -498,6 +499,50 @@ test("fill-bots is a no-op when no seat is open", () => {
   const room = createInitialRoom({ roomCode: "ROOM1", localPeer: north, seats: [north, east, south] });
   // Same reference back signals the caller to skip the storage write + broadcast.
   assert.equal(fillOpenSeatsWithBots(room), room);
+});
+
+test("a single bot seat can be added, reconfigured and reopened without touching humans", () => {
+  for (const visibility of ["private", "public"] as const) {
+    const initial = createInitialRoom({ roomCode: "BOTS01", localPeer: north,
+      seats: [north, east, openSouth], maxPlayers: 3, visibility });
+    const room = { ...initial, readyPlayerIDs: ["north", "east"] };
+    const filled = configureBotSeat(room, "south", "casual");
+    assert.equal(filled.peers[2].botDifficulty, "casual");
+    assert.deepEqual(filled.readyPlayerIDs, []);
+    assert.deepEqual(filled.peers.slice(0, 2), room.peers.slice(0, 2));
+    assert.equal(filled.peers[2].seatToken, undefined);
+    assert.equal(publicRoom(filled).peers[2].botDifficulty, "casual");
+    assert.equal(configureBotSeat(filled, "south", "casual"), filled);
+    const expert = configureBotSeat(filled, { rawValue: "south" }, "expert");
+    assert.equal(expert.peers[2].botDifficulty, "expert");
+    const reopened = configureBotSeat(expert, "south", null);
+    assert.equal(reopened.peers[2].accountID, "pending:south");
+    assert.equal(reopened.peers[2].botDifficulty, undefined);
+    assert.equal(joinRoom(reopened, { ...south, accountID: "guest:new" }).peers[2].accountID, "guest:new");
+  }
+});
+
+test("bot editing validates target and difficulty, protects joined humans and refuses started games", () => {
+  const room = createInitialRoom({ roomCode: "BOTS02", localPeer: north, seats: [north, east, openSouth] });
+  assert.throws(() => configureBotSeat(room, "north", "expert"), /already owns/);
+  assert.throws(() => configureBotSeat(room, "east", null), /already owns/);
+  assert.throws(() => configureBotSeat(room, "west", "expert"), /does not exist/);
+  for (const level of [undefined, "hard", 10, {}]) assert.throws(() => configureBotSeat(room, "south", level), /Choose/);
+  for (const status of ["playing", "finished", "abandoned"] as const) {
+    assert.throws(() => configureBotSeat({ ...room, status }, "south", "casual"), /before the first deal/);
+  }
+  assert.throws(() => configureBotSeat({ ...room, authoritativeSequence: 1 }, "south", "casual"));
+  const joined = joinRoom(room, { ...south, accountID: "guest:arrived" });
+  assert.throws(() => configureBotSeat(joined, "south", "casual"), /already owns/);
+});
+
+test("four-seat tables can fill one missing player while leaving another seat open", () => {
+  const west = { ...openSouth, playerID: { rawValue: "west" }, accountID: "pending:west" };
+  const room = createInitialRoom({ roomCode: "BOTS04", localPeer: north, seats: [north, east, openSouth, west], maxPlayers: 4 });
+  const filled = configureBotSeat(room, "west", "expert");
+  assert.equal(filled.peers[2].accountID, "pending:south");
+  assert.equal(filled.peers[3].accountID, "bot:west");
+  assert.equal(filled.peers[3].botDifficulty, "expert");
 });
 
 test("a seat converted to a bot can no longer be claimed by a late joiner", () => {

@@ -325,6 +325,37 @@ final class OnlineTransportSecurityTests: XCTestCase {
         XCTAssertNil(stateBody)
     }
 
+    @MainActor
+    func testBotSeatMutationSendsSeatProofSelectedStrengthAndExplicitNullRemoval() async throws {
+        let host = OnlinePeer(playerID: "north", accountID: "guest:server-id", provider: .guest, displayName: "Host")
+        let open = OnlinePeer(playerID: "east", accountID: "pending:east", provider: .dev, displayName: "Open seat")
+        var captured: URLRequest?
+        var body: Data?
+        let room = Data(#"{"schemaVersion":4,"roomCode":"ABC123","hostPlayerID":{"rawValue":"north"},"hostEpoch":1,"peers":[{"playerID":{"rawValue":"north"},"accountID":"guest:server-id","provider":"guest","displayName":"Host"},{"playerID":{"rawValue":"east"},"accountID":"bot:east","provider":"dev","displayName":"Bot 2","botDifficulty":"expert"},{"playerID":{"rawValue":"south"},"accountID":"pending:south","provider":"dev","displayName":"Open seat"}],"maxPlayers":3,"createdAt":"2026-11-02T00:00:00Z","updatedAt":"2026-11-02T00:00:00Z","relaySequence":0,"websocketURL":"wss://worker.example.test/v2/rooms/ABC123/socket?playerID=north&seatToken=seat","seatToken":"seat"}"#.utf8)
+        CapturingURLProtocol.handler = { request in
+            captured = request
+            body = Self.bodyData(request)
+            return (200, room)
+        }
+        let transport = try await CloudflareRoomTransport.createRoom(baseURL: baseURL, localPeer: host,
+            seats: [host, open, .init(playerID: "south", accountID: "pending:south", provider: .dev, displayName: "Open seat")],
+            accountSessionToken: "pref2.account.secret", maxPlayers: 3, session: session)
+        defer { transport.disconnect() }
+        try await transport.configureBotSeat("east", difficulty: .expert)
+        XCTAssertEqual(captured?.url?.path, "/v2/rooms/ABC123/seats/bot")
+        XCTAssertEqual(captured?.value(forHTTPHeaderField: "authorization"), "Bearer pref2.account.secret")
+        let added = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(body)) as? [String: Any])
+        XCTAssertEqual(added["seatToken"] as? String, "seat")
+        XCTAssertEqual((added["playerID"] as? [String: String])?["rawValue"], "north")
+        XCTAssertEqual((added["targetPlayerID"] as? [String: String])?["rawValue"], "east")
+        XCTAssertEqual(added["difficulty"] as? String, "expert")
+        XCTAssertNil(added["accountID"])
+        XCTAssertEqual(transport.participants[1].botDifficulty, .expert)
+        try await transport.configureBotSeat("east", difficulty: nil)
+        let removed = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(body)) as? [String: Any])
+        XCTAssertTrue(removed["difficulty"] is NSNull)
+    }
+
     private static func bodyData(_ request: URLRequest) -> Data? {
         if let body = request.httpBody { return body }
         guard let stream = request.httpBodyStream else { return nil }

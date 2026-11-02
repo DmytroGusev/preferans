@@ -20,6 +20,7 @@ This folder describes **how the Preferans app actually works**: its rules, scori
 | 004 | [Online multiplayer](004-online-multiplayer/) | work on rooms, accounts, the Cloudflare worker, the Swift engine server, the wire protocol or projections | spec · plan · data-model · research · quickstart · [contracts/](004-online-multiplayer/contracts/) |
 | 005 | [iOS app](005-ios-app/) | change screens, view models, the table layout, themes, localization or settings | spec · plan · data-model · quickstart |
 | 006 | [Testing & release](006-testing-and-release/) | run or write tests, use `bin/` tooling, understand CI, ship a build | spec · plan · research · quickstart |
+| 007 | [Online waiting-room bots](007-online-waiting-room-bots/) | add/remove a bot per open seat, choose online difficulty and preserve human readiness | spec · verification |
 
 ## How the files are organised (spec-kit roles)
 

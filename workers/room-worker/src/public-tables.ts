@@ -1,5 +1,5 @@
 import profiles from "../fixtures/public-rules.json" with { type: "json" };
-import { PENDING_ACCOUNT_PREFIX, RoomStateError, isHumanAccount, peerID, type RoomState } from "./room-state.ts";
+import { BOT_ACCOUNT_PREFIX, PENDING_ACCOUNT_PREFIX, RoomStateError, isHumanAccount, peerID, type RoomState } from "./room-state.ts";
 
 export const PUBLIC_TABLE_LEASE_MS = 90_000;
 export const PUBLIC_VARIANTS = ["odesa", "wien", "thessaloniki"] as const;
@@ -12,7 +12,7 @@ export interface PublicTableEntry {
   poolTarget: number;
   poolClosure: "individualWithAmericanAid" | "tableTotal";
   maxPlayers: number;
-  players: { displayName: string; ready: boolean; connected: boolean }[];
+  players: { displayName: string; ready: boolean; connected: boolean; isBot?: boolean; botDifficulty?: string }[];
   openSeats: number;
   status: "lobby" | "playing";
   dealNumber?: number;
@@ -56,8 +56,13 @@ export function publicTableEntry(room: RoomState, connected: ReadonlySet<string>
   return {
     roomCode: room.roomCode, variant, poolTarget: match.poolTarget, poolClosure: match.poolClosure,
     maxPlayers: room.maxPlayers,
-    players: humans.map(peer => ({ displayName: peer.displayName,
-      ready: (room.readyPlayerIDs ?? []).includes(peerID(peer)), connected: connected.has(peerID(peer)) })),
+    players: room.peers.filter(peer => isHumanAccount(peer.accountID) || peer.accountID.startsWith(BOT_ACCOUNT_PREFIX)).map(peer => {
+      const isBot = peer.accountID.startsWith(BOT_ACCOUNT_PREFIX);
+      return { displayName: peer.displayName, isBot,
+        ...(isBot ? { botDifficulty: peer.botDifficulty ?? "seasoned" } : {}),
+        ready: isBot || (room.readyPlayerIDs ?? []).includes(peerID(peer)),
+        connected: isBot || connected.has(peerID(peer)) };
+    }),
     openSeats: room.status === "lobby" ? room.peers.filter(peer => peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX)).length : 0,
     status: room.status, dealNumber: room.summary?.dealNumber, createdAt: room.createdAt
   };

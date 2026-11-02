@@ -65,6 +65,55 @@ function engineResponse(identities: any[], tableID = "00000000-0000-0000-0000-00
     })) };
 }
 
+test("host edits one public bot seat durably, rebuilding profiles and rejecting non-host or started edits", async () => {
+  const stub = bindings.ROOMS.get(bindings.ROOMS.newUniqueId());
+  await runInDurableObject(stub, async (instance: any, state) => {
+    const peers = ["north", "east", "south"].map((id, i) => ({ playerID: { rawValue: id },
+      accountID: `${i === 2 ? "pending" : "guest"}:${id}`, provider: "guest", displayName: id }));
+    const initial = createInitialRoom({ roomCode: "BOTAPI", localPeer: peers[0], seats: peers, maxPlayers: 3,
+      visibility: "public", ...publicConfiguration("odesa", 33, 3) });
+    const host = initial.peers[0];
+    await state.storage.put("room", { ...initial, readyPlayerIDs: ["north", "east"] });
+    let calls = 0;
+    instance.engine = () => ({ fetch: async (_path: string, body: any) => {
+      calls++;
+      expect(body.botProfiles[1].difficulty).toBe("expert");
+      return Response.json(engineResponse(body.identities));
+    } });
+    instance.fanOutToLibraries = async () => {};
+    const edit = (overrides = {}) => instance.fetch(new Request("https://room/seats/bot", {
+      method: "POST", body: JSON.stringify({ accountID: host.accountID, playerID: host.playerID,
+        seatToken: host.seatToken, targetPlayerID: { rawValue: "south" }, difficulty: "expert", ...overrides })
+    }));
+    expect((await edit({ accountID: "guest:other" })).status).toBe(403);
+    expect((await edit({ seatToken: "wrong" })).status).toBe(403);
+    expect((await edit({ targetPlayerID: "east" })).status).toBe(409);
+    expect(calls).toBe(0);
+    const added = await edit();
+    expect(added.status).toBe(200);
+    expect((await added.json() as any).peers[2].botDifficulty).toBe("expert");
+    const saved = (await state.storage.get<RoomState>("room"))!;
+    expect(saved.readyPlayerIDs).toEqual([]);
+    expect(saved.peers[1].accountID).toBe("guest:east");
+    expect(saved.peers[2].accountID).toBe("bot:south");
+    expect(saved.peers[2].seatToken).toBeUndefined();
+    expect(calls).toBe(1);
+    expect((await edit()).status).toBe(200);
+    expect(calls).toBe(1);
+    await state.storage.put("room", { ...saved, status: "playing", authoritativeSequence: 1 });
+    expect((await edit()).status).toBe(409);
+    expect(calls).toBe(1);
+    await state.storage.put("room", saved);
+    instance.engine = () => ({ fetch: async () => { throw new Error("engine offline"); } });
+    expect((await edit({ difficulty: "casual" })).status).toBe(503);
+    expect((await state.storage.get<RoomState>("room"))?.peers[2].botDifficulty).toBe("expert");
+    instance.engine = () => ({ fetch: async (_path: string, body: any) => Response.json(engineResponse(body.identities)) });
+    expect((await edit({ difficulty: null })).status).toBe(200);
+    expect((await state.storage.get<RoomState>("room"))?.peers[2].accountID).toBe("pending:south");
+    await state.storage.deleteAlarm();
+  });
+});
+
 test("public create/join and socket frames expose only the caller's global identity, including legacy projections", async () => {
   const stub = bindings.ROOMS.get(bindings.ROOMS.newUniqueId());
   const joined = await runInDurableObject(stub, async (instance: any, state) => {

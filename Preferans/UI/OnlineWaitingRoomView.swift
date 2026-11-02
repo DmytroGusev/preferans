@@ -319,10 +319,17 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 .foregroundStyle(info.iconColor)
                 .font(.title3)
                 .frame(width: seatIconWidth)
-            info.title
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(info.isOpen ? theme.textSecondary : theme.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 3) {
+                info.title
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(info.isOpen ? theme.textSecondary : theme.textPrimary)
+                if let difficulty = seat.botDifficulty {
+                    Text(difficulty.label)
+                        .font(.caption)
+                        .foregroundStyle(theme.textSecondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if coordinator.isPublicTable && !info.isOpen && !seat.occupancy.isBot {
                 Group {
                     if seat.isReady { Text("Ready") }
@@ -331,15 +338,48 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(seat.isReady ? theme.accentStrong : theme.textMuted)
             } else { occupancyPill(info) }
+            if coordinator.canManageBotSeats && (info.isOpen || seat.occupancy.isBot) {
+                botSeatMenu(seat)
+            }
         }
         .padding(10)
         .background(theme.shade.opacity(0.22), in: RoundedRectangle(cornerRadius: 10))
         // One combined element per seat: its identifier locates the row and its
         // accessibility value is a stable occupancy token ("you" / "human" /
         // "bot" / "open") tests can read without parsing visible copy.
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: coordinator.canManageBotSeats ? .contain : .combine)
         .accessibilityIdentifier(UIIdentifiers.waitingRoomSeat(index: index))
         .accessibilityValue(info.token)
+    }
+
+    private func botSeatMenu(_ seat: WaitingRoomSeat) -> some View {
+        Menu {
+            ForEach(BotDifficulty.allCases, id: \.self) { difficulty in
+                Button {
+                    Task { await coordinator.configureBotSeat(seat.player, difficulty: difficulty) }
+                } label: {
+                    if seat.botDifficulty == difficulty {
+                        Label(difficulty.label, systemImage: "checkmark")
+                    } else {
+                        Text(difficulty.label)
+                    }
+                }
+            }
+            if seat.occupancy.isBot {
+                Divider()
+                Button("Remove bot", role: .destructive) {
+                    Task { await coordinator.configureBotSeat(seat.player, difficulty: nil) }
+                }
+            }
+        } label: {
+            if seat.occupancy.isBot { Label("Bot settings", systemImage: "slider.horizontal.3") }
+            else { Label("Add bot", systemImage: "cpu") }
+        }
+        .font(.caption.weight(.semibold))
+        .buttonStyle(.bordered)
+        .tint(theme.accentStrong)
+        .disabled(coordinator.isUpdatingBotSeats || coordinator.isUpdatingReadiness || isStarting)
+        .accessibilityIdentifier(UIIdentifiers.waitingRoomBotMenu(player: seat.player))
     }
 
     private func occupancyPill(_ info: OccupancyInfo) -> some View {
@@ -360,6 +400,16 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
 
     private var hostControls: some View {
         VStack(spacing: 10) {
+            if coordinator.isUpdatingBotSeats {
+                ProgressView("Updating bot seats...")
+                    .font(.footnote)
+                    .tint(theme.accentStrong)
+            }
+            if coordinator.canManageBotSeats && hasOpenSeat {
+                Text("Invite a friend or add a bot to an empty seat. Choose the bot's difficulty before starting.")
+                    .font(.caption)
+                    .foregroundStyle(theme.textSecondary)
+            }
             Button {
                 guard !isStarting else { return }
                 isStarting = true
@@ -379,7 +429,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
             .disabled(!coordinator.canHostStart || isStarting)
             .accessibilityIdentifier(UIIdentifiers.onlineStartGame)
 
-            if hasOpenSeat && !coordinator.isPublicTable {
+            if hasOpenSeat && !coordinator.isPublicTable && !coordinator.supportsBotSeatEditing {
                 Button {
                     guard !isStarting else { return }
                     isStarting = true
@@ -410,7 +460,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                     if coordinator.hasDisconnectedHumanSeat {
                         Text("A joined player must reconnect before the host can start.")
                     } else if coordinator.isPublicTable {
-                        Text("Every seat must be filled and every player must confirm Ready.")
+                        Text("Fill every seat with a player or bot. All human players must confirm Ready.")
                     } else {
                         Text("Start is available once every seat is filled — invite a friend or fill the empty seats with bots.")
                     }
@@ -457,6 +507,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
                 }.frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.feltPrimary)
+            .disabled(coordinator.isUpdatingBotSeats)
             .disabled(coordinator.isUpdatingReadiness || coordinator.transportStatus != .connected)
             .accessibilityIdentifier("online.confirmReady")
             Text("Confirm that you agree to these settings and have time to finish the pulka.")
