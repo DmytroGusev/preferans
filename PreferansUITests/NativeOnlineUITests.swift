@@ -2,6 +2,10 @@ import Foundation
 import XCTest
 import PreferansEngine
 
+private extension XCUIElement {
+    var botSeatOccupancy: String { value as? String ?? "" }
+}
+
 /// Real native account/room flows against the loopback worker and engine.
 /// Run the services described in workers/room-worker/README.md first.
 /// Credentials use the app's isolated DEBUG loopback namespace.
@@ -86,6 +90,54 @@ class NativeOnlineUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts[UIIdentifiers.phaseTitle].label, "Bidding")
         XCTAssertEqual(handIDs(in: app, seat: "north"), handBefore)
         capture(app, "native-host-resumed")
+        try leaveTable(in: app)
+        try deleteNativeAccount(in: app)
+    }
+
+    func testNativeHostConfiguresBotBesideFriendAndStartsPublicTable() async throws {
+        let app = try launchApp()
+        try registerNativeGuest(in: app, name: "QA Bot Host")
+        app.buttons["online.createTable"].tap()
+        let create = app.buttons[UIIdentifiers.onlineCreateRoom]
+        try reveal(create, in: app)
+        create.tap()
+        let codeElement = app.staticTexts[UIIdentifiers.onlineRoomCode]
+        try require(codeElement.waitForExistence(timeout: 3))
+        let code = try XCTUnwrap(codeElement.value as? String)
+        let friend = try await registerPeer("QA Human Friend")
+        let joined = try await request("POST", "/v2/rooms/\(code)/join",
+            body: ["requestedPlayerID": ["rawValue": "east"]], token: friend)
+        _ = try await connect(joined)
+        let menu = app.buttons[UIIdentifiers.waitingRoomBotMenu(player: "south")]
+        try reveal(menu, in: app)
+        try require(menu.waitForExistence(timeout: 3))
+        print("[native-online] add Casual bot beside a real friend")
+        menu.tap()
+        app.buttons["Casual"].tap()
+        let row = app.descendants(matching: .any)[UIIdentifiers.waitingRoomSeat(index: 2)]
+        try require(row.wait(for: \.botSeatOccupancy, toEqual: "bot", timeout: 3))
+        menu.tap()
+        app.buttons["Expert"].tap()
+        try require(row.staticTexts["Expert"].waitForExistence(timeout: 3))
+        menu.tap()
+        app.buttons["Remove bot"].tap()
+        try require(row.wait(for: \.botSeatOccupancy, toEqual: "open", timeout: 3))
+        menu.tap()
+        app.buttons["Seasoned"].tap()
+        try require(row.staticTexts["Seasoned"].waitForExistence(timeout: 3))
+        let ready = app.buttons["online.confirmReady"]
+        try reveal(ready, in: app)
+        ready.tap()
+        let peers = try XCTUnwrap(joined["peers"] as? [[String: Any]])
+        let player = try XCTUnwrap(peers.first { ($0["accountID"] as? String)?.hasPrefix("guest:") == true }?["playerID"])
+        _ = try await request("POST", "/v2/rooms/\(code)/ready",
+            body: ["playerID": player, "seatToken": try XCTUnwrap(joined["seatToken"]), "ready": true], token: friend)
+        let start = app.buttons[UIIdentifiers.onlineStartGame]
+        try reveal(start, in: app)
+        try require(start.wait(for: \.isEnabled, toEqual: true, timeout: 3))
+        start.tap()
+        try require(app.staticTexts[UIIdentifiers.phaseTitle].waitForExistence(timeout: 3))
+        XCTAssertEqual(handIDs(in: app, seat: "north").count, 10)
         try leaveTable(in: app)
         try deleteNativeAccount(in: app)
     }

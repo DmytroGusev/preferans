@@ -73,6 +73,7 @@ export interface OnlinePeer {
   accountID: string;
   provider: OnlineAccountProvider;
   displayName: string;
+  botDifficulty?: "casual" | "seasoned" | "expert";
   /// Server-minted credential proving the caller owns this seat. Present on
   /// every claimed human seat; handed to exactly one caller (the seat's owner,
   /// in its `/create` or `/join` response) and stripped from every public
@@ -260,8 +261,40 @@ export function normalizePeer(input: unknown): OnlinePeer {
     playerID,
     accountID,
     provider,
-    displayName
+    displayName,
+    ...(accountID.startsWith(BOT_ACCOUNT_PREFIX) && input.botDifficulty !== undefined
+      ? { botDifficulty: normalizeBotDifficulty(input.botDifficulty) } : {})
   };
+}
+
+export function normalizeBotDifficulty(value: unknown): NonNullable<OnlinePeer["botDifficulty"]> {
+  if (value !== "casual" && value !== "seasoned" && value !== "expert") {
+    throw new RoomStateError("invalid_bot_difficulty", "Choose Casual, Seasoned, or Expert.");
+  }
+  return value;
+}
+
+/// Lobby-only seat editing. A claimed human, even offline, is never displaced.
+export function configureBotSeat(room: RoomState, target: unknown, difficulty: unknown): RoomState {
+  if (room.status !== "lobby" || (room.authoritativeSequence ?? 0) !== 0) {
+    throw new RoomStateError("room_in_progress", "Bot seats can only change before the first deal.", 409);
+  }
+  const id = playerIDValue(target);
+  const index = room.peers.findIndex(peer => peerID(peer) === id);
+  if (index < 0) throw new RoomStateError("invalid_seat", "That seat does not exist.");
+  const peer = room.peers[index];
+  const bot = peer.accountID.startsWith(BOT_ACCOUNT_PREFIX);
+  if (!bot && !peer.accountID.startsWith(PENDING_ACCOUNT_PREFIX)) {
+    throw new RoomStateError("seat_occupied", "A player already owns this seat.", 409);
+  }
+  const selected = difficulty === null ? undefined : normalizeBotDifficulty(difficulty);
+  if ((!selected && !bot) || (bot && selected === (peer.botDifficulty ?? "seasoned"))) return room;
+  const peers = [...room.peers];
+  peers[index] = { playerID: peer.playerID, provider: "dev",
+    accountID: `${selected ? BOT_ACCOUNT_PREFIX : PENDING_ACCOUNT_PREFIX}${id}`,
+    displayName: selected ? `Bot ${index + 1}` : "Open seat",
+    ...(selected ? { botDifficulty: selected } : {}) };
+  return { ...room, peers, readyPlayerIDs: [], updatedAt: new Date().toISOString() };
 }
 
 export function peerID(peer: Pick<OnlinePeer, "playerID">): string {
@@ -391,7 +424,7 @@ export function fillOpenSeatsWithBots(room: RoomState, now = new Date().toISOStr
   if (!changed) {
     return room;
   }
-  return { ...room, peers, updatedAt: now };
+  return { ...room, peers, readyPlayerIDs: [], updatedAt: now };
 }
 
 export function joinRoom(room: RoomState, localPeer: unknown, now = new Date().toISOString()): RoomState {

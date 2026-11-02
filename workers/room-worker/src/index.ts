@@ -18,6 +18,7 @@ import {
   authorizeSeat,
   createInitialRoom,
   fillOpenSeatsWithBots,
+  configureBotSeat,
   electLiveHost,
   generateRoomCode,
   isHumanAccount,
@@ -126,6 +127,8 @@ interface FillBotsBody {
   accountID?: unknown;
   playerID?: unknown;
   seatToken?: unknown;
+  targetPlayerID?: unknown;
+  difficulty?: unknown;
 }
 
 /// A seated participant gives up an unfinished game. Authorized by holding the
@@ -271,12 +274,12 @@ export default {
         throw collision ?? new RoomStateError("room_exists", "Could not allocate a room code.", 503);
       }
 
-      const fillBotsMatch = url.pathname.match(/^\/v2\/rooms\/([A-Za-z0-9-]+)\/seats\/fill-bots$/);
+      const fillBotsMatch = url.pathname.match(/^\/v2\/rooms\/([A-Za-z0-9-]+)\/seats\/(fill-bots|bot)$/);
       if (fillBotsMatch && request.method === "POST") {
         const account = await authenticateAccount(request, env);
         const body = await readJSON<FillBotsBody>(request);
         const roomCode = normalizeRoomCode(fillBotsMatch[1]);
-        const room = await roomFetch(env, roomCode, "/seats/fill-bots", {
+        const room = await roomFetch(env, roomCode, `/seats/${fillBotsMatch[2]}`, {
           ...body,
           accountID: account.accountID
         });
@@ -426,12 +429,13 @@ export class PreferansTable {
         return json(result);
       }
 
-      if (request.method === "POST" && url.pathname === "/seats/fill-bots") {
+      if (request.method === "POST" && (url.pathname === "/seats/fill-bots" || url.pathname === "/seats/bot")) {
         const body = await readJSON<FillBotsBody>(request);
         const room = await this.loadRequiredRoom();
-        if (room.visibility === "public") throw new RoomStateError("public_humans_only", "Public tables wait for human players.", 409);
         authorizeHostSeat(room, String(body.accountID ?? ""), body.playerID, body.seatToken);
-        let updated = fillOpenSeatsWithBots(room);
+        let updated = url.pathname === "/seats/bot"
+          ? configureBotSeat(room, body.targetPlayerID, body.difficulty)
+          : fillOpenSeatsWithBots(room);
         if (updated !== room) {
           updated = await createAuthoritativeGame(updated, this.engine());
         }

@@ -227,7 +227,7 @@ After a bot bids, discards, declares, whists or chooses a defence mode, the app 
 ## Known Gaps & Open Questions
 
 1. **Information hygiene is by construction, not by type.** Strategies receive the full `PreferansSnapshot` (all hands, talon, discard) in every host; `HeuristicStrategy`, `DealSampler` and `forcedSettlement(knownTo:)` are written and tested not to read hidden cards, but a custom `PlayerStrategy` could. There is no projection-based bot API.
-2. **Online bots ignore lobby profiles.** The in-app online host constructs `RoomBotMoveScheduler` with the default `HeuristicStrategy()` and the worker sends `{difficulty: "seasoned", temperament: "adaptive"}` for every bot seat (`workers/room-worker/src/authoritative-engine.ts` `botProfiles`). [NEEDS CLARIFICATION: intended to stay fixed?]
+2. **Updated 2026-11-02:** production online bots use the difficulty selected per seat in the waiting room; the Worker forwards it to the existing engine, with adaptive temperament. Legacy bot seats default to seasoned. The in-memory harness still uses its default strategy. See [007](../007-online-waiting-room-bots/spec.md).
 3. **Bots never propose settlements** and never use half-whist as a first defender (not legal for them) — by design; documented here for clarity.
 4. **Bidding ignores context**: opponents' bids beyond legality, the score, pulka closing, and raspasy cost are not modelled; the final `if hasAffordableMisere` branch in `chooseBid` is unreachable (misère is already chosen earlier whenever affordable).
 5. **Whist threshold uses `rules.whistRequirement` only**, so a totus `requireWhist` match without the rules flag treats 10-trick contracts as requirement 0 (share still clamps to 1).

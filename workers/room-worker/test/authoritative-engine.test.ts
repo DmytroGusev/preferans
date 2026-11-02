@@ -88,6 +88,18 @@ test("create sends identities/configuration and stores only opaque state plus re
   ]);
 });
 
+test("configured bot strengths reach the existing Swift engine profiles", async () => {
+  for (const difficulty of ["casual", "seasoned", "expert"] as const) {
+    const state = room();
+    state.peers[2].botDifficulty = difficulty;
+    const engine: AuthoritativeEngineBinding = { async fetch(_path, body: any) {
+      assert.equal(body.botProfiles[1].difficulty, difficulty);
+      return Response.json(response());
+    } };
+    await createAuthoritativeGame(state, engine);
+  }
+});
+
 test("command sender is derived from the authenticated socket seat", async () => {
   const initialized = adoptingEngineResponse(room(), response());
   let captured: Record<string, any> | undefined;

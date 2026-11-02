@@ -185,6 +185,7 @@ public enum UIIdentifiers {
     public static func waitingRoomSeatOccupancy(index: Int) -> String { "waitingRoom.seat.\(index).occupancy" }
     public static let onlineStartGame          = "online.startGame"
     public static let onlineFillWithBots       = "online.fillWithBots"
+    public static func waitingRoomBotMenu(player: PlayerID) -> String { "waitingRoom.bot.\(player.rawValue)" }
     public static let onlineWaitingForHost     = "online.waitingForHost"
     // "Your games" library: Continue (resume in-progress) + History (finished).
     public static let onlineGamesSection       = "online.games.section"

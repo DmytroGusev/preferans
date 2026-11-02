@@ -23,6 +23,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
     @Published public private(set) var canHostStart = false
     @Published public private(set) var hasDisconnectedHumanSeat = false
     @Published public private(set) var isSubmitting = false
+    @Published public private(set) var isUpdatingBotSeats = false
     public private(set) var tableID: UUID?
 
     private var transport: (any RoomRealtimeTransport)?
@@ -45,6 +46,27 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         var visible = projection?.applyingAdvanceFreeze(pendingAdvance)
         if isSubmitting || transportStatus != .connected { visible?.legal = LegalActionProjection() }
         return visible
+    }
+
+    public var canManageBotSeats: Bool {
+        isHost && transportStatus == .connected && projection?.sequence == 0 && !isSubmitting
+    }
+    public var supportsBotSeatEditing: Bool { true }
+
+    public func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async {
+        guard canManageBotSeats, !isUpdatingBotSeats, !isUpdatingReadiness, let transport else { return }
+        let attachment = generation
+        isUpdatingBotSeats = true
+        errorText = nil
+        updateStartAvailability()
+        do {
+            try await transport.configureBotSeat(player, difficulty: difficulty)
+            guard generation == attachment else { return }
+            await refreshRoster()
+        } catch { if generation == attachment { errorText = error.localizedDescription } }
+        guard generation == attachment else { return }
+        isUpdatingBotSeats = false
+        updateStartAvailability()
     }
 
     public func attach(transport: any RoomRealtimeTransport) async {
@@ -93,6 +115,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         recentEvents = []; eventLog = []; botInsights = []
         tableID = nil; isHost = false; isSubmitting = false
         isPublicTable = false; isReady = false; isUpdatingReadiness = false; tableSettings = nil
+        isUpdatingBotSeats = false
         rosterSeats = []; canHostStart = false; hasDisconnectedHumanSeat = false
         latestReceiptSequence = -1; didAutoStart = false
         errorText = nil; liveness = .connecting; transportStatus = .disconnected
@@ -131,7 +154,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
     }
 
     public func setReady(_ ready: Bool) async {
-        guard let transport, isPublicTable, !isUpdatingReadiness, transportStatus == .connected else { return }
+        guard let transport, isPublicTable, !isUpdatingReadiness, !isUpdatingBotSeats, transportStatus == .connected else { return }
         let attachment = generation
         isUpdatingReadiness = true
         errorText = nil
@@ -165,6 +188,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
             else if peer.playerID == transport.localPeer.playerID { occupancy = .you(name: peer.displayName) }
             else { occupancy = .human(name: peer.displayName) }
             var seat = WaitingRoomSeat(player: peer.playerID, occupancy: occupancy)
+            seat.botDifficulty = peer.isBotSeat ? (peer.botDifficulty ?? .seasoned) : nil
             seat.isReady = transport.readyPlayerIDs.contains(peer.playerID)
             return seat
         }
@@ -180,11 +204,11 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
 
     private func updateStartAvailability() {
         guard let transport else { canHostStart = false; return }
-        canHostStart = isHost && !isSubmitting && transportStatus == .connected
+        canHostStart = isHost && !isSubmitting && !isUpdatingBotSeats && transportStatus == .connected
             && !hasDisconnectedHumanSeat && !transport.participants.contains(where: \.isPendingSeat)
             && projection?.legal.canStartDeal == true
             && (!isPublicTable || projection?.sequence != 0
-                || transport.participants.allSatisfy { transport.readyPlayerIDs.contains($0.playerID) })
+                || transport.participants.allSatisfy { $0.isBotSeat || transport.readyPlayerIDs.contains($0.playerID) })
     }
 
     private func receive(_ received: ReceivedRoomMessage) {
