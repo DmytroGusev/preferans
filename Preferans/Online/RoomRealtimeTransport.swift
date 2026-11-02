@@ -15,17 +15,20 @@ public struct OnlinePeer: Codable, Sendable, Hashable, Identifiable {
     public var accountID: String
     public var provider: OnlineAccountProvider
     public var displayName: String
+    public var botDifficulty: BotDifficulty?
 
     public init(
         playerID: PlayerID,
         accountID: String,
         provider: OnlineAccountProvider,
-        displayName: String
+        displayName: String,
+        botDifficulty: BotDifficulty? = nil
     ) {
         self.playerID = playerID
         self.accountID = accountID
         self.provider = provider
         self.displayName = displayName
+        self.botDifficulty = botDifficulty
     }
 
     public var playerIdentity: PlayerIdentity {
@@ -61,6 +64,7 @@ public extension OnlinePeer {
 /// coordinator's private peer map.
 public struct WaitingRoomSeat: Identifiable, Equatable, Sendable {
     public var isReady: Bool = false
+    public var botDifficulty: BotDifficulty?
     public enum Occupancy: Equatable, Sendable {
         /// This device's own seat.
         case you(name: String)
@@ -156,6 +160,7 @@ public protocol RoomRealtimeTransport: AnyObject {
     /// server-side authority that performed the change (Cloudflare), or `nil` when
     /// the caller should fall back to converting seats locally (in-memory/GameKit).
     func fillPendingSeatsWithBots() async throws -> [OnlinePeer]?
+    func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async throws
     /// Legacy peer-host recovery hook. Cloudflare authority always returns nil.
     func hostRecoveryContext() async throws -> OnlineResumeContext?
     /// Legacy peer-host persistence hook. Cloudflare authority rejects it.
@@ -191,6 +196,9 @@ public extension RoomRealtimeTransport {
 
     /// Default: no server-side seat authority — the caller converts seats itself.
     func fillPendingSeatsWithBots() async throws -> [OnlinePeer]? { nil }
+    func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async throws {
+        throw CloudflareRoomTransportError.serverError(String(localized: "This table does not support bot seat changes."))
+    }
 
     /// Local/in-memory transports elect a fixed host and never recover from a
     /// server snapshot.

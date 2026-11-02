@@ -26,12 +26,20 @@ public protocol OnlineGamePresenting: ObservableObject {
     var canHostStart: Bool { get }
     var hasDisconnectedHumanSeat: Bool { get }
     var isSubmitting: Bool { get }
+    var canManageBotSeats: Bool { get }
+    var supportsBotSeatEditing: Bool { get }
+    var isUpdatingBotSeats: Bool { get }
+    func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async
     func send(_ action: PreferansAction)
     func startFirstDeal() -> Bool
     func fillOpenSeatsWithBotsAndStart() async
 }
 
 public extension OnlineGamePresenting {
+    var canManageBotSeats: Bool { false }
+    var supportsBotSeatEditing: Bool { false }
+    var isUpdatingBotSeats: Bool { false }
+    func configureBotSeat(_ player: PlayerID, difficulty: BotDifficulty?) async {}
     var isPublicTable: Bool { false }
     var isReady: Bool { false }
     var isUpdatingReadiness: Bool { false }

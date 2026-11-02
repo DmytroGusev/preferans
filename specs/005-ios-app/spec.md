@@ -14,6 +14,12 @@ Related specs (do not duplicate; this document only describes the interfaces the
 
 ## Summary
 
+Update 2026-11-02: the production waiting room now offers per-seat Add bot and
+Bot settings menus, with visible strength and removal before the first deal,
+for public and private tables. This replaces the production fill-all-and-start
+CTA described in FR-066; the old CTA remains only for the legacy in-memory
+harness. See [online bot seats](../007-online-waiting-room-bots/spec.md).
+
 Preferans is a universal (iPhone + iPad, Mac Catalyst enabled) SwiftUI app for the Russian/Ukrainian trick-taking game Preferans. One `WindowGroup` hosts a first-run onboarding tour and a lobby. From the lobby the player either sits down at a **local table** against 2–3 configurable bots (or watches four bots play) or goes **online** (guest or Sign in with Apple identity, public table directory, invite links/room codes, a "Your games" library, a pre-deal waiting room).
 
 Both local and online tables render through one projection-driven screen, `ProjectionGameScreen`, which consumes a `PlayerGameProjection` (the viewer-safe view of the engine) plus a typed recent-event stream. Local play is driven by `GameViewModel` (engine + bot scheduling + a tap-to-advance "beat" gate); online play is driven by coordinators conforming to `OnlineGamePresenting` (see `../004-online-multiplayer`). Presentation is fully themeable (six persistent themes), localized in English, Russian and Ukrainian (Ukrainian is the first-launch default), adapts between phone portrait, phone landscape and iPad (with a persistent score-sheet sidebar), and exposes a stable accessibility-identifier contract (`UIIdentifiers`) that the XCUITest suite drives.

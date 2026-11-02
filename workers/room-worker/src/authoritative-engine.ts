@@ -242,7 +242,7 @@ export function validateStartDealAuthority(
     );
   }
   if (room.visibility === "public" && room.status === "lobby"
-      && room.peers.some(peer => !(room.readyPlayerIDs ?? []).includes(peerID(peer)))) {
+      && room.peers.some(peer => isHumanAccount(peer.accountID) && !(room.readyPlayerIDs ?? []).includes(peerID(peer)))) {
     throw new RoomStateError("players_not_ready", "Every player must confirm Ready before the first deal.", 409);
   }
 }
@@ -275,7 +275,7 @@ function botProfiles(peers: OnlinePeer[]): unknown[] {
   const encoded: unknown[] = [];
   for (const peer of peers) {
     if (!peer.accountID.startsWith(BOT_ACCOUNT_PREFIX)) continue;
-    encoded.push(peer.playerID, { difficulty: "seasoned", temperament: "adaptive" });
+    encoded.push(peer.playerID, { difficulty: peer.botDifficulty ?? "seasoned", temperament: "adaptive" });
   }
   return encoded;
 }
