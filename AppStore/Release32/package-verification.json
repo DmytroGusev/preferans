@@ -1,0 +1,16 @@
+{
+  "sourceCommit": "f4b65759eb107c87592e71a84a63307bd43046c0",
+  "version": "1.0.3",
+  "build": "32",
+  "xcode": "27A9275",
+  "sdk": "iphoneos27.1",
+  "bytes": 6713884,
+  "sha256": "6339ccbe20d062e1b54a0cfe43684b6309b015ddd58475b5f150c67be0c8a9af",
+  "signatureVerified": true,
+  "ownerBackendAndNamespacePreserved": true,
+  "appleSignInAndInvitesPreserved": true,
+  "onlineBotSeatRequestIncluded": true,
+  "clubInformationLinkIncluded": true,
+  "trackingUsageAndAPIsAbsent": true,
+  "subscriptionPurchasesIncluded": false
+}

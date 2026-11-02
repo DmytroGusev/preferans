@@ -1,6 +1,9 @@
 # Feature: Configurable bots in online waiting rooms
 
-Date: 2026-11-02. Status: implemented in source, not deployed or uploaded.
+Date: 2026-11-02. Initial feature stage was source-only. The authorized owner
+Worker/build-32 rollout is recorded in AppStore/Release32, including exact
+deployment, source, test and TestFlight receipts. Do not infer delivery from
+this specification alone.
 
 ## User Flow
 

@@ -1,5 +1,9 @@
 # Verification: online waiting-room bots
 
+Follow-up: the owner subsequently authorized the Worker/build-32 rollout.
+See AppStore/Release32 for live deployment and native/live-network receipts.
+The original source-only verification below is retained as historical evidence.
+
 2026-11-02. Base main: `c4621082a8a36c3cffdbf58d1f7a01faff64cefa`.
 No Cloudflare deployment, TestFlight upload, build-number change or Store
 metadata/review mutation was performed for this feature.

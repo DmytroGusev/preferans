@@ -38,12 +38,54 @@ the prior live Worker version with the same image/namespaces, not a state reset.
 
 ## Verification And Delivery
 
-Record final receipts here. Initial checks: Worker 59 unit and 19 runtime tests,
+Exact archived app/Worker source: f4b65759eb107c87592e71a84a63307bd43046c0.
+Final receipts are stored here. Checks: Worker 59 unit and 19 runtime tests,
 typecheck; real local Swift/Worker public/private three/four-seat bot starts;
 native two-humans-Ready-then-bot flow and Settings links; app test suite.
 Native bot test passed in 56.828 seconds. The first Settings test queried Link
 as Button and failed; corrected element-type coverage passed in 16.029 seconds.
+On iPad the bot flow passed in 46.552 seconds and Settings links in 16.931.
+App coverage: 272 XCTest cases, three gated skips, zero failures; 24 Swift
+Testing cases, zero failures. QA accounts were cleaned up and local services
+stopped after testing.
 Do not claim physical-device QA or complete-match bot QA from first-deal tests.
+
+The live owner Worker is now 58c7f8e0-eb14-43cd-a5dc-46e72f0fba58. All four
+real-network public/private three/four-seat cases passed, including private
+projections and both humans Ready before and after adding bots. Container
+configuration, version 2 and namespace were read back unchanged; Wrangler
+reported no container changes. There was no account/game reset or friend deploy.
+
+Apple processing: VALID. Build ID: 8535d1ba-3fa4-4086-8ff7-3b4d59f80213.
+External state: IN_BETA_TESTING, Beta App Review APPROVED, existing six testers,
+unchanged membership/public-link settings, automatic notification enabled.
+Protected readback proves Store version selections, all 24 localizations and
+public review notes unchanged. Draft 1.0.3 still selects build 31; update/select
+the public release separately after testing and resolving its privacy gate.
+
+## Guru Of Cards
+
+The Club page is live at <https://guruofcards.com/apps/preferans/club/> with
+Russian/Ukrainian versions. It is linked from every Preferans website page and
+from Settings. Source: ca3dd79d8745d77bbe29a461129ec2afa8c39bf2 in the existing
+masti-card-encyclopedia repo/PR #1. All 19 public HTML/CSS checks returned 200
+with exact source hashes; scoped Apache config returned 403. No other website
+paths were changed. Backup is outside public_html:
+/home/gurujtkn/.guru-cards-releases/preferans-pages-before.uOiN0w.
+
+The page explains the future offer, not currently purchasable access. The old
+uncommitted Club draft still uses five free entries and must not be deployed
+unchanged: future implementation needs the agreed three-entry rule, current
+protocol integration, safe new ledger migration and real purchase verification.
+
+Minor UI follow-up: the generic Support link title currently uses the English
+fallback in ru/uk. The destination and the new Club/Ready explanations work;
+the dedicated website pages are available in all three languages.
+
+Client rollback can use build 31, but it has no bot editing controls. A Worker
+rollback retains data/image, but the old code lacks public-bot admission/Ready
+behavior; coordinate it with clients rather than assuming full bot compatibility.
+No rollback was executed. No GitHub PR was merged by this rollout.
 
 Build 31's unresolved App Privacy editor validation is separate from this bot
 rollout. Build 32 retains the removal of ATT/IDFA; no tracking is added. Keep the

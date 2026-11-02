@@ -1,0 +1,9 @@
+Preferans 1.0.3 (32): online bot seats and Club information.
+
+1. Use build 32 on both test devices. Open Play online, enter a name and Continue as Guest or Sign in with Apple. Create a public table for three or four seats; a friend joins by table search, code or invite.
+2. Both humans can tap I'm ready first. The host still sees Add bot beside each empty seat: add one bot for a three-seat table, or up to two for four seats. Choose Casual, Seasoned or Expert.
+3. Changing seats/difficulty clears Ready. Both humans confirm again, then the host taps Start game. Bots need no Ready tap. The host can change/remove bots before starting; joined human seats cannot be replaced.
+4. Check invite-only tables too. They do not use the public Ready gate; the host starts once humans are connected and all seats are filled.
+5. Settings > Club & online access opens the maintained Guru of Cards page. Help & Legal contains Terms, Privacy and Support. Club payments and the planned three-free-pulkas/month limit are NOT active; current online access remains free.
+
+No purchase or demo credentials required. Verify reconnect/resume still works. This release retains build 31's removal of unused tracking prompts. Account deletion is permanent: only complete it on a disposable test account.

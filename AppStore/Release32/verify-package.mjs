@@ -14,7 +14,7 @@ const files = execFileSync('git', ['ls-tree', '-r', '--name-only', sourceCommit]
   .filter(file => file.startsWith('Preferans/') || file.startsWith('Sources/PreferansEngine/') || ['Preferans.xcodeproj/project.pbxproj', 'Package.swift'].includes(file));
 const manifest = files.map(file => {
   const bytes = fs.readFileSync(file);
-  assert.equal(hash(bytes), hash(execFileSync('git', ['show', `${sourceCommit}:${file}`])), `Source drift: ${file}`);
+  assert.equal(hash(bytes), hash(execFileSync('git', ['show', `${sourceCommit}:${file}`], { maxBuffer: 16 * 1024 * 1024 })), `Source drift: ${file}`);
   return { path: file, sha256: hash(bytes) };
 });
 const ipa = path.resolve(arg('--ipa'));
@@ -43,11 +43,11 @@ try {
   const libraries = execFileSync('otool', ['-L', binaryPath], { encoding: 'utf8' });
   assert(!/AppTrackingTransparency|AdSupport/.test(libraries));
   for (const text of ['ATTrackingManager', 'ASIdentifierManager', 'requestTrackingAuthorization', 'preferans.club.monthly']) assert(!binary.includes(Buffer.from(text)), text);
-  for (const text of ['https://preferans-room-worker.dmytro-gusev.workers.dev', '.owner-v1', 'https://guruofcards.com/apps/preferans/club/', 'settings.clubInfo', 'seats/bot']) assert(binary.includes(Buffer.from(text)), text);
+  for (const text of ['https://preferans-room-worker.dmytro-gusev.workers.dev', '.owner-v1', 'https://guruofcards.com/apps/preferans/club/', 'settings.clubInfo', 'BotSeatMutationRequest']) assert(binary.includes(Buffer.from(text)), text);
   const result = { sourceCommit, version: '1.0.3', build: '32', xcode: info.DTXcodeBuild, sdk: info.DTSDKName,
     bytes: fs.statSync(ipa).size, sha256: hash(fs.readFileSync(ipa)), signatureVerified: true,
     ownerBackendAndNamespacePreserved: true, appleSignInAndInvitesPreserved: true,
-    onlineBotSeatRouteIncluded: true, clubInformationLinkIncluded: true,
+    onlineBotSeatRequestIncluded: true, clubInformationLinkIncluded: true,
     trackingUsageAndAPIsAbsent: true, subscriptionPurchasesIncluded: false };
   fs.writeFileSync(new URL('package-verification.json', import.meta.url), JSON.stringify(result, null, 2) + '\n');
   fs.writeFileSync(new URL('source-manifest.json', import.meta.url), JSON.stringify({ sourceCommit, files: manifest }, null, 2) + '\n');
