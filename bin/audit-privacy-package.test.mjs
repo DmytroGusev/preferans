@@ -36,18 +36,20 @@ test('rejects ATT APIs or analytics linkage in a nested executable', () => {
   }
 });
 
-test('actual manifest preserves five functionality disclosures and local defaults reason', () => {
+test('actual manifest preserves functionality disclosures and adds truthful opt-in analytics types', () => {
   const manifest = plist(new URL('../Preferans/PrivacyInfo.xcprivacy', import.meta.url).pathname);
   const report = clean();
   report.manifestPresent = true;
   report.plists.push({ path: 'PrivacyInfo.xcprivacy', manifest, trackingKeys: [{ key: 'NSPrivacyTracking', value: manifest.NSPrivacyTracking }] });
   assertNonTracking(report, { requireManifest: true });
   assert.deepEqual(manifest.NSPrivacyTrackingDomains, []);
-  assert.deepEqual(manifest.NSPrivacyCollectedDataTypes.map(x => x.NSPrivacyCollectedDataType).sort(), ['Name', 'UserID', 'GameplayContent', 'ProductInteraction', 'OtherDiagnosticData'].map(x => `NSPrivacyCollectedDataType${x}`).sort());
+  assert.deepEqual(manifest.NSPrivacyCollectedDataTypes.map(x => x.NSPrivacyCollectedDataType).sort(), ['Name', 'UserID', 'GameplayContent', 'ProductInteraction', 'OtherDiagnosticData', 'DeviceID', 'CoarseLocation'].map(x => `NSPrivacyCollectedDataType${x}`).sort());
   for (const item of manifest.NSPrivacyCollectedDataTypes) {
     assert.equal(item.NSPrivacyCollectedDataTypeLinked, true);
     assert.equal(item.NSPrivacyCollectedDataTypeTracking, false);
-    assert.deepEqual(item.NSPrivacyCollectedDataTypePurposes, ['NSPrivacyCollectedDataTypePurposeAppFunctionality']);
+    const type = item.NSPrivacyCollectedDataType.replace('NSPrivacyCollectedDataType', '');
+    const expected = type === 'DeviceID' || type === 'CoarseLocation' ? ['Analytics'] : type === 'ProductInteraction' ? ['AppFunctionality', 'Analytics'] : ['AppFunctionality'];
+    assert.deepEqual(item.NSPrivacyCollectedDataTypePurposes, expected.map(x => `NSPrivacyCollectedDataTypePurpose${x}`));
   }
   const project = plist(new URL('../Preferans.xcodeproj/project.pbxproj', import.meta.url).pathname);
   const phase = project.objects.A00000000000000000000032;
@@ -71,4 +73,20 @@ test('scanner reads binary localized plists as well as the main Info.plist', () 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('product analytics profile still rejects advertising linkage, unsafe defaults and SDK tracking', () => {
+  const report = clean();
+  report.analyticsDefaults = plist(new URL('../Preferans/Info.plist', import.meta.url).pathname);
+  report.binaries = [{ path: 'FirebaseAnalytics', trackingAPIs: [], advertisingLibraries: [], trackingOrAnalyticsLibraries: ['FirebaseAnalytics.framework/FirebaseAnalytics'] }];
+  assertNonTracking(report, { productAnalytics: true });
+  assert.throws(() => assertNonTracking(report), /tracking\/analytics library/);
+  report.binaries[0].advertisingLibraries = ['AdSupport.framework/AdSupport'];
+  assert.throws(() => assertNonTracking(report, { productAnalytics: true }), /advertising library/);
+  report.binaries[0].advertisingLibraries = [];
+  report.analyticsDefaults.FIREBASE_ANALYTICS_COLLECTION_ENABLED = true;
+  assert.throws(() => assertNonTracking(report, { productAnalytics: true }), /Unsafe analytics default/);
+  report.analyticsDefaults.FIREBASE_ANALYTICS_COLLECTION_ENABLED = false;
+  report.plists.push({ path: 'Vendor.bundle/PrivacyInfo.xcprivacy', trackingKeys: [{ key: 'NSPrivacyTracking', value: true }] });
+  assert.throws(() => assertNonTracking(report, { productAnalytics: true }));
 });

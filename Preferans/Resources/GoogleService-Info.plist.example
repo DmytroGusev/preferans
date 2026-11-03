@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>API_KEY</key><string>FETCH_WITH_AppStore_Analytics_fetch_config_mjs</string>
+    <key>PROJECT_ID</key><string>guru-preferans-20261030</string>
+    <key>BUNDLE_ID</key><string>com.mixandmatch.preferans</string>
+    <key>GOOGLE_APP_ID</key><string>1:333127048917:ios:07fabd60aff528315f4c5c</string>
+    <key>GCM_SENDER_ID</key><string>333127048917</string>
+</dict></plist>

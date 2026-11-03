@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F1BA00000000000000000101 /* AnalyticsConsentUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BA00000000000000000102; };
+		F1BA00000000000000000001 /* AppAnalytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BA00000000000000000002; };
+		F1BA00000000000000000003 /* AnalyticsConsentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BA00000000000000000004; };
+		F1BA00000000000000000005 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F1BA00000000000000000006; };
+		F1BA00000000000000000007 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = F1BA00000000000000000008; };
+		F1BA00000000000000000009 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = F1BA0000000000000000000A; };
+		F1BA0000000000000000000C /* FirebaseAnalyticsSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1BA0000000000000000000D; };
 		C0DE00000000000000000A02 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C0DE00000000000000000A01 /* PrivacyInfo.xcprivacy */; };
 		265F5A4613A45F1440C8983C /* TableLayoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */; };
 		629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */; };
@@ -126,6 +133,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F1BA00000000000000000102 /* AnalyticsConsentUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsConsentUITests.swift; sourceTree = "<group>"; };
+		F1BA00000000000000000002 /* AppAnalytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/AppAnalytics.swift; sourceTree = "<group>"; };
+		F1BA00000000000000000004 /* AnalyticsConsentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UI/AnalyticsConsentView.swift; sourceTree = "<group>"; };
+		F1BA00000000000000000006 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/GoogleService-Info.plist; sourceTree = "<group>"; };
+		F1BA0000000000000000000D /* FirebaseAnalyticsSink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support/FirebaseAnalyticsSink.swift; sourceTree = "<group>"; };
 		C0DE00000000000000000A01 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		53632743707C458D9BBC2CE3 /* LobbyViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LobbyViewModel.swift; path = Preferans/UI/LobbyViewModel.swift; sourceTree = "<group>"; };
 		9FE74F7934DC869F438C1D09 /* TableLayoutModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TableLayoutModel.swift; path = Preferans/UI/TableLayoutModel.swift; sourceTree = "<group>"; };
@@ -227,6 +239,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1BA00000000000000000007 /* FirebaseCore in Frameworks */,
+				F1BA00000000000000000009 /* FirebaseAnalyticsCore in Frameworks */,
 				629CD2A61B09C049A5EFF417 /* PreferansEngine in Frameworks */,
 				B00000000000000000000DE1 /* Dependencies in Frameworks */,
 			);
@@ -334,6 +348,10 @@
 				B0000000000000000000A082 /* Localized.swift */,
 				B0000000000000000000A083 /* Localizable.xcstrings */,
 				C0DE00000000000000000A01 /* PrivacyInfo.xcprivacy */,
+				F1BA00000000000000000002 /* AppAnalytics.swift */,
+				F1BA00000000000000000004 /* AnalyticsConsentView.swift */,
+				F1BA00000000000000000006 /* GoogleService-Info.plist */,
+				F1BA0000000000000000000D /* FirebaseAnalyticsSink.swift */,
 				A00000000000000000000018 /* Assets.xcassets */,
 				A00000000000000000000019 /* README.md */,
 			);
@@ -360,6 +378,7 @@
 			isa = PBXGroup;
 			children = (
 				E00000000000000000000002 /* PreferansUITests.swift */,
+				F1BA00000000000000000102 /* AnalyticsConsentUITests.swift */,
 				E0000000000000000000A040 /* MatchUIRobot.swift */,
 				E0000000000000000000A044 /* MatchUIDriver.swift */,
 				E0000000000000000000A042 /* MatchUITests.swift */,
@@ -395,6 +414,8 @@
 			packageProductDependencies = (
 				278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */,
 				B00000000000000000000DE0 /* Dependencies */,
+				F1BA00000000000000000008 /* FirebaseCore */,
+				F1BA0000000000000000000A /* FirebaseAnalyticsCore */,
 			);
 			productName = Preferans;
 			productReference = A00000000000000000000010 /* Preferans.app */;
@@ -451,6 +472,7 @@
 			);
 			mainGroup = A00000000000000000000021;
 			packageReferences = (
+				F1BA0000000000000000000B /* Firebase */,
 				62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */,
 			);
 			productRefGroup = A00000000000000000000023 /* Products */;
@@ -471,6 +493,7 @@
 				A00000000000000000000008 /* Assets.xcassets in Resources */,
 				B0000000000000000000A081 /* Localizable.xcstrings in Resources */,
 				C0DE00000000000000000A02 /* PrivacyInfo.xcprivacy in Resources */,
+				F1BA00000000000000000005 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -481,6 +504,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F1BA00000000000000000001 /* AppAnalytics.swift in Sources */,
+				F1BA00000000000000000003 /* AnalyticsConsentView.swift in Sources */,
+				F1BA0000000000000000000C /* FirebaseAnalyticsSink.swift in Sources */,
 				B00000000000000000000001 /* PreferansApp.swift in Sources */,
 				B00000000000000000000002 /* GameViewModel.swift in Sources */,
 				B0000000000000000000C320 /* AdvancePresentation.swift in Sources */,
@@ -564,6 +590,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E00000000000000000000003 /* PreferansUITests.swift in Sources */,
+				F1BA00000000000000000101 /* AnalyticsConsentUITests.swift in Sources */,
 				E0000000000000000000A041 /* MatchUIRobot.swift in Sources */,
 				E0000000000000000000A045 /* MatchUIDriver.swift in Sources */,
 				E0000000000000000000A043 /* MatchUITests.swift in Sources */,
@@ -688,7 +715,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEAD_CODE_STRIPPING = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -723,7 +750,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Preferans/Preferans.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 34;
 				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Preferans/Info.plist;
@@ -831,6 +858,8 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		F1BA00000000000000000008 /* FirebaseCore */ = {isa = XCSwiftPackageProductDependency; package = F1BA0000000000000000000B; productName = FirebaseCore; };
+		F1BA0000000000000000000A /* FirebaseAnalyticsCore */ = {isa = XCSwiftPackageProductDependency; package = F1BA0000000000000000000B; productName = FirebaseAnalyticsCore; };
 		278EC2F8A1F0DB99CF8D5FCB /* PreferansEngine */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 62AF80135366400C1234D2F2 /* XCLocalSwiftPackageReference "." */;
@@ -847,6 +876,13 @@
 			productName = Dependencies;
 		};
 /* End XCSwiftPackageProductDependency section */
+/* Begin XCRemoteSwiftPackageReference section */
+		F1BA0000000000000000000B /* Firebase */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {kind = exactVersion; version = 13.1.1; };
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = A00000000000000000000033 /* Project object */;
 }

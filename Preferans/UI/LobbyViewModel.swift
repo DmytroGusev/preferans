@@ -185,7 +185,7 @@ public final class LobbyViewModel: ObservableObject {
             rejectOnlineOperation(String(localized: "Choose Vienna, Prague, or Berlin and leave seats open for players."))
             return
         }
-        launchCloudRoom {
+        launchCloudRoom(analyticsOperation: .create) {
             try await CloudflareOnlineGameSession.createRoom(
                 peers: setup.peers,
                 localPlayerID: setup.localPlayer,
@@ -216,7 +216,7 @@ public final class LobbyViewModel: ObservableObject {
         }
         let delay = onlineBotMoveDelay
         let variantTag = onlineVariant.rawValue
-        launchCloudRoom {
+        launchCloudRoom(analyticsOperation: .join) {
             try await CloudflareOnlineGameSession.joinRoom(
                 roomCode: roomCode,
                 localPeer: localPeer,
@@ -489,7 +489,7 @@ public final class LobbyViewModel: ObservableObject {
         }
         let delay = onlineBotMoveDelay
         let variantTag = summary.variant ?? onlineVariant.rawValue
-        launchCloudRoom {
+        launchCloudRoom(analyticsOperation: .resume) {
             try await CloudflareOnlineGameSession.resumeRoom(
                 roomCode: summary.roomCode,
                 localPeer: localPeer,
@@ -504,12 +504,14 @@ public final class LobbyViewModel: ObservableObject {
     /// that clears stale messages, starts the returned session, publishes it,
     /// and restores the idle state on both success and failure.
     private func launchCloudRoom(
+        analyticsOperation: AnalyticsOperation,
         operation: @escaping @MainActor () async throws -> CloudflareOnlineGameSession
     ) {
         guard !isOnlineRoomLoading else { return }
         isOnlineRoomLoading = true
         errorText = nil
         infoText = nil
+        AppAnalytics.shared.track(.onlineRoom(analyticsOperation, .requested))
 
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -519,8 +521,10 @@ public final class LobbyViewModel: ObservableObject {
                 await session.start()
                 cloudOnlineSession = session
                 onlineJoinRoomCode = session.roomCode
+                AppAnalytics.shared.track(.onlineRoom(analyticsOperation, .succeeded))
             } catch {
                 errorText = error.localizedDescription
+                AppAnalytics.shared.track(.onlineRoom(analyticsOperation, .failed))
             }
         }
     }
@@ -653,6 +657,12 @@ public final class LobbyViewModel: ObservableObject {
             }
 
             let hasHumanSeat = seats.contains { !$0.isBot }
+            if hasHumanSeat {
+                let context = AnalyticsGameContext(mode: .local, players: configuration.players.count,
+                    bots: model.botStrategies.count, rules: configuration.rules)
+                model.analyticsContext = context
+                AppAnalytics.shared.track(.localGameStarted(context))
+            }
             if TestHarness.skipTapToAdvance(in: args) || !hasHumanSeat {
                 model.tapToAdvanceEnabled = false
             }

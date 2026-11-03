@@ -61,6 +61,9 @@ public final class GameViewModel: ObservableObject {
 
     private var pendingBotTask: Task<Void, Never>?
     private var idleHintTask: Task<Void, Never>?
+    var analyticsContext: AnalyticsGameContext?
+    var analytics: AppAnalytics = .shared
+    private var analyticsRevision = 0
 
     public init(
         players: [PlayerID],
@@ -92,6 +95,10 @@ public final class GameViewModel: ObservableObject {
             let publicTalonBeforeAction = projection(revealAll: false).talon
             let authoritativeAction = makeAuthoritative(action)
             let events = try engine.apply(authoritativeAction)
+            analyticsRevision += 1
+            if let analyticsContext {
+                analytics.recordGameEvents(events, table: tableID, revision: analyticsRevision, context: analyticsContext)
+            }
             eventLog.append(contentsOf: ActivityLogFeed.summaries(for: events))
             RecentActionFeed.append(events, to: &recentEvents)
             lastError = nil

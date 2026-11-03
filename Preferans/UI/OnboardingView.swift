@@ -4,15 +4,43 @@ import PreferansEngine
 struct RootLaunchView: View {
     @AppStorage(SettingsKeys.firstLaunchOnboardingCompleted) private var onboardingCompleted = false
     @State private var completedThisLaunch = false
+    @ObservedObject private var analytics = AppAnalytics.shared
+    @State private var showAnalyticsConsent = false
+    @State private var justCompletedOnboarding = false
 
     var body: some View {
-        if !completedThisLaunch && TestHarness.shouldShowOnboarding(completed: onboardingCompleted) {
-            OnboardingView {
-                onboardingCompleted = true
-                completedThisLaunch = true
+        Group {
+            if !completedThisLaunch && TestHarness.shouldShowOnboarding(completed: onboardingCompleted) {
+                OnboardingView {
+                    onboardingCompleted = true
+                    completedThisLaunch = true
+                    justCompletedOnboarding = true
+                    if analytics.shouldAsk { showAnalyticsConsent = true }
+                    else {
+                        analytics.track(.onboardingCompleted)
+                        justCompletedOnboarding = false
+                    }
+                }
+            } else {
+                LobbyView()
+                    .onAppear {
+                        if analytics.shouldAsk { showAnalyticsConsent = true }
+                    }
             }
-        } else {
-            LobbyView()
+        }
+        #if DEBUG
+        .onAppear {
+            if ProcessInfo.processInfo.arguments.contains("-uiTestAnalyticsConsent") { showAnalyticsConsent = true }
+        }
+        #endif
+        .sheet(isPresented: $showAnalyticsConsent) {
+            AnalyticsConsentView { allowed in
+                analytics.setAllowed(allowed)
+                if justCompletedOnboarding { analytics.track(.onboardingCompleted) }
+                justCompletedOnboarding = false
+                analytics.track(.screen(.lobby))
+                showAnalyticsConsent = false
+            }
         }
     }
 }

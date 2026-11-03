@@ -9,6 +9,8 @@ import { pathToFileURL } from 'node:url';
 const trackingKeys = new Set(['NSUserTrackingUsageDescription', 'NSPrivacyTracking', 'NSPrivacyTrackingDomains', 'NSPrivacyCollectedDataTypeTracking']);
 const trackingAPIs = ['ATTrackingManager', 'ASIdentifierManager', 'requestTrackingAuthorization', 'advertisingIdentifier'];
 const trackedLibraries = /AppTrackingTransparency|AdSupport|FirebaseAnalytics|GoogleAppMeasurement|FBSDK|AppsFlyer|Adjust|AppLovin|GoogleMobileAds/;
+const advertisingLibraries = /AppTrackingTransparency|AdSupport|IdentitySupport|FBSDK|AppsFlyer|Adjust|AppLovin|GoogleMobileAds|GoogleAdsOnDeviceConversion/;
+const analyticsDefaultKeys = ['FIREBASE_ANALYTICS_COLLECTION_ENABLED', 'FirebaseDataCollectionDefaultEnabled', 'GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED', 'GOOGLE_ANALYTICS_DEFAULT_ALLOW_ANALYTICS_STORAGE', 'GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_STORAGE', 'GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_USER_DATA', 'GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS', 'FirebaseAutomaticScreenReportingEnabled'];
 const readPlist = file => JSON.parse(execFileSync('plutil', ['-convert', 'json', '-o', '-', file], { encoding: 'utf8' }));
 const sha256 = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
@@ -44,17 +46,19 @@ export function inspectApp(app, { verifySignature = true } = {}) {
     const libraries = execFileSync('otool', ['-L', file], { encoding: 'utf8' }).trim().split('\n').slice(1).map(line => line.trim());
     return { path: path.relative(app, file), sha256: sha256(file), libraries,
       trackingAPIs: trackingAPIs.filter(symbol => bytes.includes(Buffer.from(symbol))),
+      advertisingLibraries: libraries.filter(line => advertisingLibraries.test(line)),
       trackingOrAnalyticsLibraries: libraries.filter(line => trackedLibraries.test(line)) };
   });
   if (verifySignature) execFileSync('codesign', ['--verify', '--deep', '--strict', app], { stdio: ['ignore', 'pipe', 'pipe'] });
   return { version: info.CFBundleShortVersionString, build: info.CFBundleVersion,
     bundleID: info.CFBundleIdentifier, xcode: info.DTXcodeBuild, sdkBuild: info.DTSDKBuild,
     signatureVerified: verifySignature, fileCount: files.length, plists, binaries,
+    analyticsDefaults: Object.fromEntries(analyticsDefaultKeys.filter(key => info[key] !== undefined).map(key => [key, info[key]])),
     nestedBundles: [...new Set(files.flatMap(file => path.relative(app, file).split('/').filter(part => /\.(appex|framework|bundle)$/.test(part))))],
     manifestPresent: plists.some(file => file.path === 'PrivacyInfo.xcprivacy') };
 }
 
-export function assertNonTracking(report, { requireManifest = false } = {}) {
+export function assertNonTracking(report, { requireManifest = false, productAnalytics = false } = {}) {
   for (const file of report.plists) {
     for (const item of file.trackingKeys) {
       assert(!item.key.endsWith('NSUserTrackingUsageDescription'), `${file.path}: tracking permission key`);
@@ -64,8 +68,11 @@ export function assertNonTracking(report, { requireManifest = false } = {}) {
   }
   for (const file of report.binaries) {
     assert.deepEqual(file.trackingAPIs, [], `${file.path}: ATT/IDFA symbols`);
-    assert.deepEqual(file.trackingOrAnalyticsLibraries, [], `${file.path}: tracking/analytics library`);
+    if (productAnalytics) {
+      assert.deepEqual(file.advertisingLibraries ?? file.trackingOrAnalyticsLibraries?.filter(line => advertisingLibraries.test(line)), [], `${file.path}: advertising library`);
+    } else assert.deepEqual(file.trackingOrAnalyticsLibraries, [], `${file.path}: tracking/analytics library`);
   }
+  if (productAnalytics) for (const key of analyticsDefaultKeys) assert.equal(report.analyticsDefaults?.[key], false, `Unsafe analytics default: ${key}`);
   if (requireManifest) {
     assert(report.manifestPresent, 'Missing app PrivacyInfo.xcprivacy');
     const manifest = report.plists.find(file => file.path === 'PrivacyInfo.xcprivacy').manifest;
@@ -77,7 +84,7 @@ export function assertNonTracking(report, { requireManifest = false } = {}) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
   const input = args.find(arg => !arg.startsWith('--'));
-  assert(input, 'Usage: node bin/audit-privacy-package.mjs APP_OR_IPA [--require-manifest]');
+  assert(input, 'Usage: node bin/audit-privacy-package.mjs APP_OR_IPA [--require-manifest] [--product-analytics]');
   const temp = input.endsWith('.ipa') ? fs.mkdtempSync(path.join(os.tmpdir(), 'preferans-privacy-audit-')) : null;
   try {
     if (temp) execFileSync('unzip', ['-q', path.resolve(input), '-d', temp]);
@@ -87,7 +94,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const report = inspectApp(app);
     if (temp) report.ipaSHA256 = sha256(input);
     try {
-      assertNonTracking(report, { requireManifest: args.includes('--require-manifest') });
+      assertNonTracking(report, { requireManifest: args.includes('--require-manifest'), productAnalytics: args.includes('--product-analytics') });
       report.nonTrackingCheckPassed = true;
     } catch (error) {
       report.nonTrackingCheckPassed = false;
