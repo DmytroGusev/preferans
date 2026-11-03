@@ -66,6 +66,7 @@ public struct LocalGameScreen: View {
                     .accessibilityIdentifier(UIIdentifiers.errorBanner)
             }
         }
+        .onAppear { AppAnalytics.shared.track(.screen(.localTable)) }
     }
 
 }

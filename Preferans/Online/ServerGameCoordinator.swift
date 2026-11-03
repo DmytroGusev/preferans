@@ -35,6 +35,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
     private var generation = UUID()
     private var latestReceiptSequence = -1
     private var didAutoStart = false
+    private var lastAnalyticsConnection: AnalyticsConnection?
 
     public init(outbox: OnlineCommandOutbox? = nil) {
         self.outbox = outbox ?? OnlineCommandOutbox()
@@ -57,13 +58,22 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         guard canManageBotSeats, !isUpdatingBotSeats, !isUpdatingReadiness, let transport else { return }
         let attachment = generation
         isUpdatingBotSeats = true
+        let botOperation: AnalyticsOperation = difficulty == nil ? .remove
+            : rosterSeats.first(where: { $0.player == player })?.botDifficulty == nil ? .add : .change
+        AppAnalytics.shared.track(.botSeat(botOperation, .requested, difficulty))
         errorText = nil
         updateStartAvailability()
         do {
             try await transport.configureBotSeat(player, difficulty: difficulty)
             guard generation == attachment else { return }
             await refreshRoster()
-        } catch { if generation == attachment { errorText = error.localizedDescription } }
+            AppAnalytics.shared.track(.botSeat(botOperation, .succeeded, difficulty))
+        } catch {
+            if generation == attachment {
+                errorText = error.localizedDescription
+                AppAnalytics.shared.track(.botSeat(botOperation, .failed, difficulty))
+            }
+        }
         guard generation == attachment else { return }
         isUpdatingBotSeats = false
         updateStartAvailability()
@@ -118,6 +128,7 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         isUpdatingBotSeats = false
         rosterSeats = []; canHostStart = false; hasDisconnectedHumanSeat = false
         latestReceiptSequence = -1; didAutoStart = false
+        lastAnalyticsConnection = nil
         errorText = nil; liveness = .connecting; transportStatus = .disconnected
     }
 
@@ -157,12 +168,19 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         guard let transport, isPublicTable, !isUpdatingReadiness, !isUpdatingBotSeats, transportStatus == .connected else { return }
         let attachment = generation
         isUpdatingReadiness = true
+        AppAnalytics.shared.track(.readiness(ready, .requested))
         errorText = nil
         do {
             try await transport.setReady(ready)
             guard generation == attachment else { return }
             await refreshRoster()
-        } catch { if generation == attachment { errorText = error.localizedDescription } }
+            AppAnalytics.shared.track(.readiness(ready, .succeeded))
+        } catch {
+            if generation == attachment {
+                errorText = error.localizedDescription
+                AppAnalytics.shared.track(.readiness(ready, .failed))
+            }
+        }
         if generation == attachment { isUpdatingReadiness = false }
     }
 
@@ -221,6 +239,12 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         transportStatus = .connected; liveness = .live
         let newer = frame.sequence > (projection?.sequence ?? -1)
         if newer {
+            if frame.sequence > 0 && (projection?.sequence ?? 0) == 0 {
+                AppAnalytics.shared.track(.screen(.onlineTable))
+            }
+            AppAnalytics.shared.recordGameEvents(frame.events, table: frame.tableID, revision: frame.sequence,
+                context: AnalyticsGameContext(mode: .online, players: frame.projection.players.count,
+                    bots: transport?.participants.filter(\.isBotSeat).count ?? 0, rules: frame.projection.rules))
             if let previous = projection, let freeze = AdvancePresentation.completedTrickHold(
                 events: frame.events, viewer: frame.viewer, preProjection: previous,
                 visibleTalonBeforeAction: previous.talon) {
@@ -249,22 +273,29 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
     private func connection(_ event: RoomTransportEvent) {
         switch event {
         case .connected:
+            recordConnection(.connected)
             transportStatus = .connected; liveness = .live
             scheduleRetry()
         case .reconnecting:
+            recordConnection(.reconnecting)
             transportStatus = .reconnecting; retry?.cancel(); retry = nil
         case .seatTakenOver:
+            recordConnection(.takenOver)
             transportStatus = .seatTakenOver; retry?.cancel(); retry = nil
             canHostStart = false
         case .tableAbandoned:
+            recordConnection(.abandoned)
             discardPendingCommand()
             transportStatus = .disconnected; canHostStart = false
             errorText = "This table was abandoned. Return to the lobby to start another game."
         case let .seatLost(message):
+            recordConnection(.seatLost)
             discardPendingCommand()
             transportStatus = .disconnected; canHostStart = false
             errorText = message
-        case let .serverError(message): errorText = message
+        case let .serverError(message):
+            recordConnection(.serverError)
+            errorText = message
         case let .commandReceipt(receipt):
             guard let pending, receipt.tableID == tableID, receipt.clientNonce == pending.clientNonce,
                   let transport else { return }
@@ -275,6 +306,12 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
             errorText = Self.rejectionMessage(for: receipt, basedOn: pending)
         }
         Task { [weak self] in await self?.refreshRoster() }
+    }
+
+    private func recordConnection(_ state: AnalyticsConnection) {
+        guard state != lastAnalyticsConnection else { return }
+        lastAnalyticsConnection = state
+        AppAnalytics.shared.track(.connection(state))
     }
 
     /// A rejection is only news when it judged the state the player acted on.

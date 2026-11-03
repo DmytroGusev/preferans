@@ -28,6 +28,7 @@ struct PreferansApp: App {
         } else {
             AppLanguage.apply(AppLanguage.current)
         }
+        AppAnalytics.shared.startIfAllowed()
 
         // UIKit's flag stops UIView animations; the SwiftUI .transaction
         // modifier below stops implicit/explicit SwiftUI animations the

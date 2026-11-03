@@ -13,6 +13,7 @@ xcuserdata/
 Packages/
 Package.resolved
 !/Package.resolved
+!/Preferans.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # JavaScript dependencies
 node_modules/
@@ -29,6 +30,7 @@ AppStore/Screenshots/raw/
 bin/.screens/
 
 # Secrets
+/Preferans/Resources/GoogleService-Info.plist
 *.p8
 *.mobileprovision
 *.cer

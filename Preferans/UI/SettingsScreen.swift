@@ -21,6 +21,7 @@ public struct SettingsScreen: View {
     @State private var isDeletingAccount = false
     @State private var accountDeletionError: String?
     @State private var accountStatusText = Self.accountStatusText()
+    @ObservedObject private var analytics = AppAnalytics.shared
 
     private let onDeleteOnlineAccount: (@MainActor () async throws -> Void)?
 
@@ -44,6 +45,24 @@ public struct SettingsScreen: View {
                 appearanceSection
                 tableSection
                 languageSection
+                Section {
+                    Toggle("Allow usage analytics", isOn: Binding(
+                        get: { analytics.choice == .allowed },
+                        set: { analytics.setAllowed($0) }
+                    ))
+                    .accessibilityIdentifier("settings.analytics")
+                    Text(LocalizedStringKey(analytics.isOperational ? "analytics.status.active" : "analytics.status.off"))
+                        .accessibilityIdentifier("settings.analyticsStatus")
+                    if analytics.choice == .allowed && !analytics.isOperational {
+                        Text("Analytics could not start. Try turning it off and on again.")
+                            .foregroundStyle(theme.error)
+                    }
+                } header: {
+                    Text("Usage analytics").foregroundStyle(theme.textSecondary)
+                } footer: {
+                    Text("analytics.settings.explanation").foregroundStyle(theme.textSecondary)
+                }
+                .listRowBackground(theme.panel)
                 accountSection
                 Section {
                     Link("Privacy Policy", destination: URL(string: "https://guruofcards.com/apps/preferans/privacy/")!)
@@ -117,6 +136,7 @@ public struct SettingsScreen: View {
             }
             .onAppear {
                 refreshAccountStatus()
+                analytics.track(.screen(.settings))
             }
             .accessibilityIdentifier(UIIdentifiers.screenSettings)
         }
@@ -279,6 +299,7 @@ public struct SettingsScreen: View {
         accountDeletionError = nil
         do {
             try await onDeleteOnlineAccount()
+            analytics.setAllowed(false)
             refreshAccountStatus()
         } catch {
             accountDeletionError = error.localizedDescription
