@@ -4,8 +4,13 @@ import profiles from '../fixtures/public-rules.json' with { type: 'json' };
 const base = process.env.PREFERANS_ROOM_WORKER_URL ?? 'http://127.0.0.1:8787';
 assert(['http://127.0.0.1:8787', 'https://preferans-room-worker.dmytro-gusev.workers.dev'].includes(base));
 const timeout = base.startsWith('https:') ? 10_000 : 3_000;
+type Connection = {
+  socket: WebSocket;
+  frames: any[];
+  wait: (predicate: (frame: any) => boolean, after?: number) => Promise<any>;
+};
 const tokens: string[] = [];
-const connections: ReturnType<typeof connect>[] = [];
+const connections: Connection[] = [];
 const id = (value: any) => typeof value === 'string' ? value : value.rawValue;
 const projection = (frame: any) => frame.message?.projection?._0?.projection;
 async function request(method: string, path: string, token?: string, body?: unknown, expected = 200): Promise<any> {
@@ -20,7 +25,7 @@ async function guest(name: string) {
   tokens.push(account.sessionToken);
   return account.sessionToken as string;
 }
-function connect(room: any) {
+function connect(room: any): Connection {
   const socket = new WebSocket(room.websocketURL);
   const frames: any[] = [];
   const listeners = new Set<() => void>();
