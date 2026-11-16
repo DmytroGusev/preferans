@@ -1,8 +1,9 @@
 # Candidate notice for the build 34 privacy-policy update
 
-Status: prepared, not published. Merge into the existing Preferans notice before
-releasing the analytics-enabled app; do not replace the online account, gameplay,
-support, retention or deletion disclosures with this supplement.
+Status: the build 34 disclosure was published in the existing
+[Preferans notice](https://guruofcards.com/apps/preferans/privacy/) on 16 November
+2026, with Ukrainian and Russian translations. This draft remains a reference;
+the live notice preserves the older public build's separate data practices.
 
 ## Optional usage analytics
 
