@@ -12,14 +12,17 @@ For 34 retain the existing five functionality/linked-data types below. Also
 declare Product Interaction for Analytics, Device ID for Analytics (the SDK
 app-instance identifier, not IDFA/IDFV), and Coarse Location for Analytics
 (network-derived approximate geography, no precise location permission).
-The app manifest conservatively marks all seven categories linked and none
-used for tracking. No advertisements, cross-company advertising tracking,
+Also include Analytics as a purpose for Other Diagnostic Data: the bundled
+Firebase Installations manifest declares its own unlinked operational analytics
+diagnostics, in addition to the app's linked service diagnostics. The app
+manifest marks its seven categories linked and none used for tracking.
+No advertisements, cross-company advertising tracking,
 Firebase account-ID assignment, Crashlytics or Performance Monitoring is added.
 Do not claim Data Not Collected or call this telemetry anonymous.
 
 Collection is opt-in, off by default and withdrawable in Settings. Publish the
-reviewed policy supplement before release. A final signed IPA still needs the
-package audit with `--require-manifest --product-analytics`. Do not apply 34's
+reviewed policy supplement before release. Audit the signed IPA with
+`--require-manifest --product-analytics`. Do not apply 34's
 new disclosures to the currently selected 33 before the release transition.
 This work does not claim to resolve the existing App Store questionnaire error.
 

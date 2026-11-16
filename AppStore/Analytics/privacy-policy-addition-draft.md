@@ -8,7 +8,7 @@ support, retention or deletion disclosures with this supplement.
 
 Guru of Cards offers optional usage analytics through Google Analytics for
 Firebase to understand how Preferans is used and improve reliability and the
-playing experience. Analytics stays off unless you choose Allow analytics.
+playing experience. Analytics stays off unless you choose Share usage analytics.
 Declining does not restrict offline or online play. You can change your choice
 under Settings > Usage analytics.
 
@@ -19,6 +19,8 @@ events about onboarding, screens, local/online play, room operations, bot seats,
 connection states and completed deals/matches. Gameplay fields are limited to
 mode, number of players/bots, convention, bot difficulty, result type and deal
 count. These identifiers are pseudonymous, not anonymous.
+Firebase Installations also processes technical diagnostics to operate the
+analytics integration.
 
 We do not send your name, email, game-account identifier, room code, invitation
 link, cards, individual scores or raw error messages to Firebase Analytics.
