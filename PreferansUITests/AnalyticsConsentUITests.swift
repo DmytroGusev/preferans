@@ -22,6 +22,7 @@ final class AnalyticsConsentUITests: XCTestCase {
         app.buttons[UIIdentifiers.lobbySettingsButton].tap()
         let toggle = app.switches["settings.analytics"]
         reveal(toggle, in: app)
+        XCTAssertEqual(toggle.label, "Share usage analytics")
         XCTAssertEqual(toggle.value as? String, "0")
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
         XCTAssertEqual(toggle.value as? String, "1")

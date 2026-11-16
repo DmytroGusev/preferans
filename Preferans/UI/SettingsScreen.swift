@@ -46,7 +46,7 @@ public struct SettingsScreen: View {
                 tableSection
                 languageSection
                 Section {
-                    Toggle("Allow usage analytics", isOn: Binding(
+                    Toggle("Share usage analytics", isOn: Binding(
                         get: { analytics.choice == .allowed },
                         set: { analytics.setAllowed($0) }
                     ))

@@ -40,9 +40,10 @@ configured through the signed-in property UI instead.
 
 Collection defaults to OFF. Firebase is not configured until explicit opt-in.
 After onboarding (and on upgrades with no recorded choice), a dismiss-disabled
-choice sheet offers equally available Allow and Continue without analytics.
-Neither online nor offline play requires consent. Settings > Usage analytics
-allows withdrawal; it disables collection and resets the local app-instance ID
+choice sheet offers equally available Share usage analytics and Continue without
+analytics. Neither online nor offline play requires consent. The Share usage
+analytics toggle in Settings > Usage analytics allows withdrawal; turning it
+off disables collection and resets the local app-instance ID
 and deduplication receipts. Withdrawal does not retroactively erase previously
 processed aggregates from Google. Successful online-account deletion also
 withdraws this device's analytics consent.

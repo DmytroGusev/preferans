@@ -18,7 +18,7 @@ struct AnalyticsConsentView: View {
                         .foregroundStyle(theme.textSecondary)
                     Link("Privacy Policy", destination: URL(string: "https://guruofcards.com/apps/preferans/privacy/")!)
                     Button { onChoose(true) } label: {
-                        Text("Allow analytics").frame(maxWidth: .infinity, minHeight: 44)
+                        Text("Share usage analytics").frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("analytics.allow")

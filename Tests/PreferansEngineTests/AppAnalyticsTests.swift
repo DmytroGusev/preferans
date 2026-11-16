@@ -68,6 +68,26 @@ final class AppAnalyticsTests: XCTestCase {
         XCTAssertEqual(sink.events.count, 2)
     }
 
+    func testWithdrawalKeepsCollectionOffAcrossLaunchesUntilExplicitOptIn() {
+        let (analytics, _, defaults) = fixture()
+        analytics.setAllowed(true)
+        analytics.setAllowed(false)
+
+        let restartedSink = AnalyticsRecorder()
+        let restarted = AppAnalytics(defaults: defaults, sink: restartedSink, automation: false)
+        restarted.startIfAllowed()
+        restarted.track(.onboardingCompleted)
+        XCTAssertEqual(restarted.choice, .denied)
+        XCTAssertFalse(restarted.isOperational)
+        XCTAssertFalse(restarted.shouldAsk)
+        XCTAssertEqual(restartedSink.starts, 0)
+        XCTAssertTrue(restartedSink.events.isEmpty)
+
+        restarted.setAllowed(true)
+        XCTAssertEqual(restartedSink.starts, 1)
+        XCTAssertEqual(restartedSink.events, [.consentGranted])
+    }
+
     func testAutomationNeverStartsSDKDespiteStoredConsent() {
         let (_, sink, defaults) = fixture()
         defaults.set(AnalyticsChoice.allowed.rawValue, forKey: AppAnalytics.choiceKey)
