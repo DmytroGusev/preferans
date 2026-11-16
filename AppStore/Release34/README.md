@@ -3,6 +3,9 @@
 Uploaded on 16 November 2026 from `96b9ccef080859126defac7810d3c638fd5eca49`.
 Apple accepted the signed IPA under delivery
 `1982a4a7-b568-43a6-aeb0-9da1a6d66258`.
+App Store Connect processed it as `VALID` with that same build ID.
+Internal status is `READY_FOR_BETA_TESTING`; external status is
+`READY_FOR_BETA_SUBMISSION`, not submitted.
 
 - Signed IPA SHA-256: `a29af2a2bcfa58f5b99e72e85849c1cf47d170ad3847a3e7bfd8937260a122eb`
 - Xcode 27.1 (27A9275), SDK build 24A94232.
