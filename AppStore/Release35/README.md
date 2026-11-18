@@ -1,5 +1,19 @@
 # Preferans 1.0.3 (35): Online game diagnostics
 
+## TestFlight Delivery
+
+Uploaded and processed on 18 November 2026. The feature revision is
+`3d24335`. The [TestFlight build](https://appstoreconnect.apple.com/apps/6763581975/testflight/ios/8b813494-d3fc-4a8f-bfd9-135a4d87184b/metadata)
+is `VALID`, with English What to Test verified after saving. Internal status:
+`READY_FOR_BETA_TESTING`; external status: `READY_FOR_BETA_SUBMISSION`. No group
+was assigned, and neither Beta App Review nor public App Review was submitted.
+
+- Xcode 27.1 (27A9275); 22 Swift tests and seven package guard tests passed.
+- Signed IPA SHA-256: `12d917f12060c3d12386d00eed92ba0fdc6fe6fc49b86fb33712f1cfc086993d`.
+  Signature, all 14 manifests, and the no-tracking check passed.
+- No Distribution, App Privacy, public privacy policy, or Worker changes.
+  Receipt of build 35's new events from a physical device is not yet verified.
+
 ## What to test
 
 See the [TestFlight notes](what-to-test.txt) for the tester-facing summary.
