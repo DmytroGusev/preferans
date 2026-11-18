@@ -2,6 +2,16 @@
 
 Compare every answer with the exact submitted binary and backend behavior.
 
+## Build 35 Candidate: Optional Online Diagnostics
+
+Keep the build 34 answers below. Build 35 sends a bounded diagnostic event to
+the same consent-gated Firebase project. It includes the operation, stage,
+predefined result/error code, and app build number; the SDK still attaches its
+pseudonymous app-instance identifier. No room or account ID, raw error, or
+game content is included. Other Diagnostic Data is linked conservatively,
+used for App Functionality and Analytics, and not used for tracking. See the
+[build 35 disclosure and test plan](Release35/README.md).
+
 ## Build 34 Candidate: Optional Product Analytics
 
 Build 34 adds FirebaseAnalyticsCore without IDFA support. This section applies

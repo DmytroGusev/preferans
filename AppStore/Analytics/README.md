@@ -86,6 +86,7 @@ Never use synthetic Measurement Protocol traffic as evidence of app integration.
 | `bot_seat_change` | Host adds/changes/removes a bot | `operation`, `outcome`, `difficulty` |
 | `ready_change` | Ready/unready request starts or resolves | `operation`, `outcome` |
 | `online_connection` | Observed connection state changes | `connection_state` |
+| `online_diagnostic` (build 35+) | Room request failure, socket failure/recovery, or failure to start the first deal | `operation`, `diagnostic_stage`, `diagnostic_code`, `app_build` |
 | `match_start` | The first authoritative deal starts | game context |
 | `deal_complete` | Engine scores a deal | game context, `deal_kind` |
 | `match_complete` | Engine finishes the pool | game context, `deals_played` |
@@ -95,6 +96,13 @@ Game context: `game_mode` (local/online), `player_count` (3/4), `bot_count`
 outcomes are fixed enums. Failed form validation before a network request is
 not a room-operation failure. Watch-all-bots demos are not local game starts.
 SDK lifecycle/session/engagement events are also collected after consent.
+
+Use total Event count for `online_diagnostic`, with `app_environment=production`.
+Reuse the Operation custom dimension and register event-scoped dimensions for
+`diagnostic_stage`, `diagnostic_code`, and `app_build` for breakdowns. Build numbers
+are categorical (for example, `b35`). `recovered` is a success event, not a
+failure; exclude it when counting failures. These events describe observed
+incidents on consenting clients, not distinct affected rooms or users.
 
 Local table/revision identifiers are hashed solely for bounded, on-device
 deduplication and never sent to Google. Duplicate game frames after reconnect

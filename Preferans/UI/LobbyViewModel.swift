@@ -525,6 +525,10 @@ public final class LobbyViewModel: ObservableObject {
             } catch {
                 errorText = error.localizedDescription
                 AppAnalytics.shared.track(.onlineRoom(analyticsOperation, .failed))
+                if let operation = OnlineDiagnostic.Operation(roomOperation: analyticsOperation),
+                   let failure = OnlineDiagnostic.requestFailure(operation, error: error) {
+                    AppAnalytics.shared.recordOnlineDiagnostic(failure)
+                }
             }
         }
     }

@@ -48,7 +48,12 @@ test('actual manifest preserves functionality disclosures and adds truthful opt-
     assert.equal(item.NSPrivacyCollectedDataTypeLinked, true);
     assert.equal(item.NSPrivacyCollectedDataTypeTracking, false);
     const type = item.NSPrivacyCollectedDataType.replace('NSPrivacyCollectedDataType', '');
-    const expected = type === 'DeviceID' || type === 'CoarseLocation' ? ['Analytics'] : type === 'ProductInteraction' ? ['AppFunctionality', 'Analytics'] : ['AppFunctionality'];
+    const expected = {
+      DeviceID: ['Analytics'],
+      CoarseLocation: ['Analytics'],
+      ProductInteraction: ['AppFunctionality', 'Analytics'],
+      OtherDiagnosticData: ['AppFunctionality', 'Analytics'],
+    }[type] ?? ['AppFunctionality'];
     assert.deepEqual(item.NSPrivacyCollectedDataTypePurposes, expected.map(x => `NSPrivacyCollectedDataTypePurpose${x}`));
   }
   const project = plist(new URL('../Preferans.xcodeproj/project.pbxproj', import.meta.url).pathname);

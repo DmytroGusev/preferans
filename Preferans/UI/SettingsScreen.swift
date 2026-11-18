@@ -60,7 +60,11 @@ public struct SettingsScreen: View {
                 } header: {
                     Text("Usage analytics").foregroundStyle(theme.textSecondary)
                 } footer: {
-                    Text("analytics.settings.explanation").foregroundStyle(theme.textSecondary)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("analytics.settings.explanation")
+                        Text("analytics.diagnostics.explanation")
+                    }
+                    .foregroundStyle(theme.textSecondary)
                 }
                 .listRowBackground(theme.panel)
                 accountSection

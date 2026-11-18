@@ -9,6 +9,82 @@ enum AnalyticsOperation: String { case create, join, resume, add, change, remove
 enum AnalyticsOutcome: String { case requested, succeeded, failed }
 enum AnalyticsScreen: String { case lobby, settings, localTable = "local_table", onlineWaiting = "online_waiting", onlineTable = "online_table" }
 enum AnalyticsConnection: String { case connected, reconnecting, takenOver = "taken_over", abandoned, seatLost = "seat_lost", serverError = "server_error" }
+
+struct OnlineDiagnostic: Equatable, Sendable {
+    enum Operation: String, Sendable {
+        case create, join, resume, ready, unready, connect, reconnect, start = "start_match"
+
+        init?(roomOperation: AnalyticsOperation) {
+            switch roomOperation {
+            case .create: self = .create
+            case .join: self = .join
+            case .resume: self = .resume
+            default: return nil
+            }
+        }
+    }
+
+    enum Stage: String, Sendable {
+        case request, response, socket, command, receipt
+    }
+
+    enum Code: String, Sendable {
+        case offline, timeout, network, rejected, unexpected, recovered
+        case invalidResponse = "invalid_response"
+        case protocolMismatch = "protocol_mismatch"
+        case connectionLost = "connection_lost"
+        case invalidFrame = "invalid_frame"
+        case seatLost = "seat_lost"
+        case seatTakenOver = "seat_taken_over"
+        case localSaveFailed = "local_save_failed"
+        case confirmationMissing = "confirmation_missing"
+    }
+
+    let operation: Operation
+    let stage: Stage
+    let code: Code
+
+    // Never forward the error text, URL, HTTP body, or underlying error metadata.
+    static func requestFailure(_ operation: Operation, error: Error) -> Self? {
+        let stage: Stage
+        let code: Code
+        switch error {
+        case is DecodingError:
+            (stage, code) = (.response, .invalidResponse)
+        case let error as URLError:
+            if error.code == .cancelled { return nil }
+            (stage, code) = (.request, networkCode(error))
+        case let error as CloudflareRoomTransportError:
+            switch error {
+            case .incompatibleServer: (stage, code) = (.response, .protocolMismatch)
+            case .invalidHTTPResponse, .missingSocketURL: (stage, code) = (.response, .invalidResponse)
+            case .serverError: (stage, code) = (.response, .rejected)
+            case .socketNotConnected: (stage, code) = (.socket, .connectionLost)
+            case .invalidSocketMessage: (stage, code) = (.socket, .invalidFrame)
+            }
+        case is CancellationError:
+            return nil
+        default:
+            (stage, code) = (.request, .unexpected)
+        }
+        return Self(operation: operation, stage: stage, code: code)
+    }
+
+    static func socketFailureCode(_ error: Error) -> Code {
+        guard let error = error as? URLError, error.code != .cancelled else { return .connectionLost }
+        return networkCode(error)
+    }
+
+    private static func networkCode(_ error: URLError) -> Code {
+        switch error.code {
+        case .notConnectedToInternet: .offline
+        case .timedOut: .timeout
+        case .networkConnectionLost: .connectionLost
+        default: .network
+        }
+    }
+}
+
 enum AnalyticsDeal: String {
     case game, misere, allPass = "all_pass", passedOut = "passed_out", concession, halfWhist = "half_whist"
     init(_ kind: DealResultKind) {
@@ -52,6 +128,7 @@ enum AppAnalyticsEvent: Equatable, Sendable {
     case botSeat(AnalyticsOperation, AnalyticsOutcome, BotDifficulty?)
     case readiness(Bool, AnalyticsOutcome)
     case connection(AnalyticsConnection)
+    case onlineDiagnostic(OnlineDiagnostic, build: Int?)
     case matchStarted(AnalyticsGameContext)
     case dealCompleted(AnalyticsGameContext, AnalyticsDeal)
     case matchCompleted(AnalyticsGameContext, deals: Int)
@@ -66,6 +143,7 @@ enum AppAnalyticsEvent: Equatable, Sendable {
         case .botSeat: "bot_seat_change"
         case .readiness: "ready_change"
         case .connection: "online_connection"
+        case .onlineDiagnostic: "online_diagnostic"
         case .matchStarted: "match_start"
         case .dealCompleted: "deal_complete"
         case .matchCompleted: "match_complete"
@@ -82,6 +160,9 @@ enum AppAnalyticsEvent: Equatable, Sendable {
             ["operation": operation.rawValue, "outcome": outcome.rawValue, "difficulty": difficulty?.rawValue ?? "none"]
         case let .readiness(ready, outcome): ["operation": ready ? "ready" : "unready", "outcome": outcome.rawValue]
         case let .connection(state): ["connection_state": state.rawValue]
+        case let .onlineDiagnostic(event, build):
+            ["operation": event.operation.rawValue, "diagnostic_stage": event.stage.rawValue,
+             "diagnostic_code": event.code.rawValue, "app_build": build.map { "b\($0)" } ?? "unknown"]
         case let .dealCompleted(context, kind): context.parameters.merging(["deal_kind": kind.rawValue]) { _, new in new }
         case let .matchCompleted(context, deals): context.parameters.merging(["deals_played": min(10000, max(0, deals))]) { _, new in new }
         }
@@ -105,6 +186,7 @@ final class AppAnalytics: ObservableObject {
     private let defaults: UserDefaults
     private let sink: (any AppAnalyticsSink)?
     private let automation: Bool
+    private let buildNumber = (Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String).flatMap(Int.init)
     private var receipts: [String]
 
     init(defaults: UserDefaults = .standard, sink: (any AppAnalyticsSink)? = nil, automation: Bool? = nil) {
@@ -149,6 +231,10 @@ final class AppAnalytics: ObservableObject {
     func track(_ event: AppAnalyticsEvent) {
         guard isOperational, choice == .allowed, !automation else { return }
         sink?.log(event)
+    }
+
+    func recordOnlineDiagnostic(_ diagnostic: OnlineDiagnostic) {
+        track(.onlineDiagnostic(diagnostic, build: buildNumber))
     }
 
     /// Table/revision identifiers are hashed and kept only on this device for

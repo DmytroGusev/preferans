@@ -44,6 +44,43 @@ final class AppAnalyticsTests: XCTestCase {
         XCTAssertFalse(analytics.shouldAsk)
     }
 
+    func testOnlineDiagnosticDropsRawServerContentAndUsesOnlyAllowlistedParameters() throws {
+        let error = CloudflareRoomTransportError.serverError("private table/code/player")
+        let diagnostic = try XCTUnwrap(OnlineDiagnostic.requestFailure(.create, error: error))
+        let event = AppAnalyticsEvent.onlineDiagnostic(diagnostic, build: 35)
+        let parameters = event.parameters.compactMapValues { $0 as? String }
+        XCTAssertEqual(event.name, "online_diagnostic")
+        XCTAssertEqual(parameters, [
+            "operation": "create", "diagnostic_stage": "response", "diagnostic_code": "rejected", "app_build": "b35"
+        ])
+    }
+
+    func testOnlineDiagnosticDistinguishesNetworkProtocolAndResponseErrors() {
+        XCTAssertEqual(OnlineDiagnostic.requestFailure(.join, error: URLError(.notConnectedToInternet)),
+            .init(operation: .join, stage: .request, code: .offline))
+        XCTAssertEqual(OnlineDiagnostic.requestFailure(.resume, error: CloudflareRoomTransportError.incompatibleServer),
+            .init(operation: .resume, stage: .response, code: .protocolMismatch))
+        let invalid = DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "private response"))
+        XCTAssertEqual(OnlineDiagnostic.requestFailure(.ready, error: invalid),
+            .init(operation: .ready, stage: .response, code: .invalidResponse))
+        XCTAssertNil(OnlineDiagnostic.requestFailure(.join, error: URLError(.cancelled)))
+        XCTAssertNil(OnlineDiagnostic.requestFailure(.join, error: CancellationError()))
+        XCTAssertEqual(OnlineDiagnostic.socketFailureCode(URLError(.timedOut)), .timeout)
+    }
+
+    func testOnlineDiagnosticsFollowAnalyticsConsent() {
+        let (analytics, sink, _) = fixture()
+        let diagnostic = OnlineDiagnostic(operation: .reconnect, stage: .socket, code: .recovered)
+        analytics.recordOnlineDiagnostic(diagnostic)
+        XCTAssertTrue(sink.events.isEmpty)
+        analytics.setAllowed(true)
+        analytics.recordOnlineDiagnostic(diagnostic)
+        XCTAssertEqual(sink.events.last?.name, "online_diagnostic")
+        analytics.setAllowed(false)
+        analytics.recordOnlineDiagnostic(diagnostic)
+        XCTAssertEqual(sink.events.filter { $0.name == "online_diagnostic" }.count, 1)
+    }
+
     func testDecliningPersistsAcrossLaunches() {
         let (analytics, sink, defaults) = fixture()
         analytics.setAllowed(false)

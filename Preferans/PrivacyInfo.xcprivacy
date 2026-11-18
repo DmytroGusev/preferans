@@ -88,7 +88,10 @@
             <key>NSPrivacyCollectedDataTypeTracking</key>
             <false/>
             <key>NSPrivacyCollectedDataTypePurposes</key>
-            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
         </dict>
     </array>
 </dict>

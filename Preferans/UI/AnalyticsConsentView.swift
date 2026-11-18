@@ -14,6 +14,7 @@ struct AnalyticsConsentView: View {
                         .accessibilityHidden(true)
                     Text("Help improve Preferans").font(.title2.bold())
                     Text("analytics.consent.explanation")
+                    Text("analytics.diagnostics.explanation")
                     Text("You can play without analytics and change your choice in Settings at any time.")
                         .foregroundStyle(theme.textSecondary)
                     Link("Privacy Policy", destination: URL(string: "https://guruofcards.com/apps/preferans/privacy/")!)
