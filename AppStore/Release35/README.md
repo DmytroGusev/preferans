@@ -35,6 +35,13 @@ Preferans property on 18 November 2026.
 
 ## Privacy Notice Supplement
 
+Published on 18 November 2026 in
+[English](https://guruofcards.com/apps/preferans/privacy/#online-diagnostics),
+[Russian](https://guruofcards.com/apps/preferans/ru/privacy/#online-diagnostics),
+and [Ukrainian](https://guruofcards.com/apps/preferans/uk/privacy/#online-diagnostics).
+All three live pages passed the content-hash check; no other site pages changed.
+Site source: [63a899c](https://github.com/DmytroGusev/masti-card-encyclopedia/commit/63a899c1d3c88ef4513423c0b296fd7c0ab16b37).
+
 > For version 1.0.3 build 35 and later, optional Firebase usage analytics also
 > includes technical reports when creating or joining a table, restoring a
 > connection, changing readiness, or starting the first deal. The report is
@@ -50,5 +57,7 @@ App Privacy: retain `Other Diagnostic Data`, mark `App Functionality` for
 operational troubleshooting and `Analytics` for these optional reports, and
 answer `No tracking`. Keep the rest of the build 34 Firebase disclosures.
 No ATT prompt or advertising service was added. A new build does not, on its
-own, correct the legacy App Store Connect tracking declaration. Before a public
-submission, publish the policy supplement and verify the actual public label.
+own, correct the legacy App Store Connect tracking declaration. The published
+label still showed Diagnostics under Data Used to Track You after the website
+update. Before public submission, publish the corrected App Privacy answers
+and verify the actual public label.
