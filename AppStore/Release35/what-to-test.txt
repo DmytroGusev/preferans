@@ -1,0 +1,1 @@
+Help us troubleshoot online play. Try creating or joining a table, briefly disconnecting and reconnecting, and starting the first deal. With Share usage analytics enabled, the app reports a predefined diagnostic code and build number for connection and table problems. Play still works with analytics off. These diagnostics are not used for advertising.

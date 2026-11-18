@@ -104,6 +104,8 @@ if isServerLane {
                 "PreferansApp.swift",
                 "Info.plist",
                 "PrivacyInfo.xcprivacy",
+                "Resources/GoogleService-Info.plist",
+                "Resources/GoogleService-Info.plist.example",
                 "Support/Preferans.entitlements.example"
             ],
             resources: [

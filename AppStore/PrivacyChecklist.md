@@ -2,6 +2,40 @@
 
 Compare every answer with the exact submitted binary and backend behavior.
 
+## Build 35 Candidate: Optional Online Diagnostics
+
+Keep the build 34 answers below. Build 35 sends a bounded diagnostic event to
+the same consent-gated Firebase project. It includes the operation, stage,
+predefined result/error code, and app build number; the SDK still attaches its
+pseudonymous app-instance identifier. No room or account ID, raw error, or
+game content is included. Other Diagnostic Data is linked conservatively,
+used for App Functionality and Analytics, and not used for tracking. See the
+[build 35 disclosure and test plan](Release35/README.md).
+
+## Build 34 Candidate: Optional Product Analytics
+
+Build 34 adds FirebaseAnalyticsCore without IDFA support. This section applies
+only to that new candidate, not the already-uploaded SDK-free builds 31-33.
+See `Analytics/README.md` for consent, event boundaries and verification.
+
+For 34 retain the existing five functionality/linked-data types below. Also
+declare Product Interaction for Analytics, Device ID for Analytics (the SDK
+app-instance identifier, not IDFA/IDFV), and Coarse Location for Analytics
+(network-derived approximate geography, no precise location permission).
+Also include Analytics as a purpose for Other Diagnostic Data: the bundled
+Firebase Installations manifest declares its own unlinked operational analytics
+diagnostics, in addition to the app's linked service diagnostics. The app
+manifest marks its seven categories linked and none used for tracking.
+No advertisements, cross-company advertising tracking,
+Firebase account-ID assignment, Crashlytics or Performance Monitoring is added.
+Do not claim Data Not Collected or call this telemetry anonymous.
+
+Collection is opt-in, off by default and withdrawable in Settings. Publish the
+reviewed policy supplement before release. Audit the signed IPA with
+`--require-manifest --product-analytics`. Do not apply 34's
+new disclosures to the currently selected 33 before the release transition.
+This work does not claim to resolve the existing App Store questionnaire error.
+
 ## Build 31
 
 Build 31 removes the unused App Tracking Transparency request, advertising-ID

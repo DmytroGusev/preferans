@@ -35,6 +35,8 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
     private var generation = UUID()
     private var latestReceiptSequence = -1
     private var didAutoStart = false
+    private var lastAnalyticsConnection: AnalyticsConnection?
+    private var reportedStartTimeout = false
 
     public init(outbox: OnlineCommandOutbox? = nil) {
         self.outbox = outbox ?? OnlineCommandOutbox()
@@ -57,13 +59,22 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         guard canManageBotSeats, !isUpdatingBotSeats, !isUpdatingReadiness, let transport else { return }
         let attachment = generation
         isUpdatingBotSeats = true
+        let botOperation: AnalyticsOperation = difficulty == nil ? .remove
+            : rosterSeats.first(where: { $0.player == player })?.botDifficulty == nil ? .add : .change
+        AppAnalytics.shared.track(.botSeat(botOperation, .requested, difficulty))
         errorText = nil
         updateStartAvailability()
         do {
             try await transport.configureBotSeat(player, difficulty: difficulty)
             guard generation == attachment else { return }
             await refreshRoster()
-        } catch { if generation == attachment { errorText = error.localizedDescription } }
+            AppAnalytics.shared.track(.botSeat(botOperation, .succeeded, difficulty))
+        } catch {
+            if generation == attachment {
+                errorText = error.localizedDescription
+                AppAnalytics.shared.track(.botSeat(botOperation, .failed, difficulty))
+            }
+        }
         guard generation == attachment else { return }
         isUpdatingBotSeats = false
         updateStartAvailability()
@@ -118,6 +129,8 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         isUpdatingBotSeats = false
         rosterSeats = []; canHostStart = false; hasDisconnectedHumanSeat = false
         latestReceiptSequence = -1; didAutoStart = false
+        lastAnalyticsConnection = nil
+        reportedStartTimeout = false
         errorText = nil; liveness = .connecting; transportStatus = .disconnected
     }
 
@@ -129,8 +142,15 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
             actor: action.actor ?? transport.localPeer.playerID, action: action,
             baseHostSequence: projection.sequence)
         do { try outbox.store(command, account: transport.localPeer.accountID) }
-        catch { errorText = "Could not save your move. Please try again."; return }
+        catch {
+            errorText = "Could not save your move. Please try again."
+            if Self.isFirstDealStart(command) {
+                AppAnalytics.shared.recordOnlineDiagnostic(.init(operation: .start, stage: .command, code: .localSaveFailed))
+            }
+            return
+        }
         pending = command; isSubmitting = true; canHostStart = false; errorText = nil
+        reportedStartTimeout = false
         scheduleRetry()
     }
 
@@ -157,12 +177,22 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         guard let transport, isPublicTable, !isUpdatingReadiness, !isUpdatingBotSeats, transportStatus == .connected else { return }
         let attachment = generation
         isUpdatingReadiness = true
+        AppAnalytics.shared.track(.readiness(ready, .requested))
         errorText = nil
         do {
             try await transport.setReady(ready)
             guard generation == attachment else { return }
             await refreshRoster()
-        } catch { if generation == attachment { errorText = error.localizedDescription } }
+            AppAnalytics.shared.track(.readiness(ready, .succeeded))
+        } catch {
+            if generation == attachment {
+                errorText = error.localizedDescription
+                AppAnalytics.shared.track(.readiness(ready, .failed))
+                if let failure = OnlineDiagnostic.requestFailure(ready ? .ready : .unready, error: error) {
+                    AppAnalytics.shared.recordOnlineDiagnostic(failure)
+                }
+            }
+        }
         if generation == attachment { isUpdatingReadiness = false }
     }
 
@@ -221,6 +251,12 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
         transportStatus = .connected; liveness = .live
         let newer = frame.sequence > (projection?.sequence ?? -1)
         if newer {
+            if frame.sequence > 0 && (projection?.sequence ?? 0) == 0 {
+                AppAnalytics.shared.track(.screen(.onlineTable))
+            }
+            AppAnalytics.shared.recordGameEvents(frame.events, table: frame.tableID, revision: frame.sequence,
+                context: AnalyticsGameContext(mode: .online, players: frame.projection.players.count,
+                    bots: transport?.participants.filter(\.isBotSeat).count ?? 0, rules: frame.projection.rules))
             if let previous = projection, let freeze = AdvancePresentation.completedTrickHold(
                 events: frame.events, viewer: frame.viewer, preProjection: previous,
                 visibleTalonBeforeAction: previous.talon) {
@@ -249,32 +285,49 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
     private func connection(_ event: RoomTransportEvent) {
         switch event {
         case .connected:
+            recordConnection(.connected)
             transportStatus = .connected; liveness = .live
             scheduleRetry()
         case .reconnecting:
+            recordConnection(.reconnecting)
             transportStatus = .reconnecting; retry?.cancel(); retry = nil
         case .seatTakenOver:
+            recordConnection(.takenOver)
             transportStatus = .seatTakenOver; retry?.cancel(); retry = nil
             canHostStart = false
         case .tableAbandoned:
+            recordConnection(.abandoned)
             discardPendingCommand()
             transportStatus = .disconnected; canHostStart = false
             errorText = "This table was abandoned. Return to the lobby to start another game."
         case let .seatLost(message):
+            recordConnection(.seatLost)
             discardPendingCommand()
             transportStatus = .disconnected; canHostStart = false
             errorText = message
-        case let .serverError(message): errorText = message
+        case let .serverError(message):
+            recordConnection(.serverError)
+            errorText = message
         case let .commandReceipt(receipt):
             guard let pending, receipt.tableID == tableID, receipt.clientNonce == pending.clientNonce,
                   let transport else { return }
             do { try outbox.remove(table: pending.tableID, account: transport.localPeer.accountID) }
             catch { errorText = "Your move was resolved, but local recovery storage could not be cleared."; return }
+            if Self.isFirstDealStart(pending), receipt.status == .rejected,
+               receipt.sequence <= pending.baseHostSequence {
+                AppAnalytics.shared.recordOnlineDiagnostic(.init(operation: .start, stage: .receipt, code: .rejected))
+            }
             latestReceiptSequence = max(latestReceiptSequence, receipt.sequence)
             self.pending = nil; isSubmitting = false; retry?.cancel(); retry = nil
             errorText = Self.rejectionMessage(for: receipt, basedOn: pending)
         }
         Task { [weak self] in await self?.refreshRoster() }
+    }
+
+    private func recordConnection(_ state: AnalyticsConnection) {
+        guard state != lastAnalyticsConnection else { return }
+        lastAnalyticsConnection = state
+        AppAnalytics.shared.track(.connection(state))
     }
 
     /// A rejection is only news when it judged the state the player acted on.
@@ -308,8 +361,15 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
                 attempt += 1
                 // Durak-style watchdog: after ~20 s without a receipt, say so
                 // instead of spinning silently. Delivery keeps retrying.
-                if attempt == Self.unconfirmedMoveNoticeAttempt, self.errorText == nil {
-                    self.errorText = String(localized: "Your move hasn't been confirmed yet. Still trying…")
+                if attempt == Self.unconfirmedMoveNoticeAttempt {
+                    if self.errorText == nil {
+                        self.errorText = String(localized: "Your move hasn't been confirmed yet. Still trying…")
+                    }
+                    if self.pending?.clientNonce == pending.clientNonce, Self.isFirstDealStart(pending),
+                       !self.reportedStartTimeout {
+                        self.reportedStartTimeout = true
+                        AppAnalytics.shared.recordOnlineDiagnostic(.init(operation: .start, stage: .receipt, code: .confirmationMissing))
+                    }
                 }
                 try? await Task.sleep(for: .seconds(min(attempt * 2, 8)))
             }
@@ -318,4 +378,9 @@ public final class ServerGameCoordinator: OnlineGamePresenting {
 
     /// Sends go out at 0, 2, 6, 12 and 20 s; the fifth unanswered one shows the notice.
     static let unconfirmedMoveNoticeAttempt = 5
+
+    private static func isFirstDealStart(_ command: ClientActionEnvelope) -> Bool {
+        guard command.baseHostSequence == 0, case .startDeal = command.action else { return false }
+        return true
+    }
 }

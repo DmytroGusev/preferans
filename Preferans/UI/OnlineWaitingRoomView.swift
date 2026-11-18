@@ -72,6 +72,7 @@ public struct OnlineWaitingRoomView<Coordinator: OnlineGamePresenting>: View {
         .feltBackground()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.screenWaitingRoom)
+        .onAppear { AppAnalytics.shared.track(.screen(.onlineWaiting)) }
         .alert(
             "Leave this table?",
             isPresented: $showLeaveConfirm

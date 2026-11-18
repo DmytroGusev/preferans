@@ -620,10 +620,13 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
     /// without the player having to leave and re-join the table.
     private func maintainConnection(initial: URLSessionWebSocketTask) async {
         var task = initial
+        var receivedValidFrame = false
+        var recovering = false
         reconnectAttempt = 0
         while !Task.isCancelled, !isClosed {
             do {
                 var establishedThisSocket = false
+                var reportedInvalidFrame = false
                 while !Task.isCancelled {
                     let message = try await task.receive()
                     if !establishedThisSocket {
@@ -634,12 +637,27 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                     }
                     // One undecodable frame (for example a newer server message
                     // type) must not tear down an otherwise healthy socket.
-                    do { try handleSocketMessage(message) }
-                    catch { lastError = error.localizedDescription }
+                    do {
+                        try handleSocketMessage(message)
+                        if recovering {
+                            AppAnalytics.shared.recordOnlineDiagnostic(.init(operation: .reconnect, stage: .socket, code: .recovered))
+                        }
+                        receivedValidFrame = true
+                        recovering = false
+                    } catch {
+                        lastError = error.localizedDescription
+                        if !reportedInvalidFrame {
+                            AppAnalytics.shared.recordOnlineDiagnostic(.init(
+                                operation: recovering ? .reconnect : .connect, stage: .socket, code: .invalidFrame))
+                            reportedInvalidFrame = true
+                        }
+                    }
                 }
             } catch {
                 if Task.isCancelled || isClosed { break }
+                let operation: OnlineDiagnostic.Operation = receivedValidFrame ? .reconnect : .connect
                 if task.closeCode.rawValue == 4009 {
+                    AppAnalytics.shared.recordOnlineDiagnostic(.init(operation: operation, stage: .socket, code: .seatTakenOver))
                     lastError = String(localized: "This table was opened on another device.")
                     emitConnectionEvent(.seatTakenOver)
                     isClosed = true
@@ -649,12 +667,20 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
                     closeCode: task.closeCode.rawValue,
                     httpStatus: (task.response as? HTTPURLResponse)?.statusCode
                 ) {
+                    if task.closeCode.rawValue != 4010 && task.closeCode.rawValue != 4011 {
+                        AppAnalytics.shared.recordOnlineDiagnostic(.init(operation: operation, stage: .socket, code: .seatLost))
+                    }
                     lastError = message
                     emitConnectionEvent(.seatLost(message))
                     isClosed = true
                     break
                 }
                 lastError = error.localizedDescription
+                if !recovering {
+                    AppAnalytics.shared.recordOnlineDiagnostic(.init(
+                        operation: operation, stage: .socket, code: OnlineDiagnostic.socketFailureCode(error)))
+                    recovering = true
+                }
                 emitConnectionEvent(.reconnecting)
             }
             socketTask?.cancel()
@@ -825,7 +851,7 @@ public final class CloudflareRoomTransport: ObservableObject, RoomRealtimeTransp
         }
         let summary = try PreferansJSONCoder.decoder.decode(CloudflareRoomSummary.self, from: data)
         guard summary.schemaVersion == AppIdentifiers.gameWireSchemaVersion else {
-            throw CloudflareRoomTransportError.serverError("Room server returned an incompatible room version.")
+            throw CloudflareRoomTransportError.incompatibleServer
         }
         return summary
     }

@@ -169,6 +169,7 @@ public struct LobbyView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(UIIdentifiers.appRoot)
         .onAppear {
+            AppAnalytics.shared.track(.screen(.lobby))
             runOnlineHarnessIfNeeded()
         }
         .onOpenURL { url in
