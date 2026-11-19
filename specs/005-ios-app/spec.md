@@ -1,5 +1,7 @@
 # Feature Specification: Preferans iOS App (SwiftUI shell, screens, table presentation)
 
+[Branch and build status](../BRANCH-AND-BUILD-STATUS.md). The build map records later changes to lobby bot seats, Club information and optional analytics. It also defines the proposed phase, action and reconnect regression checks.
+
 **Status**: Implemented (as-built) · **Verified against**: `store/1.0.3-localized-keywords` @ `cd78828` · **Primary code**: `Preferans/PreferansApp.swift`, `Preferans/GameViewModel.swift`, `Preferans/UI/*`, `Preferans/Support/*`, `Preferans/Resources/Localizable.xcstrings`, `Sources/PreferansEngine/UIIdentifiers.swift`, `Sources/PreferansEngine/Projection/PlayerProjection.swift`
 
 Related specs (do not duplicate; this document only describes the interfaces the app consumes):
