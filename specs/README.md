@@ -1,5 +1,7 @@
 # Preferans — Specifications
 
+[Branch and build status](BRANCH-AND-BUILD-STATUS.md) maps implemented behavior, release evidence and open acceptance checks. Start there when the default branch and a shipped or beta build differ.
+
 This folder describes **how the Preferans app actually works**: its rules, scoring, bots, online backend, iOS app, tests and release process. It follows the [GitHub spec-kit](https://github.com/github/spec-kit) layout. Every document was reverse-engineered on 2026-11-01 from the code at `store/1.0.3-localized-keywords` @ `cd78828` and is marked **Implemented (as-built)**. Where code, tests and older docs disagree, the specs describe the **code** and record the disagreement under *Known Gaps & Open Questions*.
 
 ## Start here

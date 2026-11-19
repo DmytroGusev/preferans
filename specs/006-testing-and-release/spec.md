@@ -1,5 +1,7 @@
 # Feature Specification: Quality Engineering & Release Tooling
 
+[Branch and build status](../BRANCH-AND-BUILD-STATUS.md). The build map distinguishes the build 33 Distribution selection from the processed analytics builds 34 and 35, and lists the remaining binary-specific acceptance checks.
+
 **Status**: Implemented (as-built) · **Verified against**: `store/1.0.3-localized-keywords` @ `cd78828` · **Primary code**: `Package.swift`, `Package.resolved`, `Tests/`, `PreferansUITests/`, `Sources/PreferansEngine/{HandRecipe,MatchScript,MatchScriptFixtures,EngineMatchDriver,DealSource,UIIdentifiers}.swift`, `Preferans/Support/{TestHarness,BotPacing}.swift`, `bin/`, `.github/workflows/`, `Preferans.xcodeproj/`, `fastlane/`, `AppStore/`, `docs/`, `AGENTS.md`
 
 Related specs (not duplicated here): rules engine [`specs/001-game-rules`](../001-game-rules), scoring [`specs/002-scoring-and-variants`](../002-scoring-and-variants), bots [`specs/003-bots`](../003-bots), backend/worker tests and server deploy [`specs/004-online-multiplayer`](../004-online-multiplayer), screens/themes/localization [`specs/005-ios-app`](../005-ios-app).

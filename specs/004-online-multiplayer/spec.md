@@ -1,5 +1,7 @@
 # Feature Specification: Preferans Online Multiplayer (server-authoritative tables)
 
+[Branch and build status](../BRANCH-AND-BUILD-STATUS.md). The build map identifies the owner-hosted protocol-4 release, the main-branch recovery fixes and the later build carrying configurable bot seats.
+
 **Status**: Implemented (as-built) · **Verified against**: `store/1.0.3-localized-keywords` @ `cd78828` · **Primary code**: `workers/room-worker/src/`, `Sources/PreferansServerCore/AuthoritativeGameService.swift`, `Sources/PreferansServer/main.swift`, `Sources/PreferansEngine/Online/`, `Sources/PreferansEngine/Projection/`, `Preferans/Online/`
 
 Related specs: engine phases/actions → [`../001-game-rules`](../001-game-rules); scoring/variants/pool closure → [`../002-scoring-and-variants`](../002-scoring-and-variants); bot strategies (`HeuristicStrategy`, `BotProfile`, insights) → [`../003-bots`](../003-bots); SwiftUI lobby / waiting room / online table screens → [`../005-ios-app`](../005-ios-app); test lanes & release → [`../006-testing-and-release`](../006-testing-and-release).
