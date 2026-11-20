@@ -343,7 +343,6 @@ All keys are defined in `SettingsKeys` (`Preferans/Support/AppIdentifiers.swift`
 | `settings.onlineAnonymousAccountID<sfx>` | legacy v1 | absent | — (only removed) | — | erased on load failure, registration, deletion |
 | `settings.onlineDisplayName<sfx>` | `String` (trimmed) | absent | `LobbyViewModel.setOnlineDisplayName` (300 ms debounce) | `LobbyViewModel.init`, `SettingsScreen` | empty removes key |
 | `settings.onlineVariant` | `String` (`PreferansVariant.rawValue`) | `odesa` | `LobbyViewModel.onlineVariant.didSet` | `LobbyViewModel.init` | shared by local and online tables |
-| `settings.trackingPermissionRequested` | `Bool` | `false` | `TrackingPermissionCenter.requestPermissionIfNeeded`, `SettingsScreen.requestTrackingPermission` | (audit only) | iOS owns the real status |
 | `settings.firstLaunchOnboardingCompleted` | `Bool` | `false` | `RootLaunchView` on completion | `RootLaunchView` | bypassed under automation |
 | `settings.pulkaLimit` | `String` (`11`/`21`/`custom`) | `21` | `LobbyViewModel.pulkaLimit.didSet` (also by Create a table → `11`) | `LobbyViewModel.init` | |
 | `settings.customPulkaPerPlayer` | `Int` | 21 | `didSet` (clamped 1…999) | `init` (clamped) | |

@@ -773,29 +773,6 @@
         }
       }
     },
-    "The iOS tracking permission may appear during first launch. You can continue even if you decline.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The iOS tracking permission may appear during first launch. You can continue even if you decline."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "При первом запуске iOS может запросить разрешение на отслеживание. Отказ не помешает игре."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Під час першого запуску iOS може запитати дозвіл на відстеження. Відмова не завадить грі."
-          }
-        }
-      }
-    },
   "Standings": {
     "extractionState": "manual",
     "localizations": {
@@ -2055,57 +2032,12 @@
       }
     },
     "Privacy" : {
-      "comment" : "Settings section for tracking permission.",
+      "comment" : "Settings section for privacy and terms links.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Privacy" } },
         "ru" : { "stringUnit" : { "state" : "translated", "value" : "Конфиденциальность" } },
         "uk" : { "stringUnit" : { "state" : "translated", "value" : "Приватність" } }
-      }
-    },
-    "Tracking permission" : {
-      "comment" : "Settings label for the current App Tracking Transparency status.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Tracking permission" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Разрешение на отслеживание" } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Дозвіл на відстеження" } }
-      }
-    },
-    "Request tracking permission" : {
-      "comment" : "Settings action that requests App Tracking Transparency permission.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Request tracking permission" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Запросить разрешение на отслеживание" } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Запросити дозвіл на відстеження" } }
-      }
-    },
-    "Open Privacy Settings" : {
-      "comment" : "Settings action opening the app's privacy permissions in iOS Settings.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Privacy Settings" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Открыть настройки конфиденциальности" } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Відкрити налаштування приватності" } }
-      }
-    },
-    "If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites." : {
-      "comment" : "Settings explanation for App Tracking Transparency permission.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "If tracking is enabled in App Store privacy labels, iOS requires this permission before the app can access the advertising identifier or track activity across apps and websites." } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Если отслеживание указано в сведениях о конфиденциальности App Store, iOS требует это разрешение, прежде чем приложение сможет получить доступ к рекламному идентификатору или отслеживать действия в других приложениях и на веб-сайтах." } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Якщо відстеження вказано у відомостях про приватність App Store, iOS вимагає цей дозвіл, перш ніж застосунок зможе отримати доступ до рекламного ідентифікатора або відстежувати дії в інших застосунках і на вебсайтах." } }
-      }
-    },
-    "Why this permission is needed" : {
-      "comment" : "Accessibility-size disclosure for tracking-permission details.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Why this permission is needed" } },
-        "ru" : { "stringUnit" : { "state" : "translated", "value" : "Зачем нужно это разрешение" } },
-        "uk" : { "stringUnit" : { "state" : "translated", "value" : "Навіщо потрібен цей дозвіл" } }
       }
     },
     "Table" : {

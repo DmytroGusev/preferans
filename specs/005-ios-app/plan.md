@@ -11,7 +11,7 @@ The app is a thin SwiftUI shell around the shared `PreferansEngine` package. A s
 | Item | Value |
 | --- | --- |
 | **Language/Version** | Swift 6.0 (`SWIFT_VERSION = 6.0`; `swift-tools-version: 6.0`), strict concurrency (`@MainActor` view models, `Sendable` models) |
-| **Primary Dependencies** | SwiftUI, UIKit (lifecycle delegate, pasteboard, device idiom), AuthenticationServices + CryptoKit (Sign in with Apple), AppTrackingTransparency/AdSupport, GameKit (wired, unused), local package products `PreferansEngine` and `Dependencies` (pointfreeco swift-dependencies 1.17.1, resolved); tests add `SnapshotTesting` 1.19.4, `DependenciesTestSupport`, `Clocks` |
+| **Primary Dependencies** | SwiftUI, UIKit (pasteboard, device idiom), AuthenticationServices + CryptoKit (Sign in with Apple), GameKit (wired, unused), local package products `PreferansEngine` and `Dependencies` (pointfreeco swift-dependencies 1.17.1, resolved); tests add `SnapshotTesting` 1.19.4, `DependenciesTestSupport`, `Clocks` |
 | **Storage** | `UserDefaults.standard` (preferences, account record, seat-credential cache), Keychain generic password (account session token), no local game persistence |
 | **Testing** | XCTest + Swift Testing in SwiftPM target `PreferansAppTests` (path `Tests/PreferansEngineTests`), structural text snapshots (`__Snapshots__/*.txt`), XCUITest target `PreferansUITests` (Xcode only) |
 | **Target Platform** | iOS 17.0 (Xcode `IPHONEOS_DEPLOYMENT_TARGET`), iPhone + iPad (`TARGETED_DEVICE_FAMILY = 1,2`), Mac Catalyst enabled (`SUPPORTS_MACCATALYST = YES`); `Package.swift` declares iOS 16 / macOS 14 (see spec Known Gap 2) |
@@ -41,7 +41,6 @@ Preferans/                               # App sources (Xcode target "Preferans"
 │   ├── Localized.swift                  # Engine value → LocalizedStringKey/Text helpers
 │   ├── PreferansEngine+UI.swift         # ScoreSheet.pool/mountain/balance, GameContract.declarationOptions
 │   ├── TestHarness.swift                # Launch-flag parsing, scripted configurations, DealScenario decks
-│   ├── TrackingPermissionCenter.swift   # ATT status/request + AppLifecycleDelegate
 │   └── Preferans.entitlements.example   # Template (excluded from builds)
 └── UI/
     ├── OnboardingView.swift             # RootLaunchView router + 4-slide tour
@@ -92,7 +91,6 @@ bin/                                                   # sim, test-ui, screens, 
 flowchart LR
     subgraph Shell[App shell]
         App[PreferansApp] --> RLV[RootLaunchView]
-        App --> Del["AppLifecycleDelegate / ATT"]
         App --> Theme["AppAppearanceModifier: TableTheme env"]
     end
     RLV --> Lobby[LobbyView]
@@ -157,8 +155,7 @@ sequenceDiagram
 1. `PreferansApp.init`: read launch arguments; DEBUG `-uiTestTheme` → write `settings.appTheme`; apply language (pinned or `AppLanguage.current`, default `uk`) to `settings.appLanguage` + `AppleLanguages`; read `-uiTestDisableAnimations` and disable UIView animations.
 2. `body`: `WindowGroup { rootContent.appAppearance().environment(\.locale, …).transaction{…}.environmentObject(gameCenter) }`.
 3. `RootLaunchView`: `TestHarness.shouldShowOnboarding(completed:)` → `OnboardingView` or `LobbyView`.
-4. `AppLifecycleDelegate.applicationDidBecomeActive` (first activation) → after 1 s `TrackingPermissionCenter.requestPermissionIfNeeded()` (skipped under automation / when already determined). Onboarding also schedules a request after 1.4 s and on completion; the system shows the prompt at most once.
-5. `LobbyView.onAppear` → `runOnlineHarnessIfNeeded()` (only reacts to `-uiTestAutoCreate*` / `-uiTestAutoJoinOnlineRoom`).
+4. `LobbyView.onAppear` → `runOnlineHarnessIfNeeded()` (only reacts to `-uiTestAutoCreate*` / `-uiTestAutoJoinOnlineRoom`).
 
 ### 2. Starting a local table
 
@@ -338,7 +335,7 @@ See [data-model.md §Persisted settings](data-model.md#persisted-settings) for t
 - **Two runtimes, one screen**: local and online share `ProjectionGameScreen` and `PendingAdvance`, but only local supplies `onTapToAdvance`, `idleHintActive`, `isSpectating` and `onRematch`. Feature work on the table must be validated in both adapters.
 - **Freeze vs truth**: during a hold the rendered projection deliberately differs from the engine (trick count rolled back, phase restored). Tests distinguish `projection()` from `displayProjection()`; UI code must only read the latter.
 - **Projection policy default**: `GameViewModel.projection(revealAll:)` defaults to `true` (`.localDebug`), which is what tests use; the app passes the DEBUG-only `revealAllHands` (default `false`).
-- **Harness coupling in production code**: `LobbyViewModel` always calls `TestHarness.resolveConfiguration` (no-ops without flags) and `LobbyView` reads automation flags on appear; `bin/sim` launches with `-uiTestViewerFollowsActor` and `-uiTestDisableAnimations` by default, which also counts as "UI automation" (skips onboarding and ATT).
+- **Harness coupling in production code**: `LobbyViewModel` always calls `TestHarness.resolveConfiguration` (no-ops without flags) and `LobbyView` reads automation flags on appear; `bin/sim` launches with `-uiTestViewerFollowsActor` and `-uiTestDisableAnimations` by default, which also counts as "UI automation" (skips onboarding).
 - **State keyed by `sequence`**: prikup-take state and the choice rail's scroll identity reset per projection `sequence`; local `sequence` is `eventLog.count`.
-- **Dead/unused paths**: `TableCenterView` result branches, `OpponentSeatView.orientation`, `GameCenterService`, `AppEngineSnapshot` (online only), `TrackingPermissionCenter.advertisingIdentifierForTracking`, unused `UIIdentifiers` (see spec Known Gaps).
+- **Dead/unused paths**: `TableCenterView` result branches, `OpponentSeatView.orientation`, `GameCenterService`, `AppEngineSnapshot` (online only), unused `UIIdentifiers` (see spec Known Gaps).
 - **Generic sections**: `LobbyView` is split across two files via an extension (`LobbyOnlineSetupCard.swift` uses `viewModel`, `publicLobby`, `appleSignInNonce`, `layoutPolicy` from the main file), so these members are internal rather than private; `LobbyYourGamesSection` and `LobbyPublicTablesSection` are separate views, and `onlinePanel` is a free function in `LobbyYourGamesSection.swift`.

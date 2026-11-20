@@ -59,6 +59,8 @@ final class AccessibilityContractTests: XCTestCase {
 
         robot.waitForElement(UIIdentifiers.screenSettings)
         robot.waitForElement(UIIdentifiers.settingsLanguagePicker)
+        XCTAssertFalse(app.buttons["privacy.tracking.request"].exists,
+                       "A non-tracking build must not offer an ATT request")
         let deleteAccount = app.buttons[UIIdentifiers.onlineDeleteAccount]
         XCTAssertTrue(deleteAccount.waitForExistence(timeout: 3))
         XCTAssertTrue(deleteAccount.isEnabled, "Lobby settings must expose server-backed account deletion")
@@ -68,5 +70,21 @@ final class AccessibilityContractTests: XCTestCase {
             "Permanent deletion consequences were not presented"
         )
         app.buttons["Cancel"].tap()
+    }
+
+    func testOnboardingCompletesWithoutTrackingPermission() {
+        let app = XCUIApplication()
+        app.launchArguments += [UITestFlags.showOnboarding]
+        app.disableUITestAnimations()
+        app.launch()
+        let robot = MatchUIRobot(app: app)
+        robot.waitForElement(UIIdentifiers.screenOnboarding)
+        for index in 0..<4 {
+            XCTAssertTrue(app.staticTexts[UIIdentifiers.onboardingSlideTitle(index)].waitForExistence(timeout: 2))
+            XCTAssertFalse(app.staticTexts["The iOS tracking permission may appear during first launch. You can continue even if you decline."].exists)
+            app.buttons[UIIdentifiers.onboardingContinue].tap()
+        }
+        robot.waitForElement(UIIdentifiers.screenLobby)
+        XCTAssertFalse(app.alerts.firstMatch.exists)
     }
 }

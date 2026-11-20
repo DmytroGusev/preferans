@@ -40,7 +40,7 @@ DEST_NAME='iPad Pro 13-inch (M4)' bin/sim          # another simulator
 
 Notes:
 
-- By default `bin/sim` passes `-uiTestViewerFollowsActor` and `-uiTestDisableAnimations`. Any `-uiTest…` argument counts as UI automation, which **skips onboarding and the ATT prompt** and makes the viewer follow the acting seat. To see first-run behaviour exactly as shipped, use `bin/sim --no-rotate-viewer --animations` (no harness flags) on a fresh simulator, or erase the app's data.
+- By default `bin/sim` passes `-uiTestViewerFollowsActor` and `-uiTestDisableAnimations`. Any `-uiTest…` argument counts as UI automation, which **skips onboarding** and makes the viewer follow the acting seat. To see first-run behaviour exactly as shipped, use `bin/sim --no-rotate-viewer --animations` (no harness flags) on a fresh simulator, or erase the app's data.
 - `-uiTestFastBotDelay` is never passed by `bin/sim`, so the lobby's Bot speed picker applies.
 
 Equivalent raw commands (what `bin/sim` does):
@@ -138,7 +138,7 @@ SIMCTL_CHILD_PREFERANS_ROOM_WORKER_URL=http://127.0.0.1:8787 \
 
 ## Launch Arguments
 
-All flags are defined in `UITestFlags` (`Sources/PreferansEngine/UIIdentifiers.swift`) and consumed through `TestHarness` (`Preferans/Support/TestHarness.swift`) unless noted. Any argument beginning with `-uiTest` marks the process as UI automation (onboarding bypass, no ATT request, automation affordances allowed).
+All flags are defined in `UITestFlags` (`Sources/PreferansEngine/UIIdentifiers.swift`) and consumed through `TestHarness` (`Preferans/Support/TestHarness.swift`) unless noted. Any argument beginning with `-uiTest` marks the process as UI automation (onboarding bypass, automation affordances allowed).
 
 | Flag | Value | Effect | Consumer |
 | --- | --- | --- | --- |

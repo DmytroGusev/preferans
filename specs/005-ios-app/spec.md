@@ -115,17 +115,17 @@ After creating/joining, the player lands in a waiting room (room code, share lin
 
 ---
 
-### User Story 6 – First launch: onboarding and tracking prompt (Priority: P2)
+### User Story 6 – First launch: onboarding (Priority: P2)
 
-**Why this priority**: Shown once; affects App Store review (ATT) but not gameplay.
+**Why this priority**: Shown once before the first game.
 
 **Independent Test**: `TestHarnessTests.testProductionShowsOnlyIncompleteOnboarding`, `testAutomationBypassesOnboardingRegardlessOfPersistedState`, `testDedicatedAutomationFlagForcesOnboarding`, `OnboardingLocalizationUITests`, `PreferansUITests.testOnboardingRemainsNavigableAtAccessibilityTextSize`.
 
 **Acceptance Scenarios**:
 
 1. **Given** `settings.firstLaunchOnboardingCompleted` is false and no `-uiTest*` argument, **When** the app starts, **Then** the four-slide tour is shown; **When** the user taps **Skip** or **Start playing** on slide 4, **Then** the flag is set and the lobby appears.
-2. **Given** ATT status `notDetermined`, **When** the app first becomes active (or onboarding settles for 1.4 s, or onboarding completes), **Then** the system tracking prompt is requested once and `settings.trackingPermissionRequested` is set.
-3. **Given** any `-uiTest…` launch argument, **When** the app starts, **Then** onboarding and the ATT prompt are skipped (unless `-uiTestShowOnboarding`).
+2. **Given** a fresh launch, **When** onboarding runs or completes, **Then** the app does not request tracking authorization.
+3. **Given** any `-uiTest…` launch argument, **When** the app starts, **Then** onboarding is skipped (unless `-uiTestShowOnboarding`).
 
 ---
 
@@ -227,8 +227,8 @@ After creating/joining, the player lands in a waiting room (room code, share lin
 
 - **FR-008**: The system MUST show onboarding iff `-uiTestShowOnboarding` is present, or (no `-uiTest…` argument and `settings.firstLaunchOnboardingCompleted == false`); completion MUST set the flag and route to the lobby in the same launch. — `Preferans/UI/OnboardingView.swift` `RootLaunchView`, `Preferans/Support/TestHarness.swift` `shouldShowOnboarding`. Tests: `TestHarnessTests.testProductionShowsOnlyIncompleteOnboarding`, `testAutomationBypassesOnboardingRegardlessOfPersistedState`, `testDedicatedAutomationFlagForcesOnboarding`.
 - **FR-009**: Onboarding MUST present four paged slides ("Classic Preferans, made readable", "Play a full hand", "Invite friends by room code", "Track the pulka") with decorative illustrations hidden from accessibility, a **Skip** button, a capsule page indicator, and a primary button reading "Continue" (slides 1–3) or "Start playing" (slide 4); the last slide MUST show the tracking-permission note. — `OnboardingView`, `OnboardingSlide.sampleSlides`. Tests: `PreferansUITests.testOnboardingRemainsNavigableAtAccessibilityTextSize`, `OnboardingLocalizationUITests.testRussianIntroductionThroughTheLobby`, `testUkrainianIntroductionThroughTheLobby`.
-- **FR-010**: The system MUST request App Tracking Transparency authorization only when status is `.notDetermined` and not under UI automation, from (a) `AppLifecycleDelegate.applicationDidBecomeActive` once per process after a 1 s delay, (b) the onboarding `.task` after 1.4 s, (c) onboarding completion; each automatic request MUST set `settings.trackingPermissionRequested = true`. — `Preferans/Support/TrackingPermissionCenter.swift` `requestPermissionIfNeeded`, `AppLifecycleDelegate`, `OnboardingView.requestTrackingAfterLaunchSettles`.
-- **FR-011**: Settings MUST show the ATT status ("Not requested", "Restricted", "Denied", "Authorized", "Unknown", "Unavailable"), a **Request tracking permission** button enabled only while not determined, and an **Open Privacy Settings** button otherwise. — `Preferans/UI/SettingsScreen.swift` `privacySection`.
+- **FR-010**: The app MUST NOT request App Tracking Transparency authorization or access IDFA.
+- **FR-011**: Settings MUST expose the Privacy Policy and Terms of Use, with no tracking permission control.
 
 #### Navigation and lobby (local)
 
@@ -302,7 +302,7 @@ After creating/joining, the player lands in a waiting room (room code, share lin
 
 #### Settings, themes, localization
 
-- **FR-067**: Settings MUST contain Appearance (Table theme → gallery), Table (Suit order), Language (uk/ru/en, restart alert), Account (status, Delete online account with confirmation; disabled without a deletion closure), Privacy (ATT), legal links, a DEBUG-only Admin "Reveal all hands" toggle and About (version "x (build)"). — `Preferans/UI/SettingsScreen.swift`. Test: `AccessibilityContractTests.testSettingsExposeStableLanguageControl`.
+- **FR-067**: Settings MUST contain Appearance (Table theme → gallery), Table (Suit order), Language (uk/ru/en, restart alert), Account (status, Delete online account with confirmation; disabled without a deletion closure), Privacy (legal links), a DEBUG-only Admin "Reveal all hands" toggle and About (version "x (build)"). — `Preferans/UI/SettingsScreen.swift`. Test: `AccessibilityContractTests.testSettingsExposeStableLanguageControl`.
 - **FR-068**: Account deletion MUST call the server first and only then clear the Keychain token, seat credentials, persisted account, legacy anonymous ID and display name; failures MUST surface as an "Account deletion failed" alert. — `LobbyViewModel.deleteRegisteredOnlineAccount`, `clearOnlineAccountData`, `SettingsScreen.deleteOnlineAccount`. Test: `LobbyViewModelTests.testAccountDeletionRevokesServerBeforeClearingLobbyIdentity`.
 - **FR-069**: The theme gallery MUST list all six themes as previews in their own palette and apply/persist a selection immediately without recreating game models or coordinators. — `Preferans/UI/ThemeGallery.swift`, `AppAppearanceModifier`. Tests: `ThemeUITests.testThemeSwitchPreservesLiveDealAndPersistsOnRelaunch`, `testGallerySupportsLargestText`.
 - **FR-070**: Every theme's text, accent, error, warning and success inks MUST reach ≥ 4.5:1 contrast against all four background surfaces; on-accent vs accent and card-back ink vs card back MUST also reach 4.5:1. — `Preferans/UI/TableTheme.swift` `TableTheme.init`. Test: `ThemePaletteTests.testEveryThemeKeepsSmallTextReadableOnAllTableSurfaces`.
@@ -315,7 +315,7 @@ After creating/joining, the player lands in a waiting room (room code, share lin
 - **FR-074**: The system MUST expose test probes without visible chrome: `viewer.label` ("Viewing as <name>"), invisible `phase.message` in idle, 0×0 "Acting" markers (`seat.<id>.actor`), `online.flowState` (value "room …, viewer …, sequence …, phase <token>"). — `ViewerHandRail`, `GameHeaderStrip.phaseChip`, `OpponentSeatView.nameChip`, `OnlineRoomGameScreen.onlineFlowState`.
 - **FR-075**: Interactive header icons, steppers and refresh buttons MUST have ≥ 44 pt targets; felt buttons MUST have a 44 pt minimum height. — `GameHeaderStrip.headerIconTarget`, `LobbyView.botCountStepper`, `FeltButtonStyle.makeBody`.
 - **FR-076**: Selection and press animations MUST be disabled when Reduce Motion is on. — `CardView.body`, `FeltButtonStyle`.
-- **FR-077**: Automation affordances (auto-create/join rooms, local worker URL, onboarding bypass, ATT suppression) MUST only activate when a `-uiTest…` argument is present; the local worker URL MUST be http on `localhost`/`127.0.0.1`, root path, no credentials/query/fragment. — `TestHarness.isUIAutomation`, `localRoomWorkerURL`, `LobbyView.runOnlineHarnessIfNeeded`. Test: `TestHarnessTests.testLocalRoomWorkerRequiresAutomationAndLoopbackRoot`.
+- **FR-077**: Automation affordances (auto-create/join rooms, local worker URL, onboarding bypass) MUST only activate when a `-uiTest…` argument is present; the local worker URL MUST be http on `localhost`/`127.0.0.1`, root path, no credentials/query/fragment. — `TestHarness.isUIAutomation`, `localRoomWorkerURL`, `LobbyView.runOnlineHarnessIfNeeded`. Test: `TestHarnessTests.testLocalRoomWorkerRequiresAutomationAndLoopbackRoot`.
 
 #### Test harness (summary; see `../006-testing-and-release`)
 
@@ -348,7 +348,7 @@ After creating/joining, the player lands in a waiting room (room code, share lin
 | S21 | Activity log | Sheet, `UI/ActivityLogSheet.swift` | Menu → Activity log | Bot notes, latest activity, empty state | Done |
 | S22 | Last trick | Sheet, `UI/LastTrickView.swift` via `GameDetailSheet` | Header icon | Winner line and the four/three cards | Done |
 | S23 | Rules & scoring (convention legend) | Sheet, `UI/ConventionLegendSheet.swift` | Lobby footer link; Menu → Rules & scoring | Hero, at-a-glance metrics, contract table, misère, raspasy stages, table rules | Switch convention (lobby only); Done |
-| S24 | Settings | Sheet, `UI/SettingsScreen.swift` | Lobby gear; Menu → Settings | Appearance, Table, Language, Account, Privacy, links, Admin (DEBUG), About | Theme; suit order; language; delete account; request ATT; open settings; links; Done |
+| S24 | Settings | Sheet, `UI/SettingsScreen.swift` | Lobby gear; Menu → Settings | Appearance, Table, Language, Account, Privacy, Admin (DEBUG), About | Theme; suit order; language; delete account; legal links; Done |
 | S25 | Theme gallery | Pushed, `UI/ThemeGallery.swift` | Settings → Table theme | Six theme previews | Select theme; Back |
 | S26 | Settlement preview gallery | DEBUG root, `UI/SettlementComposer.swift` | `-uiTestPreviewSettlement` | Four composer states | (inspection only) |
 
@@ -422,7 +422,7 @@ Full field-level definitions: [data-model.md](data-model.md).
 1. **README house names are stale.** README lists the lobby house names as "Одеса, Wien, Θεσσαλονίκη, Крути"; the catalog now renders `variant.*.title` as Vienna/Prague/Berlin/Kruty (en), Вена/Прага/Берлин/Круты (ru), Відень/Прага/Берлін/Крути (uk), and `standardName` is now a descriptive phrase ("Balanced scoring", "Double whists, shared pool", …) rather than the standard Sochi/Leningrad/Rostov names. Persisted identifiers (`odesa`, `wien`, `thessaloniki`, `kruty`) are unchanged.
 2. **Deployment target mismatch.** The Xcode targets use `IPHONEOS_DEPLOYMENT_TARGET = 17.0`; `Package.swift` declares `.iOS(.v16)`/`.macOS(.v14)`. App code uses iOS 17 APIs (two-parameter `onChange(of:)`), so the effective floor is iOS 17 (SPM tests compile it for macOS 14). [NEEDS CLARIFICATION: is iOS 16 support intended?]
 3. **Game Center is wired but unused.** The entitlement is present and `GameCenterService` is injected as an environment object, but no view reads it and `authenticate()` is never called; the comment in `PreferansApp` refers to a lobby "Sign in to Game Center" button that does not exist. `AppIdentifiers.gameCenterActivityID` is unused.
-4. **ATT without a tracking consumer.** The app requests tracking authorization on first activation, but `TrackingPermissionCenter.advertisingIdentifierForTracking` is never called and the privacy policy states the app does not collect advertising identifiers. [NEEDS CLARIFICATION: keep the prompt?]
+4. **Resolved: unused ATT flow.** The app no longer requests tracking authorization or links the advertising ID helper.
 5. **Legal links differ.** Settings links to `https://guruofcards.com/apps/preferans/privacy/` and `/terms/`; README lists GitHub Pages URLs.
 6. **Associated domains vs invite parsing.** Entitlements declare `applinks:preferans.game` and two `*.workers.dev` hosts, but `PreferansInviteLink.roomCode(from:)` accepts only `https` links whose host equals `AppIdentifiers.inviteBaseURL.host` (the `dmytro-gusev` worker) or the custom scheme `com.mixandmatch.preferans://table/join/<code>`; links on `preferans.game` or the `ontofractal` worker are ignored by `handleInviteURL`. (README: "Universal links need a real hosted domain.")
 7. **No way back to a human seat after Watch bots.** `watchBots()` turns every lobby seat into a bot; `quickPlayVsBots()` (which restores defaults) is not reachable from any view and the roster is not persisted, so only a relaunch restores a human seat.

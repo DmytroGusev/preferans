@@ -2,19 +2,21 @@
 
 Use this file when filling in App Store Connect privacy answers.
 
-## Current shipping assumption
+## Current main source
 
 The current shipping app supports local play and authenticated online rooms
-through Sign in with Apple, guest accounts, and Cloudflare room sync. Build 21
-requests App Tracking Transparency on first launch when iOS tracking status is
-not determined.
+through Sign in with Apple, guest accounts, and Cloudflare room sync. This
+source does not request App Tracking Transparency or access IDFA.
 
-Only mark data as "used to track the user" in App Store Connect if the submitted build actually collects that category for tracking, advertising attribution, third-party analytics, or data broker sharing. Do not mark categories that are not collected by the app.
+Match the App Store Connect answers to the exact submitted binary and its
+backend. In particular, other release branches can include optional usage
+analytics that isn't present here. Functional diagnostics or usage analytics
+are not tracking merely because they are collected.
 
 ## Likely answers for the current codebase
 
-- Tracking: Yes only if App Store Connect privacy labels intentionally declare tracking for advertising attribution or similar tracking use.
-- Data used to track the user: Only the categories actually collected for tracking after ATT authorization.
+- Tracking: No for this source.
+- Data used to track the user: None for this source.
 - Contact Info: Email address is not requested or stored by the app.
 - Health & Fitness: Not collected
 - Financial Info: Not collected
@@ -29,16 +31,16 @@ Only mark data as "used to track the user" in App Store Connect if the submitted
 - Purchases: Not collected
 - Usage Data: Not collected
 - Product Interaction: Not collected
-- Diagnostics: Not collected
+- Other Diagnostic Data: Online service logs used for troubleshooting and operation; not used for tracking.
 - Crash Data: Not collected
 - Performance Data: Not collected
 - Advertising Data: Not collected
 
-## ATT implementation
+## Package verification
 
-Build 21 requests App Tracking Transparency automatically on first launch before future tracking data can be accessed. The permission status and manual request button are also available in **Settings → Privacy**.
-
-Code may access the advertising identifier only through `TrackingPermissionCenter.advertisingIdentifierForTracking`, which returns a value only after `ATTrackingManager.trackingAuthorizationStatus == .authorized`.
+Check the exported app and any nested bundles for tracking purpose strings and
+ATT or AdSupport linkage before uploading. A source cleanup does not modify
+an already-uploaded binary or the published App Privacy answers.
 
 ## Account deletion
 
