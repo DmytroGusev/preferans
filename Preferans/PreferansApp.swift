@@ -6,10 +6,6 @@ import UIKit
 
 @main
 struct PreferansApp: App {
-    #if canImport(UIKit)
-    @UIApplicationDelegateAdaptor(AppLifecycleDelegate.self) private var appLifecycleDelegate
-    #endif
-
     #if canImport(GameKit) && canImport(UIKit)
     @StateObject private var gameCenter = GameCenterService()
     #endif
